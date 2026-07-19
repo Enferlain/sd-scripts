@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import base64
 import logging
+import mimetypes
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Protocol
 
 from library.config.dataclasses.output import MetadataConfig
@@ -181,15 +184,24 @@ def _resolve_thumbnail(thumbnail: str | None) -> str | None:
     if thumbnail is None or thumbnail.startswith("data:"):
         return thumbnail
 
-    from library.utils.model_metadata import file_to_data_url
-
     try:
-        return file_to_data_url(thumbnail)
+        return _file_to_data_url(thumbnail)
     except FileNotFoundError as exc:
         logger.warning("Thumbnail file not found, skipping: %s", exc)
     except Exception as exc:  # pragma: no cover - format/IO-specific failure
         logger.warning("Failed to convert thumbnail file %s to a data URL: %s", thumbnail, exc)
     return None
+
+
+def _file_to_data_url(file_path: str) -> str:
+    """Convert a configured thumbnail file into artifact presentation data."""
+    path = Path(file_path)
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {file_path}")
+
+    mime_type, _ = mimetypes.guess_type(path)
+    encoded_data = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime_type or 'application/octet-stream'};base64,{encoded_data}"
 
 
 __all__ = [

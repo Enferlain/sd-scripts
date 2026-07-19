@@ -23,7 +23,7 @@ from library.training.checkpointing import (
     get_epoch_ckpt_name,
     get_step_ckpt_name,
 )
-from library.utils.model_metadata import load_metadata_from_safetensors
+from library.utils.safetensors_utils import load_metadata_from_safetensors
 
 
 # =============================================================================

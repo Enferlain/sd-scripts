@@ -16,9 +16,17 @@ Rules:
 
 - **Metadata migration now keeps a deferred capability ledger** — prematurely displaced behavior is classified as migrated, retained at an IO boundary, deferred to an explicit owner/Beads issue, a future-family onboarding obligation, or an intentionally discarded implementation detail.
 
+### Changed
+
+- **Remaining model-artifact helpers now follow their actual ownership boundaries** — thumbnail encoding is private builder input handling, checkpoint implementation provenance reuses the accepted run Git revision, and safetensors header reads live with safetensors IO utilities.
+
 ### Fixed
 
 - **Textual-inversion artifact metadata no longer depends on the removed broad ModelSpec facade** — SD/SDXL textual-inversion roles resolve through family checkpoint facets and a central standalone artifact boundary now projects canonical facts to repo-owned `kuro.*` and compatibility `modelspec.*` output.
+
+### Removed
+
+- **The obsolete `library/utils/model_metadata.py` remainder is gone** — its three unrelated post-migration helpers were placed with the central model builder, existing repository provenance, and safetensors IO boundary instead of preserving a misleading metadata mini-module.
 
 ## [2026-07-18]
 

@@ -21,8 +21,8 @@ from library.metadata.builders.model import build_model_artifact_resolution_cont
 from library.metadata.dataclasses.model import ModelArtifactFacts, ModelArtifactResolutionContext
 from library.metadata.emitters.checkpoint import build_model_artifact_export_metadata
 from library.strategies.sd.checkpointing import SdCheckpointingStrategy
+from library.utils.hash_utils import get_git_revision_hash
 from library.utils.torch_utils import prepare_dtype, set_seed_from_config
-from library.utils.model_metadata import get_implementation_version
 
 from library.utils.device_utils import clean_memory_on_device
 from library.data._deprecated.prompt_templates import (
@@ -143,6 +143,7 @@ class TextualInversionTrainer:
         """Build typed metadata for one textual-inversion artifact boundary."""
         extension = os.path.splitext(artifact_identifier)[1].lower()
         artifact_format = "safetensors" if extension == ".safetensors" else "pt"
+        git_revision = get_git_revision_hash()
         context = build_model_artifact_resolution_context(
             metadata_config=cfg.output.metadata,
             family_identifier="sdxl" if self.is_sdxl else "sd",
@@ -152,7 +153,7 @@ class TextualInversionTrainer:
             serialization_format=artifact_format,
             resolution=cfg.data.preprocessing.resolution,
             created_at=time.time(),
-            implementation_version=get_implementation_version(),
+            implementation_version=f"sd-scripts/{'unknown' if git_revision == '(unknown)' else git_revision}",
             prediction_type=cfg.objective.prediction,
             min_timestep=cfg.timestep.min_timestep,
             max_timestep=cfg.timestep.max_timestep,

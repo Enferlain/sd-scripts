@@ -1,5 +1,6 @@
 """Typed model-family fact, identity, and validation contracts."""
 
+import base64
 from dataclasses import fields
 import sqlite3
 
@@ -284,6 +285,45 @@ def test_model_artifact_context_builder_preserves_supported_presentation_fields(
         is_negative_embedding="False",
         extension_fields={"custom": "value"},
     )
+
+
+@pytest.mark.unit
+def test_model_artifact_context_builder_encodes_thumbnail_file(tmp_path) -> None:
+    thumbnail_bytes = b"thumbnail-bytes"
+    thumbnail = tmp_path / "thumbnail.png"
+    thumbnail.write_bytes(thumbnail_bytes)
+
+    context = build_model_artifact_resolution_context(
+        metadata_config=MetadataConfig(metadata_thumbnail=str(thumbnail)),
+        family_identifier="future-family",
+        model_version="v1",
+        artifact_identifier="artifact.safetensors",
+        artifact_role="adapter",
+        serialization_format="safetensors",
+        resolution=(512, 512),
+        created_at=1.0,
+    )
+
+    data_url = context.presentation.thumbnail
+    assert data_url is not None
+    assert data_url.startswith("data:image/png;base64,")
+    assert base64.b64decode(data_url.split(",", 1)[1]) == thumbnail_bytes
+
+
+@pytest.mark.unit
+def test_model_artifact_context_builder_omits_missing_thumbnail_file(tmp_path) -> None:
+    context = build_model_artifact_resolution_context(
+        metadata_config=MetadataConfig(metadata_thumbnail=str(tmp_path / "missing.png")),
+        family_identifier="future-family",
+        model_version="v1",
+        artifact_identifier="artifact.safetensors",
+        artifact_role="adapter",
+        serialization_format="safetensors",
+        resolution=(512, 512),
+        created_at=1.0,
+    )
+
+    assert context.presentation.thumbnail is None
 
 
 @pytest.mark.unit

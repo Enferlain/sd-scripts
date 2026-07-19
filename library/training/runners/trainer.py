@@ -539,13 +539,13 @@ class Trainer:
             raise RuntimeError("Checkpoint metadata requires an initialized training observer.")
 
         from library.metadata.emitters.checkpoint import build_checkpoint_metadata
-        from library.utils.model_metadata import get_implementation_version
 
         artifact_role = self.mode.checkpoint_artifact_role
         if not isinstance(artifact_role, str) or not artifact_role:
             raise ValueError("Training modes must declare a non-empty checkpoint_artifact_role.")
         artifact_format = self.mode.resolve_checkpoint_artifact_format(self)
         prediction_type = None if self.objective.name == "rectified_flow" else self.cfg.objective.prediction
+        git_revision = metadata_state.full.metadata.get("sd_scripts_commit_hash")
         context = build_model_artifact_resolution_context(
             metadata_config=self.cfg.output.metadata,
             family_identifier=resolve_model_family_identifier(self.cfg.model.model_type),
@@ -556,7 +556,7 @@ class Trainer:
             resolution=self.cfg.data.preprocessing.resolution,
             created_at=time.time(),
             realization_identifier=self.model_realization_identifier,
-            implementation_version=get_implementation_version(),
+            implementation_version=None if git_revision is None else f"sd-scripts/{git_revision}",
             prediction_type=prediction_type,
             min_timestep=self.cfg.timestep.min_timestep,
             max_timestep=self.cfg.timestep.max_timestep,

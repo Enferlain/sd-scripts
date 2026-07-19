@@ -306,7 +306,10 @@ class TestTrainer(unittest.TestCase):
         runtime = MetadataRuntime()
         self.trainer._observer = SimpleNamespace(metadata_runtime=runtime)
         self.trainer._metadata_state = TrainingMetadataState(
-            full=RunMetadataFacts(run_identifier="42", metadata={"seed": "7"}),
+            full=RunMetadataFacts(
+                run_identifier="42",
+                metadata={"seed": "7", "sd_scripts_commit_hash": "abc123"},
+            ),
         )
         self.trainer._model_version = "sdxl_base_v1-0"
         self.trainer._model_realization_state = build_model_realization_state(
@@ -352,6 +355,7 @@ class TestTrainer(unittest.TestCase):
         self.assertEqual(context.serialization_format, "safetensors")
         self.assertEqual(context.resolution, (1024, 768))
         self.assertEqual(context.realization_identifier, "run/42/model/training-target")
+        self.assertEqual(context.implementation_version, "sd-scripts/abc123")
         artifact_record = runtime.snapshot().record_for(
             entity_type="model_artifact",
             identifier="adapter.safetensors",

@@ -54,7 +54,9 @@ migrated; it does not collapse their distinct domain ownership.
 
 Main code:
 
-- `library/utils/model_metadata.py`
+- `library/metadata/dataclasses/model.py`
+- `library/metadata/builders/model.py`
+- `library/metadata/projections.py`
 - `library/config/dataclasses/output.py::MetadataConfig`
 - `configs/_defaults/output/default.yaml`
 - `library/constants.py`
@@ -71,8 +73,11 @@ Current shape after the model-family migration:
 - The legacy `ModelSpecMetadata` / `build_metadata*` and minimum-adapter
   dictionary helpers are removed; active compatibility output comes from
   canonical facts and central projections.
-- `load_metadata_from_safetensors(...)` reads artifact metadata back from
-  safetensors.
+- Thumbnail-file conversion is private model-artifact builder input handling.
+- Artifact implementation version reuses the Git revision already recorded in
+  canonical run metadata rather than querying a second metadata utility.
+- `library/utils/safetensors_utils.py::load_metadata_from_safetensors(...)`
+  reads external artifact headers at the safetensors IO boundary.
 - `SS_METADATA_MINIMUM_KEYS` in `library/constants.py` is a small legacy list
   used when `output.saving.no_metadata` asks to save only the minimum metadata.
 
@@ -366,8 +371,8 @@ Noted boundaries:
 
 Representative coverage:
 
-- `tests/unit/utils/test_model_metadata.py` covers the remaining narrow
-  model-artifact utility boundary.
+- `tests/unit/metadata/test_model_facts.py` covers model-artifact builder input
+  normalization, including thumbnail conversion.
 - `tests/unit/training/test_training_metadata.py` covers objective metadata.
 - `tests/unit/training/test_training_checkpointing.py` covers minimum adapter
   metadata.

@@ -288,6 +288,15 @@ class MemoryEfficientSafeOpen:
             raise ValueError(f"Unsupported float8 type: {dtype_str} (upgrade PyTorch to support float8 types)")
 
 
+def load_metadata_from_safetensors(model: str) -> dict[str, str]:
+    """Read the string metadata map from a safetensors artifact."""
+    if not model.endswith(".safetensors"):
+        return {}
+
+    with MemoryEfficientSafeOpen(model) as file:
+        return file.metadata()
+
+
 def load_safetensors(
     path: str, device: str | torch.device, disable_mmap: bool = False, dtype: torch.dtype | None = None
 ) -> dict[str, torch.Tensor]:
