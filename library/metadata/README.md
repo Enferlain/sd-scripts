@@ -4,6 +4,12 @@
 
 This file is the active guide for how metadata is supposed to work in the codebase.
 
+Unsettled (and historical) discussion and ideas/plans live in
+`docs_design/metadata_*.md` until they receive an accepted
+OpenSpec and implementation.
+
+If a future change no longer matches this README, update the README together with the code so the system remains navigable.
+
 ## Short Version
 
 - Runtime code owns live state and source truth.
@@ -160,7 +166,8 @@ The main runtime abstraction is still:
 
 - file a typed metadata item
 
-So local code should not need to think in terms of concern-specific provider or collector objects unless a future case truly needs one as an internal implementation detail.
+So local code should not need to think in terms of concern-specific provider or
+collector objects merely to file known facts.
 
 ## Validation
 
@@ -270,6 +277,18 @@ Model metadata has three distinct layers:
 - one model-artifact fact records the semantics of a particular adapter or
   full-model output.
 
+The implemented model metadata catalog stops at top-level loaded components. It
+does not record or query nested modules, individual parameters, buffers, tensor
+shapes, or storage identities. Model inspection, optimization grouping, and
+startup resource summaries currently inspect live modules independently; those
+runtime helpers are not central model-metadata queries.
+
+Run metadata currently retains configured base-model and VAE name strings, and
+loaded realizations are run-qualified. The implemented system does not yet have
+a stable source-model entity, resolved revision/content identity, or an
+accepted source-to-realization relationship. It therefore cannot prove from
+canonical metadata that two runs used the same exact source model.
+
 `library/strategies/<family>/checkpointing.py` resolves family-specific artifact
 meaning—architecture, reference implementation, supported artifact roles, and
 family-local contributions—into the shared fact types. It does not render
@@ -334,6 +353,11 @@ profile or accounting record may explicitly reference accepted records from
 another run or another metadata concern, including artifacts; resolving that
 evidence does not make it a resource fact of the viewed run.
 
+These are retrieval operations over already accepted snapshot records. The
+runtime has no general query API that can obtain a missing fact from live domain
+state or an artifact, and the SQLite store currently exposes complete snapshots
+rather than targeted public queries.
+
 ## Projections
 
 Typed metadata items and collected records/events are the source of truth.
@@ -395,9 +419,3 @@ Avoid these patterns in normal runtime code:
 - Lifecycle events should prefer richer structured context when the trainer already knows it. The current live path now carries run identifier, mode, strategy, optimizer, config name, step/epoch where meaningful, duration, and failed-run error messages rather than treating lifecycle metadata as a minimal placeholder.
 - Another live analytics snapshot producer now exists at training startup: the observer files the structured startup summary through the same runtime path so debug/export work can use one metadata-backed source instead of scraping console-only output.
 - Benchmark-report analytics snapshots now also carry the lightweight runtime trace summary. That trace is owned by the trainer/logging path rather than the metadata system itself, but the existing benchmark-report payload snapshot is the current metadata-backed place where launch-to-phase timings and milestone deltas become comparable across runs.
-
-## What This README Is For
-
-This file is for the settled metadata system shape that should stay true even while implementation details continue to move.
-
-If a future change no longer matches this README, update the README together with the code so the system remains navigable.

@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-07-20]
+
+### Added
+
+- **Metadata query and granular model-structure research now have an explicit dependency path** — recorded the current snapshot-only read capability, promoted stable cross-run source-model provenance to a base requirement, defined the optional source-resolution boundary, and placed the queryable module/parameter/buffer catalog after source identity, query design, and qualified component linkage.
+
 ## [2026-07-19]
 
 ### Added

@@ -1,6 +1,6 @@
 # Metadata System Inventory
 
-Date: 2026-05-14 (implementation update 2026-07-19)
+Date: 2026-05-14 (inventory update 2026-07-20)
 
 This note began as the pre-backbone inventory. The original concern survey below
 remains useful historical context, but the active authority is
@@ -90,6 +90,38 @@ Noted boundaries:
   ModelSpec output.
 - Artifact metadata must be `dict[str, str]` for safetensors compatibility.
 
+### Model structure and tensor capability gap
+
+The completed model-family migration intentionally records family declaration,
+run-scoped realization, top-level components, and artifact semantics. Its
+archived design made arbitrary module state, parameter names, and module-level
+topology non-goals for that slice. Those exclusions describe the completed
+migration boundary; they do not mean that granular model structure is outside
+the long-term metadata system.
+
+The repository already has partial discovery mechanisms:
+
+- loaded components provide qualified top-level ownership and live modules;
+- model inspection can enumerate named modules, parameters, and buffers and
+  render shape, dtype, trainability, and buffer persistence;
+- optimization grouping creates component-qualified named parameter references;
+- startup diagnostics aggregate parameter counts and logical bytes per
+  component and estimate gradient/optimizer-state memory.
+
+These paths do not yet form one canonical metadata capability. Tensor details
+are used transiently or rendered directly, component memory excludes buffers,
+and the metadata backend does not expose a typed single-tensor query. Shared or
+tied storage, physical residency, quantization, sharding/offload, and temporal
+runtime state also need explicit semantics before their sizes can be compared
+or aggregated safely.
+
+The possible query and model-catalog continuation is not yet an accepted system
+design. Current-state evidence, candidate boundaries, and open questions are
+kept in `docs_design/metadata_query_capability.md`. Beads issues
+`sd-scripts-8ck`, `sd-scripts-edl`, and `sd-scripts-b25` track source-model
+identity, query research, and the dependent model work; qualified component
+identity linkage remains `sd-scripts-d79`.
+
 ## Training-Run Metadata
 
 Main code:
@@ -110,7 +142,8 @@ Current shape:
   definition.
 - The produced metadata includes run facts, optimizer/scheduler facts, precision
   flags, dataset counts, bucket/dataset/tag summaries, augmentation settings,
-  validation settings, source model and VAE names/hashes, and objective metadata.
+  validation settings, configured source-model and VAE names, and objective
+  metadata. The active builder does not produce source model or VAE hashes.
 - Adapter/PEFT-specific keys are added when an active PEFT config exists:
   `ss_adapter_module`, rank, alpha, dropout, training comment, and scale weight
   norms.
@@ -131,6 +164,9 @@ Noted boundaries:
 
 - This path is still root-config heavy, but it lives in trainer-level
   orchestration where broad config access is acceptable by current repo rules.
+- Configured model and VAE names are run metadata, not stable source identities.
+  Local paths are reduced to basenames, and no source-to-realization relation or
+  verified cross-run equality is currently recorded.
 - Family-specific semantics remain stable at the typed checkpoint facet rather
   than at a generic metadata dictionary hook.
 - `ss_*` keys are effectively compatibility artifact metadata, not an internal
