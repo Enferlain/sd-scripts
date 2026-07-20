@@ -23,6 +23,10 @@ The model catalog depends on source-model identity, the query design, and
 qualified component identity. A researched OpenSpec should settle the query
 design before implementation.
 
+The model-specific source/provenance audit, structural evidence constraints,
+and recommended milestone boundary are developed in
+`docs_design/model_metadata_continuation_research.md`.
+
 ## Implemented Current State
 
 The central metadata system is producer-driven:
