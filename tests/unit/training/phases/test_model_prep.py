@@ -37,6 +37,7 @@ class TestPrepareModels:
             mock_trainer.strategies.load_denoiser_lazily.assert_called_once()
             mock_trainer.sync_component_views.assert_called_once()
             assert mock_trainer.denoiser is mock_denoiser
+            mock_trainer._file_model_realization_metadata.assert_not_called()
 
     def test_skips_lazy_load_when_denoiser_exists(self, mock_trainer):
         """Test that lazy load is skipped when the denoiser is already present."""

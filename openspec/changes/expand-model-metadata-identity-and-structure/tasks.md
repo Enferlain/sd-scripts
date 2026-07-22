@@ -1,7 +1,7 @@
 ## 1. Freeze The Continuation Baseline
 
-- [ ] 1.1 Add focused fixtures for current SD, SDXL, and SD3 loading results, initial realized-component filing, deferred denoiser behavior, and artifact provenance before changing contracts.
-- [ ] 1.2 Inventory every active loader source/fallback/override/conversion branch and map each branch to the source/materialization evidence required by `model-source-provenance`.
+- [x] 1.1 Add focused fixtures for current SD, SDXL, and SD3 loading results, initial realized-component filing, deferred denoiser behavior, and artifact provenance before changing contracts.
+- [x] 1.2 Inventory every active loader source/fallback/override/conversion branch and map each branch to the source/materialization evidence required by `model-source-provenance`.
 - [ ] 1.3 Inspect central metadata package neighbors and configuration ownership, then amend the design with the chosen catalog module placement, portable issuer encoding, and cross-output persistent catalog location before adding production files.
 - [ ] 1.4 Verify the frozen baseline, run `review-mcp`, address actionable findings, rerun affected checks, and hand off section 1 before starting section 2.
 
