@@ -119,6 +119,88 @@ what the current pipeline is deliberately receptive to. When the pipeline
 learns a new arrangement, the contract vocabulary and its conformance tests
 expand deliberately.
 
+## Authored Fulfillment, Not Automatic Assembly
+
+The overall construction goal has not changed from the current strategy
+system: repository developers write the strategies that the trainer receives.
+The new contract mechanics are meant to make those strategies intentional,
+constrained, testable, and discoverable, not to replace their authors with a
+resolver.
+
+```text
+handwritten strategy definition
+  ├── chooses family integrations and model components
+  ├── wires the features needed by that strategy
+  ├── defines any bounded choices exposed through configuration
+  └── states which contract surface it fulfills
+                    │
+                    ▼
+          contract validation
+                    │
+                    ▼
+      fulfilled training strategy
+                    │
+                    ▼
+                 trainer
+```
+
+The run does not inspect a model and infer a strategy. Configuration does not
+silently assemble features or drag undeclared dependencies into the strategy.
+A strategy may deliberately expose a configured choice between implementations
+it knows how to support, but that choice exists because the strategy author
+wrote and constrained it. The initial construction mechanism remains ordinary,
+explicit Python in the repository's strategy builders/factories.
+
+After fulfillment, the trainer interacts with the complete strategy through
+the trainer-facing contract. It should not coordinate the features or model
+components used to build that strategy. Composition remains behind the
+strategy boundary even when the implementation uses reusable catalog entries.
+
+Validation has the narrower job of proving that the authored arrangement is
+complete and mutually compatible. If a latent representation requires an
+autoencoder behavior, the strategy author wires both; validation may reject a
+missing or incompatible pairing, but it must not invent the pairing.
+
+This makes the maintained SD, SDXL, and SD3 strategies repository-authored,
+tested recipes for using those families. The feature and eventual component
+catalogs are tools available to strategy authors, not an automatic dependency
+resolution system. A future declarative or configuration-driven authoring
+layer might target the same contract, but it is outside the current direction.
+
+## Conformance Without A "Noob Mode"
+
+The contract exists to make a strategy interoperable with the training
+pipeline, not to restrict the experiments the repository is allowed to
+perform. It should distinguish these conceptual levels without prematurely
+requiring them to become separate Python classes:
+
+```text
+active trainer contract
+  the trainer-facing interaction and results a compatible strategy must supply
+
+standard repository strategy vocabulary
+  the concerns, features, lifecycle rules, and constraints used by maintained
+  family strategies
+
+research/custom strategy surface
+  deliberate replacements, additions, or direct implementations that either
+  satisfy the active trainer contract or explicitly target an extension of it
+```
+
+A custom strategy may replace a standard feature, introduce a teacher and
+student, attach a new trainable component, use an unusual representation, or
+implement a trainer-facing operation directly when the standard decomposition
+does not fit. It must not claim conformance to a trainer contract whose
+observable requirements it does not satisfy. If the experiment changes what
+the trainer itself must do, that is an explicit contract extension or version,
+not a nominal implementation of the unchanged contract.
+
+This is not the previously rejected "small required core plus optional
+capabilities" design. Within any contract surface a strategy claims, applicable
+concerns remain real requirements. The distinction is between the maintained
+standard way of fulfilling those requirements and a deliberate research
+implementation that reaches the same trainer boundary—or openly extends it.
+
 ## Contract As Vocabulary, Not A Universal Checklist
 
 An early framing divided strategy behavior into required methods and optional
@@ -130,7 +212,7 @@ The stronger framing is:
 
 ```text
 Contract = vocabulary + required selections + compatibility rules
-Strategy = a completed filing of that contract
+Strategy = an authored and validated filing of that contract
 ```
 
 A concern may admit several valid filings. For example:
@@ -157,7 +239,8 @@ training subjects
 └── another explicitly supported combination
 ```
 
-Some requirements are conditional on the selected arrangement:
+Some requirements are conditional on the authored arrangement or on a bounded
+choice that its strategy explicitly exposes:
 
 ```text
 latent caching selected
@@ -173,9 +256,10 @@ adapter training selected
   → attachment, target selection, execution, and persistence requirements apply
 ```
 
-Nothing is optional once the run has selected it. The completed strategy either
-fulfills the resulting contract or the configuration must be rejected before
-training.
+A feature is not "optional" merely because every strategy does not use it. Once
+the strategy author wires it into an arrangement, or explicitly allows the run
+configuration to choose it, the completed strategy must fulfill the resulting
+requirements or validation must reject the configuration before training.
 
 ## Working Vocabulary
 
@@ -199,12 +283,13 @@ adapter execution behavior.
 
 A declaration that an integration can provide, accept, or compose a particular
 feature or semantic behavior. A capability describes availability; it is not a
-substitute for fulfilling the selected run's requirements.
+substitute for the strategy author choosing and fulfilling an arrangement.
 
 ### Fulfillment
 
-The validated result of filing selected features and family behavior into the
-contract. Fulfillment proves that required concerns have providers and that the
+The validated result of an author filing features and family behavior into the
+contract, together with any bounded runtime choice the strategy deliberately
+exposes. Fulfillment proves that required concerns have providers and that the
 providers are mutually compatible.
 
 ### Family integration / family strategy
@@ -242,7 +327,8 @@ code already contains two early expressions of a feature catalog:
 
 Those are useful instincts but incomplete vocabulary:
 
-- "optional feature" understates that a selected run may require the feature.
+- "optional feature" understates that an authored strategy arrangement may
+  require the feature.
 - "shared" only reports that multiple current users happen to reuse the code;
   it does not describe what the code is.
 - keeping features as one file will eventually recreate the same pressure as
@@ -276,7 +362,7 @@ homes:
 ```text
 base/contracts.py  defines the contract vocabulary and rules
 features/          contains reusable ways to file parts of the contract
-<family>/          assembles known family behavior into a fulfilled strategy
+<family>/          explicitly assembles known family behavior into a strategy
 ```
 
 `features` is currently the strongest folder name:
@@ -297,8 +383,9 @@ as `LatentDiffusionFeature`:
 from library.strategies.features.diffusion import LatentDiffusion
 ```
 
-If features later become config-selectable, a Hydra-style qualified target may
-carry the same context without encoding the category into every class name:
+If a future authoring layer makes features config-selectable, a Hydra-style
+qualified target could carry the same context without encoding the category
+into every class name:
 
 ```yaml
 representation:
@@ -324,7 +411,8 @@ tests. Import-time global registration would also need scrutiny because it can
 make availability depend on import order. Explicit imports/catalogs, Hydra
 targets, decorators that attach descriptors, and ordinary class metadata
 should all remain candidates until the feature contract is concrete enough to
-compare them.
+compare them. None of these mechanisms implies that the current work should
+build an automatic strategy assembler.
 
 ## Pixel And Latent Diffusion As Features
 
@@ -342,8 +430,9 @@ family. A run may experiment with a different representation, attach a bridge
 or adapter, or compose components in a way the family's default assembly does
 not use.
 
-The stronger direction is a representation feature selected inside the family
-strategy's contract filing:
+The stronger direction is a representation feature deliberately wired inside
+the family strategy's contract filing, or exposed by that strategy as a
+bounded supported choice:
 
 ```python
 class PixelDiffusion:
@@ -524,7 +613,9 @@ strategy currently owns
 then trainer passes many of those values back into strategy calls
 ```
 
-The current leading direction is an explicitly bound, per-run strategy:
+The current leading direction is an explicitly bound, per-run strategy
+boundary. The following calls are illustrative lifecycle meanings, not an
+accepted method list or a plan to reproduce another framework's hook API:
 
 ```python
 strategy.load(load_context)
@@ -538,8 +629,14 @@ than returned to the trainer and repeatedly passed back. The trainer and
 training mode would access only the component/query surface justified by the
 contract.
 
-This direction is not settled enough for implementation. The following must be
-resolved first:
+The trainer-facing contract is conceptually dictated by the intended Trainer:
+the consumer defines what it needs, and strategies implement it. This does not
+mean copying every dependency of the current `Trainer` into the contract.
+Current VAE/text-encoder/denoiser knowledge may itself be architecture leakage
+that the intended Trainer should no longer have.
+
+This direction is not settled enough for implementation. The following must
+be resolved first:
 
 - how modes select and manipulate trainable components without receiving the
   whole trainer
@@ -560,11 +657,12 @@ A stronger contract needs:
    Family-internal payloads may differ, but trainer-facing results must have
    stable meaning.
 2. **Explicit fulfillment rules**
-   Required selections and conditional requirements must be known before the
-   run starts.
+   Authored selections, deliberately exposed runtime choices, and their
+   conditional requirements must be known before the run starts.
 3. **Compatibility validation**
-   Selected features must agree on representation, tensor semantics, component
-   roles, objective expectations, and persistence support.
+   Authored features and any explicitly supported runtime choice must agree on
+   representation, tensor semantics, component roles, objective expectations,
+   and persistence support.
 4. **Lifecycle/state rules**
    Loading, preparation, execution, replacement, and saving must have explicit
    valid states.
@@ -576,7 +674,8 @@ A stronger contract needs:
    method that exists only to raise later or silently do unrelated work.
 7. **Discoverable internal composition**
    Family features should be wired explicitly rather than found accidentally
-   through a large multiple-inheritance namespace.
+   through a large multiple-inheritance namespace or inferred by an automatic
+   dependency resolver.
 
 Different model implementations should still do different things internally.
 The contract constrains their observable interaction with the pipeline, not
@@ -643,8 +742,8 @@ result risked becoming a weak bag of methods rather than a definition of what
 the training pipeline accepts.
 
 Conclusion: replace required/optional vocabulary with contract concerns,
-available features, selected filings, conditional requirements, compatibility,
-and fulfillment.
+available features, authored filings, deliberately exposed runtime choices,
+conditional requirements, compatibility, and fulfillment.
 
 ### Route: define latent and pixel diffusion as strategy subclasses
 
@@ -655,8 +754,10 @@ identity of the family strategy. A model may be trained through an adapter,
 distillation, an alternate representation, or some combination that does not
 fit one inheritance label.
 
-Conclusion: treat pixel/latent behavior as selectable feature implementations
-inside a contract filing, not necessarily as the family integration's class.
+Conclusion: treat pixel and latent diffusion as reusable representation
+implementations. A strategy author explicitly chooses and connects one when
+implementing the training contract; the choice does not need to define the
+family strategy's inheritance hierarchy.
 
 ### Route: organize reusable behavior as a feature grab box
 
@@ -672,22 +773,102 @@ toward later component composition.
 Conclusion: this is the current leading direction, subject to contract and
 compatibility research before implementation.
 
+### External analogy: authored recipe systems
+
+The comparison to [`ljleb/sd-mecha`](https://github.com/ljleb/sd-mecha) is
+useful at a base level even though that project executes model-merging recipes
+rather than training strategies. The attractive part is not a graph or
+automatic resolver. It is the separation between reusable operations,
+explicitly authored composition, validation of that composition, and a shared
+executor.
+
+The corresponding direction here is:
+
+```text
+reusable model/strategy features
+        + handwritten family or research strategy
+        + contract validation
+        → shared trainer execution
+```
+
+This is an analogy, not an implementation template.
+
+### Route: adopt Lightning or Fabric instead of refining this system
+
+The proposed Trainer → fulfilled strategy relationship was recognized as
+structurally similar to Lightning Trainer → LightningModule. That raised a
+necessary challenge: a custom `training_step()` plus lifecycle hooks,
+optimizer configuration, distributed preparation, validation, callbacks, and
+checkpoint machinery could become Lightning under different names.
+
+Reaction: the similarity is real and should constrain our design. Lightning is
+valuable prior art for the authored-recipe/executor boundary. Fabric is a
+different layer: it leaves the loop in application code and supplies explicit
+distributed/runtime operations, which is closer to the role Accelerate already
+plays here.
+
+The implementation comparison makes the analogy narrower. A LightningModule is
+not consumed through one isolated contract: it has a reference back to Trainer,
+participates in a dynamic hook system, obtains optimizers/loggers/runtime state
+through Trainer, and is paired with separate original and prepared module
+identities inside Lightning's distributed Strategy. Manual optimization
+explicitly transfers backward/step ownership into the module. Fabric and
+Accelerate also return prepared execution wrappers that callers must rebind.
+
+The strongest reusable result is therefore not `training_step()` as an API. It
+is the requirement to distinguish stable logical model identity from prepared
+execution bindings, and to define a generic preparation plan/result exchange
+between fulfilled strategy and trainer-owned infrastructure.
+
+Adoption is not automatically preferable to custom code. If an external system
+constrains the repository's contract, phase model, state ownership, component
+arrangements, or research escape routes, it does not serve the design. Vendored
+or forked code would also make this repository responsible for maintaining a
+larger implementation and incorporating upstream changes.
+
+Conclusion: none of these implementations is a drop-in answer to the
+repository's model-family training contract. Use them as source-level
+references for concrete boundary mechanics. Do not adopt, vendor, or reproduce
+their complete object models during this design pass. Reconsider a dependency
+or separable subsystem only if it preserves the repository's design authority
+and passes an explicit control-versus-maintenance test. The detailed comparison
+is recorded in
+[`framework_pattern_comparison.md`](framework_pattern_comparison.md).
+
 ## Decisions, Leanings, And Open Questions
 
 ### Decisions strong enough to carry into an OpenSpec
 
 - Preserve the model → strategy → trainer architectural route.
 - Treat the contract as the pipeline acceptance definition.
-- Require strategies to fulfill the applicable selected contract rather than
+- Keep strategy construction explicitly authored; validation constrains and
+  verifies authored choices but does not select features or add dependencies.
+- Require strategies to fulfill the contract surface they claim rather than
   nominally inherit one universal SD-shaped surface.
 - Keep model internals free to differ behind the strategy boundary.
 - Separate contract vocabulary from reusable feature implementations and
   family assemblies.
-- Treat a selected feature as required for that run; do not use "optional" as
-  an escape from fulfillment.
+- Treat a feature wired into a strategy, or deliberately exposed as a bounded
+  runtime choice, as required when applicable; do not use "optional" as an
+  escape from fulfillment.
+- Preserve an explicit research path: custom strategies may replace the
+  standard internal decomposition while satisfying the active trainer
+  contract, or target an explicit extension when the trainer boundary changes.
 - Keep trainer temporal/infrastructure policy separate from family behavior.
 - Keep model component mechanics separate from strategy-owned model behavior.
+- Distinguish stable logical model/component identity from the prepared
+  execution handles required by distributed and precision infrastructure.
+- Require infrastructure preparation and rebinding to use generic contract
+  meanings rather than Trainer knowledge of family-specific component roles.
 - Do not pursue a strategy graph during this design pass.
+- Do not build an automatic dependency resolver or configuration-driven
+  strategy assembler during this design pass.
+- Treat Lightning/Fabric/Accelerate as prior art rather than an assumed
+  architecture or adoption target.
+- Do not grow a general hook framework or duplicate generic runtime machinery
+  while defining the repository-specific contract.
+- Require any future dependency, vendoring, or subsystem-adoption proposal to
+  preserve repository design control and justify its ongoing maintenance cost.
 
 ### Current leanings that still need pressure testing
 
@@ -696,6 +877,8 @@ compatibility research before implementation.
 - Represent pixel and latent diffusion as feature implementations rather than
   family strategy subclasses.
 - Make the active per-run strategy explicitly bound to its loaded model state.
+- Let that bound state retain logical bindings while receiving prepared
+  execution bindings through a typed preparation plan/result exchange.
 - Replace multiple-inheritance discovery with more explicit feature wiring
   inside family strategies.
 - Preserve SD/SDXL/SD3 assemblies as known tested defaults while designing
@@ -714,7 +897,14 @@ compatibility research before implementation.
 - Which current methods are trainer-facing contract operations, reusable
   features, family-local helpers, or misplaced model/data/performance logic?
 - How should features declare what they provide, require, and accept without
-  building a premature general-purpose dependency system?
+  implying that declarations automatically select or wire dependencies?
+- What is the precise trainer-facing conformance boundary that both standard
+  and direct/custom strategies must satisfy?
+- Which trainer-facing exchanges should be behavioral calls, and which require
+  typed semantic plans/results so trainer-owned infrastructure can act without
+  unpacking family anatomy?
+- How should explicit trainer-contract extensions be versioned and tested
+  without turning experimentation into nominal non-conformance?
 - What compatibility facts are structural and testable now?
 - Where should cache codecs and cache IO live when representation features own
   encoding semantics but the data system owns persistence orchestration?
@@ -760,6 +950,12 @@ identifies the contract and state seams that the conformance scenarios in
 items 6–7 need to exercise. It does not itself select the replacement contract
 shape or count as an implemented architecture.
 
+The external-framework pattern audit is recorded in
+[`framework_pattern_comparison.md`](framework_pattern_comparison.md). It
+separates the Lightning recipe boundary from the Lightning Trainer framework,
+distinguishes Fabric/Accelerate infrastructure from the strategy contract, and
+records the control and maintenance gate for any future adoption proposal.
+
 Only after that inventory should an OpenSpec lock down migrations. The first
 implementation should improve the current three families and trainer boundary;
 it should not attempt the end-game arbitrary component catalog at the same
@@ -773,13 +969,14 @@ time.
                                    │
                   ┌────────────────┼────────────────┐
                   │                │                │
-             model parts      strategy features  run selections
-             and mechanics    and family behavior mode/objective/config
+             model parts      authored strategy  bounded parameters
+             and mechanics    family/features    explicitly exposed
+                              collaborators
                   │                │                │
                   └────────────────┼────────────────┘
                                    ▼
                       FULFILLED TRAINING STRATEGY
-                  family integrations, selected features,
+                  explicitly authored integrations/features,
                   validated choices, and bound loaded state
                                    │
                                    ▼
