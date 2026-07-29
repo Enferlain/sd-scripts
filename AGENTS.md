@@ -33,7 +33,7 @@ You have access to specialized tools via MCP (Model Context Protocol). Use them 
 
 **Tool:** `mcp_review_with_context`
 
-Use this tool **after completing a significant chunk of work** (e.g., refactoring a module, implementing a feature) but **before** asking the user to verify. It acts as a senior engineer peer review.
+Use this tool **after completing a significant chunk of work** (e.g., refactoring a module, implementing a feature) but **before** asking the user to verify. It acts as an engineer peer review.
 
 - **When to use:** After implementing changes, before final user handoff.
 - **How to use:** Provide the `diff_target` (usually 'HEAD') and a `task_description`.

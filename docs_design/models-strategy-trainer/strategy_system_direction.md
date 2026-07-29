@@ -752,6 +752,14 @@ vocabulary:
    - a model with an integrated or external LLM component
 7. Write conformance scenarios before choosing the final class/package shape.
 
+The current production-code inventory is recorded in
+[`strategy_system_inventory.md`](strategy_system_inventory.md). It completes
+the method, caller, family, and active-flow audit; tests the candidate
+classifications and compatibility constraints in items 2, 4, and 5; and
+identifies the contract and state seams that the conformance scenarios in
+items 6–7 need to exercise. It does not itself select the replacement contract
+shape or count as an implemented architecture.
+
 Only after that inventory should an OpenSpec lock down migrations. The first
 implementation should improve the current three families and trainer boundary;
 it should not attempt the end-game arbitrary component catalog at the same
