@@ -1,5 +1,115 @@
 # Notes (user and agent)
 
+## Current continuation checkpoint (2026-07-30)
+
+The production inventory, framework comparison, and code pressure test are
+complete enough. Do not restart by proposing a graph, renaming strategy, or
+repeating the Lightning/Fabric comparison.
+
+Current direction:
+
+```text
+TRAINER
+  defines the training contract and executes the training mechanism
+        ↑
+STRATEGY
+  explicitly defines what is being trained and how
+        ↑
+MODELS / FEATURES / CAPABILITIES
+  are deliberately used to author that strategy
+```
+
+Strategy does not mean model family. SD, SDXL, and SD3 strategies are the
+maintained default definitions we author for training those standard models.
+Model-family behavior is one ingredient, just like objective behavior,
+representation features, training-subject treatment, and persistence support.
+
+Do not create adapter-specific or fine-tune-specific strategy classes. That
+would regress past the current mode-separated architecture to an older
+combinatorial strategy design. Fine-tuning, adapter training, combined
+base/adapter training, distillation, or newly attached trainables may instead
+be expressed as capabilities/features deliberately selected within a
+strategy.
+
+The contract system still has three consumer-defined surfaces:
+
+- core behavior required by the intended Trainer;
+- named capabilities coordinated by Trainer or delegated pipeline systems;
+- features consumed internally by strategy authors.
+
+Capability is not synonymous with optional. The core may require a compatible
+capability from a category, and a selected capability becomes a real
+obligation. A capability may provide behavior, typed information for
+Trainer-owned mechanics, or both.
+
+Configuration may request use/settings of an already-authored capability. It
+does not infer or assemble the strategy. Core/capability/feature classification
+is independent from authored/validated/bound/prepared lifecycle state.
+
+`TrainingMode` is not a target top-level runtime authority. Its current
+responsibilities must be separated rather than moved as one block:
+
+```text
+strategy declaration
+  selected training intent and subjects
+
+Trainer / optimization mechanic
+  trainable and parameter-group realization, accelerator preparation,
+  backward, stepping, and temporal lifecycle
+
+capability/domain implementation
+  specialized attachment, extraction, persistence, or other behavior
+
+strategy-internal feature
+  reusable behavior used to implement the selected strategy
+```
+
+The user currently leans toward mode behavior becoming Trainer concern even
+when represented as capabilities, but implementation placement is not yet
+decided. It depends on the code shape. Trainer should own the mechanism without
+necessarily accumulating technique-specific branches in one class.
+
+Code pressure-test findings:
+
+- `LoadedModelComponent`, `OptimizationPlan`, `OptimizerBuildResult`, and
+  `ObjectiveRuntime` are useful typed foundations to evolve.
+- the current `LoadedModelComponent.module` conflates logical/original and
+  prepared execution bindings;
+- `prepare_with_accelerator(trainer)` proves the need for a typed preparation
+  plan/result because modes currently mutate modules, optimizer, scheduler,
+  gradient-sync handle, and primary trainable through the whole Trainer;
+- modes already construct logical/execution optimizer groups, while Trainer
+  owns ordinary backward/step lifecycle;
+- `BatchLossOutput.loss` is not the tensor used for backward:
+  `per_sample_loss` passes through the Trainer-owned loss modifier first;
+- diffusion `timesteps` are objective observations, not a universal training
+  contract field;
+- current `TrainingMode` and `ObjectiveRuntime` interactions must be
+  redistributed across the one strategy/Trainer contract boundary.
+
+Next discussion starts with binding and runtime preparation together. Define:
+
+```text
+authoritative bound state
+stable logical component identity
+logical/original binding
+prepared execution binding
+preparation participants and constraints
+prepared-binding result and rebinding guarantees
+```
+
+Three blockers before choosing Python APIs:
+
+1. the exact authoritative binding semantics and storage shape;
+2. the standard Trainer-owned optimization profile and explicit research
+   extension/ownership profile;
+3. method-by-method placement of current mode/objective behavior as strategy
+   declaration, Trainer mechanic, capability/domain implementation, or
+   strategy-internal feature.
+
+After binding/preparation, derive optimization and step exchanges. Only then
+choose method names, class/package structure, and create the OpenSpec.
+
 ## User
 
 - versioning for contracts is probably a good idea for the long run. Contracts and trainer might need to evolve over time as more models get added, but the ideal scenario is them not having to, especially the trainer, but this is only possible to accomplish via the repo growing with new capabilites and testing said contract and trainer.

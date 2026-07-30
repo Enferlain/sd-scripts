@@ -81,7 +81,7 @@ train.py
           └── triggers validation, sampling, and checkpointing
 ```
 
-The intended ownership principle underneath that shape remains valuable:
+The ownership principle that produced the current shape was:
 
 ```text
 trainer       owns when the run does something
@@ -90,8 +90,20 @@ strategy      owns how this repository uses a model family
 models        own model components and their mechanics
 ```
 
-The weakness is not the principle. The weakness is that the current public
-interfaces and state ownership do not consistently enforce it.
+That separation was a useful improvement over older adapter-specific and
+fine-tune-specific strategy classes, but it is no longer the target. It leaves
+multiple runtime authorities coordinating one training definition. The
+direction now being explored collapses that interaction to:
+
+```text
+trainer   owns the training mechanism and defines its acceptance contract
+strategy  defines what is being trained and how it uses that mechanism
+models    own model components and their mechanics
+```
+
+Training approach, objective behavior, model-family behavior, and reusable
+features may all participate in authoring one strategy. They do not
+automatically require parallel top-level runtime objects.
 
 ## The Central Principle
 
@@ -107,12 +119,14 @@ TRAINER
 
 The contract is the training pipeline's acceptance definition. It describes
 the vocabulary, responsibilities, choices, constraints, and observable results
-that make a model integration usable by the repository.
+that make a training strategy usable by the repository.
 
 A model itself may have any internal definition. It can be a UNet, DiT,
 autoencoder, pixel model, multimodal system, model containing an LLM, or an
-arrangement not anticipated when this document was written. The strategy is
-the adapter between those arbitrary internals and the pipeline contract.
+arrangement not anticipated when this document was written. A strategy is the
+repository-authored definition of what is being trained and how. It uses
+whatever model components, objectives, features, and Trainer-recognized
+capabilities are needed to fulfill the pipeline contract.
 
 The contract does not need to predict every future model. It needs to express
 what the current pipeline is deliberately receptive to. When the pipeline
@@ -129,16 +143,16 @@ resolver.
 
 ```text
 handwritten strategy definition
-  ├── chooses family integrations and model components
-  ├── wires the features needed by that strategy
+  ├── chooses the concrete training intent and model components
+  ├── wires the features and capabilities needed by that strategy
   ├── defines any bounded choices exposed through configuration
-  └── states which contract surface it fulfills
+  └── states which core contract and capabilities it fulfills
                     │
                     ▼
           contract validation
                     │
                     ▼
-      fulfilled training strategy
+        validated strategy
                     │
                     ▼
                  trainer
@@ -146,10 +160,14 @@ handwritten strategy definition
 
 The run does not inspect a model and infer a strategy. Configuration does not
 silently assemble features or drag undeclared dependencies into the strategy.
-A strategy may deliberately expose a configured choice between implementations
-it knows how to support, but that choice exists because the strategy author
-wrote and constrained it. The initial construction mechanism remains ordinary,
-explicit Python in the repository's strategy builders/factories.
+Execution configuration may request use of a Trainer-recognized capability
+already provided by the authored strategy—for example, sampling with a
+particular cadence and request settings. Validation then confirms that the
+authored strategy provides a compatible implementation. Configuration may
+choose between internal arrangements only when the strategy author explicitly
+wrote, exposed, and constrained that choice. The initial construction
+mechanism remains ordinary, explicit Python in the repository's strategy
+builders/factories.
 
 After fulfillment, the trainer interacts with the complete strategy through
 the trainer-facing contract. It should not coordinate the features or model
@@ -162,10 +180,12 @@ autoencoder behavior, the strategy author wires both; validation may reject a
 missing or incompatible pairing, but it must not invent the pairing.
 
 This makes the maintained SD, SDXL, and SD3 strategies repository-authored,
-tested recipes for using those families. The feature and eventual component
-catalogs are tools available to strategy authors, not an automatic dependency
-resolution system. A future declarative or configuration-driven authoring
-layer might target the same contract, but it is outside the current direction.
+tested definitions of what and how the repository trains in those standard
+cases. Model family is an ingredient of those strategies, not the definition
+of the strategy abstraction. The feature and eventual component catalogs are
+tools available to strategy authors, not an automatic dependency resolution
+system. A future declarative or configuration-driven authoring layer might
+target the same contract, but it is outside the current direction.
 
 ## Conformance Without A "Noob Mode"
 
@@ -195,11 +215,14 @@ observable requirements it does not satisfy. If the experiment changes what
 the trainer itself must do, that is an explicit contract extension or version,
 not a nominal implementation of the unchanged contract.
 
-This is not the previously rejected "small required core plus optional
-capabilities" design. Within any contract surface a strategy claims, applicable
-concerns remain real requirements. The distinction is between the maintained
-standard way of fulfilling those requirements and a deliberate research
-implementation that reaches the same trainer boundary—or openly extends it.
+This is not the previously rejected unstructured “small required core plus an
+optional method bag.” The core is dictated by the intended Trainer.
+Trainer-recognized capabilities have named request, result, lifecycle, and
+compatibility semantics. Within any contract surface a strategy claims—and
+whenever execution requests a provided capability—applicable concerns remain
+real requirements. The distinction is between the maintained standard way of
+fulfilling those requirements and a deliberate research implementation that
+reaches the same trainer boundary—or openly extends it.
 
 ## Contract As Vocabulary, Not A Universal Checklist
 
@@ -257,9 +280,215 @@ adapter training selected
 ```
 
 A feature is not "optional" merely because every strategy does not use it. Once
-the strategy author wires it into an arrangement, or explicitly allows the run
-configuration to choose it, the completed strategy must fulfill the resulting
-requirements or validation must reject the configuration before training.
+the strategy author wires it into an arrangement, or makes its use part of a
+bounded request exposed to execution configuration, the completed strategy
+must fulfill the resulting requirements or validation must reject the
+configuration before training.
+
+## Three Contract Surfaces
+
+The contract system is broader than one base class. It needs to define three
+different surfaces whose consumers and obligations are different:
+
+```text
+training contract system
+│
+├── core strategy contract
+│     the minimum behavior the intended Trainer requires to train
+│
+├── Trainer-recognized capabilities
+│     additional operations the training pipeline knows how to coordinate
+│
+└── strategy feature contracts
+      author-facing building blocks used to implement the core or capabilities
+```
+
+The dividing rule is based on who consumes the behavior:
+
+```text
+Trainer or delegated pipeline orchestration consumes capabilities.
+Strategy implementations consume features.
+```
+
+“Trainer-recognized” does not mean “implemented inside the `Trainer` class.”
+The Trainer may delegate traversal, storage, inference, or publishing
+orchestration to the data, checkpointing, or pipeline systems. It means the
+active training pipeline understands the capability's request, lifecycle, and
+result semantics.
+
+### Core strategy contract
+
+The core is dictated by the Trainer being designed, not mechanically extracted
+from today's Trainer implementation. It is the minimum every compatible
+strategy must provide for that Trainer to perform training at all.
+
+The current starting hypothesis is that the core must establish exchanges for:
+
+- the concrete model/training arrangement used by the run;
+- runtime preparation required before execution;
+- training subjects and optimization inputs;
+- execution of a training batch and production of the result the Trainer needs.
+
+This is a semantic hypothesis, not an accepted method list. “Establish the
+arrangement” may involve declaration, loading, binding, preparation, and
+rebinding rather than one large `bind()` method. The concrete exchanges must be
+derived before naming methods or classes.
+
+### Trainer-recognized capabilities
+
+A capability is a named interaction the training pipeline knows how to
+coordinate. Capability does not mean unimportant or freely optional. The core
+may require a compatible capability from a category without requiring every
+strategy to use the same implementation. A strategy may also provide
+capabilities that its concrete training intent does not require merely to
+compute an update.
+
+Current examples include:
+
+- validation or evaluation;
+- sampling or generation;
+- representation and conditioning caching;
+- resumable runtime-state contribution;
+- trained-artifact persistence.
+
+Training arrangements such as base fine-tuning, adapter attachment and
+training, combined base/adapter training, distillation, or newly attached
+trainable components may also be expressed through capabilities when that
+makes the Trainer interaction explicit. This is intentionally not a reason to
+create adapter-specific or fine-tune-specific strategy classes.
+
+The authored strategy either provides a named compatible filing or it does
+not. The filing may select an implementation, supply typed information for
+Trainer-owned mechanics, or both; that ownership boundary remains to be
+derived from the concrete code. There should be no raising default pretending
+to provide it, no `hasattr()` discovery, and no family-name branch acting as
+the real support declaration.
+
+Execution configuration may request that a provided capability be used. It may
+set cadence, destination, prompts, formats, or other request parameters.
+Configuration does not thereby construct the strategy or choose an undeclared
+internal implementation. If the request cannot be satisfied by the authored
+strategy, validation rejects it before execution.
+
+### Strategy feature contracts
+
+Features are reusable strategy-authoring vocabulary. Examples include:
+
+- pixel or latent representation behavior;
+- CLIP tokenization, encoding, and conditioning behavior;
+- weighted-prompt behavior;
+- predictor invocation adapters;
+- representation or conditioning cache codecs;
+- adapter execution behavior;
+- objective-integration behavior.
+
+The Trainer does not discover, enumerate, or coordinate these features.
+Repository authors explicitly use them when writing a family or research
+strategy. A capability may itself be composed from several features:
+
+```text
+sampling capability
+  ├── conditioning feature
+  ├── predictor adapter
+  ├── representation decoder
+  └── scheduler integration
+
+caching capability
+  ├── representation cache codec
+  ├── conditioning cache codec
+  └── component signatures
+```
+
+Features may help fulfill the core, a capability, or both. Their existence does
+not automatically enlarge the Trainer-facing API.
+
+### Contract evolution
+
+The three surfaces give contract growth an intentional meaning:
+
+```text
+the Trainer gains a new universal requirement
+  → evolve or version the core strategy contract
+
+the training pipeline learns an additional operation
+  → add a named Trainer-recognized capability
+
+strategy authors gain a reusable implementation building block
+  → add a feature contract and implementation
+```
+
+This permits comprehensive vocabulary without requiring every strategy to
+implement every operation. It also avoids treating any new feature as a reason
+to change the Trainer.
+
+## Lifecycle Is An Orthogonal Axis
+
+Core, capability, and feature describe what kind of contract something is.
+They do not describe runtime readiness. The strategy arrangement and its
+provided capabilities move through lifecycle states such as:
+
+```text
+authored definition
+  → validated arrangement
+  → loaded/bound runtime
+  → prepared execution runtime
+```
+
+These states do not require four public Python classes. They require explicit
+validity rules:
+
+- what facts and behavior are available in each state;
+- which transitions the pipeline coordinates;
+- which failures must occur before expensive work;
+- which logical identities survive runtime replacement;
+- which prepared execution bindings must receive forward-like calls.
+
+The lifecycle applies across all three surfaces. A sampling capability may be
+declared and validated before its components are loaded, then become executable
+only after the strategy has accepted prepared bindings. An internal
+conditioning feature follows the same runtime state even though the Trainer
+never calls it directly.
+
+This keeps two established distinctions visible:
+
+```text
+logical model/component binding
+  identity, source, relationships, metadata, and artifact semantics
+
+prepared execution binding
+  the live wrapper/module that must execute in the current runtime
+```
+
+The exact state container and transition API remain design work. The semantic
+distinction does not.
+
+## Runtime State And Artifact Persistence
+
+Runtime checkpointing and model artifact persistence must not become one
+generic `Checkpointing` capability.
+
+```text
+runtime state
+  resume this execution
+  optimizer, scheduler, RNG, scaler, loop and distributed state
+
+artifact persistence
+  save or publish this logical trained result
+  adapter weights, family checkpoints, Diffusers layouts, metadata, provenance
+```
+
+Runtime-state orchestration primarily belongs to Trainer and distributed
+infrastructure. A strategy may need to contribute state participants,
+extraction behavior, and restoration semantics; that does not make the
+strategy the owner of the overall runtime checkpoint.
+
+Artifact persistence is more directly a strategy/model-family capability.
+Trainer-owned orchestration still supplies timing, coordinates, destinations,
+and publishing policy. The capability owns family/model-specific extraction,
+conversion, layout, and artifact results.
+
+The precise runtime-state contribution contract remains to be derived. The two
+meanings are separate from the beginning.
 
 ## Working Vocabulary
 
@@ -277,35 +506,39 @@ trainable selection, validation, and persistence.
 A concrete or reusable behavior that can fill, modify, or help implement a
 contract concern. Examples include CLIP tokenization/encoding behavior, latent
 diffusion preparation, pixel diffusion preparation, weighted prompts, or an
-adapter execution behavior.
+adapter execution behavior. Features are consumed by authored strategy
+implementations rather than coordinated directly by the Trainer.
 
 ### Capability
 
-A declaration that an integration can provide, accept, or compose a particular
-feature or semantic behavior. A capability describes availability; it is not a
-substitute for the strategy author choosing and fulfilling an arrangement.
+A named operation the training pipeline understands how to coordinate, together
+with its request, result, compatibility, and lifecycle semantics. A strategy
+may provide the capability through one or more explicitly wired features.
+Availability is not a substitute for the author choosing and fulfilling an
+arrangement, and a configured request does not choose the implementation.
 
 ### Fulfillment
 
-The validated result of an author filing features and family behavior into the
-contract, together with any bounded runtime choice the strategy deliberately
-exposes. Fulfillment proves that required concerns have providers and that the
-providers are mutually compatible.
+The validated state of a strategy whose required concerns have providers and
+whose providers are mutually compatible. Fulfillment is a status, not another
+runtime noun: the Trainer still receives a strategy.
 
 ### Family integration / family strategy
 
 The known, tested behavior through which one model family and its components
-participate in contract fulfillment. Current classes such as
-`SdxlTrainingStrategy` combine this role with parts of the complete training
-strategy, so the eventual code-level terminology remains open.
+participate in strategy authoring. Current classes such as
+`SdxlTrainingStrategy` combine this role with most of the strategy itself.
+Family integration may remain useful internal vocabulary, but strategy no
+longer means model family.
 
-### Fulfilled training strategy
+### Training strategy
 
-The complete validated strategy for one concrete run. A normal run may be
-dominated by one family integration, while a compound run may involve a teacher
-family, a student family, adapters or newly attached components, and a selected
-objective. "Fulfilled family strategy" is therefore too narrow as the general
-name for the trainer-accepted result.
+The explicit definition of what is being trained and how it interacts with the
+Trainer. A normal strategy may use one familiar model family, while a compound
+strategy may involve a teacher, student, adapters, newly attached components,
+and a distillation objective. Fine-tuning and adapter training are possible
+capabilities or ingredients of a strategy; neither should create a parallel
+strategy hierarchy.
 
 ### Model component
 
@@ -431,8 +664,8 @@ or adapter, or compose components in a way the family's default assembly does
 not use.
 
 The stronger direction is a representation feature deliberately wired inside
-the family strategy's contract filing, or exposed by that strategy as a
-bounded supported choice:
+the strategy's contract filing, or exposed by that strategy as a bounded
+supported choice:
 
 ```python
 class PixelDiffusion:
@@ -486,7 +719,7 @@ licensing, and security-update responsibility.
 A plausible intermediate route is a repository-owned component interface or
 adapter over the third-party implementation. Repository-owned strategy
 features would depend on that interface. A hosted implementation could replace
-the third-party component later without rewriting every family strategy.
+the third-party component later without rewriting every affected strategy.
 
 ## The Long-Term Component Grab Box
 
@@ -534,9 +767,10 @@ through meaningful interfaces rather than hard-coding one global component
 implementation. That preserves an evolution path without pretending arbitrary
 component assembly is safe today.
 
-## Model, Strategy, Mode, Objective, And Trainer Boundaries
+## Model, Strategy, And Trainer Boundaries
 
-The feature direction does not erase the existing major axes.
+The present `TrainingMode` and separate objective runtime are source evidence,
+not assumed permanent axes.
 
 ### Model system
 
@@ -551,49 +785,50 @@ Owns what components are and how they work in general:
 
 ### Strategy system
 
-Owns how the repository uses components to fulfill the training contract:
+Owns the authored definition of what is being trained and how:
 
-- family assembly
+- selected model/component arrangement
+- selected training-subject treatment
+- selected objective behavior
 - tokenization and encoding behavior
 - representation and conditioning construction
 - mapping contract-level prediction inputs onto the family forward signature
-- family cache representation and encoding behavior
-- family validation and sampling behavior
-- family-facing preparation and persistence coordination
-
-### Training mode
-
-Owns the selected form of training:
-
-- base fine-tuning
-- adapter attachment and training
-- combined base/adapter training where supported
-- newly attached trainable components
-- future training-subject arrangements
-
-### Objective
-
-Owns the learning problem where it is genuinely independent of family:
-
-- corruption/noise-level construction
-- target construction
-- DDPM, rectified-flow, distillation, or other objective semantics
-- objective-specific observations and adaptive state
+- capabilities and features intentionally used by the strategy
+- typed information required by Trainer-owned mechanics
+- strategy-specific execution and artifact behavior
 
 ### Trainer
 
-Owns temporal and infrastructure policy:
+Defines and executes the training mechanism:
 
+- the core strategy contract and recognized capability contracts
 - phase ordering
 - epochs, steps, accumulation, backward, and optimizer advancement
 - distributed coordination and generic device lifecycle
 - trigger scheduling
 - logging, observation, interruption, and cleanup
 
-The contract must state how these participants meet. It remains open whether
-the trainer will eventually receive one fulfilled training strategy that
-contains family integrations plus mode/objective collaborators or continue
-receiving those axes as separate objects that jointly fulfill one contract.
+`TrainingMode` should not remain a second top-level authority beside the
+strategy. Its current behavior must be classified by responsibility:
+
+```text
+strategy
+  deliberately selects and describes the training treatment
+
+Trainer / optimization system
+  performs generic trainable realization, preparation, and optimization
+
+capability or domain implementation
+  performs specialized behavior where putting it directly in Trainer would
+  create technique-specific branches
+```
+
+Whether a particular behavior such as adapter attachment belongs directly in
+Trainer, in a Trainer-owned capability handler, or in a reusable feature
+cannot be decided for `TrainingMode` as one block. Its current methods combine
+several responsibilities. Objective behavior is likewise something the
+strategy deliberately uses to fulfill the contract, not automatically another
+orchestration authority passed the whole Trainer.
 
 ## Trainer And Strategy State
 
@@ -613,8 +848,8 @@ strategy currently owns
 then trainer passes many of those values back into strategy calls
 ```
 
-The current leading direction is an explicitly bound, per-run strategy
-boundary. The following calls are illustrative lifecycle meanings, not an
+The current leading direction is one per-run strategy boundary. The following
+calls are illustrative lifecycle meanings, not an
 accepted method list or a plan to reproduce another framework's hook API:
 
 ```python
@@ -624,10 +859,12 @@ result = strategy.training_step(step_context)
 ```
 
 Loaded model state may still have a typed internal value such as
-`LoadedModel`, but it would be deliberately owned by the bound strategy rather
-than returned to the trainer and repeatedly passed back. The trainer and
-training mode would access only the component/query surface justified by the
-contract.
+`LoadedModel`. The exact holder remains undecided. The requirement is one
+authoritative answer for each stable logical binding and current prepared
+execution binding, rather than contradictory copies distributed across
+Trainer, strategy, and mode. Trainer-owned mechanics may receive the narrow
+concrete participants required by the contract without learning
+family-specific anatomy.
 
 The trainer-facing contract is conceptually dictated by the intended Trainer:
 the consumer defines what it needs, and strategies implement it. This does not
@@ -638,12 +875,158 @@ that the intended Trainer should no longer have.
 This direction is not settled enough for implementation. The following must
 be resolved first:
 
-- how modes select and manipulate trainable components without receiving the
-  whole trainer
+- how a strategy declares its intended training subjects while
+  Trainer/optimization mechanics realize trainable parameters
 - how distributed preparation wraps or replaces loaded modules
 - who owns component replacement after accelerator preparation
 - how metadata observes loaded state without becoming its owner
 - how checkpointing receives both family state and trainer-owned coordinates
+
+## Code Pressure-Test Conclusions
+
+A source-level pass over the active binding, preparation, optimization, step,
+caching, validation, and persistence paths confirms the direction above. It
+also narrows the remaining problem: the repository does not lack all useful
+contract values. It has several typed islands that are still connected through
+whole-`Trainer` mutation and diffusion-shaped projections.
+
+Useful foundations already exist:
+
+- `LoadedModelComponent` gives each family a common declared top-level
+  component surface while allowing different component counts and names.
+- `OptimizationPlan` distinguishes logical parameter groups from executable
+  optimizer groups.
+- `OptimizerBuildResult` and `ObjectiveRuntime` are early typed exchanges
+  rather than anonymous tuples.
+- the training loop already gives Trainer temporal and infrastructure
+  ownership over accumulation, backward, clipping, optimizer advancement,
+  triggers, reporting, and cleanup.
+
+The intended migration should evolve these seams rather than introduce an
+unrelated all-purpose runtime container.
+
+### Binding state needs two module meanings
+
+`Trainer.setup()` currently asks the family strategy to load components, stores
+the returned `LoadedModelComponent` tuple, and becomes the authoritative owner
+of it. Trainer properties then project that tuple back into
+`vae`/`text_encoders`/`denoiser` and later pass those modules into strategy
+calls.
+
+The component declaration is a useful logical foundation, but its single
+`module` field currently represents both:
+
+```text
+logical/original component binding
+prepared execution binding
+```
+
+Accelerator preparation replaces that field with the prepared object. The
+family-local component key survives, but the contract cannot independently
+describe the logical component and the object whose forward path must execute.
+The bound-state design therefore needs stable component identity plus distinct
+logical and prepared bindings. This can be an evolution of the existing
+component collection; it does not justify adding a generic `ModelRuntime`
+holder that merely relocates the same ambiguity.
+
+### Preparation must stop mutating the whole Trainer
+
+Both active modes receive the complete Trainer, choose concrete modules, call
+`accelerator.prepare()`, replace modules/optimizer/scheduler, and set the
+gradient-synchronization handle and primary trainable. This proves that
+preparation is a genuine exchange rather than a family-local hook:
+
+```text
+training integration
+  publishes preparation participants and constraints
+                 ↓
+Trainer-owned infrastructure
+  prepares concrete execution objects
+                 ↓
+prepared-binding result
+                 ↓
+training integration accepts authoritative execution bindings
+```
+
+Trainer-owned infrastructure may need concrete objects without learning
+family-specific roles. The strategy's declaration—and, today, mode
+behavior—may decide which participants matter without owning the distributed
+preparation operation.
+
+### Optimization already has the beginning of its contract value
+
+Fine-tune and adapter modes currently select trainables, create logical and
+execution groups, construct an `OptimizationPlan`, and also materialize the
+optimizer. Trainer then creates the scheduler, coordinates preparation, and
+performs every ordinary optimizer step.
+
+This supports a leading split:
+
+```text
+authored training integration
+  selects training subjects
+  publishes the optimization plan and constraints
+
+Trainer
+  applies optimizer/scheduler configuration
+  materializes and prepares the optimization runtime
+  owns the standard backward/step/zero-grad lifecycle
+```
+
+The exact ownership profile remains a contract decision, especially for
+research strategies that deliberately take over optimization. The existing
+`OptimizationPlan` should nevertheless be treated as a likely evolutionary
+base rather than discarded.
+
+### The current batch result is not the final optimization loss
+
+The standard loop does not backpropagate through `BatchLossOutput.loss`.
+It passes `per_sample_loss` through the Trainer-owned loss-modifier runtime and
+backpropagates the modifier result. The `loss` field is subsequently used for
+accounting. A future step result must therefore distinguish:
+
+```text
+base differentiable loss state
+objective-specific observations
+metrics
+strategy-owned state changes
+Trainer-derived final optimization loss
+```
+
+Current `timesteps` are useful objective observations, not a universal fact
+about training a neural network. The step exchange must not make diffusion
+timesteps part of the minimum contract.
+
+### `TrainingMode` should not remain a parallel authority
+
+`TrainingMode` currently receives the whole Trainer for trainable selection,
+adapter attachment, parameter grouping, distributed preparation, train/eval
+transitions, runtime-state hooks, and artifact routing. `ObjectiveRuntime` is
+Trainer-owned, but family strategies also inspect and invoke its
+objective-specific behavior.
+
+The intended replacement is not an adapter-specific strategy or another
+aggregate object around the existing three participants. Strategy already
+means the authored definition of what is trained and how. Fine-tuning, adapter
+training, objective behavior, and model-family behavior become deliberately
+selected capabilities/features or contract filings within that definition.
+The Trainer receives the strategy and executes its contract.
+
+The current mode methods still need individual placement. Generic
+trainable/optimizer realization, distributed preparation, and temporal
+lifecycle behavior lean toward Trainer or its delegated optimization systems.
+Specialized attachment, state extraction, and persistence behavior may need
+capability or domain implementations. Capability recognition does not by
+itself settle implementation placement.
+
+The code pressure test leaves three blockers before concrete API design:
+
+1. define authoritative bound state and its logical/prepared identities;
+2. define the standard optimization-ownership profile and how an explicit
+   research profile may extend it;
+3. classify every current mode/objective responsibility as strategy
+   declaration, Trainer mechanic, capability/domain implementation, or
+   strategy-internal feature.
 
 ## What A Strong Contract Must Do
 
@@ -745,19 +1128,39 @@ Conclusion: replace required/optional vocabulary with contract concerns,
 available features, authored filings, deliberately exposed runtime choices,
 conditional requirements, compatibility, and fulfillment.
 
+Later discussion recovered a narrower and more principled meaning for
+capability. The three-surface contract model does not revive the rejected
+optional-method bag:
+
+```text
+core
+  obligations genuinely required by the intended Trainer
+
+capability
+  a named operation the pipeline knows how to request and validate
+
+feature
+  an internal building block consumed by strategy authors
+```
+
+A capability is not an excuse for a missing core obligation. When execution
+requests a capability, its compatible implementation becomes a real validated
+requirement. This consumer-based distinction is the additional principle the
+earlier proposal lacked.
+
 ### Route: define latent and pixel diffusion as strategy subclasses
 
 This made category differences explicit.
 
 Reaction: it still fixed an experimental training choice into the permanent
-identity of the family strategy. A model may be trained through an adapter,
+identity of the strategy. A model may be trained through an adapter,
 distillation, an alternate representation, or some combination that does not
 fit one inheritance label.
 
 Conclusion: treat pixel and latent diffusion as reusable representation
 implementations. A strategy author explicitly chooses and connects one when
 implementing the training contract; the choice does not need to define the
-family strategy's inheritance hierarchy.
+strategy's inheritance hierarchy.
 
 ### Route: organize reusable behavior as a feature grab box
 
@@ -786,7 +1189,7 @@ The corresponding direction here is:
 
 ```text
 reusable model/strategy features
-        + handwritten family or research strategy
+        + handwritten standard or research strategy
         + contract validation
         → shared trainer execution
 ```
@@ -795,11 +1198,17 @@ This is an analogy, not an implementation template.
 
 ### Route: adopt Lightning or Fabric instead of refining this system
 
-The proposed Trainer → fulfilled strategy relationship was recognized as
+The proposed Trainer → strategy relationship was recognized as
 structurally similar to Lightning Trainer → LightningModule. That raised a
 necessary challenge: a custom `training_step()` plus lifecycle hooks,
 optimizer configuration, distributed preparation, validation, callbacks, and
 checkpoint machinery could become Lightning under different names.
+
+This comparison is subordinate to the direction already established in this
+document. It tests whether an external implementation or pattern fits the
+repository's contract → strategy → trainer design. It does not reopen that
+direction, replace its vocabulary, or grant another framework authority over
+the problem definition.
 
 Reaction: the similarity is real and should constrain our design. Lightning is
 valuable prior art for the authored-recipe/executor boundary. Fabric is a
@@ -818,7 +1227,7 @@ Accelerate also return prepared execution wrappers that callers must rebind.
 The strongest reusable result is therefore not `training_step()` as an API. It
 is the requirement to distinguish stable logical model identity from prepared
 execution bindings, and to define a generic preparation plan/result exchange
-between fulfilled strategy and trainer-owned infrastructure.
+between strategy and trainer-owned infrastructure.
 
 Adoption is not automatically preferable to custom code. If an external system
 constrains the repository's contract, phase model, state ownership, component
@@ -841,8 +1250,25 @@ is recorded in
 
 - Preserve the model → strategy → trainer architectural route.
 - Treat the contract as the pipeline acceptance definition.
+- Define strategy as what is being trained and how, not as a synonym for model
+  family.
+- Treat SD, SDXL, and SD3 strategies as maintained default training
+  definitions that use those model families, not as proof that strategy
+  identity must be family identity.
+- Do not retain `TrainingMode` as a parallel top-level runtime authority.
+- Do not create adapter-specific, fine-tune-specific, or combinatorial
+  strategy hierarchies. Training treatments may be capabilities/features
+  deliberately selected by a strategy.
+- Treat the contract system as three distinct surfaces: the minimum core
+  dictated by the intended Trainer, named capabilities understood by pipeline
+  orchestration, and author-facing features consumed inside strategies.
+- Define capabilities by pipeline consumption and features by strategy
+  consumption; Trainer recognition does not imply implementation inside the
+  `Trainer` class.
 - Keep strategy construction explicitly authored; validation constrains and
   verifies authored choices but does not select features or add dependencies.
+- Let execution configuration request use of an authored capability without
+  treating that request as strategy assembly or implementation selection.
 - Require strategies to fulfill the contract surface they claim rather than
   nominally inherit one universal SD-shaped surface.
 - Keep model internals free to differ behind the strategy boundary.
@@ -854,17 +1280,26 @@ is recorded in
 - Preserve an explicit research path: custom strategies may replace the
   standard internal decomposition while satisfying the active trainer
   contract, or target an explicit extension when the trainer boundary changes.
-- Keep trainer temporal/infrastructure policy separate from family behavior.
+- Keep Trainer execution mechanics separate from strategy declarations and
+  specialized model/component behavior.
 - Keep model component mechanics separate from strategy-owned model behavior.
 - Distinguish stable logical model/component identity from the prepared
   execution handles required by distributed and precision infrastructure.
+- Treat lifecycle readiness as separate from core/capability/feature
+  classification and define valid authored, validated, bound, and prepared
+  states without assuming one class per state.
 - Require infrastructure preparation and rebinding to use generic contract
   meanings rather than Trainer knowledge of family-specific component roles.
+- Keep resumable runtime-state orchestration separate from trained-artifact
+  persistence; strategies may contribute runtime state without owning the
+  overall runtime checkpoint.
 - Do not pursue a strategy graph during this design pass.
 - Do not build an automatic dependency resolver or configuration-driven
   strategy assembler during this design pass.
 - Treat Lightning/Fabric/Accelerate as prior art rather than an assumed
   architecture or adoption target.
+- Keep framework comparison subordinate to the repository's established
+  contract → strategy → trainer direction.
 - Do not grow a general hook framework or duplicate generic runtime machinery
   while defining the repository-specific contract.
 - Require any future dependency, vendoring, or subsystem-adoption proposal to
@@ -872,15 +1307,20 @@ is recorded in
 
 ### Current leanings that still need pressure testing
 
+- Derive the minimum core from binding, runtime-preparation, optimization, and
+  step exchanges before choosing method names.
+- Represent sampling, validation, caching, runtime-state contribution, and
+  artifact persistence through named capability contracts rather than raising
+  defaults or incidental method discovery.
 - Promote `base/features.py` into an organized `features/` catalog.
 - Reclassify `shared/clip/` by semantic feature rather than by current reuse.
 - Represent pixel and latent diffusion as feature implementations rather than
-  family strategy subclasses.
-- Make the active per-run strategy explicitly bound to its loaded model state.
-- Let that bound state retain logical bindings while receiving prepared
-  execution bindings through a typed preparation plan/result exchange.
+  strategy subclasses.
+- Give the active per-run strategy one coherent Trainer-facing boundary.
+- Keep one authoritative binding answer for each logical component and
+  prepared execution object; exact storage ownership remains open.
 - Replace multiple-inheritance discovery with more explicit feature wiring
-  inside family strategies.
+  inside strategies.
 - Preserve SD/SDXL/SD3 assemblies as known tested defaults while designing
   injection seams for future component substitution.
 
@@ -888,11 +1328,15 @@ is recorded in
 
 - What is the minimum contract vocabulary that accurately describes the
   current training pipeline without encoding SD-specific anatomy?
-- Which concerns belong to a family integration, training mode, objective, or
-  the fulfilled training strategy?
-- Does one aggregate strategy ultimately contain mode and objective
-  collaborators, or does the trainer receive separate objects that jointly
-  satisfy one contract?
+- Which current pipeline operations belong to the universal core, which are
+  named capabilities, and which are only internal features?
+- Which current `TrainingMode` and objective responsibilities are strategy
+  declarations, Trainer mechanics, specialized capability/domain behavior, or
+  strategy-internal features?
+- Which training-subject treatments should be explicit capabilities, and what
+  typed information does Trainer require to execute them?
+- Which capability implementations belong directly to Trainer, to delegated
+  Trainer-owned handlers, or to domain/feature implementations?
 - What exact loaded-state surface replaces the current trainer/strategy split?
 - Which current methods are trainer-facing contract operations, reusable
   features, family-local helpers, or misplaced model/data/performance logic?
@@ -903,6 +1347,13 @@ is recorded in
 - Which trainer-facing exchanges should be behavioral calls, and which require
   typed semantic plans/results so trainer-owned infrastructure can act without
   unpacking family anatomy?
+- How should a strategy expose provided capabilities in code without
+  `hasattr()`, stringly typed registries, automatic assembly, or one permanently
+  growing optional attribute bag?
+- How should lifecycle validity be represented and tested without requiring a
+  separate public class for every state?
+- What runtime-state contribution must a strategy provide while Trainer and
+  distributed infrastructure remain owners of the resumable checkpoint?
 - How should explicit trainer-contract extensions be versioned and tested
   without turning experimentation into nominal non-conformance?
 - What compatibility facts are structural and testable now?
@@ -956,33 +1407,116 @@ separates the Lightning recipe boundary from the Lightning Trainer framework,
 distinguishes Fabric/Accelerate infrastructure from the strategy contract, and
 records the control and maintenance gate for any future adoption proposal.
 
-Only after that inventory should an OpenSpec lock down migrations. The first
-implementation should improve the current three families and trainer boundary;
-it should not attempt the end-game arbitrary component catalog at the same
-time.
+The inventory and framework comparison are now complete enough to stop
+revisiting their call paths. The remaining pre-OpenSpec work is semantic
+contract design, not another architecture comparison.
+
+## Next Design Work: Concrete Exchanges
+
+The minimum core should emerge from concrete exchanges rather than from a list
+of attractive method names. The next design milestone should define four
+tables.
+
+### Binding exchange
+
+```text
+inputs
+result
+logical state established
+allowed side effects
+failure conditions
+```
+
+This must distinguish declaring required components, materializing them,
+binding their relationships, and establishing authoritative logical identity.
+It must not assume those meanings collapse into one `bind()` call.
+`LoadedModelComponent` is the current evolutionary starting point, but the
+result must preserve logical/original and prepared execution bindings
+separately.
+
+### Runtime-preparation exchange
+
+```text
+participants exposed to infrastructure
+stable binding identities
+joint-preparation constraints
+prepared execution bindings returned
+rebinding guarantees
+```
+
+This exchange applies the wrapper/replacement lessons from Fabric and
+Accelerate within the repository's own design. Trainer-owned infrastructure
+may require concrete modules and optimizers without learning family-specific
+anatomy. The current mode-owned `prepare_with_accelerator(trainer)` mutation
+should be treated as source evidence for the exchange, not retained as its
+contract.
+
+### Optimization exchange
+
+```text
+training subjects and parameter groups
+trainable logical identities
+clipping participants
+synchronization participants
+optimizer/backend constraints
+```
+
+This is where the strategy's declared training intent meets Trainer-owned
+optimizer and distributed policy. The current mode behavior is evidence for
+the necessary information, not a participant to preserve. The existing
+`OptimizationPlan` already separates logical and execution parameter groups
+and should be pressure-tested as the starting payload.
+
+### Step exchange
+
+```text
+batch request
+execution coordinates
+differentiable optimization result
+metrics and objective observations
+allowed state updates
+forbidden infrastructure actions
+```
+
+The existing `BatchLossOutput` is evidence for this result boundary, not a
+permanent universal type. Its `per_sample_loss`, rather than its `loss` field,
+feeds the actual Trainer-owned loss-modifier/backward path. The exchange must
+name that distinction honestly, preserve current diffusion needs without
+exposing family component topology, and avoid assuming every future contract
+uses diffusion timesteps.
+
+Binding and runtime preparation should be discussed together first because
+logical identity and prepared execution identity must remain coherent across
+their boundary. Once all four exchanges are defined, an OpenSpec can lock down
+the first migration for SD, SDXL, SD3, and the shared Trainer. It should not
+attempt the end-game arbitrary component catalog at the same time.
 
 ## Current Direction In One View
 
 ```text
-                           TRAINING CONTRACT
-                  vocabulary + rules + expected results
-                                   │
-                  ┌────────────────┼────────────────┐
-                  │                │                │
-             model parts      authored strategy  bounded parameters
-             and mechanics    family/features    explicitly exposed
-                              collaborators
-                  │                │                │
-                  └────────────────┼────────────────┘
-                                   ▼
-                      FULFILLED TRAINING STRATEGY
-                  explicitly authored integrations/features,
-                  validated choices, and bound loaded state
-                                   │
-                                   ▼
-                                TRAINER
-                   lifecycle, optimization, distributed
-                      execution, triggers, observation
+                       TRAINING CONTRACT SYSTEM
+              vocabulary + rules + lifecycle + results
+                                  │
+          ┌───────────────────────┼───────────────────────┐
+          │                       │                       │
+     CORE CONTRACT        PIPELINE CAPABILITIES    FEATURE CONTRACTS
+  minimum Trainer need    sampling, validation,   representation,
+                          caching, persistence     conditioning, etc.
+          │                       │                       │
+          │              pipeline coordinates      strategy consumes
+          │                       │                       │
+          └───────────────────────┼───────────────────────┘
+                                  ▼
+                   AUTHORED TRAINING STRATEGY
+             explicit training intent/components/features/capabilities
+                                  │
+          authored → validated → bound → prepared
+                                  │
+                                  ▼
+                               TRAINER
+                 executes core and requested capabilities
+                 owns time, optimization, infrastructure,
+                         triggers, and observation
 ```
 
 The feature grab box is not the entire design. It is the organizational layer
