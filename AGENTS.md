@@ -19,39 +19,9 @@ timeout 60 ./.venv-wsl/bin/python -c "from train import train; print('OK')"
 
 If a command appears stuck, ask the user to run it locally and report the result rather than repeatedly polling a silent WSL process.
 
-Using `rg` (ripgrep) is highly recommended for searching the codebase. It is significantly faster than the default tools and respects `.gitignore` by default.
+## Review Policy
 
-```powershell
-rg "search_term"
-```
-
-## Standard Agent Tools
-
-You have access to specialized tools via MCP (Model Context Protocol). Use them to enhance your workflow:
-
-### Code Review (`review-mcp`)
-
-**Tool:** `mcp_review_with_context`
-
-Use this tool **after completing a significant chunk of work** (e.g., refactoring a module, implementing a feature) but **before** asking the user to verify. It acts as an engineer peer review.
-
-- **When to use:** After implementing changes, before final user handoff.
-- **How to use:** Provide the `diff_target` (usually 'HEAD') and a `task_description`.
-- **Benefit:** Catches architectural issues, typos, and best-practice violations that linters miss.
-- **Wait for the result:** Reviews commonly take 5–15 minutes. Allow the review up to the 900-second tool limit and do not terminate it merely because it is silent. A review-required handoff is not complete until the review returns, explicitly fails, or reaches that limit.
-- **After the result:** Address actionable findings and rerun the relevant quality gates before handing off. Request another review when the fixes are themselves a significant change; small review follow-ups do not require an automatic second review.
-
-### Web Search & Research
-
-**Tools:** `search_web`, `webSearchPrime`, `browser_subagent`
-
-- **`search_web` / `webSearchPrime`:** Use for quick fact-checking, library documentation lookup, or error message researching.
-- **`browser_subagent`:** Use for deep dives, navigating complex documentation sets, or when you need to "see" a page or interact with a UI.
-
-### Web Reading (`web-reader`)
-
-**Tool:** `webReader`
-Use to extract full content from a specific URL found during search (e.g., a specific documentation page).
+Significant code changes and every OpenSpec implementation milestone require `review-mcp` after the relevant quality gates and before handoff. Follow the global review workflow for invocation, waiting, findings, and follow-up review.
 
 ## Running Tests
 
@@ -306,8 +276,8 @@ and task checklists live under `openspec/changes/` when a change is in flight.
 
 - Treat a numbered section in `openspec/changes/<name>/tasks.md` as the normal implementation milestone. Complete, verify, review, and hand off that section before starting the next one.
 - Adjacent sections may be grouped only when they are genuinely small or cannot be reviewed meaningfully in isolation. State the grouped scope before implementation.
-- For each milestone, run the relevant quality gates, request `review-mcp`, wait for its result as described above, address actionable feedback, and then provide the handoff.
-- Do not describe a milestone as reviewed or ready for handoff while its review is still running. If review explicitly fails or reaches the 900-second limit, report that outcome rather than substituting an unreviewed success claim.
+- For each milestone, run the relevant quality gates, request `review-mcp`, wait for its result, address actionable feedback, and then provide the handoff.
+- Do not describe a milestone as reviewed or ready for handoff while its review is still running. If review explicitly fails or reaches its configured timeout, report that outcome rather than substituting an unreviewed success claim.
 
 ### Useful OpenSpec Commands
 
