@@ -98,14 +98,28 @@ preparation participants and constraints
 prepared-binding result and rebinding guarantees
 ```
 
-Three blockers before choosing Python APIs:
+The mode/objective classification is now recorded in
+`strategy_system_inventory.md` Milestone 6. It concludes:
+
+- `TrainingMode` dissolves rather than being renamed;
+- strategy declares training subjects, objective semantics, and selected
+  capabilities;
+- Trainer/optimization owns generic trainable realization, precision,
+  distributed preparation, optimizer creation, clipping participants, and
+  ordinary lifecycle transitions;
+- specialized attachment, lifecycle, and persistence behavior remains
+  explicit capability/domain behavior coordinated by Trainer;
+- objective mathematics remains a strategy-internal feature, while the
+  current objective-owned loss modifier is better treated as an optimization
+  capability;
+- diagnostics should derive from authoritative binding/optimization facts,
+  not reconstruct topology through mode.
+
+Two blockers remain before choosing Python APIs:
 
 1. the exact authoritative binding semantics and storage shape;
 2. the standard Trainer-owned optimization profile and explicit research
-   extension/ownership profile;
-3. method-by-method placement of current mode/objective behavior as strategy
-   declaration, Trainer mechanic, capability/domain implementation, or
-   strategy-internal feature.
+   extension/ownership profile.
 
 After binding/preparation, derive optimization and step exchanges. Only then
 choose method names, class/package structure, and create the OpenSpec.

@@ -1019,14 +1019,19 @@ Specialized attachment, state extraction, and persistence behavior may need
 capability or domain implementations. Capability recognition does not by
 itself settle implementation placement.
 
-The code pressure test leaves three blockers before concrete API design:
+The responsibility classification in
+[`strategy_system_inventory.md`](strategy_system_inventory.md) Milestone 6
+resolves the former mode/objective participation blocker. Two semantic
+blockers remain before concrete API design:
 
 1. define authoritative bound state and its logical/prepared identities;
 2. define the standard optimization-ownership profile and how an explicit
-   research profile may extend it;
-3. classify every current mode/objective responsibility as strategy
-   declaration, Trainer mechanic, capability/domain implementation, or
-   strategy-internal feature.
+   research profile may extend it.
+
+The classification does not prescribe one code location for every specialized
+capability. It establishes that `TrainingMode` dissolves, objective behavior
+is selected within strategy authoring, and generic preparation/optimization
+mechanics belong to Trainer or its delegated infrastructure.
 
 ## What A Strong Contract Must Do
 

@@ -803,7 +803,7 @@ The following table records responsibility pressure, not a migration plan:
 | family caching facets/files | family cache schemas/codecs plus preprocessing, safetensors IO, and backend mechanics | mixed: representation/conditioning codecs are strategy behavior; traversal and general persistence are data infrastructure |
 | family sampling facets | predictor/pipeline construction plus device movement and shared run restoration | mixed: family generation behavior is strategy-owned; cadence and generic execution lifecycle are trainer/inference infrastructure |
 | family checkpoint facets | family artifact semantics and serialization, but save accepts the entire trainer and may coordinate upload | mixed: serialization is family behavior; save coordinates and publishing infrastructure need narrow external inputs |
-| `TrainingMode` and implementations | trainable selection and mode behavior through whole-`Trainer` arguments | correct axis, over-coupled state access |
+| `TrainingMode` and implementations | trainable selection and mode behavior through whole-`Trainer` arguments | historically useful separation, but not a target authority; Milestone 6 classifies its responsibilities for dissolution |
 | training phases | temporal policy, but with VAE/text-encoder/denoiser projections and family method calls embedded throughout | correct lifecycle owner, over-aware of the current latent-family topology |
 | `config_validation.py` | some model/objective/cache/mode compatibility rules through family-name branches | necessary checks exist, but contract fulfillment knowledge is scattered outside the objects that claim support |
 
@@ -999,8 +999,9 @@ The inventory suggests writing scenarios around selected concerns:
    A declared component can be selected and optimized without pretending to be
    the one denoiser or a text encoder.
 6. **Adapter plus base model**
-   Mode-owned trainable selection can access justified components without
-   receiving the whole trainer.
+   The strategy can declare combined trainable subjects and required
+   attachment behavior while Trainer/optimization realizes them without a
+   parallel mode object.
 7. **Distillation**
    Teacher and student participants can fulfill distinct predictor/component
    roles within one training strategy instead of being forced into one family
@@ -1040,10 +1041,10 @@ The evidence is strong enough to carry these conclusions forward:
 
 The inventory does not settle:
 
-- whether a bound fulfilled strategy directly owns live loaded state or holds
-  a dedicated typed value owned at the strategy boundary;
-- whether mode and objective are contained by the final aggregate or remain
-  separate collaborators that jointly fulfill the contract;
+- whether the active strategy directly owns live loaded state or holds a
+  dedicated typed value at the strategy boundary;
+- how specialized capabilities divide behavior between Trainer-owned services,
+  domain implementations, and strategy-internal features;
 - the exact public operation split that replaces or narrows `process_batch`;
 - whether feature wiring uses composition, inheritance, decorators, Hydra-like
   import/config selection, or a limited combination;
@@ -1062,9 +1063,9 @@ Before an OpenSpec or production edits, discuss these in order:
 1. name the minimum contract concerns and their trainer-facing result
    semantics;
 2. choose the authoritative bound-state/lifecycle ownership model;
-3. define how a family integration files selected features and returns one
-   compatibility/fulfillment result;
-4. decide how mode and objective participate in that fulfillment;
+3. define how a strategy files selected components, features, capabilities,
+   and compatibility constraints;
+4. classify current mode and objective behavior by semantic owner;
 5. write the conformance scenarios in executable terms;
 6. only then choose package/class/decorator/config mechanisms and a migration
    sequence.
@@ -1078,12 +1079,215 @@ It needs the existing principle to become enforceable:
 CONTRACT
   defines accepted concerns, compatibility, lifecycle, and result meanings
 
-STRATEGY FULFILLMENT
-  binds family/component behavior to the selected run and rejects gaps
+STRATEGY
+  explicitly defines what is trained and how, then rejects contract gaps
 
 TRAINER
-  executes the fulfilled behavior without reconstructing family topology
+  executes the strategy without reconstructing model topology
 ```
 
 This inventory is now complete enough to start that design discussion. It
 does not authorize production moves by itself.
+
+## Milestone 6: Training Mode And Objective Responsibility Classification
+
+This milestone follows the later direction decision that strategy means the
+authored definition of what is being trained and how. It supersedes the
+Milestone 4 description of `TrainingMode` as the "correct axis." Separating
+adapter and fine-tune behavior from model-family classes was an improvement
+over the older combinatorial strategy design, but the current mode object is
+not a target parallel authority.
+
+The classification uses five semantic owners:
+
+```text
+strategy declaration
+  the deliberate choice of training intent, participants, features, and
+  capabilities
+
+Trainer mechanism
+  generic lifecycle, preparation, optimization, and infrastructure execution
+
+Trainer-recognized capability/domain behavior
+  specialized behavior invoked by the training mechanism through an explicit
+  contract; its code need not live in the central Trainer class
+
+strategy-internal feature
+  reusable behavior used by the strategy to compute its training semantics
+
+model/component behavior
+  mechanics inherent to a component rather than to the run lifecycle
+```
+
+This distinction avoids two equal mistakes:
+
+- moving every mode method into the strategy and preserving two-way
+  orchestration behind another name;
+- copying every adapter, distillation, or future technique branch directly
+  into one growing `Trainer` class.
+
+The strategy selects what is used. The Trainer executes the mechanism.
+Specialized code may remain delegated while still being Trainer-coordinated.
+
+### `TrainingMode` caller surface
+
+The active `TrainingMode` protocol declares fifteen methods plus
+`checkpoint_artifact_role` (`library/training/modes/base.py:26-203`). Fourteen
+methods are called from production Trainer/phases. Diagnostics is called
+indirectly from logging:
+
+| Current method | Active caller |
+| --- | --- |
+| `prepare_trainables` | `training/phases/model_prep.py:30-62` |
+| `configure_trainable_precision` | `training/phases/model_prep.py:30-62` |
+| `build_optimizer_params` | `training/phases/optimizer.py:61-185` |
+| `prepare_with_accelerator` | `training/phases/optimizer.py:61-185` |
+| `setup_gradient_training` | `training/phases/optimizer.py:188-221` |
+| `register_state_hooks` | `training/phases/optimizer.py:61-185` |
+| `on_epoch_start` | `training/phases/training_loop.py:632-693` |
+| `on_step_start`, `on_step_end`, `get_trainable_params` | `training/phases/training_loop.py:461-618` |
+| `set_eval`, `set_train` | `training/phases/training_loop.py:341-394` |
+| `checkpoint_artifact_role`, `resolve_checkpoint_artifact_format` | `training/runners/trainer.py:529-576` |
+| `save_checkpoint` | `training/runners/trainer.py:471-507` |
+| `get_diagnostics_components` | `logging/summaries.py:300-313` |
+
+The whole-`Trainer` parameter did not keep these hooks stable. It hid the
+absence of defined inputs and let every method read or replace unrelated
+state.
+
+### Mode responsibility table
+
+| Current responsibility | Classification | Direction |
+| --- | --- | --- |
+| Select adapter targets or fine-tuned component/parameter subjects | strategy declaration, expressed as a training-subject filing | The strategy deliberately says what is intended to train. It does not independently materialize optimizer groups. |
+| Construct and attach an adapter, apply continuation policy, and load initialization weights | Trainer-recognized capability plus adapter-domain behavior | Trainer owns when attachment/preparation happens. Adapter construction and artifact loading remain delegated domain behavior with typed inputs/results. |
+| Apply family-specific post-processing such as SDXL text-encoder tail freezing | strategy-internal feature or component compatibility rule | The standard strategy explicitly wires the rule. It must not be rediscovered from a mode or family-name branch. |
+| Toggle `requires_grad`, choose train/eval state, and designate synchronization/clipping participants | Trainer/optimization mechanism over the declared training subjects | These are realized execution facts. They should be derived from one optimization/preparation result rather than stored as `_train_*` flags in several owners. |
+| Cast trainables and frozen execution participants for full FP16/BF16 | Trainer precision/preparation mechanism | The strategy supplies participants and constraints; generic precision infrastructure performs casts. Component-specific limitations remain explicit component/features constraints. |
+| Resolve logical parameter groups | optimization system acting on the strategy's declared subjects and constraints | Evolve `OptimizationPlan`; do not make the strategy or a mode build raw optimizer dictionaries by convention. |
+| Instantiate the optimizer | Trainer-owned optimization mechanism | `get_optimizer()` and scheduler creation belong to one infrastructure-owned realization path. |
+| Call `accelerator.prepare()`, build a DeepSpeed composite, replace module handles, and select the accumulation handle | Trainer/distributed preparation mechanism | The strategy publishes participants and joint-preparation constraints; infrastructure returns authoritative prepared bindings. |
+| Enable generic gradient checkpointing | Trainer/performance mechanism | Operate over declared trainable/execution participants, not hard-coded denoiser/text-encoder projections. |
+| Run adapter-specific `enable_gradient_checkpointing()` or `prepare_grad_etc()` | explicit component/capability behavior coordinated during Trainer preparation | The component may implement the specialized operation. A fine-tune no-op should not be required to pretend support. |
+| Register Accelerate save/load hooks and restore epoch/step coordinates | Trainer runtime-checkpoint mechanism with explicit state contributors | Adapter or other features may contribute state serialization, but the mode should not own checkpoint registration or the run coordinates. |
+| Put trainable participants into train/eval state at epoch/sample boundaries | Trainer lifecycle mechanism | Derive participants from prepared/optimization state. `set_train` and `set_eval` do not need mode-specific duplicates for ordinary modules. |
+| Invoke adapter `on_epoch_start` or `on_step_start` behavior | specialized selected capability/component behavior with Trainer-owned timing | Preserve only behavior that has real semantics. Do not create a universal raising/no-op hook bag merely because one adapter method exists. |
+| Apply adapter maximum-norm regularization and return its metrics | optimization-adjacent capability/domain behavior with Trainer-owned post-step timing | Give it typed inputs/results and metric output. It is not a generic meaning of training mode. |
+| Return parameters for clipping | redundant projection of the optimization plan | The realized optimization state should name clipping/synchronization participants once. Remove the second mode query. |
+| Select artifact role and serialization format | trained-artifact persistence capability declaration | Metadata and save orchestration consume typed artifact semantics supplied by the strategy/capability. |
+| Serialize adapter or full-model artifacts | artifact persistence capability plus adapter/model-domain serialization | Trainer owns timing, retention, destination, and publishing coordination. The capability extracts/serializes the selected artifact and returns a typed result. |
+| Save EDM2 loss-modifier side artifacts through the mode save method | misplaced owning-feature persistence contribution | A trainable loss modifier or objective-adjacent feature declares its own artifact contribution; adapter versus fine-tune mode is irrelevant. |
+| Choose diagnostic components and aliases | observability over authoritative bindings and optimization subjects, with optional component descriptions | Logging should query stable component/optimization facts. It should not ask a mode to reconstruct the active topology. |
+
+`prepare_trainables()` is the clearest example of why one-to-one method
+migration would fail. In adapter mode it currently performs adapter
+construction, continuation, target selection, family post-processing,
+attachment, `requires_grad` mutation, and Trainer-state publication
+(`library/training/modes/adapter_mode.py:115-179`). In fine-tune mode it
+performs parameter selection, `requires_grad` mutation, train/eval transition,
+family post-processing, and primary-trainable selection
+(`library/training/modes/finetune_mode.py:84-158`). Those responsibilities
+belong to different exchanges.
+
+Likewise, `build_optimizer_params()` both constructs an `OptimizationPlan` and
+materializes an optimizer, while `prepare_with_accelerator()` replaces loaded
+module references, optimizer, scheduler, synchronization handle, and primary
+trainable (`adapter_mode.py:209-290`; `finetune_mode.py:190-273`). The target
+boundary is therefore:
+
+```text
+strategy declares training intent and constraints
+                    ↓
+Trainer/optimization resolves one preparation and optimization plan
+                    ↓
+Trainer infrastructure materializes and prepares execution state
+                    ↓
+authoritative prepared bindings and optimization runtime
+```
+
+### Objective responsibility table
+
+The objective layer is smaller but similarly split. `Trainer.__init__`
+currently constructs an objective independently from the strategy
+(`training/runners/trainer.py:130-254`), later asks it to build runtime state,
+and then passes that runtime back into family `process_batch()` calls. DDPM
+helpers are called directly by SD/SDXL strategy facets, while rectified-flow
+batch-state construction lives on its runtime
+(`objectives/base.py:14-43`; `objectives/ddpm.py:27-259`;
+`objectives/rectified_flow.py:18-149`).
+
+| Current responsibility | Classification | Direction |
+| --- | --- | --- |
+| Choose DDPM versus rectified flow from global config | strategy declaration and contract validation | Objective choice is part of how the authored strategy trains. Trainer should not independently choose a second behavioral axis. Configuration may parameterize a choice explicitly exposed by that strategy. |
+| Construct the noise scheduler, timestep sampler/runtime, prediction convention, and objective-specific state | strategy-internal objective feature | The strategy deliberately wires the objective implementation. Trainer may coordinate lifecycle creation without knowing DDPM/RF classes. |
+| Produce corruption/noisy inputs, timesteps/noise levels, targets, and objective weighting | strategy-internal objective feature used by step execution | These are mathematical training semantics. They belong behind the strategy boundary and should not become universal Trainer fields. |
+| Advance adaptive timestep scheduling at a global step | objective-feature state transition invoked at Trainer-owned timing | Trainer supplies the step coordinate through the step exchange; the selected feature owns its state transition. |
+| Feed timestep/loss observations back into an adaptive sampler | objective-feature state update consuming a typed step observation | The step result declares the relevant observations. Trainer may route them at the defined boundary without understanding timesteps. |
+| Expose `num_train_timesteps`, `timestep_runtime`, or `alphas_cumprod` for plotting, Huber thresholds, and logging | objective-specific capability/observation, not core strategy vocabulary | Replace direct runtime-field inspection with typed objective observations or logging/metadata contributions where requested. |
+| Build and store `loss_modifier` inside `ObjectiveRuntime` | optimization capability currently misplaced inside the objective bundle | Trainer owns applying the modifier and backpropagating its result. The selected strategy may provide the modifier capability, but DDPM/RF identity should not automatically own all post-loss optimization behavior. |
+| Apply DDPM-only post-loss weighting inside family `process_batch()` | objective feature | Keep the mathematical rule with the DDPM objective implementation; avoid duplicating its invocation in every family strategy. |
+| Provide objective name/prediction facts for metadata and artifact semantics | strategy/objective metadata contribution | File typed facts from the selected strategy/objective. Avoid Trainer branches such as `objective.name == "rectified_flow"`. |
+
+The objective implementation therefore remains useful reusable vocabulary, but
+not as a separate top-level authority beside the strategy. Its mathematical
+behavior belongs inside the authored strategy. Trainer owns the timing and
+optimization mechanics that consume the strategy result.
+
+### Resulting boundary
+
+The classification reduces the active runtime relationship to:
+
+```text
+STRATEGY
+  declares:
+    what is trained
+    objective/training semantics
+    selected capabilities and constraints
+    model/component arrangement
+
+TRAINER
+  executes:
+    lifecycle
+    preparation and authoritative rebinding
+    optimization realization
+    backward and stepping
+    runtime checkpoint coordination
+    triggers and observation
+
+CAPABILITY / DOMAIN IMPLEMENTATIONS
+  provide specialized behavior when selected
+  without receiving or mutating the whole Trainer
+```
+
+This does not require an adapter strategy, a fine-tune strategy, or a renamed
+mode object. The standard SD/SDXL/SD3 strategy definitions may deliberately
+support and select those training arrangements through the contract.
+
+### Decisions and remaining questions after classification
+
+The classification settles:
+
+- `TrainingMode` should dissolve rather than be renamed;
+- objective selection belongs to strategy authoring rather than independent
+  Trainer construction;
+- optimization and distributed preparation are standard Trainer mechanisms;
+- ordinary train/eval, clipping-participant, and diagnostics projections
+  should derive from authoritative preparation/optimization state;
+- runtime checkpoint coordination and trained-artifact persistence remain
+  separate;
+- specialized capability code does not need to live directly in the central
+  Trainer class to be Trainer-coordinated.
+
+It does not yet settle:
+
+- the exact typed training-subject declaration;
+- the exact preparation participants/result and authoritative binding holder;
+- whether specialized Trainer-recognized capabilities are represented by
+  behavior objects, typed data handled by training services, or a narrow
+  combination;
+- the generic step result and observation-routing shape;
+- which existing adapter lifecycle methods are genuine required semantics
+  versus compatibility conveniences that can disappear.
+
+The next design milestone can now define binding/preparation and optimization
+exchanges without treating mode or objective as peer runtime owners.
