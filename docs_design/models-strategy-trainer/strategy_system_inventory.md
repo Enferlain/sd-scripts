@@ -1291,3 +1291,143 @@ It does not yet settle:
 
 The next design milestone can now define binding/preparation and optimization
 exchanges without treating mode or objective as peer runtime owners.
+
+## Milestone 7: Logical Identity And Execution-Route Semantics
+
+The first two authoritative-binding questions are settled at the semantic
+level.
+
+- One stable strategy-scoped logical identity denotes one semantically distinct
+  training participant.
+- Concrete Python objects, implementation types, source/catalog identities,
+  wrappers, and parameter scopes do not define that identity.
+- The standard contract provides one normal authoritative prepared execution
+  binding per logical component.
+- A selected capability may add a named route only when a materially different
+  prepared/callable representation is required. Training phase names or caller
+  intentions alone do not justify separate routes.
+- Exactly one current binding is authoritative for each logical-component/route
+  pair.
+- Shared live state is one component. Derived state may remain another route
+  only with explicit refresh or synchronization semantics. Independently
+  evolving state is a different logical component.
+- Original, unwrapped, inspection, metadata, and artifact handles are typed
+  access views rather than competing execution routes.
+- A route whose freshness guarantee no longer holds cannot remain silently
+  authoritative.
+
+This resolves the semantic cardinality question without yet choosing a
+`ComponentKey` representation, route-name vocabulary, refresh mechanism, or
+authoritative storage owner. Those belong to the binding/preparation exchange.
+
+## Milestone 8: Adapter Pressure Test For Arrangement Changes
+
+Question 3 asks how additions, replacements, and delayed materialization alter
+the authoritative arrangement. The current adapter path is useful evidence but
+does not define the full adapter design.
+
+### Current repository evidence
+
+- the built-in registry currently exposes the PEFT family of adapter methods;
+- `AdapterMode.prepare_trainables()` resolves model targets, builds one adapter
+  runtime, applies it to existing modules, publishes the runtime separately,
+  and then hands its parameters to optimization;
+- current LoRA attachment replaces selected target-module `forward` methods in
+  place, so adapter-owned state is added while the top-level target object is
+  not replaced;
+- VeRA demonstrates that one independently managed adapter runtime/artifact may
+  contain shared state plus many target-local method modules; and
+- `LoadedAdapterRuntime.merge_into()` already distinguishes destructive merge
+  from ordinary attachment and export loading.
+
+The accepted adapter requirements also state that current diffusion/LyCORIS
+shapes must not define the universal adapter contract, permit later
+parameter-granular targets, and leave mixed-method overlap semantics to later
+design.
+
+Relevant source locations:
+
+- `library/training/modes/adapter_mode.py:115-179`
+- `library/adapters/methods/peft/lora/module.py:229-231`
+- `library/adapters/methods/peft/vera/runtime.py:65-136`
+- `library/adapters/runtime/context.py:81-93`
+- `library/adapters/shared/base.py:7-16`
+- `openspec/specs/adapter-system/spec.md`
+- `openspec/specs/adapter-module-targeting/spec.md`
+
+### Broader adapter shapes
+
+The term adapter covers several topologies that the binding contract must not
+collapse into the current LoRA shape:
+
+| Shape | State and interaction pressure |
+| --- | --- |
+| injected delta/reparameterization | owns separate learned state but changes selected host operations without necessarily exposing a top-level execution route |
+| prefix/prompt/state augmentation | may own trainable tensors that participate through conditioning or input assembly without an independent callable module |
+| sidecar network | adds an independently executable component whose outputs feed another component |
+| wrapper/replacement adapter | owns adaptation state and may replace the host's prepared execution route with a composite callable |
+| merged/folded adapter | transfers its effect into host state and may cease to exist as an active independent participant |
+| multiple/routed adapters | require explicit identities, target relationships, ordering/overlap semantics, and activation state |
+
+Representative primary sources are the
+[LoRA paper](https://arxiv.org/abs/2106.09685),
+[Prefix-Tuning paper](https://arxiv.org/abs/2101.00190),
+[ControlNet paper](https://arxiv.org/abs/2302.05543), and
+[T2I-Adapter paper](https://arxiv.org/abs/2302.08453).
+
+### Provisional operation taxonomy
+
+The existing three-way distinction—execution rebinding, logical-slot
+replacement, and participant addition—is necessary but incomplete. The
+checkpointed working taxonomy is:
+
+```text
+materialize/bind a previously declared component
+rebind an execution route through runtime preparation
+replace the occupant/source of an existing semantic slot
+attach/detach/activate an effect between existing participants
+amend the arrangement by adding or retiring a participant
+merge/fold adapter state into a host participant
+```
+
+These operations must not be inferred from incidental Python assignment or
+loading order. In particular, an authored external autoencoder that is selected
+before materialization is an initial binding, not a semantic replacement merely
+because an implementation happens to load an integrated VAE first.
+
+For ordinary authored adapter training, the leading direction is:
+
+```text
+strategy declares adapter participant and intended relationship
+  -> structural validation
+  -> model/adapter materialization and target resolution
+  -> attachment establishes the concrete effect
+  -> affected constraints are validated
+  -> runtime preparation establishes authoritative bindings
+```
+
+Ordinary adapter attachment therefore should not require an arbitrary
+post-validation arrangement mutation. Truly dynamic additions remain possible
+through an explicit arrangement-amendment extension that declares additions,
+relationships, capability changes, invalidated prepared routes, optimization
+plans, and caches before the amendment is accepted.
+
+### Important pressure on question 2
+
+Adapter breadth qualifies, rather than discards, the execution-binding
+cardinality decision:
+
+```text
+execution-capable logical component
+  -> one normal authoritative prepared execution binding
+
+state-bearing component without independent execution
+  -> authoritative state/optimization/artifact bindings
+     without a fabricated forward route
+```
+
+The remaining question is the logical identity unit for adapter state. The
+leading answer is one identity per independently managed state trajectory,
+training subject, and persistence unit; per-target injected modules remain
+qualified substructure unless independently managed. This needs pressure
+testing before question 3 is promoted into the settled direction.

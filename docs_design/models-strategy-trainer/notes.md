@@ -124,6 +124,70 @@ Two blockers remain before choosing Python APIs:
 After binding/preparation, derive optimization and step exchanges. Only then
 choose method names, class/package structure, and create the OpenSpec.
 
+## Binding discussion resumed (2026-08-20)
+
+Questions 1 and 2 now have bounded semantic answers:
+
+- a logical component identity is stable, strategy-scoped, and denotes one
+  semantically distinct participant rather than one Python object;
+- the standard contract has one normal prepared execution binding per logical
+  component;
+- named extra routes are capability extensions justified only by materially
+  different runtime preparation/callable requirements;
+- every logical-component/route pair has exactly one authoritative current
+  binding;
+- shared or explicitly synchronized derived state may remain one component,
+  while independently evolving state requires another component identity;
+- original/unwrapped/artifact handles are typed access views, not competing
+  execution routes; and
+- stale routes cannot remain silently authoritative after their freshness
+  guarantee fails.
+
+Still open: concrete identity and route types, refresh mechanics, binding-state
+storage ownership, and the full preparation plan/result API. The next question
+is how additions and replacements are represented during adapter attachment or
+deferred loading.
+
+## Question 3 adapter checkpoint (2026-08-20)
+
+The initial addition/replacement take was pressure-tested against the current
+PEFT path and broader adapter shapes. The checkpoint is provisional rather than
+a settled direction change.
+
+Current LoRA proves that adding adapter-owned state and attaching its effect are
+different operations: the adapter remains separately owned while selected host
+`forward` methods are modified in place. VeRA further shows that one adapter
+identity may own shared state plus many target-local modules. Prefix-style
+state may have no independent forward route, while ControlNet/T2I-Adapter-style
+side networks are independently executable participants.
+
+Working operation taxonomy:
+
+```text
+declare
+materialize/bind
+execution rebind
+semantic-slot replacement
+effect attach/detach/activation
+arrangement add/retire amendment
+merge/fold transformation
+```
+
+Ordinary adapters should normally be declared by the authored strategy before
+structural validation. Target resolution and attachment then fulfill that
+declaration; they do not make the adapter appear as an arbitrary late list
+mutation. Dynamic participant addition remains an explicit extension whose
+result must name relationship/capability changes and invalidate affected
+prepared routes, optimization plans, and caches.
+
+Q2 is qualified so only execution-capable logical components require a normal
+prepared execution route. State-bearing adapter components may instead expose
+authoritative state, optimization, and artifact bindings.
+
+Next pressure test: whether one logical adapter identity should correspond to
+one independently managed state trajectory/training subject/persistence unit,
+with its per-target injected modules treated as qualified substructure.
+
 ## User
 
 - versioning for contracts is probably a good idea for the long run. Contracts and trainer might need to evolve over time as more models get added, but the ideal scenario is them not having to, especially the trainer, but this is only possible to accomplish via the repo growing with new capabilites and testing said contract and trainer.

@@ -1416,6 +1416,61 @@ The inventory and framework comparison are now complete enough to stop
 revisiting their call paths. The remaining pre-OpenSpec work is semantic
 contract design, not another architecture comparison.
 
+## Settled Binding Semantics
+
+The first binding questions now have provisional architectural answers strong
+enough to constrain the concrete exchange design.
+
+A **logical component identity** is the stable strategy-scoped identity of one
+semantically distinct training participant. It is not Python object identity,
+implementation type, source/catalog identity, prepared-wrapper identity, or a
+parameter scope. The identity survives loading, source replacement, device and
+precision changes, distributed wrapping, and compilation. Concurrently
+distinct participants require distinct logical identities even when they share
+an origin or initially share state.
+
+The standard core remains deliberately simple:
+
+```text
+logical component
+  -> one normal authoritative prepared execution binding
+```
+
+Selected capabilities may declare additional **named execution routes**, but
+only when materially different runtime preparation or callable
+representations require them. Different caller intentions do not create routes
+by themselves. Training and validation using the same prepared wrapper share
+one route; a separately compiled sampling representation may justify another.
+For every logical-component/route pair, exactly one current binding is
+authoritative.
+
+Every route belonging to one logical component must have a defined relationship
+to that component's authoritative current state:
+
+```text
+shared live state
+  -> the same logical component
+
+derived state with explicit refresh/synchronization semantics
+  -> may remain a route of the same logical component
+
+independently evolving state
+  -> a distinct logical component
+```
+
+EMA, teacher/student participants, and independently trained adapters therefore
+receive distinct logical identities rather than becoming execution-route names.
+An original or unwrapped module retained for inspection, metadata, or artifact
+extraction is a typed access/view binding, not a competing forward route.
+Backend-managed replicas likewise do not create new strategy-level logical
+identities.
+
+An additional route must not remain silently authoritative after its declared
+freshness guarantee stops holding. It must become invalid, be explicitly
+allowed as stale, or be refreshed according to declared semantics. The exact
+refresh mechanism, route representation, and binding-state owner remain open
+for the concrete exchange design.
+
 ## Next Design Work: Concrete Exchanges
 
 The minimum core should emerge from concrete exchanges rather than from a list
