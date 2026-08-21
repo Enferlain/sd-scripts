@@ -1679,3 +1679,374 @@ asynchronous publication mechanics remain downstream implementation design.
 Question 5 still needs to determine which object owns the authoritative binding
 map from which persistence and other consumers obtain their narrow current-state
 views.
+
+## Milestone 10: Target-First Binding-Authority Scenarios
+
+Question 5 must not be answered by wrapping the current Trainer fields in a new
+class. No production implementation has yet moved toward the direction in this
+document. The current code is therefore used only as a **pressure oracle**:
+
+```text
+target-first scenario
+  establishes the semantic transitions and views the contract needs
+
+current code evidence
+  reveals lifecycle pressure, information that must survive, and failure modes
+
+not assumed
+  that current object placement, call direction, names, or cardinality survive
+```
+
+The scenarios below use **binding authority** as a deliberately abstract term.
+It means the one contract-governed authority for accepted current participant,
+relationship, access-view, and execution-route bindings. It does not yet choose
+a class name, module, container shape, or whether that authority is physically
+embedded in the strategy object or paired with it at filing time.
+
+### Scenario A: ordinary multi-component fine-tuning
+
+An authored SDXL strategy may deliberately declare participants resembling:
+
+```text
+model.denoiser
+representation.autoencoder
+conditioning.primary
+conditioning.secondary
+```
+
+These example identities are not a final universal vocabulary. The strategy
+also declares which participants are training subjects, the relationships and
+features it uses, and the artifact products it supports.
+
+The target lifecycle is:
+
+```text
+author strategy
+  -> declare participants and relationships
+  -> materialize original/current state by stable participant identity
+  -> validate the filing needed for this training arrangement
+  -> expose a generic preparation projection
+  -> Trainer/runtime infrastructure prepares the requested participants
+  -> accept prepared execution bindings by the same stable identities
+  -> expose an optimization projection
+  -> execute strategy behavior against narrow authoritative binding views
+```
+
+Trainer may see a preparation participant's opaque identity, concrete object,
+requirements, and joint-preparation group. It must not learn that SDXL has one
+autoencoder, two text encoders, or one denoiser. Strategy and selected feature
+implementations interpret their own identities.
+
+Current evidence: `LoadedModelComponent` already couples a stable key and
+generic roles/capabilities to a live module. `Trainer.setup()` stores the
+resulting tuple and then exposes family-shaped compatibility properties. Those
+properties write replacement objects back into the tuple by role. This proves
+that stable keyed replacement is useful; it does not justify Trainer ownership,
+role-unique setters, or one module field as the final binding record.
+
+Pressure result: the authority must preserve stable logical identity across
+loading and preparation, while Trainer consumes generic projections rather than
+the complete family arrangement.
+
+Relevant current source:
+
+- `library/models/components.py:25-69`
+- `library/training/runners/trainer.py:307-431`
+- `library/training/runners/trainer.py:970-1045`
+
+### Scenario B: declared but deferred SD3 participant
+
+A strategy can declare a participant before its concrete state is available:
+
+```text
+arrangement revision R
+  model.denoiser: declared, unbound, deferred by an authored loading policy
+  representation.autoencoder: bound
+  conditioning.*: bound or explicitly absent under the filing
+```
+
+A later loader result performs **materialization**, not arrangement addition:
+
+```text
+model.denoiser
+  declared/unbound -> bound
+
+arrangement identity
+  unchanged
+
+binding revision
+  advanced
+```
+
+Any preparation, optimization, cache, or artifact plan that depended on the
+unbound state becomes invalid or must be recomputed. A lifecycle phase that does
+not require the denoiser may proceed only when the authored contract explicitly
+allows that partial fulfillment; a phase requiring it receives a named
+unfulfilled requirement rather than `None` failing somewhere downstream.
+
+Current evidence: the SD3 loader constructs the complete declared component
+surface even when optional text encoders or a lazily loaded denoiser are `None`,
+and Trainer explicitly comments that the denoiser may be absent during initial
+loading. The current tuple does not distinguish unbound, explicitly absent,
+deferred, retired, or failed states, nor does later materialization establish an
+explicit revision/invalidation boundary.
+
+Pressure result: the authority must outlive individual loaders, represent
+declared-but-unbound state, and distinguish binding revision from arrangement
+amendment.
+
+Relevant current source:
+
+- `library/strategies/sd3/loading.py:22-69`
+- `library/models/components.py:43-69`
+- `library/training/runners/trainer.py:419-431`
+
+### Scenario C: authored adapter materialization and attachment
+
+An ordinary adapter is declared before runtime construction:
+
+```text
+adaptation.main
+relationship: adaptation.main adapts model.denoiser
+```
+
+The target sequence is:
+
+```text
+resolve declared host relationship
+  -> materialize adapter-owned state
+  -> activate attachment relationship
+  -> update affected execution semantics
+  -> validate/recompute preparation and optimization projections
+```
+
+Two attachment shapes must both work:
+
+```text
+in-place injection
+  host Python object identity may stay unchanged
+  host execution semantics and relationship revision still change
+
+wrapper/composite attachment
+  adapter remains a distinct participant
+  host execution route may rebind to a composite callable
+```
+
+The in-place case is particularly important for Q5: an object-keyed dictionary
+cannot detect that authoritative execution semantics changed when the object is
+the same. The transition must advance an accepted binding/relationship revision
+and invalidate any compiled route or other dependent projection whose freshness
+guarantee no longer holds.
+
+VeRA-like shared banks and target-local modules may remain substructure of one
+adapter participant when they share one lifecycle and artifact unit. They do
+not require Trainer to enumerate every injected Python module.
+
+Current evidence: `AdapterMode.prepare_trainables()` reads Trainer-owned loaded
+components, resolves concrete targets, builds and applies the adapter, then
+publishes adapter and target state back onto Trainer. Its Accelerator path later
+mutates denoiser, text-encoder, adapter, optimizer, and synchronization fields
+through the whole Trainer. The target resolver's stable component/path
+provenance is valuable; the whole-Trainer mutation and separate shadow fields
+are not the desired contract.
+
+Pressure result: one authority must cover participants and relationships while
+allowing capability code to propose typed transitions. Attachment must not be
+hidden as arbitrary module mutation.
+
+Relevant current source:
+
+- `library/training/modes/adapter_mode.py:115-179`
+- `library/training/modes/adapter_mode.py:243-290`
+- `library/adapters/runtime/targets.py:184-248`
+- `library/optimization/grouping.py:197-308`
+
+### Scenario D: distributed preparation, execution, and persistence
+
+After distributed preparation, one logical participant may expose several
+different kinds of current access without confusing their purposes:
+
+```text
+model.denoiser
+  current execution route -> prepared/distributed callable
+  original access view     -> underlying component when valid
+  artifact state view      -> product-specific semantic projection
+
+backend coordination
+  grad-sync/composite handle -> infrastructure state, not automatically a
+                                logical model participant
+```
+
+Trainer obtains a generic preparation projection, prepares the concrete inputs,
+and submits a keyed preparation result. Accepting that result atomically rebinds
+the affected execution routes. Joint DeepSpeed preparation may return one
+backend coordination object for several participants; that object must not
+erase their distinct logical identities or automatically become another model
+component.
+
+At a persistence boundary, an artifact capability resolves a coherent snapshot
+from the same accepted authority. It may obtain state through an unwrapped
+access view, adapter-owned state, several participant views, or external source
+references. It does not infer the product from the current outer wrapper.
+
+Current evidence: mode preparation presently writes prepared modules and a
+separate `_grad_sync_handle` directly onto Trainer. SDXL and SD3 checkpoint
+paths explicitly unwrap and assemble several components, while adapter export
+assembles capability-owned state. The diversity is useful evidence that
+execution, backend coordination, and artifact access are distinct views.
+
+Pressure result: the authority must support atomic keyed rebinding and coherent
+read snapshots without forcing backend coordination handles or artifact
+projections into one generic `module` slot.
+
+Relevant current source:
+
+- `library/training/modes/finetune_mode.py:234-273`
+- `library/training/modes/adapter_mode.py:243-290`
+- `library/strategies/sdxl/checkpointing.py:49-121`
+- `library/strategies/sd3/checkpointing.py:70-120`
+- `library/adapters/shared/state_io.py:13-113`
+
+### Scenario E: replacement and dependency-aware invalidation
+
+Replacing authoritative component state is an explicit transition:
+
+```text
+replace model autoencoder A with B
+  -> supersede A's current state binding
+  -> advance the participant binding revision
+  -> re-evaluate relationships involving that participant
+  -> invalidate only dependent preparation/optimization/cache/artifact views
+  -> publish accepted transition facts
+```
+
+Invalidation cannot be a hard-coded family cascade. A latent cache may depend on
+the autoencoder realization; a conditioning cache may instead depend on one or
+more encoders; an adapter target plan may depend on the host's structural
+realization. Features and resolved plans therefore need to declare their
+dependencies using stable participant/relationship identities. The authority
+can then report what became stale without knowing diffusion-specific anatomy.
+
+Current evidence: Trainer compatibility setters replace modules in
+`loaded_components`, but they do not represent supersession or perform
+dependency-aware invalidation. Existing optimization grouping and adapter target
+selection derive new plans from the current tuple, which demonstrates the need
+to know their inputs but not a safe way to retain their freshness.
+
+Pressure result: every derived projection that may outlive a transition needs a
+declared dependency set and source revision. Replacement must return an
+invalidation outcome rather than relying on callers to remember which fields to
+refresh.
+
+Relevant current source:
+
+- `library/training/runners/trainer.py:1010-1034`
+- `library/optimization/grouping.py:197-228`
+- `library/optimization/grouping.py:457-550`
+
+### Scenario F: compound research strategy beyond current family shapes
+
+The authority must also work for a manually authored strategy that the current
+repository does not implement:
+
+```text
+student.denoiser
+teacher.denoiser
+adaptation.student
+
+relationships
+  teacher supervises student
+  adaptation.student adapts student.denoiser
+
+optimization selection
+  student.denoiser and/or adaptation.student
+
+artifact products
+  student realization
+  adapter delta over student/base dependency
+  optional compound research snapshot
+```
+
+Teacher and student remain different logical participants even if they started
+from the same source. A pixel-space strategy may omit an autoencoder entirely.
+A strategy may introduce an LLM, discriminator, reward model, or another
+trainable side network without expanding Trainer with new family fields.
+
+Trainer still needs only generic preparation, optimization, step-result, and
+persistence exchanges. Strategy behavior and selected features request their
+own narrow binding views by declared identity.
+
+Pressure result: any proposed owner that assumes one denoiser, one primary
+trainable, a VAE/autoencoder, a text-encoder list, or a single model family fails
+even if it can migrate today's SDXL flow.
+
+### Requirements derived from all scenarios
+
+The scenario model supports these requirements without yet selecting the final
+Python shape:
+
+1. **One strategy-scoped current authority.** There cannot be independent
+   authoritative copies on Trainer, loaders, modes, strategy facets, and
+   metadata.
+2. **Contract-governed identity and transitions.** Declarations,
+   materialization, replacement, route rebinding, relationship transitions,
+   and arrangement amendments pass through named operations.
+3. **One writer protocol, multiple transition producers.** Loading features,
+   adapter features, and Trainer infrastructure may propose results, but one
+   authority validates and accepts them atomically.
+4. **Revisioned participant, relationship, and route state.** Object identity is
+   insufficient, especially for in-place adapter attachment.
+5. **Narrow typed projections.** Trainer receives preparation, optimization,
+   synchronization, and persistence exchanges; capabilities receive only their
+   declared participant/relationship views.
+6. **Atomic snapshots and result application.** Multi-participant preparation
+   and persistence cannot observe half-applied replacements.
+7. **Dependency-aware freshness.** Derived plans and routes name the identities
+   and revisions they depend on and cannot remain silently authoritative after
+   those guarantees fail.
+8. **Backend handles stay distinct.** A synchronization/composite handle is not
+   automatically a logical component or its normal execution route.
+9. **Runtime authority is not durable history.** Metadata observes accepted
+   facts and transition history; it does not become the live binding owner.
+10. **No family-shaped core cardinality.** The authority supports absent,
+    deferred, state-only, executable, multiply routed, and compound
+    participants without Trainer learning their anatomy.
+
+### What this does and does not resolve
+
+The scenarios make the ownership boundary substantially narrower:
+
+```text
+authored strategy and selected features
+  declare semantics and propose typed transitions
+
+contract-governed binding authority
+  accepts and maintains canonical current state
+
+Trainer/runtime infrastructure
+  consumes generic projections and returns preparation/optimization results
+
+metadata and persistence
+  consume accepted snapshots/projections
+```
+
+This rules out Trainer family fields, metadata storage, family-mixin attributes,
+or an unrestricted shared dictionary as the canonical owner. It points toward a
+binding authority belonging to the **bound strategy contract scope**.
+
+It does not yet settle whether that authority is:
+
+- physically contained by the authored strategy object after filing;
+- paired with strategy behavior in a small Trainer-facing contract object; or
+- a separate contract-owned object whose lifetime is established by strategy
+  filing and shared through narrow interfaces.
+
+Those may be different object layouts for the same ownership semantics. The
+next Q5 discussion should compare them against these scenarios rather than
+reconstructing the current Trainer.
+
+Graph evidence for the cited source paths used generation
+`2026-08-21T02:44:51Z` on branch `model-strategy-trainer`. Exact cited paths had
+no recorded coverage issue and matched index metadata. This remains a
+best-effort signal rather than proof of complete source coverage; excluded
+`__pycache__` trees are irrelevant to the source-level pressure test.

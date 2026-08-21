@@ -1694,6 +1694,17 @@ exposed to Trainer infrastructure, capabilities, metadata, and persistence.
 That storage/ownership choice remains open; the persistence semantics above do
 not decide it by implication.
 
+The target-first pressure models are recorded in
+[`strategy_system_inventory.md`](strategy_system_inventory.md), Milestone 10.
+They deliberately do not treat the current `Trainer.loaded_components`,
+family-shaped compatibility properties, or mode-owned mutation as the target
+shape. They test a contract-governed binding authority against ordinary
+fine-tuning, deferred loading, adapter attachment, distributed preparation,
+persistence, replacement/invalidation, and a compound teacher/student research
+strategy. The scenarios narrow the semantic owner to the bound strategy
+contract scope while leaving its physical object layout open for the Q5
+decision.
+
 ## Subsequent Design Work: Concrete Exchanges
 
 The minimum core should emerge from concrete exchanges rather than from a list

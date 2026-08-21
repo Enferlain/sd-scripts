@@ -284,6 +284,69 @@ partial-result representation, and asynchronous publication remain downstream.
 Next discussion question: Q5, ownership of the canonical authoritative binding
 map and the narrow views exposed from it.
 
+## Question 5 target-first scenario checkpoint (2026-08-21)
+
+Q5 scenario modeling is recorded in `strategy_system_inventory.md`, Milestone
+10. The current code is a pressure oracle, not the target object model: no
+production changes have yet implemented the direction under discussion.
+
+The working term **binding authority** means the one contract-governed authority
+for accepted current participant, relationship, access-view, and execution-route
+bindings. It intentionally does not yet select a class name, package, physical
+container, or whether the authority is embedded in or paired with strategy
+behavior.
+
+Scenarios modeled:
+
+```text
+ordinary multi-component fine-tuning
+declared but deferred SD3 participant
+authored adapter materialization and attachment
+distributed preparation plus artifact persistence
+replacement with dependency-aware invalidation
+compound teacher/student/adapter research strategy
+```
+
+Important pressure findings:
+
+- stable keyed identity in `LoadedModelComponent` is useful evidence, but
+  Trainer ownership and family-shaped compatibility setters are not the target;
+- materializing a deferred participant advances binding state without amending
+  the declared arrangement;
+- in-place adapter injection can change authoritative execution semantics while
+  Python object identity remains unchanged;
+- distributed execution bindings, original/unwrapped access, artifact state
+  views, and backend synchronization handles are distinct concerns;
+- derived preparation, optimization, cache, route, and artifact projections
+  require declared identity/revision dependencies so replacement can invalidate
+  them precisely; and
+- any core owner assuming one denoiser, one primary trainable, an autoencoder,
+  or a text-encoder list fails the compound and pixel-space pressures.
+
+Provisional semantic boundary:
+
+```text
+authored strategy/features
+  declare semantics and propose typed transitions
+
+contract-governed binding authority
+  validates and atomically accepts canonical current state
+
+Trainer/runtime infrastructure
+  consumes generic projections and returns preparation/optimization results
+
+metadata/persistence
+  consume accepted snapshots and product projections
+```
+
+This rules out Trainer family fields, metadata storage, family-mixin attributes,
+and unrestricted shared dictionaries as the canonical owner. The leading scope
+is the **bound strategy contract**, but the physical layout remains open among:
+authority contained by strategy behavior, a small paired Trainer-facing contract
+object, or a separate contract-owned authority established during filing.
+Comparing those layouts is the remaining Q5 decision; Q5 is not yet marked
+settled.
+
 ## User
 
 - versioning for contracts is probably a good idea for the long run. Contracts and trainer might need to evolve over time as more models get added, but the ideal scenario is them not having to, especially the trainer, but this is only possible to accomplish via the repo growing with new capabilites and testing said contract and trainer.
