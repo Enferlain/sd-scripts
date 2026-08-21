@@ -15,6 +15,11 @@ into requirements, design decisions, migration tasks, and acceptance tests.
 The existing strategy system remains the active production architecture while
 this direction is explored.
 
+Within this pre-OpenSpec work, this document is the normative source for the
+current architectural direction. `strategy_system_inventory.md` retains code
+evidence and pressure tests; `notes.md` retains chronological checkpoints and
+may therefore include positions that were later superseded here.
+
 ## Why This Discussion Exists
 
 The strategy system was itself an organizational response to the original
@@ -1287,6 +1292,13 @@ is recorded in
   contract, or target an explicit extension when the trainer boundary changes.
 - Keep Trainer execution mechanics separate from strategy declarations and
   specialized model/component behavior.
+- Keep one complete training strategy as the Trainer-facing integration. A
+  dedicated per-run binding authority is an internal contract responsibility,
+  not a second family-shaped object that Trainer coordinates beside strategy.
+- Keep authoritative participant, relationship, access-view, and execution
+  route state behind one contract-governed writer protocol. Loaders,
+  capabilities, and Trainer infrastructure may propose typed transitions but
+  must not maintain competing authoritative copies.
 - Keep model component mechanics separate from strategy-owned model behavior.
 - Distinguish stable logical model/component identity from the prepared
   execution handles required by distributed and precision infrastructure.
@@ -1309,6 +1321,10 @@ is recorded in
   while defining the repository-specific contract.
 - Require any future dependency, vendoring, or subsystem-adoption proposal to
   preserve repository design control and justify its ongoing maintenance cost.
+- Allow implementation and migration to proceed in bounded slices without
+  deliberately weakening the settled semantics. A staged migration must not
+  introduce disposable one-route, invalidate-everything, or underspecified
+  persistence contracts merely because they are called a first version.
 
 ### Current leanings that still need pressure testing
 
@@ -1321,9 +1337,9 @@ is recorded in
 - Reclassify `shared/clip/` by semantic feature rather than by current reuse.
 - Represent pixel and latent diffusion as feature implementations rather than
   strategy subclasses.
-- Give the active per-run strategy one coherent Trainer-facing boundary.
-- Keep one authoritative binding answer for each logical component and
-  prepared execution object; exact storage ownership remains open.
+- Consider `participant` as the contract-level vocabulary and `component` as a
+  model/system-level entity that may serve as a participant. Do not rename
+  concrete APIs until the exchange design tests this distinction.
 - Replace multiple-inheritance discovery with more explicit feature wiring
   inside strategies.
 - Preserve SD/SDXL/SD3 assemblies as known tested defaults while designing
@@ -1335,16 +1351,12 @@ is recorded in
   current training pipeline without encoding SD-specific anatomy?
 - Which current pipeline operations belong to the universal core, which are
   named capabilities, and which are only internal features?
-- Which current `TrainingMode` and objective responsibilities are strategy
-  declarations, Trainer mechanics, specialized capability/domain behavior, or
-  strategy-internal features?
 - Which training-subject treatments should be explicit capabilities, and what
   typed information does Trainer require to execute them?
 - Which capability implementations belong directly to Trainer, to delegated
   Trainer-owned handlers, or to domain/feature implementations?
-- What exact loaded-state surface replaces the current trainer/strategy split?
-- Which current methods are trainer-facing contract operations, reusable
-  features, family-local helpers, or misplaced model/data/performance logic?
+- What concrete types and scoped views implement the settled binding authority
+  without exposing unrestricted lookup or family anatomy?
 - How should features declare what they provide, require, and accept without
   implying that declarations automatically select or wire dependencies?
 - What is the precise trainer-facing conformance boundary that both standard
@@ -1368,6 +1380,25 @@ is recorded in
   component be hosted in the repository?
 - How should contract evolution be recorded if external strategy plugins are
   supported later?
+
+### Resolution status and next semantic block
+
+The five authoritative-binding questions are now settled at the architectural
+level:
+
+```text
+Q1 logical participant identity       settled
+Q2 execution-binding cardinality      settled
+Q3 arrangement transitions           settled
+Q4 artifact-state projection         settled
+Q5 authoritative binding ownership   settled
+```
+
+The remaining work under those questions is concrete representation and
+exchange design, not reopening their semantics. The next separate semantic
+block is optimization ownership: define the standard Trainer-owned
+optimization profile, the explicit research/extension route for unusual
+ownership, and the typed information exchanged between strategy and Trainer.
 
 ## Recommended Research Before A Formal Change
 
@@ -1476,8 +1507,9 @@ identities.
 An additional route must not remain silently authoritative after its declared
 freshness guarantee stops holding. It must become invalid, be explicitly
 allowed as stale, or be refreshed according to declared semantics. The exact
-refresh mechanism, route representation, and binding-state owner remain open
-for the concrete exchange design.
+refresh mechanism and route representation remain open for the concrete
+exchange design; their authoritative state belongs to the binding authority
+settled below.
 
 ## Settled Arrangement-Change Semantics
 
@@ -1547,8 +1579,9 @@ run transition history
 durable artifact provenance
 ```
 
-The concrete representation, storage owner, invalidation machinery, and APIs
-remain downstream design questions. They do not reopen these question 3
+The concrete representation, invalidation machinery, and APIs remain
+downstream design questions. Their canonical current-state owner is the
+binding authority settled below; those details do not reopen these question 3
 semantics.
 
 ## Settled Artifact-Persistence Semantics
@@ -1686,13 +1719,29 @@ The settled question 4 statement is:
 > actually emitted. Persistence never selects state through incidental Python
 > object identity.
 
-## Remaining Semantic Question
+## Settled Binding-Authority Ownership
 
-Question 5 must decide which object owns the canonical authoritative binding
-map, how declarations and replacements update it, and which narrow views are
-exposed to Trainer infrastructure, capabilities, metadata, and persistence.
-That storage/ownership choice remains open; the persistence semantics above do
-not decide it by implication.
+Question 5 is settled at the architectural level. The canonical current state
+belongs to one dedicated, contract-governed, per-run **binding authority**
+inside the complete Trainer-facing strategy boundary.
+
+```text
+Trainer
+  <-> complete TrainingStrategy
+         |- authored behavior and selected capabilities
+         `- dedicated binding authority
+              |- participant and relationship state
+              |- authoritative current bindings and access views
+              |- named execution routes
+              |- revisions, dependencies, and freshness
+              `- validated atomic transitions
+```
+
+The separation is one of responsibility, not another public orchestration
+axis. Trainer still receives and interacts with the complete strategy. It does
+not receive a parallel family/runtime object and does not learn the strategy's
+participant anatomy. Strategy behavior may use scoped authority interfaces,
+but arbitrary fields on strategy facets are not authoritative state.
 
 The target-first pressure models are recorded in
 [`strategy_system_inventory.md`](strategy_system_inventory.md), Milestone 10.
@@ -1701,15 +1750,43 @@ family-shaped compatibility properties, or mode-owned mutation as the target
 shape. They test a contract-governed binding authority against ordinary
 fine-tuning, deferred loading, adapter attachment, distributed preparation,
 persistence, replacement/invalidation, and a compound teacher/student research
-strategy. The scenarios narrow the semantic owner to the bound strategy
-contract scope while leaving its physical object layout open for the Q5
-decision.
+strategy. Those scenarios established the required semantics but could not, by
+construction, distinguish physical layouts that all honored the same
+semantics. The ownership decision was therefore made using responsibility
+criteria instead:
 
-## Subsequent Design Work: Concrete Exchanges
+1. one-writer transition enforcement;
+2. independent conformance testing without constructing a family strategy;
+3. separation of mutable binding state from authored behavior;
+4. an obvious one-per-run lifetime;
+5. scoped capability access rather than unrestricted lookup; and
+6. an incremental path from `LoadedModelComponent` without preserving the
+   current Trainer-owned family projections.
+
+A dedicated internal authority satisfies those criteria while preserving one
+public Trainer-to-strategy relationship. Physically placing the authority in a
+separate class does not mean Trainer receives it separately.
+
+The assumed initial execution model is one active strategy and one logical
+binding authority per Trainer run. Strategy-state transitions are accepted
+through the run's coordination boundary; distributed ranks and backend
+replicas do not become independent authorities. Failure, rollback, rank
+consistency, multi-adapter overlap, compiled routes, EMA, resume, and mid-run
+trainability changes remain important conformance pressures, but none reopens
+the ownership answer. Independently evolving EMA or teacher/student state
+continues to require distinct participant identities under questions 1–2.
+
+Concrete construction, access, transition, snapshot, and exchange APIs remain
+to be designed. In particular, the design must establish who creates the
+authority, how strategy filing seeds it, how producers submit typed transition
+results, how atomic rejection/rollback works, and which scoped projections are
+available to each consumer.
+
+## Subsequent Design Work: Concrete Exchanges And Optimization Ownership
 
 The minimum core should emerge from concrete exchanges rather than from a list
-of attractive method names. After the remaining binding-map ownership question,
-the next design milestone should define four tables.
+of attractive method names. With binding ownership settled, the next design
+milestone should define four tables.
 
 ### Binding exchange
 
@@ -1726,7 +1803,9 @@ binding their relationships, and establishing authoritative logical identity.
 It must not assume those meanings collapse into one `bind()` call.
 `LoadedModelComponent` is the current evolutionary starting point, but the
 result must preserve logical/original and prepared execution bindings
-separately.
+separately. The exchange must also define when strategy-scoped participant
+identities are assigned and how duplicate or conflicting declarations are
+rejected.
 
 ### Runtime-preparation exchange
 
@@ -1781,9 +1860,19 @@ uses diffusion timesteps.
 
 Binding and runtime preparation should be discussed together first because
 logical identity and prepared execution identity must remain coherent across
-their boundary. Once all four exchanges are defined, an OpenSpec can lock down
-the first migration for SD, SDXL, SD3, and the shared Trainer. It should not
-attempt the end-game arbitrary component catalog at the same time.
+their boundary. Optimization ownership is then the next semantic decision, not
+an implementation detail silently answered by the current Trainer. The
+standard profile is expected to keep optimizer realization, backward,
+stepping, and distributed mechanics Trainer-owned; an explicit contract
+extension must describe experiments that deliberately take over any of those
+mechanics.
+
+Once the four exchanges and optimization ownership are defined, an OpenSpec
+can lock down the migration for SD, SDXL, SD3, and the shared Trainer. Work may
+be divided into reviewable slices, but each introduced contract should carry
+the intended semantics rather than a knowingly weaker temporary design. This
+does not require implementing the end-game arbitrary component catalog at the
+same time.
 
 ## Current Direction In One View
 
@@ -1803,6 +1892,7 @@ attempt the end-game arbitrary component catalog at the same time.
                                   ▼
                    AUTHORED TRAINING STRATEGY
              explicit training intent/components/features/capabilities
+             internal per-run binding authority for accepted current state
                                   │
           authored → validated → bound → prepared
                                   │

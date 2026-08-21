@@ -11,6 +11,11 @@ The inventory supports the exploratory direction in
 recorded after each exploration milestone so the evidence and intermediate
 conclusions survive context compaction and multi-session work.
 
+This file is evidentiary rather than normative. When an intermediate
+conclusion here conflicts with the later direction document, the direction
+document records the current decision while this inventory preserves how the
+evidence was obtained.
+
 The durable tracker for this investigation is bead `sd-scripts-syv`.
 
 ## Evidence Standard
@@ -41,6 +46,11 @@ them.
 | 3. Family flows | Complete | All three families implement the same broad latent-training skeleton, with meaningful differences in payloads, objective compatibility, model invocation, representation transforms, sampling, and persistence. |
 | 4. State and placement | Complete | State is split across trainer, strategy, mode, objective, cache backends, and scoped context; several files mix component mechanics, family behavior, and run orchestration. |
 | 5. Contract seams | Complete | The current paths expose stable concern-level inputs/results, a partial but scattered compatibility matrix, and concrete conformance scenarios for the next design discussion. |
+| 6. Mode/objective classification | Complete | `TrainingMode` should dissolve; strategy declares intent while Trainer owns generic mechanics and selected capabilities provide specialized behavior through typed exchanges. |
+| 7. Logical identity and routes | Complete | Stable strategy-scoped participant identity is distinct from Python objects; materially different prepared representations use revisioned named routes with explicit freshness. |
+| 8. Arrangement transitions | Complete | Declaration, materialization, replacement, route rebinding, relationship transitions, arrangement amendment, and merge/fold have distinct semantics. |
+| 9. Artifact persistence | Complete | Persistence selects coherent semantic products through declaration/request/plan/result rather than serializing an incidental live object. |
+| 10. Binding authority | Complete | One dedicated contract-owned per-run authority lives behind the complete Trainer-facing strategy boundary; remaining work is concrete exchange design. |
 
 ## Milestone 1: Active Construction And Lifecycle
 
@@ -2012,7 +2022,7 @@ Python shape:
     deferred, state-only, executable, multiply routed, and compound
     participants without Trainer learning their anatomy.
 
-### What this does and does not resolve
+### Ownership conclusion after scenario and outside pressure review
 
 The scenarios make the ownership boundary substantially narrower:
 
@@ -2031,19 +2041,53 @@ metadata and persistence
 ```
 
 This rules out Trainer family fields, metadata storage, family-mixin attributes,
-or an unrestricted shared dictionary as the canonical owner. It points toward a
-binding authority belonging to the **bound strategy contract scope**.
+or an unrestricted shared dictionary as the canonical owner. The scenarios
+point toward a binding authority belonging to the **bound strategy contract
+scope**, but they cannot choose a physical layout: an embedded authority, a
+paired object, and a separate object can all be constructed to satisfy the same
+normal-path scenarios.
 
-It does not yet settle whether that authority is:
+The follow-up pressure review therefore used discriminating responsibility
+criteria instead of adding more ordinary topology scenarios:
 
-- physically contained by the authored strategy object after filing;
-- paired with strategy behavior in a small Trainer-facing contract object; or
-- a separate contract-owned object whose lifetime is established by strategy
-  filing and shared through narrow interfaces.
+```text
+single-writer enforceability
+independent conformance testing
+state/behavior separation
+one-per-run construction and lifetime
+scoped access discipline
+incremental migration from LoadedModelComponent
+```
 
-Those may be different object layouts for the same ownership semantics. The
-next Q5 discussion should compare them against these scenarios rather than
-reconstructing the current Trainer.
+The resulting direction is a dedicated contract-owned, per-run binding
+authority inside the complete Trainer-facing strategy boundary. Trainer still
+receives one strategy; physical separation of the authority prevents mutable
+binding state from becoming arbitrary strategy-facet fields rather than
+creating a second public object for Trainer to coordinate.
+
+Additional scenarios remain useful as conformance tests rather than ownership
+blockers:
+
+- rejected and partially failed multi-participant transitions must not expose
+  half-applied state;
+- distributed ranks and backend replicas must remain views of one logical run
+  authority rather than independent writers;
+- overlapping adapters must preserve participant and relationship identity;
+- compiled or separately materialized routes must declare freshness and refresh
+  semantics;
+- independently evolving EMA state remains a separate participant;
+- resume/restore must rebuild authoritative current state without confusing
+  durable history with live ownership; and
+- mid-run trainability or parameter surgery must explicitly invalidate affected
+  optimization and execution projections.
+
+The reviews also reinforced that migration sequencing and architectural
+semantics are separate decisions. The project does not adopt a deliberately
+reduced first-version contract such as universal invalidate-all behavior, an
+intrinsically single-route representation, or a persistence shortcut that
+discards the settled plan/result/product/member/resource meanings. Work may be
+implemented incrementally, but the interfaces introduced by each slice should
+be shaped for the intended contract.
 
 Graph evidence for the cited source paths used generation
 `2026-08-21T02:44:51Z` on branch `model-strategy-trainer`. Exact cited paths had

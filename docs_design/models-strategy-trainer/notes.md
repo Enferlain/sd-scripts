@@ -347,6 +347,57 @@ object, or a separate contract-owned authority established during filing.
 Comparing those layouts is the remaining Q5 decision; Q5 is not yet marked
 settled.
 
+## Question 5 settled after ownership review (2026-08-21)
+
+The six target-first scenarios established the required semantics but could
+not choose the physical layout because each candidate could be made to pass
+them by construction. Two outside read-only pressure reviews confirmed Q1-Q4,
+identified this limitation, and suggested deciding Q5 through ownership
+criteria rather than accumulating more normal-path scenarios.
+
+Settled result:
+
+```text
+public boundary
+  Trainer <-> complete TrainingStrategy
+
+internal contract responsibility
+  dedicated per-run binding authority
+    canonical participant/relationship/binding/route state
+    revisions, dependencies, freshness, and atomic transitions
+```
+
+“Separate authority” means a separate responsibility and likely a separately
+testable implementation object. It does **not** mean Trainer receives strategy
+and binding authority as two peer integrations. The strategy remains the one
+complete Trainer-facing object. The authority is governed inside that boundary
+so state does not fall back into arbitrary strategy-facet fields.
+
+The deciding criteria were one-writer enforcement, independent testing,
+state/behavior separation, one-per-run lifetime, scoped access, and migration
+from `LoadedModelComponent`. Concrete construction and exchange APIs remain
+open: who creates the authority, how filing seeds it, how typed transition
+results are accepted/rejected atomically, and which projections each consumer
+may access.
+
+Useful follow-up conformance pressures include failure/rollback, rank
+consistency, multi-adapter overlap, compiled routes, EMA, resume, and mid-run
+trainability/parameter surgery. These test the settled semantics; they are not
+new Q5 ownership blockers.
+
+The recommendation to implement intentionally conservative first-version
+semantics was rejected. Migration may be sliced, but introduced contracts
+should be final-shaped: named-route capacity, dependency/revision-aware
+freshness, and the settled persistence stages must not be replaced by knowingly
+temporary single-route, invalidate-all, or underspecified shortcuts. This does
+not require implementing every future feature or the end-game arbitrary
+component catalog immediately.
+
+Binding questions Q1-Q5 are now settled semantically. The next work is concrete
+binding/preparation exchanges, followed by the still-separate optimization
+ownership block: the standard Trainer-owned optimization profile, explicit
+research/extension ownership, optimization exchange, and then step exchange.
+
 ## User
 
 - versioning for contracts is probably a good idea for the long run. Contracts and trainer might need to evolve over time as more models get added, but the ideal scenario is them not having to, especially the trainer, but this is only possible to accomplish via the repo growing with new capabilites and testing said contract and trainer.
