@@ -1320,7 +1320,7 @@ This resolves the semantic cardinality question without yet choosing a
 `ComponentKey` representation, route-name vocabulary, refresh mechanism, or
 authoritative storage owner. Those belong to the binding/preparation exchange.
 
-## Milestone 8: Adapter Pressure Test For Arrangement Changes
+## Milestone 8: Adapter Pressure Test And Settled Arrangement Semantics
 
 Question 3 asks how additions, replacements, and delayed materialization alter
 the authoritative arrangement. The current adapter path is useful evidence but
@@ -1375,25 +1375,33 @@ Representative primary sources are the
 [ControlNet paper](https://arxiv.org/abs/2302.05543), and
 [T2I-Adapter paper](https://arxiv.org/abs/2302.08453).
 
-### Provisional operation taxonomy
+### Settled operation taxonomy
 
 The existing three-way distinction—execution rebinding, logical-slot
 replacement, and participant addition—is necessary but incomplete. The
-checkpointed working taxonomy is:
+settled taxonomy is:
 
 ```text
-materialize/bind a previously declared component
-rebind an execution route through runtime preparation
-replace the occupant/source of an existing semantic slot
-attach/detach/activate an effect between existing participants
+declare a participant
+materialize authoritative bound state
+replace authoritative bound state
+rebind an execution route
+transition an operational relationship
 amend the arrangement by adding or retiring a participant
-merge/fold adapter state into a host participant
+merge/fold state and record the resulting lineage
 ```
 
 These operations must not be inferred from incidental Python assignment or
 loading order. In particular, an authored external autoencoder that is selected
 before materialization is an initial binding, not a semantic replacement merely
 because an implementation happens to load an integrated VAE first.
+
+Materialization moves an absent or deferred declared participant to bound
+state. Replacement supersedes an existing authoritative binding and therefore
+has distinct retirement/supersession and fact-invalidation consequences.
+Merge/fold transforms host state using adaptation state, may retire the adapter
+from the current arrangement, and records transition and artifact provenance;
+preserving a separately usable adapter remains valid behavior.
 
 For ordinary authored adapter training, the leading direction is:
 
@@ -1412,7 +1420,40 @@ through an explicit arrangement-amendment extension that declares additions,
 relationships, capability changes, invalidated prepared routes, optimization
 plans, and caches before the amendment is accepted.
 
-### Important pressure on question 2
+### Logical identity and relationship findings
+
+A logical component represents one independently addressable semantic
+participant for which authoritative bound state is maintained, whether or not
+it is independently executable. For adapters, logical identity follows the
+unit that can be independently addressed and managed under the strategy
+contract, rather than a Python runtime object or every injected submodule.
+Shared banks, tensors, and target-local modules may remain qualified internal
+state when they share one lifecycle and persistence unit. One runtime may also
+expose multiple logical adapters when they are independently selectable,
+trainable, attachable, persistable, mergeable, or retireable.
+
+Participant identity is separate from relationship/effect identity. One
+adapter can have multiple operational relationships, and attachment,
+activation, or detachment transitions those relationships rather than creating
+or retiring the participant. Structural relationships describe the current
+arrangement; lineage relationships record history. A wrapper can alter a
+host's prepared route without acquiring the host component's semantic
+execution ownership merely by becoming the outermost callable.
+
+The independent state axes are:
+
+```text
+participant lifecycle
+  declared, bound, retired
+
+optimization status
+  selected/unselected, trainable/frozen
+
+operational relationship lifecycle
+  declared, resolved, active, inactive, detached
+```
+
+### Important qualification to question 2
 
 Adapter breadth qualifies, rather than discards, the execution-binding
 cardinality decision:
@@ -1426,8 +1467,215 @@ state-bearing component without independent execution
      without a fabricated forward route
 ```
 
-The remaining question is the logical identity unit for adapter state. The
-leading answer is one identity per independently managed state trajectory,
-training subject, and persistence unit; per-target injected modules remain
-qualified substructure unless independently managed. This needs pressure
-testing before question 3 is promoted into the settled direction.
+### Persistence views and conclusion
+
+Current authority and historical evidence must not collapse into one mutable
+container. Later persistence design must distinguish:
+
+```text
+current arrangement
+run transition history
+durable artifact provenance
+```
+
+Question 3 is settled at the semantic level. In particular, component identity
+follows semantic participant identity; componenthood does not imply
+executability; ordinary authored adapters exist before materialization;
+materialization is not addition; attachment is not component creation;
+execution preparation is not arrangement mutation; and historical provenance
+is not current bound state. Concrete representation, storage ownership,
+invalidation machinery, and APIs remain downstream design work.
+
+## Milestone 9: Artifact-Persistence Product Pressure Test
+
+Question 4 asks what persistence saves once logical identity, current bound
+state, and arrangement changes no longer follow incidental Python objects. The
+active repository paths show that there is already no single honest answer such
+as "the model object" or "the current strategy state dict." Different products
+select and assemble semantically different state.
+
+### Current Trainer boundary
+
+`Trainer.save_checkpoint()` is the common trained-artifact trigger, but it
+currently delegates the write to `TrainingMode.save_checkpoint()` and passes an
+overloaded `target_model` value. `_build_checkpoint_metadata()` also derives the
+artifact role from the mode before the physical write. The method returns no
+artifact result describing the resources that were actually emitted.
+
+The ordinary step and epoch paths establish a useful consistency boundary:
+they wait for distributed participants before the main process writes. The
+finalization path coordinates training shutdown and then performs state and
+artifact saves, although the same consistency intent is less explicit in its
+public exchange.
+
+Relevant source locations:
+
+- `library/training/runners/trainer.py:471-576`
+- `library/training/phases/training_loop.py:133-183`
+- `library/training/phases/training_loop.py:341-394`
+- `library/training/runners/trainer.py:956-968`
+
+This supports keeping lifecycle timing and the persistence boundary under
+Trainer control. It does not support mode ownership of artifact meaning or the
+assumption that one target Python object defines what must be saved.
+
+### Full-model products
+
+The current SDXL strategy unwraps the denoiser and text encoders, obtains the
+autoencoder, and passes those components into family conversion code. The
+external checkpoint is therefore assembled from several logical components and
+access views rather than serialized from the outermost prepared object.
+
+The SD3 strategy similarly unwraps several components and asks the model-domain
+serializer to produce a main MMDiT-plus-VAE checkpoint and optional CLIP-L,
+CLIP-G, and T5 sidecars. The serializer returns physical paths, not a semantic
+artifact result, and only the main resource currently receives the supplied
+metadata. That is evidence for a multi-resource product, but it does not by
+itself establish whether a particular SD3 product is complete, partial, or
+referential. Optional members and external dependencies must answer that.
+
+Relevant source locations:
+
+- `library/strategies/sdxl/checkpointing.py:49-121`
+- `library/strategies/sd3/checkpointing.py:70-120`
+- `library/models/sd3/conversion.py:32-78`
+
+### Adapter products and resume state
+
+Adapter export already makes the strongest semantic-ownership case.
+`AdapterExportIO` is distinct from the Accelerator resume hooks. LoRA export
+iterates adapter-owned method modules to assemble one adapter weight mapping.
+VeRA export combines shared projection-bank state with target-local module
+state. Neither product can be defined correctly as the state dict of one
+arbitrary wrapper or host model.
+
+The resume path has a different purpose. `accelerator.save_state()` and
+`accelerator.load_state()` preserve and restore live execution state, while
+adapter hooks narrow or supplement that state for continuation. This is a
+separate persistence contract from publishing trained adapter weights even when
+both are triggered at Trainer lifecycle boundaries.
+
+Relevant source locations:
+
+- `library/adapters/shared/state_io.py:13-113`
+- `library/adapters/methods/peft/lora/runtime.py:121-122`
+- `library/adapters/methods/peft/lora/state_dict.py:23-43`
+- `library/adapters/methods/peft/vera/runtime.py:65-136`
+- `library/adapters/methods/peft/vera/state_dict.py:78-109`
+- `library/training/checkpointing.py:45-103`
+- `library/training/checkpointing.py:324-355`
+
+### EDM2 correction
+
+`FineTuneMode` still contains a filename-based `_edm2_loss_weights` branch.
+That is residual compatibility evidence, not the active ownership model. The
+active step, epoch, and final paths call `loss_modifier.save_sidecar()`
+directly, and `EDM2LossModifier` owns that behavior. No active production caller
+was found that routes the EDM2 suffix through `Trainer.save_checkpoint()`.
+
+The active path is closer to the desired capability ownership, but it still
+names products through a suffix, returns no typed artifact result, and uses the
+generic mode-derived metadata builder. The correct conclusion is therefore not
+that EDM2 persistence is mode-owned; it is that capability-owned semantic state
+is already escaping a persistence exchange that cannot describe it properly.
+
+Relevant source locations:
+
+- `library/training/modes/finetune_mode.py:359-403`
+- `library/training/phases/training_loop.py:83-130`
+- `library/training/phases/training_loop.py:268-310`
+- `library/training/runners/trainer.py:926-954`
+- `library/losses/edm2/edm2_modifier.py:82-86`
+
+### Product pressure summary
+
+| Current product | Semantic state selected | Current packaging | Important pressure |
+| --- | --- | --- | --- |
+| SDXL checkpoint | denoiser, text encoders, autoencoder, configuration/provenance | one converted checkpoint in the common path | extraction crosses several logical components and unwrapped access views |
+| SD3 checkpoint | MMDiT, VAE, and optional text-encoder state | main resource plus optional sidecars | product/member/resource and dependency semantics cannot be inferred from file count |
+| LoRA/VeRA export | adapter-owned state, including shared and target-local substructure | adapter weight resource | semantic ownership does not follow host or wrapper object identity |
+| EDM2 sidecar | loss-modifier-owned learned state | separately named resource | capability-owned product is not described by the current mode-derived checkpoint exchange |
+| runtime resume snapshot | execution, optimizer, scheduler, progress, backend, and continuation state | Accelerator-managed state directory/resources | restoration semantics are different from trained-artifact semantics |
+
+### Settled persistence model
+
+Persistence should be described through four stages:
+
+```text
+capability declaration
+  -> persistence request
+  -> resolved artifact plan
+  -> artifact result
+```
+
+The resolved plan selects a purpose-specific **artifact state projection** by
+logical participant and relationship identity. It records semantic coverage,
+dependencies, declared semantic transformations, expected members,
+representation, packaging expectations, and consistency constraints. The
+result records the members and physical resources actually produced, including
+formats, sizes, checksums, references, and partial/failure status.
+
+The containment levels are:
+
+```text
+artifact product
+  one semantic result
+
+artifact member
+  one semantically meaningful constituent
+
+physical resource
+  file, directory, shard, blob, or remote object
+```
+
+These are not one-to-one. One member may be sharded across resources and one
+resource may encode several participants. "Bundle" describes packaging or
+cardinality; it does not prove that a product is complete or self-contained.
+
+The consistency invariant is that every product member corresponds to one
+accepted arrangement and one Trainer-established persistence boundary while
+satisfying each contributor's declared freshness relationship. This need not
+mean one universal revision number. Frozen components and external references
+can participate coherently when their dependency and freshness semantics are
+explicit.
+
+Responsibility divides as follows:
+
+```text
+strategy/product capability
+  declares supported semantic products and transformations
+
+Trainer/runtime infrastructure
+  chooses lifecycle timing, establishes the persistence boundary,
+  coordinates ranks, and obtains stable current state
+
+resolved artifact plan
+  identifies semantic coverage, dependencies, expected members,
+  representation, and constraints
+
+domain serializer
+  performs mechanical representation conversion and writes resources
+
+artifact result
+  reports what was actually emitted
+```
+
+Transformations that change coverage, dependencies, lineage, or realization
+identity—such as merge/fold, pruning, semantic quantization, or producing a
+delta—must be declared at the product/capability level. Mechanical operations
+such as key renaming, tensor-layout conversion, resolved dtype encoding,
+sharding, and embedded-metadata writing belong to the domain serializer. A
+serializer may implement the mechanics of a semantic transformation but must
+not silently choose one.
+
+Runtime resume remains a separate contract concerned with restoring execution.
+It may share Trainer-controlled timing, stable-state infrastructure, and storage
+services with artifact persistence, but the two should not be collapsed into a
+single request differentiated only by a kind enum.
+
+Question 4 is settled at the semantic level. The current API shapes,
+serialization returns, member metadata policy, failure representation, and
+asynchronous publication mechanics remain downstream implementation design.
+Question 5 still needs to determine which object owns the authoritative binding
+map from which persistence and other consumers obtain their narrow current-state
+views.

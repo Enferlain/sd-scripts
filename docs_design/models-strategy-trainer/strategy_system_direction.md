@@ -1418,7 +1418,7 @@ contract design, not another architecture comparison.
 
 ## Settled Binding Semantics
 
-The first binding questions now have provisional architectural answers strong
+The first binding questions now have settled architectural answers strong
 enough to constrain the concrete exchange design.
 
 A **logical component identity** is the stable strategy-scoped identity of one
@@ -1429,11 +1429,19 @@ precision changes, distributed wrapping, and compilation. Concurrently
 distinct participants require distinct logical identities even when they share
 an origin or initially share state.
 
-The standard core remains deliberately simple:
+A logical component represents one independently addressable semantic
+participant for which authoritative bound state is maintained, whether or not
+it is independently executable. Componenthood therefore does not imply a
+callable forward route. The standard execution-capable case remains
+deliberately simple:
 
 ```text
-logical component
+execution-capable logical component
   -> one normal authoritative prepared execution binding
+
+state-bearing component without independent execution
+  -> authoritative state/optimization/artifact bindings
+     without a fabricated execution route
 ```
 
 Selected capabilities may declare additional **named execution routes**, but
@@ -1471,11 +1479,226 @@ allowed as stale, or be refreshed according to declared semantics. The exact
 refresh mechanism, route representation, and binding-state owner remain open
 for the concrete exchange design.
 
-## Next Design Work: Concrete Exchanges
+## Settled Arrangement-Change Semantics
+
+Additions, replacements, materialization, execution preparation, and adapter
+attachment are distinct semantic operations even when one current code path
+performs several of them together. The settled taxonomy is:
+
+```text
+declare a participant
+materialize authoritative bound state
+replace authoritative bound state
+rebind an execution route
+transition an operational relationship
+amend the arrangement by adding or retiring participants
+merge/fold state and record the resulting lineage
+```
+
+Materialization moves a declared participant from absent or deferred state to
+bound state. Replacement supersedes an existing authoritative binding and must
+make the old realization, affected facts, and invalidation consequences
+explicit. Runtime preparation may rebind a route without changing the logical
+arrangement. Merge/fold transforms host state using adaptation state, may
+retire the adapter from the current arrangement, and records transition and
+artifact provenance.
+
+Ordinary adapters authored into a strategy exist as logical participants
+before runtime materialization or attachment. Materializing their state is not
+adding a participant, and establishing their effect on a host is not creating
+one. Truly dynamic additions require an explicit arrangement amendment rather
+than appearing as an incidental result of loading or Python assignment.
+
+A logical adapter identity denotes one independently addressable adaptation
+participant whose state and relationships are managed as one unit under the
+strategy contract. It does not follow Python runtime-container boundaries or
+every injected target-local module. Internal tensors, shared banks, and
+target-local modules may remain qualified substructure when they share one
+lifecycle and persistence unit; conversely, one runtime container may expose
+multiple logical participants when they are independently addressable.
+
+Participant identity and relationship identity are separate. One adapter may
+participate in multiple independently addressable effects, and activating or
+detaching an effect changes an operational relationship rather than creating
+or retiring the participant. A wrapper may change the host's execution-route
+composition, but being the outermost callable does not transfer semantic
+execution ownership from the host component to the wrapper or adapter.
+
+The state axes must remain separate:
+
+```text
+participant lifecycle
+  declared, bound, retired
+
+optimization status
+  selected/unselected, trainable/frozen
+
+operational relationship lifecycle
+  declared, resolved, active, inactive, detached
+```
+
+Historical lineage is not current bound state. Persistence must be able to
+distinguish three views without turning the live arrangement into an
+ever-growing history container:
+
+```text
+current arrangement
+run transition history
+durable artifact provenance
+```
+
+The concrete representation, storage owner, invalidation machinery, and APIs
+remain downstream design questions. They do not reopen these question 3
+semantics.
+
+## Settled Artifact-Persistence Semantics
+
+Artifact persistence does not mean calling `state_dict()` on whichever Python
+object happens to be available. It begins with a **semantic product
+declaration** that selects the participant-owned state, relationship state,
+dependencies, and declared transformations that one trained artifact is meant
+to represent. Python object identity, current wrapper nesting, and filesystem
+layout do not determine that selection.
+
+An **artifact state projection** is the purpose-specific semantic view of
+authoritative current state selected for that product. It is indexed by logical
+participant and relationship identity. Obtaining the projection may require
+prepared execution bindings, original/unwrapped access views, distributed
+gathering, capability-owned state, or source references; the projection itself
+is not required to be a new container, a copied `state_dict`, or one live
+module.
+
+The consistency rule is:
+
+> Every product member corresponds to one accepted current arrangement and one
+> Trainer-established persistence boundary, while satisfying the declared
+> freshness and consistency relationship of every contributor.
+
+This does not require every contributor to share one literal revision counter.
+A frozen autoencoder, an external base-model reference, and a freshly updated
+adapter can participate in one coherent product when their relationships and
+freshness guarantees are explicit. Trainer and runtime infrastructure establish
+the boundary and coordinate ranks; a selected capability declares any stronger
+cross-participant consistency requirement. Serialization or publication may
+continue asynchronously after a stable projection has been obtained.
+
+Persistence has four distinct stages:
+
+```text
+capability declaration
+  which artifact products and representations the strategy supports
+
+persistence request
+  which declared product Trainer asks to produce at this lifecycle point
+
+resolved artifact plan
+  participant/relationship coverage, dependencies, transformations,
+  expected members, representation, and consistency constraints
+
+artifact result
+  actual members/resources, formats, sizes, checksums, references,
+  and any partial or failed outcome
+```
+
+The plan is authoritative about intent; the result is authoritative about what
+was actually emitted. Pre-write embedded metadata can derive from the plan.
+Post-write facts such as actual resources, sizes, checksums, and final member
+status must derive from the result rather than being guessed before writing.
+
+Three containment levels must remain separate:
+
+```text
+artifact product
+  one semantic persistence result
+
+artifact member
+  one semantically meaningful constituent of that product
+
+physical resource
+  a file, directory, shard, blob, or remote object backing members
+```
+
+One member may span several shards, while one physical file may encode several
+participants. A bundle is therefore a packaging/cardinality property, not a
+claim that the product is complete or self-contained.
+
+Artifact descriptions also keep these dimensions orthogonal:
+
+```text
+semantic coverage
+  participants, state scopes, and relationships represented
+
+dependency semantics
+  standalone state, delta-over-base state, and/or external references
+
+semantic transformations
+  merge/fold, pruning, quantization-as-product, derived realization, etc.
+
+external representation
+  checkpoint, Diffusers layout, adapter weights, and other formats
+
+physical packaging
+  single resource, directory, shards, or multi-resource bundle
+
+consistency
+  accepted arrangement, boundary, and contributor freshness guarantees
+```
+
+Dependency forms should be represented as typed relationships rather than
+forced into a single mutually exclusive completeness label. For example, one
+product may contain adapter deltas, embed one auxiliary component, and refer to
+an external base model at the same time.
+
+Transformation ownership splits at the semantic boundary:
+
+```text
+strategy/product capability
+  declares transformations that change artifact meaning, dependencies,
+  coverage, lineage, or realization identity
+
+domain serializer
+  performs mechanical representation conversion such as key renaming,
+  tensor-layout conversion, resolved dtype encoding, sharding, and
+  embedded-metadata writing
+```
+
+A serializer may implement the mechanics of a semantic transformation, but it
+must not invent that transformation from incidental runtime state.
+
+Runtime resume snapshots remain a separate contract. Their purpose is to
+restore execution state—optimizers, schedulers, scalers, progress, backend
+state, and any capability continuation state—not to describe or publish the
+trained semantic product. Resume snapshots and trained artifacts may share
+Trainer-controlled timing, consistency infrastructure, and storage services,
+but should not be collapsed into one request type distinguished only by a
+`kind` field.
+
+The settled question 4 statement is:
+
+> Artifact persistence produces a declared artifact product from a coherent
+> semantic projection of authoritative current state. The product identifies
+> its participant and relationship coverage, dependencies, semantic
+> transformations, external representation, and consistency requirements.
+> Trainer and runtime infrastructure establish the persistence boundary and
+> obtain stable current state; domain serializers render that state into
+> semantic artifact members backed by one or more physical resources.
+> Successful persistence returns the post-write facts describing what was
+> actually emitted. Persistence never selects state through incidental Python
+> object identity.
+
+## Remaining Semantic Question
+
+Question 5 must decide which object owns the canonical authoritative binding
+map, how declarations and replacements update it, and which narrow views are
+exposed to Trainer infrastructure, capabilities, metadata, and persistence.
+That storage/ownership choice remains open; the persistence semantics above do
+not decide it by implication.
+
+## Subsequent Design Work: Concrete Exchanges
 
 The minimum core should emerge from concrete exchanges rather than from a list
-of attractive method names. The next design milestone should define four
-tables.
+of attractive method names. After the remaining binding-map ownership question,
+the next design milestone should define four tables.
 
 ### Binding exchange
 

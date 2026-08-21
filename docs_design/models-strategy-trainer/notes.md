@@ -148,11 +148,12 @@ storage ownership, and the full preparation plan/result API. The next question
 is how additions and replacements are represented during adapter attachment or
 deferred loading.
 
-## Question 3 adapter checkpoint (2026-08-20)
+## Question 3 settled arrangement semantics (2026-08-20)
 
 The initial addition/replacement take was pressure-tested against the current
-PEFT path and broader adapter shapes. The checkpoint is provisional rather than
-a settled direction change.
+PEFT path and broader adapter shapes. The semantic question is now settled;
+concrete representation, storage ownership, invalidation, and API design remain
+downstream.
 
 Current LoRA proves that adding adapter-owned state and attaching its effect are
 different operations: the adapter remains separately owned while selected host
@@ -161,17 +162,24 @@ identity may own shared state plus many target-local modules. Prefix-style
 state may have no independent forward route, while ControlNet/T2I-Adapter-style
 side networks are independently executable participants.
 
-Working operation taxonomy:
+Settled operation taxonomy:
 
 ```text
-declare
-materialize/bind
-execution rebind
-semantic-slot replacement
-effect attach/detach/activation
-arrangement add/retire amendment
-merge/fold transformation
+declare a participant
+materialize authoritative bound state
+replace authoritative bound state
+rebind an execution route
+transition an operational relationship
+amend the arrangement by adding or retiring participants
+merge/fold state and record the resulting lineage
 ```
+
+Materialization and replacement remain distinct. Replacement supersedes a
+current binding and carries retirement/supersession and invalidation
+consequences. Merge/fold transforms host state using adaptation state, may
+retire the adapter from the current arrangement, and records transition and
+artifact provenance; it is not inherently destructive to the separately usable
+adapter.
 
 Ordinary adapters should normally be declared by the authored strategy before
 structural validation. Target resolution and attachment then fulfill that
@@ -180,13 +188,101 @@ mutation. Dynamic participant addition remains an explicit extension whose
 result must name relationship/capability changes and invalidate affected
 prepared routes, optimization plans, and caches.
 
-Q2 is qualified so only execution-capable logical components require a normal
-prepared execution route. State-bearing adapter components may instead expose
-authoritative state, optimization, and artifact bindings.
+Q2 is qualified so a logical component represents one independently
+addressable semantic participant for which authoritative bound state is
+maintained, whether or not it is independently executable. Only
+execution-capable logical components require a normal prepared execution
+route. State-bearing adapter components may instead expose authoritative state,
+optimization, and artifact bindings.
 
-Next pressure test: whether one logical adapter identity should correspond to
-one independently managed state trajectory/training subject/persistence unit,
-with its per-target injected modules treated as qualified substructure.
+Logical adapter identity follows an independently addressable adaptation
+participant, not Python-container boundaries or every injected submodule.
+Participant identity is separate from relationship/effect identity, and an
+outermost wrapper does not acquire the host's semantic execution ownership.
+
+Keep these axes separate:
+
+```text
+participant lifecycle: declared, bound, retired
+optimization status: selected/unselected, trainable/frozen
+operational relationship lifecycle: declared, resolved, active, inactive, detached
+```
+
+Keep these persistence views separate:
+
+```text
+current arrangement
+run transition history
+durable artifact provenance
+```
+
+Settled invariants: materialization is not addition; attachment is not
+component creation; execution preparation is not arrangement mutation;
+componenthood does not imply executability; and historical provenance is not
+current bound state. Next discussion question: Q4.
+
+## Question 4 settled persistence semantics (2026-08-21)
+
+The persistence pressure test covered current SDXL and SD3 full-model saves,
+LoRA/VeRA adapter exports, EDM2 sidecars, and Accelerator resume snapshots.
+They do not serialize one universal runtime object: each product selects
+different participant-owned, relationship-owned, derived, or referenced state.
+
+Settled core statement:
+
+> Artifact persistence produces a declared artifact product from a coherent
+> semantic projection of authoritative current state. The product identifies
+> participant and relationship coverage, dependencies, semantic
+> transformations, external representation, packaging, and consistency
+> requirements. Trainer/runtime infrastructure establishes the persistence
+> boundary; domain serializers render the resolved state into semantic members
+> backed by physical resources. Persistence never selects state through
+> incidental Python object identity.
+
+Use four stages:
+
+```text
+capability declaration
+  -> persistence request
+  -> resolved artifact plan
+  -> artifact result
+```
+
+The plan describes intended semantic coverage and expected members. The result
+describes what was actually emitted, including resources, formats, sizes,
+checksums, references, and partial/failure status. Pre-write metadata may derive
+from the plan; post-write facts must derive from the result.
+
+Keep three levels separate:
+
+```text
+artifact product: one semantic result
+artifact member: one meaningful constituent
+physical resource: file, directory, shard, blob, or remote object
+```
+
+Bundle is a packaging/cardinality property, not a completeness claim. Keep
+semantic coverage, dependency semantics, transformations, representation,
+packaging, and consistency as orthogonal dimensions. A coherent product belongs
+to one accepted arrangement and one Trainer-established boundary while honoring
+the declared freshness relationship of each contributor; this need not require
+one universal revision number.
+
+Semantic transformations that affect coverage, dependencies, lineage, or
+realization identity are declared by the product/capability. Domain serializers
+own mechanical conversion and physical writing. Runtime resume snapshots remain
+a separate restoration contract even when they share Trainer timing,
+stable-state infrastructure, and storage services with artifact persistence.
+
+Repository correction: the filename-based EDM2 branch in `FineTuneMode` is
+residual. Active step, epoch, and final flows call the loss modifier's sidecar
+save directly. This supports capability-owned artifact state, while also showing
+that the current persistence exchange lacks a typed product plan/result.
+
+Q4 is settled semantically. Concrete APIs, member metadata policy, failure and
+partial-result representation, and asynchronous publication remain downstream.
+Next discussion question: Q5, ownership of the canonical authoritative binding
+map and the narrow views exposed from it.
 
 ## User
 
@@ -214,7 +310,7 @@ regardless of what we do the grab box thing will probaly be the future, at least
 
 what about using decorators instead of names like somethingsomethingfeature or somethingsomethingcomponent or whatever
 
-@feature 
+@feature
 class LatentDiffusion
 
 feels like ppl often forget they exist while they sound useful, but maybe not here, I'm not sure
