@@ -408,6 +408,33 @@ binding/preparation exchanges, followed by the still-separate optimization
 ownership block: the standard Trainer-owned optimization profile, explicit
 research/extension ownership, optimization exchange, and then step exchange.
 
+## Concrete exchange design record started (2026-08-22)
+
+Concrete downstream work now has an additive, compaction-safe home in
+`strategy_contract_exchange_design.md`. The direction document remains
+normative for the overall architecture and settled Q1-Q5 semantics; the new
+record distinguishes inherited settled inputs, working downstream decisions,
+and open exchange questions rather than rewriting the accumulated direction,
+inventory, or chronological discussion.
+
+The first working entries preserve the authored-strategy boundary while giving
+run-time identity a concrete purpose: an authored semantic participant address
+is established as one authority-scoped declaration incarnation; revisions then
+describe changes to its binding, relationships, and routes. Retirement closes
+that incarnation to current operations without erasing history/provenance
+meaning. Replacement preserves identity only while the authored participant
+meaning remains fulfilled. A whole-authority snapshot is the conservative
+default freshness dependency, while participant/relationship/route revisions
+remain the finer authoritative facts.
+
+The runtime-preparation draft also records a semantic failure invariant rather
+than prematurely choosing a lease or `preparing` state: an operation permitted
+to mutate an authoritative realization in place must withdraw affected
+freshness guarantees before mutation, and failure cannot silently restore them.
+Prepared execution routes, Trainer-owned optimization runtime, and backend
+coordination handles remain separate outputs even when one backend call
+produces all three.
+
 ## User
 
 - versioning for contracts is probably a good idea for the long run. Contracts and trainer might need to evolve over time as more models get added, but the ideal scenario is them not having to, especially the trainer, but this is only possible to accomplish via the repo growing with new capabilites and testing said contract and trainer.

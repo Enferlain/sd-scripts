@@ -1786,6 +1786,11 @@ The minimum core should emerge from concrete exchanges rather than from a list
 of attractive method names. With binding ownership settled, the next design
 milestone should define four tables.
 
+The evolving downstream design for those tables is recorded in
+[`strategy_contract_exchange_design.md`](strategy_contract_exchange_design.md).
+That record must preserve the Q1-Q5 semantics settled here while distinguishing
+working concrete choices from accepted exchange requirements.
+
 ### Binding exchange
 
 ```text
