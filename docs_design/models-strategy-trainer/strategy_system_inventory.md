@@ -2081,13 +2081,7 @@ blockers:
 - mid-run trainability or parameter surgery must explicitly invalidate affected
   optimization and execution projections.
 
-The reviews also reinforced that migration sequencing and architectural
-semantics are separate decisions. The project does not adopt a deliberately
-reduced first-version contract such as universal invalidate-all behavior, an
-intrinsically single-route representation, or a persistence shortcut that
-discards the settled plan/result/product/member/resource meanings. Work may be
-implemented incrementally, but the interfaces introduced by each slice should
-be shaped for the intended contract.
+The reviews also reinforced that migration sequencing and architectural semantics are separate decisions. A conservative implementation policy is not automatically a reduced contract. For example, explicitly invalidating every derived projection after an accepted binding-affecting transition is correct, though less precise than dependency-targeted invalidation. Likewise, current strategies may initially file only a normal execution route and current artifact products may be migrated before hypothetical ones. The contract is weakened only if its types and transitions discard the settled route, revision, freshness, or persistence declaration/request/plan/result and product/member/resource meanings and force later callers to infer them again.
 
 Graph evidence for the cited source paths used generation
 `2026-08-21T02:44:51Z` on branch `model-strategy-trainer`. Exact cited paths had

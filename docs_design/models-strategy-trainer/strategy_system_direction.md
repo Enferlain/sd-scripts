@@ -1321,10 +1321,7 @@ is recorded in
   while defining the repository-specific contract.
 - Require any future dependency, vendoring, or subsystem-adoption proposal to
   preserve repository design control and justify its ongoing maintenance cost.
-- Allow implementation and migration to proceed in bounded slices without
-  deliberately weakening the settled semantics. A staged migration must not
-  introduce disposable one-route, invalidate-everything, or underspecified
-  persistence contracts merely because they are called a first version.
+- Allow implementation and migration to proceed in bounded slices while keeping introduced types, invariants, and accepted transitions compatible with the settled architecture. Conservative policies are valid when they are explicit and correct: invalidating every derived projection after an accepted binding-affecting transition may be less precise without weakening the contract. What is not acceptable is discarding participant identity, revisions, freshness, the ability to represent named routes, or persistence meaning and relying on callers to reconstruct them later.
 
 ### Current leanings that still need pressure testing
 
@@ -1780,7 +1777,8 @@ Concrete construction, access, transition, snapshot, and exchange APIs remain
 to be designed. In particular, the design must establish who creates the
 authority, how strategy filing seeds it, how producers submit typed transition
 results, how atomic rejection/rollback works, and which scoped projections are
-available to each consumer.
+available to each consumer. It must also define the default freshness behavior
+when a producer declares no stronger guarantee.
 
 ## Subsequent Design Work: Concrete Exchanges And Optimization Ownership
 
@@ -1805,7 +1803,9 @@ It must not assume those meanings collapse into one `bind()` call.
 result must preserve logical/original and prepared execution bindings
 separately. The exchange must also define when strategy-scoped participant
 identities are assigned and how duplicate or conflicting declarations are
-rejected.
+rejected. It must state when replacement preserves one participant's identity
+and lineage, versus when semantic incompatibility requires retiring that
+participant and declaring another.
 
 ### Runtime-preparation exchange
 
@@ -1870,9 +1870,12 @@ mechanics.
 Once the four exchanges and optimization ownership are defined, an OpenSpec
 can lock down the migration for SD, SDXL, SD3, and the shared Trainer. Work may
 be divided into reviewable slices, but each introduced contract should carry
-the intended semantics rather than a knowingly weaker temporary design. This
-does not require implementing the end-game arbitrary component catalog at the
-same time.
+the intended semantics rather than a knowingly incompatible temporary design.
+An implementation may initially use only the normal execution route, cover
+only current artifact products, or conservatively invalidate more projections
+than strictly necessary, provided the contract still represents routes,
+product meaning, revisions, and freshness correctly. This does not require
+implementing the end-game arbitrary component catalog at the same time.
 
 ## Current Direction In One View
 

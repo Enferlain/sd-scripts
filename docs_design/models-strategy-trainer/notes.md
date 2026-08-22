@@ -385,13 +385,23 @@ consistency, multi-adapter overlap, compiled routes, EMA, resume, and mid-run
 trainability/parameter surgery. These test the settled semantics; they are not
 new Q5 ownership blockers.
 
-The recommendation to implement intentionally conservative first-version
-semantics was rejected. Migration may be sliced, but introduced contracts
-should be final-shaped: named-route capacity, dependency/revision-aware
-freshness, and the settled persistence stages must not be replaced by knowingly
-temporary single-route, invalidate-all, or underspecified shortcuts. This does
-not require implementing every future feature or the end-game arbitrary
-component catalog immediately.
+The initial reaction rejected the recommendation for conservative initial
+behavior too categorically. Re-reading the original reviews clarified
+the important distinction: migration may be sliced and implementation policy
+may be conservative, but the introduced contract must remain compatible with
+the settled architecture. Explicitly invalidating every derived projection may be a correct initial implementation of the freshness rules, but it is deliberately imprecise; revisions and freshness remain the authoritative contract semantics.
+Current strategies may initially file only the normal route, and current
+artifact products may be migrated first, while the types still preserve
+support for named routes and declaration/request/plan/result plus
+product/member/resource meaning. What remains rejected is a temporary contract
+that discards those meanings or leaves stale-state correctness to caller
+convention.
+
+The binding exchange must additionally settle when participant identities are
+assigned, when replacement preserves one participant versus requiring
+retirement and a new declaration, and what default freshness semantics apply
+when a route, access view, or derived projection declares no stronger
+guarantee.
 
 Binding questions Q1-Q5 are now settled semantically. The next work is concrete
 binding/preparation exchanges, followed by the still-separate optimization
