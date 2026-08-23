@@ -117,6 +117,8 @@ describe one interchangeable concept.
 | Current value | Concern it serves today | Meaning to preserve | Meaning it must not acquire |
 | --- | --- | --- | --- |
 | [`LoadedModelComponentSpec`](../../library/models/components.py) | family-declared top-level model-component surface | stable family-local key plus declared descriptive roles/capabilities | complete training-participant declaration or universal family-shaped anatomy |
+| `LoadedModelComponent` | associates one declared component surface with a live object, currently typed as `Any` | a producer must be able to expose the concrete live candidate it built | proof that the object fulfills participant semantics, an accepted authority binding, or a prepared route |
+| `ModelLoadingStrategy.load_target_model()` | explicitly produces the current family component collection, including `None` for deferred modules | strategy-owned production of deliberately declared candidates | an untyped tuple becoming the atomic materialization/replacement protocol |
 | SD/SDXL/SD3 `LOADED_MODEL_COMPONENT_SPECS` | known family component order and public labels | authored, deterministic declarations rather than inferred runtime topology | proof that every strategy has text encoders, one VAE, and one denoiser |
 | `ModelRealizationFacts` / `RealizedModelComponentFacts` | durable metadata observation of one run realization and its declared components | qualified durable identities and presence/declaration facts for observation and provenance | live binding authority or source of runtime participant identity |
 | `OptimizationTargetRef` | optimization-owned reference to one selected component/root/module/parameter-like target | component-qualified substructure, selector provenance, and live-object access for a bounded consumer | logical participant identity, canonical binding, or durable metadata identity |
@@ -161,10 +163,11 @@ participant-qualified substructure/target reference
 training-subject and optimization selection
 ```
 
-`ParticipantDeclaration` should contain only the authored semantic and
-lifecycle obligations needed to establish the arrangement and govern later
-transitions. The other concerns must refer to the accepted participant rather
-than be copied wholesale into its identity record.
+`ParticipantDeclaration` should contain only the authored semantic obligations
+needed to establish the participant and govern later identity-preserving
+transitions. Lifecycle/readiness constraints and the other concerns must refer
+to the accepted participant rather than be copied wholesale into its identity
+record.
 
 ### Scenario pressure test: what a declaration must actually distinguish
 
@@ -193,17 +196,24 @@ This comparison rules out several tempting shortcuts:
 
 ### WORKING DECISION: minimum participant declaration meanings
 
-The current minimum declaration has three semantic parts:
+The current minimum declaration has two semantic parts:
 
 ```text
 ParticipantDeclaration
   authored key/address
   explicitly wired semantic compatibility filing
-  declared execution-route requirements (possibly empty)
 ```
 
 The **authored key** addresses the participant within the strategy filing. The
 authority-established reference identifies its accepted run incarnation.
+
+A key is an address, not a role classification. Human-readable segments may
+contain role-like words, but those words have no identity authority:
+`student.denoiser` and `teacher.denoiser` are distinct addresses even when both
+use the same denoiser/predictor role and semantic compatibility filing. The
+current `LoadedModelComponentSpec` convention in which `key="denoiser"` and
+`roles=("denoiser",)` coincide is useful migration evidence, not target
+semantics.
 
 The **semantic compatibility filing** identifies the authored, versioned rules
 that candidate materializations and identity-preserving replacements must
@@ -212,11 +222,59 @@ is not selected through a central role enum, inferred from a Python module, or
 assembled by an automatic resolver. Several participants may use the same
 filing without sharing identity.
 
+Here, **filing** uses the direction document's contract vocabulary. It does not
+mean a file on disk, metadata record, global registry entry, configuration
+fragment, or separately selected runtime plugin. It means the authored
+strategy has explicitly supplied its answer for one contract concern:
+
+> What must proposed bound state satisfy to count as a valid realization of
+> this already-declared participant, and what must remain true for a
+> replacement to preserve that participant's identity?
+
+Conceptually, the filing combines two things whose final Python representation
+may remain separate:
+
+```text
+typed semantic requirements/claims
+  stable, inspectable meaning and compatibility constraints
+
+explicitly wired validation behavior
+  checks a concrete materialization or replacement and returns a typed
+  fulfillment/compatibility result
+```
+
+For example, the filing for `model.denoiser` in one SDXL strategy might state
+that proposed state must fulfill the predictor/input/output behavior used by
+that strategy, support the access meanings needed by its selected training and
+persistence behavior, and satisfy applicable structural or precision
+constraints. It does not require the candidate to have one universal
+`DENOISER` enum value or one Python class. A different implementation may be
+accepted if the explicitly authored strategy behavior can validate and use it.
+
+An injected adapter participant may instead file requirements for independently
+managed adaptation state, target/effect compatibility, and the access meanings
+needed for optimization and artifact persistence, while declaring no
+independent execution route. Teacher and student participants may reuse the
+same predictor compatibility filing but retain different keys and references;
+the filing describes compatible meaning, not identity.
+
+Not every semantic fact can or should be proven by generic runtime reflection.
+The filing may combine centrally testable structural facts, capability- or
+feature-specific checks, and authored assertions covered by strategy
+conformance tests. The binding authority enforces that the explicitly wired
+filing produced an applicable typed acceptance result. It does not itself learn
+what a denoiser, teacher, adapter, VAE, or future research component means.
+
+This boundary is needed because neither a label such as `denoiser`, Python
+protocol/method presence alone, nor class identity can answer whether a new
+realization preserves the participant semantics of this particular authored
+strategy.
+
 The filing must provide or authorize enough validation to answer:
 
 1. whether proposed bound state fulfills this participant's declared meaning;
 2. whether replacement state preserves that meaning;
-3. which execution routes and access-view meanings are permitted;
+3. which bound-state and access-view meanings are permitted;
 4. which participant/relationship constraints require revalidation; and
 5. which limitations or unfulfilled obligations must be reported rather than
    guessed by the authority.
@@ -228,16 +286,168 @@ same Trainer-facing boundary. The authority enforces that the applicable
 filing validated a transition; it does not rediscover model semantics from
 roles or object types.
 
-The **execution-route declarations** state whether the participant needs no
-independent route, the standard normal route, or additional capability-owned
-named routes. A route declaration defines an accepted route meaning and its
-preparation/freshness obligations; it does not contain the prepared callable.
-
 The exact Python representation remains open. In particular, a semantic
 compatibility filing might ultimately be a typed contract value paired with
 explicitly wired validator behavior rather than one callback stored in an
 otherwise passive dataclass. The semantics above should be settled before
 choosing that mechanism.
+
+### WORKING DECISION: compatibility evidence is proposal-scoped
+
+Current loading proves that the strategy must be able to return a live object,
+but `LoadedModelComponent.module: Any`, copied role/capability strings, and an
+optional `None` do not prove semantic compatibility. Metadata realization facts
+are durable observations after loading; optimization and adapter target refs
+are consumer-local projections. None of those types supplies the missing
+acceptance boundary.
+
+The compatibility exchange should instead have this semantic shape:
+
+```text
+SemanticCompatibilityFiling[CandidateEvidence]
+  authored filing identity and version
+  inspectable semantic requirements/claims
+  explicitly assembled validation behavior
+
+CandidateBindingProposal[CandidateEvidence]
+  target ParticipantRef
+  transition kind: materialize | replace
+  authority-recognized proposal identity
+  expected participant/dependency revisions
+  concrete live candidate
+  filing-specific typed candidate evidence
+
+CompatibilityEvaluationContext
+  accepted participant declaration and current filing version
+  exact proposal identity
+  prior accepted binding view when replacing
+  scoped current participant/relationship dependencies
+
+CompatibilityAssessment
+  filing identity and version actually applied
+  exact proposal, participant, candidate, and transition assessed
+  dependency revisions observed
+  named requirement/clause outcomes
+  fulfilled semantic and access meanings
+  limitations, failures, and required revalidation
+  accept | reject
+```
+
+These are semantic names, not final class names. The small common proposal
+envelope carries authority coordination. `CandidateEvidence` belongs to the
+explicitly wired filing and may differ between predictor, adapter, VAE, or
+research participants. It must not become a universal union of model kinds or
+an unrestricted `dict[str, Any]` whose undocumented keys recreate the present
+contract problem.
+
+The concrete live candidate is not itself the evidence. Producer-supplied facts
+may cover meanings that are unsafe or impossible to rediscover generically;
+validator observations may verify structural or behavioral facts; the scoped
+authority context supplies current cross-participant facts. Source/provenance
+may be included when one filing genuinely constrains it, but source identity
+does not define participant identity.
+
+For materialization, the prior binding view is absent because the participant
+is declared and unbound. A deferred component therefore supplies no fake
+`None` realization for validation; it remains unbound until a concrete
+proposal exists. For replacement, the request includes the prior accepted
+binding and exact revision so the filing can check both fulfillment of the
+declaration and any continuity requirement that depends on the former
+realization.
+
+### WORKING DECISION: the authority invokes validation and owns acceptance
+
+The proposer supplies the candidate and the filing-specific evidence, but it
+does not choose the applicable validator or submit a reusable bare Boolean
+compatibility claim. The binding authority resolves the already accepted
+filing from the target participant declaration and invokes its explicitly
+wired behavior.
+
+```text
+producer proposes candidate
+  -> authority resolves the participant's accepted filing
+  -> filing evaluates the exact proposal against a scoped current context
+  -> authority verifies that the assessment still matches current revisions
+  -> authority atomically accepts or rejects the binding transition
+```
+
+An accepting assessment is bound to the exact proposal identity, participant
+reference, transition kind, filing version, candidate, and observed dependency
+revisions. It is single-use evidence inside that authority transition, not a
+portable certificate that another candidate or later snapshot may reuse.
+
+The assessment is also not the materialization/replacement result. It answers
+the strategy-owned semantic question. Only the authority may install the
+candidate, advance binding revisions, invalidate dependents, and return the
+accepted transition result. A rejection or validator failure makes no
+authority state change. Candidate construction may already have external cost,
+and validation may perform explicitly declared bounded probes on the
+unaccepted candidate, but validation must not mutate accepted authority state
+or current accepted realizations.
+
+### WORKING DECISION: validation composition is authored, not discovered
+
+A maintained strategy may reuse core, feature, and family-specific validation
+clauses, while a research strategy may supply a custom clause or filing. The
+composition point remains strategy authoring:
+
+```text
+strategy definition
+  explicitly selects and composes named, versioned clauses
+  files their combined requirements and validation behavior
+
+binding authority
+  invokes exactly that accepted composition
+  does not search for validators or infer clauses from roles/types
+```
+
+Each filed clause has an inspectable identity, applicability/requirement
+meaning, and typed outcome. Any condition is authored in the filing rather
+than inferred by the authority. Every applicable required clause must be
+satisfied; absence, rejection, insufficient evidence, and validator failure
+remain distinguishable outcomes. The final Python representation may use a
+generic protocol, typed callable/value pairing, or another explicit mechanism,
+but it must preserve this authored composition and its per-clause evidence.
+
+The four declaration scenarios now exercise the exchange as follows:
+
+| Scenario | Candidate evidence pressure | Assessment identity pressure |
+| --- | --- | --- |
+| ordinary SDXL denoiser | a typed SDXL predictor realization exposes the live candidate plus the predictor/input/output, access, structure, and precision evidence required by that filing | acceptance applies only to this participant and proposal, not every object with a denoiser role |
+| deferred SD3 denoiser | declaration remains unbound until a concrete SD3 candidate and its evidence are proposed | delayed timing changes neither the filing nor participant identity |
+| injected adapter | adapter-managed state and target/effect evidence may be validated without inventing an independent callable route | an assessment for adapter state cannot be reused for each injected target-local module |
+| teacher and student | both proposals may use the same predictor evidence type and filing | distinct participant/proposal identities produce distinct assessments even when source and semantics match |
+
+This closes the conceptual compatibility-filing boundary while deliberately
+leaving the exact Python generic/protocol shape for the binding-exchange API
+design.
+
+### WORKING DECISION: execution requirements are associated declarations
+
+Execution requirements are separately authored declarations referring to a
+participant key rather than fields that make the participant declaration grow
+with every capability:
+
+```text
+ParticipantDeclaration
+  this meaningful participant exists
+
+ExecutionRouteDeclaration
+  this participant must support this named execution meaning
+```
+
+Zero route declarations means the participant has no independent execution
+route. The standard core may file the normal route for an execution-capable
+participant, while a selected capability may file an additional materially
+different route. A route declaration defines its accepted callable meaning,
+preparation constraints, and freshness obligations; it does not contain the
+prepared callable.
+
+Separating the route declaration also allows arrangement/capability evolution
+to add or retire a route requirement without silently redefining participant
+identity. Route identity remains the participant reference plus authored route
+key unless later evidence requires another incarnation layer; each such pair
+still has one authoritative current binding and its own route revision.
 
 ### WORKING DECISION: readiness is a separate constraint over declarations
 
@@ -271,6 +481,38 @@ lifecycle are independent from both endpoint identities. Presentation labels,
 source/realization facts, current binding state, trainability, optimizer
 selection, and artifact products likewise remain separate projections or
 filings referring to the accepted participant.
+
+### WORKING DECISION: authored relationship addresses establish run identities
+
+The settled direction already requires participant identity and relationship
+identity to remain separate. An adapter may have several independently
+addressable effects, and each relationship may transition through
+declared/resolved/active/inactive/detached state without creating, replacing,
+or retiring either endpoint.
+
+The concrete working split is therefore:
+
+```text
+RelationshipKey
+  authored address of one semantic relationship in the strategy filing
+
+RelationshipRef
+  identity of that accepted relationship incarnation in one run authority
+
+relationship revision
+  changing endpoint-resolution and operational state of that reference
+```
+
+`RelationshipDeclaration` refers to authored participant keys, states the
+semantic relationship filing, and receives its run-scoped endpoint references
+during establishment. The reference is justified by independently evolving
+relationship state and history, not merely by symmetry with `ParticipantRef`.
+It also avoids treating endpoint pair plus relationship kind as identity when
+parallel independently addressable effects are valid.
+
+The exact Python representation need not match `ParticipantRef`. Retirement
+closes a relationship reference to current transitions while preserving its
+run-history and artifact-provenance meaning.
 
 ### WORKING DECISION: authored keys and authority-established references
 
@@ -335,7 +577,8 @@ resolved.
 
 ```text
 derived projection P resolved from authority snapshot R17
-  -> any later binding-affecting accepted transition produces R18
+  -> any accepted transition changing snapshot-visible authority state
+     produces R18
   -> P is stale unless it declared a more precise valid dependency set
 ```
 
@@ -367,7 +610,7 @@ Binding is a family of typed transitions rather than one `bind()` call.
 | Operation | Principal inputs | Accepted result | Canonical state effect |
 | --- | --- | --- | --- |
 | establish authored arrangement | strategy filing, participant declarations, relationship declarations, contract/version context | participant/relationship references, initial arrangement and snapshot revisions | creates the run authority's initial declared current arrangement |
-| materialize participant state | participant reference, expected revision, bound-state proposal, source/realization facts, access-view proposals | accepted binding revision, current lifecycle state, invalidation outcome | moves a declared participant from unbound/deferred to bound |
+| materialize participant state | participant reference, expected revision, bound-state proposal, source/realization facts, access-view proposals | accepted binding revision, current lifecycle state, invalidation outcome | moves a declared participant from unbound to bound |
 | replace participant state | participant reference, expected binding revision, replacement realization, supersession/lineage facts, compatibility evidence | same reference with a new binding revision, or rejection requiring amendment | supersedes authoritative state without silently changing participant meaning |
 | transition relationship | relationship reference, expected revision, requested operational state, resolved endpoints/effect facts | new relationship revision and invalidation outcome | changes declared/resolved/active/inactive/detached state independently from participant lifecycle |
 | amend arrangement | expected arrangement revision, explicit additions/retirements, relationship and capability consequences | new references where applicable, retirement results, new arrangement revision and invalidations | changes which semantic participants belong to the current arrangement |
@@ -384,8 +627,8 @@ The establishment input must include at least:
 - participant declarations keyed by authored semantic address;
 - explicitly wired semantic compatibility filings relevant to materialization
   and identity-preserving replacement;
-- declared execution-route requirements, which may be empty for state-only
-  participants;
+- execution-route declarations associated with participant keys, which may be
+  absent for state-only participants;
 - relationship declarations with typed endpoints and intended lifecycle; and
 - fulfillment/readiness constraints imposed by the core and selected
   capabilities without making those constraints participant identity.
@@ -572,6 +815,13 @@ A backend composite spanning several participants does not erase their
 logical identities and does not automatically become another model
 participant or the normal route of any one participant.
 
+Optimizer and scheduler entries remain backend-pressure placeholders here.
+This section settles only that jointly prepared optimization objects do not
+belong to the binding authority and may need to participate in one backend
+operation. Their exact request/result types, construction point, and
+publication owner remain subordinate to the later optimization-ownership and
+optimization-exchange design.
+
 ### Rebinding guarantee
 
 Prepared execution objects are not authoritative merely because a backend
@@ -606,6 +856,34 @@ derived views, not only to a callable route.
 For replacement-only preparation that cannot mutate the authoritative input,
 failure may leave the old route valid because the uncommitted prepared result
 is merely discarded.
+
+### WORKING DECISION: mutating preparation needs a coordination identity
+
+The mutation invariant exposes a self-invalidating sequence:
+
+```text
+preparation is resolved from snapshot R17
+  -> authority withdraws affected guarantees before mutation
+  -> snapshot-visible state becomes R18
+  -> backend result cannot be accepted merely by asserting R17 is still current
+```
+
+Therefore an in-place-capable preparation attempt needs an authority-recognized
+coordination identity distinct from the source snapshot alone. That identity
+must retain:
+
+- the exact source snapshot or fine-grained dependency revisions used to
+  resolve the plan;
+- the accepted authority transition that withdrew affected guarantees;
+- the participant/routes/views the attempt is authorized to replace or
+  re-establish; and
+- the current state against which success or failure is finalized.
+
+This is a semantic requirement, not yet a choice of mechanism or name. A
+lease, attempt reference, staged transition, or another representation may
+fulfill it. Replacement-only preparation can remain a simpler optimistic
+result against unchanged source dependencies because it does not invalidate
+its own basis before external work.
 
 ### Preparation failure classes
 
@@ -711,8 +989,17 @@ modification/backward are not automatically the same result field.
 | EX-004 | working | an authority snapshot is the conservative default freshness dependency; fine-grained revisions remain fundamental |
 | EX-005 | working | in-place mutation requires affected freshness guarantees to be withdrawn before mutation and not silently restored after failure |
 | EX-006 | working | prepared routes, optimization runtime, and backend coordination handles have separate owners even when produced by one backend call |
-| EX-007 | working | a participant declaration minimally combines an authored key, explicitly wired semantic compatibility filing, and zero or more execution-route declarations |
+| EX-007 | working | a participant declaration minimally combines an authored key and explicitly wired semantic compatibility filing |
 | EX-008 | working | materialization/readiness requirements are separate fulfillment constraints over participant, relationship, and route state rather than participant identity fields |
+| EX-009 | working | execution-route requirements are separate authored declarations associated with participants; zero declarations means no independent execution route |
+| EX-010 | working | authored relationship addresses establish run-scoped relationship references because operational relationship state and history evolve independently from endpoint identities |
+| EX-011 | working | in-place-capable preparation requires an authority-recognized coordination identity distinct from its source snapshot so pre-mutation invalidation does not invalidate its own completion basis |
+| EX-012 | working | role labels and role-like key segments never establish participant identity; identity comes from the complete authored address and its authority-established run incarnation |
+| EX-013 | working | compatibility validation uses a small common transition envelope plus filing-specific typed candidate evidence rather than a universal participant-kind taxonomy or untyped fact dictionary |
+| EX-014 | working | the binding authority invokes the semantic compatibility filing already accepted for the target participant; a proposer cannot choose the validator or submit a bare compatibility claim |
+| EX-015 | working | a compatibility assessment is single-use evidence scoped to the exact proposal, participant reference, transition kind, candidate, filing version, and dependency revisions |
+| EX-016 | working | compatibility assessment and authority transition result remain distinct; only the authority installs accepted state, advances revisions, and invalidates dependents |
+| EX-017 | working | reusable and custom validation clauses are composed explicitly during strategy authoring and retain named typed outcomes; the authority performs no validator discovery or role/type inference |
 
 No working entry becomes an OpenSpec requirement merely because it appears in
 this table. Discussion should either accept it, refine it, or mark it
@@ -720,9 +1007,9 @@ superseded while preserving the reason.
 
 ## Open Question Register
 
-1. What exact typed representation pairs semantic compatibility facts with the
-   explicitly wired validation behavior that authorizes materialization and
-   identity-preserving replacement?
+1. What exact Python generic/protocol representation preserves the recorded
+   proposal-scoped candidate evidence, explicit authored clause composition,
+   and non-transferable assessment semantics?
 2. Who constructs the authority, and at which strategy filing/validation
    boundary is the authored arrangement established?
 3. What is the durable projection of `ParticipantRef`, distinct from its live
@@ -736,30 +1023,36 @@ superseded while preserving the reason.
    participant-plus-relationship transitions?
 7. What scoped read projections may Trainer, strategy features, capabilities,
    observability, and persistence request?
-8. How is preparation coordinated when external work may mutate live objects
-   or jointly prepare model and optimization state?
+8. What exact attempt/transition protocol coordinates in-place preparation
+   after affected guarantees are withdrawn, while replacement-only preparation
+   retains a simpler optimistic path?
 9. What publication/recovery rule prevents authority routes and Trainer-owned
    runtime from diverging after preparation?
 10. How do ranks agree on one accepted transition while replicas remain
     backend views rather than independent authorities?
+11. What exact optimization request/result joins backend preparation without
+    letting this exchange decide optimizer construction or ownership early?
+12. How may a participant's filed semantic rules evolve during one run: only
+    through arrangement amendment/new incarnation, or through an explicitly
+    versioned revalidation transition?
 
 ## Immediate Discussion Order
 
 Continue concrete design in this order:
 
-1. confirm or refine EX-001 through EX-003 and EX-007 through EX-008;
-2. define the semantic compatibility filing boundary without selecting a
-   universal participant-kind taxonomy or automatic resolver;
-3. define authority construction and initial arrangement establishment;
-4. define materialization/replacement proposal and result types;
-5. define scoped snapshots/access views and default freshness application;
-6. define the preparation projection/plan;
-7. define backend result acceptance, mutation failure, and publication
+1. confirm or refine EX-001 through EX-003 and EX-007 through EX-017; the
+   conceptual semantic-compatibility boundary is now drafted;
+2. define authority construction and initial arrangement establishment;
+3. complete the materialization/replacement proposal and authority-result
+   types around the proposal-scoped compatibility assessment;
+4. define scoped snapshots/access views and default freshness application;
+5. define the preparation projection/plan;
+6. define backend result acceptance, mutation failure, and publication
    coordination;
-8. pressure-test the complete binding/preparation exchange against the six
+7. pressure-test the complete binding/preparation exchange against the six
    target-first scenarios plus current fine-tune and adapter paths;
-9. proceed to optimization ownership and the optimization exchange; and
-10. define the step exchange and only then draft the governing OpenSpec.
+8. proceed to optimization ownership and the optimization exchange; and
+9. define the step exchange and only then draft the governing OpenSpec.
 
 ## Compaction Handoff
 

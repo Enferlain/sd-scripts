@@ -435,6 +435,106 @@ Prepared execution routes, Trainer-owned optimization runtime, and backend
 coordination handles remain separate outputs even when one backend call
 produces all three.
 
+## External review refinements to the first exchange draft (2026-08-22)
+
+Two outside read-only reactions agreed with the key/reference split,
+replacement rule, readiness separation, conservative freshness policy, and
+runtime-preparation ownership split. They also exposed several useful concrete
+refinements, which were reconciled against the settled direction rather than
+accepted automatically.
+
+Execution-route requirements are now separate declarations associated with a
+participant instead of fields inside `ParticipantDeclaration`. This keeps the
+participant declaration limited to its authored address and semantic
+compatibility filing, lets zero routes express a state-only participant, and
+allows selected capabilities to add materially different route requirements
+without redefining participant identity. Materialization moves an unbound
+participant to bound; `deferred` describes why remaining unbound is currently
+allowed under a readiness constraint, not another binding state.
+
+Relationship identity is now an explicit working decision rather than an
+implicit `RelationshipRef` vocabulary choice. Independently evolving
+operational state, multiple effects from one adapter, parallel effects over the
+same endpoints, history, and persistence projections justify authored
+relationship addresses being established as run-scoped relationship
+references. Their exact Python representation need not copy participant
+references.
+
+The coarse freshness fallback now advances for any accepted transition that
+changes snapshot-visible authority state, including relationship and route
+changes, rather than only participant-binding changes. The external review
+also identified that pre-mutation invalidation changes authority state after a
+preparation plan was resolved. An in-place-capable attempt therefore needs a
+coordination identity distinct from its source snapshot so it can retain the
+accepted basis and pre-mutation withdrawal transition through success or
+failure. The exact lease/attempt/staged-transition mechanism remains open.
+
+Finally, optimizer/scheduler entries in preparation remain evidence that one
+backend may need joint preparation, not an early decision about optimization
+construction or request/result types. Those stay subordinate to the separate
+optimization-ownership design.
+
+## Candidate compatibility validation boundary drafted (2026-08-23)
+
+The apparently open semantic-compatibility topic was re-read against the
+exchange record. Much of its conceptual boundary was already recorded:
+authored/versioned requirements plus explicitly wired validation behavior,
+strategy-authored composition rather than discovery, typed acceptance, and no
+universal role/type taxonomy. The remaining problem was narrowed from
+inventing that boundary to making its candidate-validation exchange concrete.
+
+Task-directed code inspection reinforced the distinction. The current
+`LoadedModelComponent` associates a family declaration with `module: Any`;
+`ModelLoadingStrategy.load_target_model()` returns those live objects in a
+tuple and represents deferred state with `None`. Those are useful producer
+surfaces but provide no semantic acceptance evidence or atomic authority
+transition. `RealizedModelComponentFacts` is durable observation/provenance,
+while `OptimizationTargetRef` and `AdapterResolvedTarget` are bounded consumer
+projections. None should be promoted into the new compatibility authority.
+The current graph generation was `2026-08-22T20:50:39Z`; all six inspected
+source paths had matching metadata and no recorded coverage issue, subject to
+the normal best-effort caveat.
+
+The working exchange now separates:
+
+```text
+explicit authored compatibility filing
+  filing identity/version + requirements + composed validation behavior
+
+candidate binding proposal
+  participant/transition/proposal identity + expected revisions
+  live candidate + filing-specific typed evidence
+
+compatibility assessment
+  exact filing/proposal/candidate/dependencies assessed
+  named clause outcomes + fulfilled meanings/limitations + accept/reject
+
+authority transition result
+  accepted binding/revision/invalidation state, or structured rejection
+```
+
+The common proposal envelope coordinates the authority; candidate evidence
+remains typed by the explicitly wired filing rather than forced into a
+universal participant-kind union or untyped fact dictionary. The authority,
+not the proposer, selects the already filed validation behavior. An accepting
+assessment is single-use and bound to the exact proposal, participant,
+candidate, filing version, transition kind, and observed revisions. It is not
+the transition result: only the authority installs state, advances revisions,
+and invalidates dependents.
+
+Reusable core/feature/family clauses and custom research clauses are composed
+deliberately during strategy authoring. The authority executes that accepted
+composition and does not discover validators from roles or object types.
+Deferred state supplies no fake `None` candidate; replacement supplies the
+prior accepted binding and revision so continuity can be checked where the
+filing requires it.
+
+This is recorded as working decisions EX-013 through EX-017. Exact Python
+generics/protocols, authority construction, the complete atomic transition
+envelope, and in-run filing-version evolution remain open. On resume, first
+confirm/refine the expanded decision register, then design authority
+construction and initial arrangement establishment.
+
 ## User
 
 - versioning for contracts is probably a good idea for the long run. Contracts and trainer might need to evolve over time as more models get added, but the ideal scenario is them not having to, especially the trainer, but this is only possible to accomplish via the repo growing with new capabilites and testing said contract and trainer.
