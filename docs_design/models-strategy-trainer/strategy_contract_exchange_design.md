@@ -29,6 +29,16 @@ such as `ParticipantKey`, `ParticipantRef`, `PreparationPlan`, and
 them as accepted. The eventual OpenSpec should be derived from the completed
 exchange semantics rather than treating every working name below as final.
 
+The training contract system remains the authoritative acceptance definition
+for the Trainer. This record must not move ordinary compatibility knowledge or
+validation composition onto strategy authors. An authored strategy explicitly
+selects and wires its intent, participants, features, capabilities, and bounded
+choices; the contract system judges that complete authored definition, derives
+the obligations implied by its known contracts and implementations, and only
+then establishes the strategy runtime that may reach Trainer. The binding
+authority is the runtime enforcement responsibility of that same accepted
+contract, not a second source of compatibility meaning.
+
 Decision markers have these meanings:
 
 ```text
@@ -38,6 +48,10 @@ SETTLED INPUT
 WORKING DECISION
   current recommended answer for a downstream concrete question; may be
   refined before OpenSpec
+
+SUPERSEDED
+  an earlier working answer retained for chronological clarity after a later
+  correction replaced its authority or semantics
 
 OPEN
   a concrete question that still needs an answer
@@ -163,11 +177,12 @@ participant-qualified substructure/target reference
 training-subject and optimization selection
 ```
 
-`ParticipantDeclaration` should contain only the authored semantic obligations
-needed to establish the participant and govern later identity-preserving
-transitions. Lifecycle/readiness constraints and the other concerns must refer
-to the accepted participant rather than be copied wholesale into its identity
-record.
+`ParticipantDeclaration` should contain only the authored identity/addressing
+meaning needed to establish the participant. Its semantic obligations are
+derived by the training contract system from the participant's complete use in
+the authored arrangement. Lifecycle/readiness constraints and the other
+concerns must refer to the accepted participant rather than be copied wholesale
+into its identity record or manually restated by the strategy author.
 
 ### Scenario pressure test: what a declaration must actually distinguish
 
@@ -194,270 +209,210 @@ This comparison rules out several tempting shortcuts:
 - a semantic contract/facet cannot itself be identity, because several
   distinct participants may fulfill the same contract.
 
-### WORKING DECISION: minimum participant declaration meanings
+### WORKING DECISION: participant declarations identify; the contract derives
+obligations
 
-The current minimum declaration has two semantic parts:
+The minimum identity-bearing declaration meaning is an authored key/address:
 
 ```text
 ParticipantDeclaration
   authored key/address
-  explicitly wired semantic compatibility filing
 ```
 
-The **authored key** addresses the participant within the strategy filing. The
-authority-established reference identifies its accepted run incarnation.
-
+The **authored key** addresses the participant within the authored strategy.
+The authority-established reference identifies its accepted run incarnation.
 A key is an address, not a role classification. Human-readable segments may
 contain role-like words, but those words have no identity authority:
-`student.denoiser` and `teacher.denoiser` are distinct addresses even when both
-use the same denoiser/predictor role and semantic compatibility filing. The
-current `LoadedModelComponentSpec` convention in which `key="denoiser"` and
+`student.denoiser` and `teacher.denoiser` remain distinct addresses even when
+both participate in the same predictor contract. The current
+`LoadedModelComponentSpec` convention in which `key="denoiser"` and
 `roles=("denoiser",)` coincide is useful migration evidence, not target
 semantics.
 
-The **semantic compatibility filing** identifies the authored, versioned rules
-that candidate materializations and identity-preserving replacements must
-satisfy. It is explicitly wired by the strategy or its selected features; it
-is not selected through a central role enum, inferred from a Python module, or
-assembled by an automatic resolver. Several participants may use the same
-filing without sharing identity.
+Key alone does not explain the participant's complete semantic meaning. That
+meaning comes from the participant's explicit uses and relationships in the
+complete authored strategy: for example, which predictor behavior consumes it,
+which objective and conditioning contracts interact with it, whether it is a
+training subject or adapter host, and which artifact products cover it. The
+training contract system evaluates those explicit choices and derives the
+obligations that later materialization, preparation, execution, and persistence
+must satisfy. An ordinary strategy author does not copy those obligations into
+the participant declaration or supply a participant-specific validator.
 
-Here, **filing** uses the direction document's contract vocabulary. It does not
-mean a file on disk, metadata record, global registry entry, configuration
-fragment, or separately selected runtime plugin. It means the authored
-strategy has explicitly supplied its answer for one contract concern:
+The exact additional non-identity data colocated with a declaration remains
+open. Presentation, source selection, implementation selection, lifecycle
+state, route requirements, trainability, and artifact coverage remain distinct
+meanings even if a future Python authoring API groups some of them for
+convenience.
 
-> What must proposed bound state satisfy to count as a valid realization of
-> this already-declared participant, and what must remain true for a
-> replacement to preserve that participant's identity?
+### WORKING DECISION: contract establishment derives accepted obligations
 
-Conceptually, the filing combines two things whose final Python representation
-may remain separate:
+The training contract system is authoritative because it describes the
+Trainer's accepted core, pipeline capabilities, feature contracts, lifecycle,
+and results. It also defines how known library implementations demonstrate
+conformance. Strategy authoring uses that vocabulary to make explicit choices;
+contract establishment judges the complete result.
 
 ```text
-typed semantic requirements/claims
-  stable, inspectable meaning and compatibility constraints
-
-explicitly wired validation behavior
-  checks a concrete materialization or replacement and returns a typed
-  fulfillment/compatibility result
+active training contract system
+  + explicitly authored strategy definition
+  + known selected library implementations
+  + bounded choices exposed by that strategy
+                    |
+                    v
+       contract fulfillment/enforcement
+                    |
+          reject or establish
+                    |
+                    v
+        complete TrainingStrategy
+          |- accepted arrangement and capabilities
+          |- contract-derived obligations
+          `- internal contract-governed binding authority
 ```
 
-For example, the filing for `model.denoiser` in one SDXL strategy might state
-that proposed state must fulfill the predictor/input/output behavior used by
-that strategy, support the access meanings needed by its selected training and
-persistence behavior, and satisfy applicable structural or precision
-constraints. It does not require the candidate to have one universal
-`DENOISER` enum value or one Python class. A different implementation may be
-accepted if the explicitly authored strategy behavior can validate and use it.
+Automatic enforcement does not imply automatic assembly. The contract system
+may report missing or incompatible selections, but it does not choose a feature,
+implementation, relationship, or dependency for the author. For maintained
+library strategies, compatibility knowledge is already part of the core,
+capability, feature, and implementation-conformance contracts. Additional
+author-supplied validity behavior is required only when a custom implementation
+or explicit contract extension deliberately leaves that known surface.
 
-An injected adapter participant may instead file requirements for independently
-managed adaptation state, target/effect compatibility, and the access meanings
-needed for optimization and artifact persistence, while declaring no
-independent execution route. Teacher and student participants may reuse the
-same predictor compatibility filing but retain different keys and references;
-the filing describes compatible meaning, not identity.
+Derived obligations may concern one participant, several participants, a
+relationship, a route, a capability, or the complete arrangement. They are not
+forced into a participant-local taxonomy merely because one binding transition
+triggers their re-evaluation.
 
-Not every semantic fact can or should be proven by generic runtime reflection.
-The filing may combine centrally testable structural facts, capability- or
-feature-specific checks, and authored assertions covered by strategy
-conformance tests. The binding authority enforces that the explicitly wired
-filing produced an applicable typed acceptance result. It does not itself learn
-what a denoiser, teacher, adapter, VAE, or future research component means.
+### WORKING DECISION: runtime producers supply contract-defined evidence
 
-This boundary is needed because neither a label such as `denoiser`, Python
-protocol/method presence alone, nor class identity can answer whether a new
-realization preserves the participant semantics of this particular authored
-strategy.
+Current loading proves that a producer must return a live object, but
+`LoadedModelComponent.module: Any`, copied role/capability strings, and an
+optional `None` do not prove that the accepted strategy obligations are met.
+Metadata realization facts are durable observations after loading; optimization
+and adapter target refs are consumer-local projections. None is independently
+authoritative for contract acceptance.
 
-The filing must provide or authorize enough validation to answer:
-
-1. whether proposed bound state fulfills this participant's declared meaning;
-2. whether replacement state preserves that meaning;
-3. which bound-state and access-view meanings are permitted;
-4. which participant/relationship constraints require revalidation; and
-5. which limitations or unfulfilled obligations must be reported rather than
-   guessed by the authority.
-
-This does not require one serializable universal schema to understand every
-model. A standard repository strategy may wire reusable contract/feature
-filings, while a research strategy may wire a custom filing that reaches the
-same Trainer-facing boundary. The authority enforces that the applicable
-filing validated a transition; it does not rediscover model semantics from
-roles or object types.
-
-The exact Python representation remains open. In particular, a semantic
-compatibility filing might ultimately be a typed contract value paired with
-explicitly wired validator behavior rather than one callback stored in an
-otherwise passive dataclass. The semantics above should be settled before
-choosing that mechanism.
-
-### WORKING DECISION: compatibility evidence is proposal-scoped
-
-Current loading proves that the strategy must be able to return a live object,
-but `LoadedModelComponent.module: Any`, copied role/capability strings, and an
-optional `None` do not prove semantic compatibility. Metadata realization facts
-are durable observations after loading; optimization and adapter target refs
-are consumer-local projections. None of those types supplies the missing
-acceptance boundary.
-
-The compatibility exchange should instead have this semantic shape:
+The runtime binding exchange instead has this semantic shape:
 
 ```text
-SemanticCompatibilityFiling[CandidateEvidence]
-  authored filing identity and version
-  inspectable semantic requirements/claims
-  explicitly assembled validation behavior
-
-CandidateBindingProposal[CandidateEvidence]
+BindingTransitionProposal[Evidence]
   target ParticipantRef
   transition kind: materialize | replace
   authority-recognized proposal identity
   expected participant/dependency revisions
   concrete live candidate
-  filing-specific typed candidate evidence
+  typed evidence required by the accepted contract obligations
 
-CompatibilityEvaluationContext
-  accepted participant declaration and current filing version
-  exact proposal identity
-  prior accepted binding view when replacing
-  scoped current participant/relationship dependencies
+Contract-governed transition acceptance
+  accepted strategy definition and derived obligations
+  exact proposal and prospective complete state
+  prior accepted state when continuity matters
+  current participant/relationship/route dependency revisions
 
-CompatibilityAssessment
-  filing identity and version actually applied
-  exact proposal, participant, candidate, and transition assessed
-  dependency revisions observed
-  named requirement/clause outcomes
-  fulfilled semantic and access meanings
-  limitations, failures, and required revalidation
-  accept | reject
+BindingTransitionResult
+  accepted/rejected state
+  satisfied and unfulfilled obligations or structured failures
+  accepted revisions and invalidations when committed
 ```
 
-These are semantic names, not final class names. The small common proposal
-envelope carries authority coordination. `CandidateEvidence` belongs to the
-explicitly wired filing and may differ between predictor, adapter, VAE, or
-research participants. It must not become a universal union of model kinds or
-an unrestricted `dict[str, Any]` whose undocumented keys recreate the present
-contract problem.
+Evidence types may differ between known predictor, adapter, autoencoder, or
+research-extension contracts, but the applicable contract or implementation
+conformance boundary defines them—not each ordinary strategy author. They must
+not become a universal union of model kinds or an unrestricted
+`dict[str, Any]` whose undocumented keys recreate the present contract problem.
+The concrete live candidate is not itself sufficient evidence, and the proposer
+cannot substitute a bare Boolean compatibility claim.
 
-The concrete live candidate is not itself the evidence. Producer-supplied facts
-may cover meanings that are unsafe or impossible to rediscover generically;
-validator observations may verify structural or behavioral facts; the scoped
-authority context supplies current cross-participant facts. Source/provenance
-may be included when one filing genuinely constrains it, but source identity
-does not define participant identity.
+For materialization, prior bound state is absent because the participant is
+declared and unbound. A deferred component therefore supplies no fake `None`
+candidate; it remains unbound until a concrete proposal exists. For replacement,
+the proposal identifies the prior accepted binding and exact revisions so the
+contract-governed authority can evaluate both current fulfillment and any
+continuity requirements derived for that participant's complete use.
 
-For materialization, the prior binding view is absent because the participant
-is declared and unbound. A deferred component therefore supplies no fake
-`None` realization for validation; it remains unbound until a concrete
-proposal exists. For replacement, the request includes the prior accepted
-binding and exact revision so the filing can check both fulfillment of the
-declaration and any continuity requirement that depends on the former
-realization.
+### WORKING DECISION: the contract-governed authority evaluates and commits
 
-### WORKING DECISION: the authority invokes validation and owns acceptance
-
-The proposer supplies the candidate and the filing-specific evidence, but it
-does not choose the applicable validator or submit a reusable bare Boolean
-compatibility claim. The binding authority resolves the already accepted
-filing from the target participant declaration and invokes its explicitly
-wired behavior.
+The binding authority applies the obligations established by the training
+contract system to the prospective complete state. The proposer supplies only
+the candidate and contract-defined evidence; it neither selects validation
+behavior nor authors the ordinary acceptance rules.
 
 ```text
-producer proposes candidate
-  -> authority resolves the participant's accepted filing
-  -> filing evaluates the exact proposal against a scoped current context
-  -> authority verifies that the assessment still matches current revisions
-  -> authority atomically accepts or rejects the binding transition
+producer proposes candidate and required evidence
+  -> authority constructs the prospective next state
+  -> contract enforcement evaluates every affected accepted obligation
+  -> authority verifies expected revisions
+  -> authority atomically rejects or publishes the transition
 ```
 
-An accepting assessment is bound to the exact proposal identity, participant
-reference, transition kind, filing version, candidate, and observed dependency
-revisions. It is single-use evidence inside that authority transition, not a
-portable certificate that another candidate or later snapshot may reuse.
+There is no current need for a separately transferable
+`CompatibilityAssessment`. Validation is part of the authority's transition
+acceptance. Structured obligation outcomes may appear in the transition result
+and observation history, but they do not become reusable certificates. Only the
+authority may install a candidate, advance revisions, invalidate dependents,
+and return the accepted result. Rejection leaves canonical state unchanged,
+subject to the separately settled rule for externally permitted in-place
+mutation.
 
-The assessment is also not the materialization/replacement result. It answers
-the strategy-owned semantic question. Only the authority may install the
-candidate, advance binding revisions, invalidate dependents, and return the
-accepted transition result. A rejection or validator failure makes no
-authority state change. Candidate construction may already have external cost,
-and validation may perform explicitly declared bounded probes on the
-unaccepted candidate, but validation must not mutate accepted authority state
-or current accepted realizations.
+The four declaration scenarios exercise the corrected boundary as follows:
 
-### WORKING DECISION: validation composition is authored, not discovered
-
-A maintained strategy may reuse core, feature, and family-specific validation
-clauses, while a research strategy may supply a custom clause or filing. The
-composition point remains strategy authoring:
-
-```text
-strategy definition
-  explicitly selects and composes named, versioned clauses
-  files their combined requirements and validation behavior
-
-binding authority
-  invokes exactly that accepted composition
-  does not search for validators or infer clauses from roles/types
-```
-
-Each filed clause has an inspectable identity, applicability/requirement
-meaning, and typed outcome. Any condition is authored in the filing rather
-than inferred by the authority. Every applicable required clause must be
-satisfied; absence, rejection, insufficient evidence, and validator failure
-remain distinguishable outcomes. The final Python representation may use a
-generic protocol, typed callable/value pairing, or another explicit mechanism,
-but it must preserve this authored composition and its per-clause evidence.
-
-The four declaration scenarios now exercise the exchange as follows:
-
-| Scenario | Candidate evidence pressure | Assessment identity pressure |
+| Scenario | Contract-derived obligation pressure | Runtime evidence pressure |
 | --- | --- | --- |
-| ordinary SDXL denoiser | a typed SDXL predictor realization exposes the live candidate plus the predictor/input/output, access, structure, and precision evidence required by that filing | acceptance applies only to this participant and proposal, not every object with a denoiser role |
-| deferred SD3 denoiser | declaration remains unbound until a concrete SD3 candidate and its evidence are proposed | delayed timing changes neither the filing nor participant identity |
-| injected adapter | adapter-managed state and target/effect evidence may be validated without inventing an independent callable route | an assessment for adapter state cannot be reused for each injected target-local module |
-| teacher and student | both proposals may use the same predictor evidence type and filing | distinct participant/proposal identities produce distinct assessments even when source and semantics match |
+| ordinary SDXL denoiser | selected predictor, objective, conditioning, preparation, optimization, and persistence contracts determine what the participant must support | the known SDXL integration reports the concrete realization facts required by those contracts |
+| deferred SD3 denoiser | the accepted lifecycle permits declared/unbound state until the relevant readiness checkpoint | no fake candidate is filed; later materialization reports the required SD3 realization facts |
+| injected adapter | the selected adapter capability derives independently managed state, target/effect, optimization, and persistence obligations without inventing an execution route | adapter construction and target resolution report contract-defined state and relationship evidence |
+| teacher and student | the authored uses derive distinct participant and relationship obligations even if predictor contracts and sources match | separate proposals and revisions preserve their independent runtime trajectories |
 
-This closes the conceptual compatibility-filing boundary while deliberately
-leaving the exact Python generic/protocol shape for the binding-exchange API
-design.
+The exact Python representation of contract establishment, derived obligations,
+and typed evidence remains open. Their authority relationship is not: ordinary
+validity is communicated by the training contract system, not manually composed
+inside the authored strategy.
 
-### WORKING DECISION: execution requirements are associated declarations
+### WORKING DECISION: execution requirements are contract-derived associated
+obligations
 
-Execution requirements are separately authored declarations referring to a
-participant key rather than fields that make the participant declaration grow
-with every capability:
+Execution requirements remain separate from participant identity, but for the
+standard path the contract system derives them from explicitly selected core,
+capability, and feature uses:
 
 ```text
 ParticipantDeclaration
   this meaningful participant exists
 
-ExecutionRouteDeclaration
-  this participant must support this named execution meaning
+AcceptedExecutionRouteRequirement
+  the selected contract use requires this participant to support this
+  execution meaning
 ```
 
-Zero route declarations means the participant has no independent execution
-route. The standard core may file the normal route for an execution-capable
-participant, while a selected capability may file an additional materially
-different route. A route declaration defines its accepted callable meaning,
-preparation constraints, and freshness obligations; it does not contain the
-prepared callable.
+Zero derived route requirements means the participant has no independent
+execution route. The standard core may derive the normal route for an
+execution-capable participant, while a selected capability may derive an
+additional materially different route. A route requirement defines its
+accepted callable meaning, preparation constraints, and freshness obligations;
+it does not contain the prepared callable. A direct/custom strategy may fulfill
+the same established route contract through an explicit conformance path; it
+does not silently redefine the standard requirement.
 
-Separating the route declaration also allows arrangement/capability evolution
+Separating the route requirement also allows arrangement/capability evolution
 to add or retire a route requirement without silently redefining participant
-identity. Route identity remains the participant reference plus authored route
-key unless later evidence requires another incarnation layer; each such pair
-still has one authoritative current binding and its own route revision.
+identity. Route identity remains the participant reference plus the route key
+defined by the applicable contract use unless later evidence requires another
+incarnation layer; each such pair still has one authoritative current binding
+and its own route revision.
 
-### WORKING DECISION: readiness is a separate constraint over declarations
+### WORKING DECISION: readiness is a separate contract-derived constraint over
+declarations
 
 Required, deferred, and phase/capability-specific readiness are not identity
 properties of `ParticipantDeclaration`.
 
-The authority initially establishes the authored participant in the declared,
-unbound state. Separate fulfillment/readiness constraints say when a
-participant must be bound, when a relationship must be resolved or active, and
-when a route must be prepared for the core or a requested capability.
+The authority initially establishes an accepted participant in the declared,
+unbound state only when the contract-derived lifecycle permits it. Separate
+fulfillment/readiness constraints derived during contract establishment say
+when a participant must be bound, when a relationship must be resolved or
+active, and when a route must be prepared for the core or a requested
+capability.
 
 ```text
 participant declaration
@@ -480,7 +435,7 @@ Relationships remain separate declarations because relationship identity and
 lifecycle are independent from both endpoint identities. Presentation labels,
 source/realization facts, current binding state, trainability, optimizer
 selection, and artifact products likewise remain separate projections or
-filings referring to the accepted participant.
+accepted contract meanings referring to the participant.
 
 ### WORKING DECISION: authored relationship addresses establish run identities
 
@@ -494,7 +449,7 @@ The concrete working split is therefore:
 
 ```text
 RelationshipKey
-  authored address of one semantic relationship in the strategy filing
+  authored address of one semantic relationship in the strategy definition
 
 RelationshipRef
   identity of that accepted relationship incarnation in one run authority
@@ -503,9 +458,10 @@ relationship revision
   changing endpoint-resolution and operational state of that reference
 ```
 
-`RelationshipDeclaration` refers to authored participant keys, states the
-semantic relationship filing, and receives its run-scoped endpoint references
-during establishment. The reference is justified by independently evolving
+`RelationshipDeclaration` refers to authored participant keys and explicitly
+selects the relationship meaning provided by the applicable contract
+vocabulary. Contract establishment validates that use and gives it run-scoped
+endpoint references. The reference is justified by independently evolving
 relationship state and history, not merely by symmetry with `ParticipantRef`.
 It also avoids treating endpoint pair plus relationship kind as identity when
 parallel independently addressable effects are valid.
@@ -521,7 +477,7 @@ The current recommended split is:
 ```text
 ParticipantKey
   authored semantic declaration address
-  stable across equivalent strategy filings and runs
+  stable across equivalent authored strategy definitions and runs
 
 ParticipantRef
   identity of one declaration incarnation accepted by one run authority
@@ -533,9 +489,10 @@ binding / relationship / route revisions
 ```
 
 The strategy authors the arrangement. Establishment does not allow the
-authority to invent participants or relationships. The authority validates
-the authored filing, establishes its run-scoped identity, and returns typed
-references that later exchanges use instead of bare strings.
+authority to invent participants or relationships. The contract system
+validates the authored definition, and the authority establishes its run-scoped
+identities and returns typed references that later exchanges use instead of
+bare strings.
 
 A retired reference is closed to further current-state transitions and live
 access. Retirement does not erase the reference's meaning from run transition
@@ -609,58 +566,84 @@ Binding is a family of typed transitions rather than one `bind()` call.
 
 | Operation | Principal inputs | Accepted result | Canonical state effect |
 | --- | --- | --- | --- |
-| establish authored arrangement | strategy filing, participant declarations, relationship declarations, contract/version context | participant/relationship references, initial arrangement and snapshot revisions | creates the run authority's initial declared current arrangement |
-| materialize participant state | participant reference, expected revision, bound-state proposal, source/realization facts, access-view proposals | accepted binding revision, current lifecycle state, invalidation outcome | moves a declared participant from unbound to bound |
-| replace participant state | participant reference, expected binding revision, replacement realization, supersession/lineage facts, compatibility evidence | same reference with a new binding revision, or rejection requiring amendment | supersedes authoritative state without silently changing participant meaning |
+| establish validated strategy | authored strategy definition, active contract/version, selected known implementations, bounded choices, and explicit extensions | complete accepted `TrainingStrategy`, derived obligations, participant/relationship references, and initial revisions | validates the authored arrangement and creates its internal run authority before Trainer receives it |
+| materialize participant state | participant reference, expected revision, bound-state proposal, contract-defined realization evidence, and access-view proposals | accepted binding revision, current lifecycle/readiness state, and invalidation outcome | moves a declared participant from unbound to bound when the prospective state satisfies accepted obligations |
+| replace participant state | participant reference, expected binding revision, replacement realization, supersession/lineage facts, and contract-defined evidence | same reference with a new binding revision, or rejection requiring amendment | supersedes authoritative state without silently changing contract-derived participant meaning |
 | transition relationship | relationship reference, expected revision, requested operational state, resolved endpoints/effect facts | new relationship revision and invalidation outcome | changes declared/resolved/active/inactive/detached state independently from participant lifecycle |
 | amend arrangement | expected arrangement revision, explicit additions/retirements, relationship and capability consequences | new references where applicable, retirement results, new arrangement revision and invalidations | changes which semantic participants belong to the current arrangement |
 | rebind execution route | participant reference, route key, expected source revisions, prepared callable and freshness guarantee | new route revision and current authoritative route binding | publishes the callable representation that execution must use |
 | merge/fold | source/host references, expected revisions, declared transformation and retirement policy | transformed host binding, lineage, relationship changes, optional retirement, invalidations | records semantic state transfer rather than hiding it in serialization or module mutation |
 
-### Establish authored arrangement
+### Establish validated strategy
 
 #### Inputs
 
 The establishment input must include at least:
 
-- one authored strategy filing identity and contract/version context;
-- participant declarations keyed by authored semantic address;
-- explicitly wired semantic compatibility filings relevant to materialization
-  and identity-preserving replacement;
-- execution-route declarations associated with participant keys, which may be
-  absent for state-only participants;
-- relationship declarations with typed endpoints and intended lifecycle; and
-- fulfillment/readiness constraints imposed by the core and selected
-  capabilities without making those constraints participant identity.
+- the complete explicitly authored strategy definition;
+- the active Trainer core contract and contract-version context;
+- the selected pipeline capabilities, feature contracts, and known library
+  implementations used by the strategy;
+- participant addresses plus the explicit uses and relationships that give
+  them meaning in the arrangement;
+- any bounded choices that the strategy deliberately exposes to execution
+  configuration; and
+- any explicit custom implementation, direct-conformance, or contract-extension
+  declaration outside the maintained library surface.
+
+The author chooses and wires these meanings. The contract system derives
+participant, relationship, execution-route, lifecycle/readiness, result, and
+cross-concern compatibility obligations from them. The input does not include
+ordinary author-composed validators or duplicated low-level requirements that
+the selected contracts already define.
 
 #### Result
 
-The authority returns:
+Successful establishment produces the complete `TrainingStrategy` that may be
+given to Trainer, including behind its boundary:
 
+- the accepted contract/version and authored arrangement;
+- the provided and requested capability surface;
 - typed participant and relationship references;
-- the accepted initial arrangement revision;
-- the first atomic snapshot identity;
-- any unfulfilled requirements that are valid at the declared lifecycle stage;
-  and
-- structured rejection information when establishment fails.
+- the obligations derived by the core, selected capabilities, features,
+  implementation-conformance contracts, and explicit extensions;
+- the accepted initial arrangement revision and first atomic snapshot;
+- any currently unfulfilled readiness requirements permitted at the declared
+  lifecycle stage; and
+- the one contract-governed binding authority seeded with that accepted state.
+
+Failure produces structured author-facing rejection information and no
+Trainer-acceptable strategy.
 
 #### Allowed side effects
 
-Establishment may create the one per-run authority and its declared current
-state. It must not materialize modules, select undeclared features, infer
-family topology, create an optimizer, attach adapters, or perform distributed
-preparation.
+Establishment may validate the complete authored definition, derive its
+obligations, and create the one per-run authority and declared current state.
+It may use known library conformance information and report what is missing or
+incompatible. It must not silently select features or implementations, infer
+the author's intended arrangement, materialize modules, create an optimizer,
+attach adapters, or perform distributed preparation.
 
 #### Failure conditions
 
 At minimum:
 
+- a missing provider for a required core concern;
+- a selected capability, feature, or bounded request whose contract cannot be
+  fulfilled by the authored arrangement;
+- incompatible core, capability, feature, implementation, relationship, or
+  result semantics;
+- an unknown or non-conforming implementation presented as part of the known
+  library surface;
+- a custom implementation or Trainer-contract extension that is not declared
+  through its explicit conformance/extension path;
 - duplicate or conflicting participant keys;
 - relationships referencing undeclared endpoints;
-- incompatible declaration obligations;
-- undeclared requirements introduced by a selected capability;
-- invalid lifecycle or route declarations; and
+- an invalid derived lifecycle, readiness, or route obligation; and
 - an attempt to seed an already established authority inconsistently.
+
+The Trainer-facing construction path must not accept a raw authored definition
+that has bypassed this establishment boundary.
 
 ### Materialization
 
@@ -669,22 +652,25 @@ addition.
 
 The proposal must identify its source declaration/reference and expected
 authority/binding revision. It carries the concrete bound-state result and the
-facts needed to understand where that state came from. A state-only
-participant may materialize without any execution route.
+typed evidence required by the already accepted obligations. Evidence may
+include source/realization facts, structural facts, supported access meanings,
+or relationship-resolution results when their contracts require them. A
+state-only participant may materialize without any execution route.
 
-Acceptance advances the participant binding revision and reports every
-derived projection invalidated by the transition. Rejection leaves canonical
-authority state unchanged, subject to the separate rule for an external
-operation that was explicitly permitted to mutate an authoritative live object
-in place.
+The authority evaluates the prospective complete state rather than treating
+producer evidence as a portable compatibility claim. Acceptance advances the
+participant binding revision and reports every derived projection invalidated
+by the transition. Rejection leaves canonical authority state unchanged,
+subject to the separate rule for an external operation that was explicitly
+permitted to mutate an authoritative live object in place.
 
 ### Replacement and identity preservation
 
 ### WORKING DECISION: replacement preserves declared meaning, not object shape
 
 Replacement may preserve the participant reference only when the new
-realization still fulfills the same declared participant meaning and
-obligations.
+realization still fulfills the same meaning and obligations derived from that
+participant's complete use in the accepted strategy.
 
 These changes do not inherently require a new participant identity:
 
@@ -702,20 +688,21 @@ be assigned:
 - teacher becoming student;
 - encoder becoming an unrelated reward model;
 - host component becoming its adapter participant; or
-- another change that invalidates the participant's authored semantic
+- another change that invalidates the participant's accepted contract
   obligations and relationship meaning.
 
 The authority does not infer a new participant in those cases. It rejects the
 replacement and requires an explicit retirement/declaration amendment.
 
-### OPEN: participant identity obligations
+### OPEN: derived-obligation and evidence representation
 
-The declaration needs enough structured meaning to validate
-identity-preserving replacement without encoding one SD-shaped role taxonomy.
-The design must determine which obligations are structural contract facts,
-which are capability-specific compatibility checks, and which are assertions
-made by an authored strategy implementation and verified through conformance
-tests.
+The design still must determine how the contract system represents obligations
+derived from the participant's complete uses without encoding one SD-shaped
+role taxonomy. It must distinguish facts knowable during establishment from
+evidence required after materialization or preparation, and must support known
+library conformance, direct/custom implementations of an existing contract,
+and explicit contract extensions without making ordinary authors assemble
+validation behavior.
 
 ### Binding result shape
 
@@ -790,10 +777,11 @@ The preparation input must identify:
 - typed infrastructure items required for joint preparation without declaring
   those items to be logical participants.
 
-The strategy declares which participant routes require preparation and their
-constraints. Trainer infrastructure chooses and executes the backend mechanics
-allowed by the active performance/distributed policy. Configuration does not
-author new participants or strategy features through this exchange.
+The validated strategy exposes the participant routes and preparation
+constraints derived from its accepted contract uses. Trainer infrastructure
+chooses and executes the backend mechanics allowed by the active
+performance/distributed policy. Configuration does not author new participants
+or strategy features through this exchange.
 
 ### Preparation result
 
@@ -825,11 +813,12 @@ optimization-exchange design.
 ### Rebinding guarantee
 
 Prepared execution objects are not authoritative merely because a backend
-returned them. The authority validates the result against its source snapshot
-and accepts all affected route rebindings atomically. Trainer publishes the
-prepared optimization runtime and backend handles only after the binding
-portion is accepted, or through a broader coordination protocol that provides
-the same no-half-published guarantee.
+returned them. The authority validates the prospective result against its
+source snapshot and the contract-derived preparation, route, relationship, and
+freshness obligations, then accepts all affected route rebindings atomically.
+Trainer publishes the prepared optimization runtime and backend handles only
+after the binding portion is accepted, or through a broader coordination
+protocol that provides the same no-half-published guarantee.
 
 A stale result resolved from an authority state that has since changed is
 rejected or explicitly re-resolved. It is never silently installed against a
@@ -985,21 +974,23 @@ modification/backward are not automatically the same result field.
 | --- | --- | --- |
 | EX-001 | working | authored `ParticipantKey` addresses are established as run-scoped `ParticipantRef` identities by the one binding authority |
 | EX-002 | working | retirement closes a reference to current operations without erasing its history/provenance meaning |
-| EX-003 | working | replacement preserves identity only while the new realization fulfills the same declared participant meaning |
+| EX-003 | working | replacement preserves identity only while the new realization fulfills the same accepted contract-derived participant meaning |
 | EX-004 | working | an authority snapshot is the conservative default freshness dependency; fine-grained revisions remain fundamental |
 | EX-005 | working | in-place mutation requires affected freshness guarantees to be withdrawn before mutation and not silently restored after failure |
 | EX-006 | working | prepared routes, optimization runtime, and backend coordination handles have separate owners even when produced by one backend call |
-| EX-007 | working | a participant declaration minimally combines an authored key and explicitly wired semantic compatibility filing |
-| EX-008 | working | materialization/readiness requirements are separate fulfillment constraints over participant, relationship, and route state rather than participant identity fields |
-| EX-009 | working | execution-route requirements are separate authored declarations associated with participants; zero declarations means no independent execution route |
+| EX-007 | superseded | participant declarations do not carry ordinary author-supplied semantic compatibility filings; the contract system derives obligations from the participant's complete authored uses |
+| EX-008 | working | materialization/readiness requirements are separate contract-derived constraints over participant, relationship, and route state rather than participant identity fields |
+| EX-009 | working | execution-route requirements are contract-derived obligations associated with participants; zero derived requirements means no independent execution route |
 | EX-010 | working | authored relationship addresses establish run-scoped relationship references because operational relationship state and history evolve independently from endpoint identities |
 | EX-011 | working | in-place-capable preparation requires an authority-recognized coordination identity distinct from its source snapshot so pre-mutation invalidation does not invalidate its own completion basis |
 | EX-012 | working | role labels and role-like key segments never establish participant identity; identity comes from the complete authored address and its authority-established run incarnation |
-| EX-013 | working | compatibility validation uses a small common transition envelope plus filing-specific typed candidate evidence rather than a universal participant-kind taxonomy or untyped fact dictionary |
-| EX-014 | working | the binding authority invokes the semantic compatibility filing already accepted for the target participant; a proposer cannot choose the validator or submit a bare compatibility claim |
-| EX-015 | working | a compatibility assessment is single-use evidence scoped to the exact proposal, participant reference, transition kind, candidate, filing version, and dependency revisions |
-| EX-016 | working | compatibility assessment and authority transition result remain distinct; only the authority installs accepted state, advances revisions, and invalidates dependents |
-| EX-017 | working | reusable and custom validation clauses are composed explicitly during strategy authoring and retain named typed outcomes; the authority performs no validator discovery or role/type inference |
+| EX-013 | working | runtime transition proposals use a small common authority envelope plus typed evidence defined by the accepted contracts and implementation-conformance boundaries, not a universal participant-kind taxonomy, untyped fact dictionary, or per-strategy validator protocol |
+| EX-014 | working | the binding authority evaluates prospective state against obligations established by the training contract system; a proposer cannot choose validation behavior or submit a bare compatibility claim |
+| EX-015 | superseded | a separately transferable single-use `CompatibilityAssessment` is not currently required because contract validation occurs inside authority transition acceptance; structured outcomes may remain part of the transition result/history |
+| EX-016 | working | only the authority installs accepted state, advances revisions, and invalidates dependents; the exact internal separation between obligation evaluation and the public transition result remains an implementation question rather than a second exchange authority |
+| EX-017 | superseded | ordinary validation clauses are not composed by strategy authors; the contract system derives them from explicit known selections, while custom implementation conformance or contract extension must be deliberate |
+| EX-018 | working | the binding exchange begins by contract-validating the complete authored definition, deriving obligations, and establishing the strategy's internal authority before the resulting `TrainingStrategy` may reach Trainer |
+| EX-019 | working | automatic contract enforcement does not imply automatic assembly: authors explicitly choose and wire the arrangement, while the contract system supplies ordinary validity knowledge and reports incompatible or missing choices |
 
 No working entry becomes an OpenSpec requirement merely because it appears in
 this table. Discussion should either accept it, refine it, or mark it
@@ -1007,46 +998,59 @@ superseded while preserving the reason.
 
 ## Open Question Register
 
-1. What exact Python generic/protocol representation preserves the recorded
-   proposal-scoped candidate evidence, explicit authored clause composition,
-   and non-transferable assessment semantics?
-2. Who constructs the authority, and at which strategy filing/validation
-   boundary is the authored arrangement established?
-3. What is the durable projection of `ParticipantRef`, distinct from its live
+1. What exact Python authoring and establishment boundary lets the contract
+   system judge the complete authored definition and return the same public
+   `TrainingStrategy` abstraction in an accepted state rather than exposing a
+   second Trainer-facing wrapper?
+2. How does the contract system identify known library implementations and
+   their conformance without automatic assembly, `hasattr()` discovery,
+   family-name branches, or a stringly typed global registry?
+3. What typed representation lets the contract derive participant,
+   relationship, route, readiness, and cross-concern obligations, and what
+   evidence boundaries distinguish establishment-time facts from facts only a
+   materializer or preparation backend can report?
+4. Who constructs the authority at contract establishment, and how is it
+   prevented from accepting state for a raw or differently versioned authored
+   definition?
+5. What is the durable projection of `ParticipantRef`, distinct from its live
    typed runtime use?
-4. Should retired authored keys be permanently reserved within one authority,
+6. Should retired authored keys be permanently reserved within one authority,
    or may a later amendment reuse a key while necessarily receiving a new
    reference?
-5. What exact bound-state and access-view types replace the single
+7. What exact bound-state and access-view types replace the single
    `LoadedModelComponent.module` field?
-6. What proposal/result envelope supports atomic multi-participant and
+8. What proposal/result envelope supports atomic multi-participant and
    participant-plus-relationship transitions?
-7. What scoped read projections may Trainer, strategy features, capabilities,
+9. What scoped read projections may Trainer, strategy features, capabilities,
    observability, and persistence request?
-8. What exact attempt/transition protocol coordinates in-place preparation
+10. What exact attempt/transition protocol coordinates in-place preparation
    after affected guarantees are withdrawn, while replacement-only preparation
    retains a simpler optimistic path?
-9. What publication/recovery rule prevents authority routes and Trainer-owned
+11. What publication/recovery rule prevents authority routes and Trainer-owned
    runtime from diverging after preparation?
-10. How do ranks agree on one accepted transition while replicas remain
+12. How do ranks agree on one accepted transition while replicas remain
     backend views rather than independent authorities?
-11. What exact optimization request/result joins backend preparation without
+13. What exact optimization request/result joins backend preparation without
     letting this exchange decide optimizer construction or ownership early?
-12. How may a participant's filed semantic rules evolve during one run: only
-    through arrangement amendment/new incarnation, or through an explicitly
-    versioned revalidation transition?
+14. How may accepted contract-derived obligations evolve during one run: only
+    through arrangement amendment/new incarnation under the same contract, or
+    through an explicitly versioned contract-extension/re-establishment
+    transition?
 
 ## Immediate Discussion Order
 
 Continue concrete design in this order:
 
-1. confirm or refine EX-001 through EX-003 and EX-007 through EX-017; the
-   conceptual semantic-compatibility boundary is now drafted;
-2. define authority construction and initial arrangement establishment;
-3. complete the materialization/replacement proposal and authority-result
-   types around the proposal-scoped compatibility assessment;
+1. define the authored-strategy input and contract-establishment result that
+   allow only an accepted `TrainingStrategy` to reach Trainer;
+2. define how known selections produce derived obligations, how standard
+   library conformance is known, and where explicit custom conformance or
+   contract extension begins;
+3. complete materialization/replacement proposal and authority-result types
+   around contract-defined evidence and prospective-state enforcement;
 4. define scoped snapshots/access views and default freshness application;
-5. define the preparation projection/plan;
+5. refine the preparation projection/plan so its requirements come from the
+   accepted contract obligations;
 6. define backend result acceptance, mutation failure, and publication
    coordination;
 7. pressure-test the complete binding/preparation exchange against the six
@@ -1059,6 +1063,8 @@ Continue concrete design in this order:
 At any context reset, resume from:
 
 - the settled inputs in `strategy_system_direction.md`;
+- the contract-authority correction recorded by superseded EX-007, EX-015, and
+  EX-017 plus replacement decisions EX-018 and EX-019;
 - the latest working/accepted entries in the decision register above;
 - the unresolved questions in the open-question register; and
 - the immediate discussion order.

@@ -605,3 +605,47 @@ well this should be dictated by the trainer no? which also dictates the contract
 we might not necessarily want to be constrained by an existing system unless it allows for modification based on our own designs, that would be the deciding factor about whether or not we adopt something. and we also keep the code in our repo, which means we become the maintainers
 
 ---
+
+## Contract authority corrected in the exchange design (2026-08-23)
+
+Direct review of the normative direction, chronological excerpts, inventory,
+and current runtime code showed that the candidate participant-level
+"semantic compatibility filing" had promoted an external implementation
+suggestion into a competing source of contract authority. The direction already
+states the governing model: the training contract system defines the Trainer's
+accepted core, pipeline capabilities, feature contracts, rules, lifecycle, and
+results; it informs and constrains explicit strategy authoring; and only a
+validated strategy reaches Trainer.
+
+The user clarified that ordinary strategy authors select intent, components,
+features, capabilities, relationships, and deliberately exposed choices, but
+must not separately communicate how those known selections are valid. The
+contract-enforcement mechanism already knows what the Trainer accepts and how
+known library implementations conform. Automatic enforcement is required;
+automatic strategy assembly remains rejected. Additional author-supplied
+conformance or validity behavior begins only at an explicit custom
+implementation, direct-conformance path, or contract/Trainer extension.
+
+`strategy_contract_exchange_design.md` was corrected accordingly:
+
+- participant declarations retain authored identity/addressing meaning while
+  semantic obligations are derived from their complete use in the strategy;
+- initial binding establishment now begins with contract validation of the
+  complete authored definition and produces the accepted `TrainingStrategy`
+  plus its internal authority and derived obligations before Trainer receives
+  it;
+- materialization, replacement, and preparation provide contract-defined
+  evidence and are enforced against prospective complete state by that same
+  contract-governed authority;
+- a separately transferable `CompatibilityAssessment` is no longer assumed;
+- EX-007, EX-015, and EX-017 are superseded; EX-008, EX-009, EX-013, EX-014,
+  and EX-016 are corrected; and EX-018/EX-019 record the establishment boundary
+  and the distinction between automatic enforcement and automatic assembly.
+
+The settled Q1-Q5 binding, revision, freshness, route, relationship,
+preparation, and persistence semantics remain unchanged. The normative
+direction and evidence inventory did not require conceptual edits. The next
+detail question is the concrete authored-strategy input and accepted
+establishment result through which the contract system derives obligations and
+creates the internal binding authority without adding a second Trainer-facing
+strategy wrapper.
