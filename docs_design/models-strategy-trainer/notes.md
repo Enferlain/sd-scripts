@@ -868,3 +868,65 @@ projection rather than reconstructing identity from incidental live objects.
 Exact value types, identifier strings, relationship names, and persistence
 representations remain code-design decisions rather than reasons to keep the
 architecture question open.
+
+## Executable binding/preparation pressure test (2026-08-25)
+
+The completed binding, preparation, identity, lineage, artifact, and resume
+semantics were implemented as an isolated executable spike in
+`docs_design/models-strategy-trainer/executable_spike/`. It does not import or
+modify production code. The purpose was not to select final classes but to see
+whether the intended exchanges could form readable Python and whether failure
+interleavings exposed missing architecture.
+
+The final spike runs 28 scenarios covering ordinary multi-component training,
+deferred materialization, adapter/host relationships, teacher/student/adapter
+arrangements, contract-derived conformance, compatible and incompatible
+replacement, retirement and succession, replacement-only and destructive
+preparation failure, stale results, cross-authority rejection, joint and
+disjoint backend groups, artifacts, lineage, exact resume, and new-run loading
+from artifacts. Ruff and ty both pass for the two spike files. Independent
+review found no remaining correctness issue after several review-driven
+iterations.
+
+The implementation exercise confirmed the existing direction and revealed
+four details that now belong to the exchange design:
+
+- usable prepared state is a joint view of authority-owned participant/route
+  guarantees and Trainer-owned backend-group state; a backend composite is not
+  independently current and never replaces participant identity;
+- inseparable backend groups constrain later preparation before destructive
+  work begins: complete groups may be replaced, expanded, or merged, but an
+  overlapping job cannot omit an existing member; retirement evicts the whole
+  group and withdraws surviving members until rebuild;
+- relationship-dependent prepared views must be withdrawn for every
+  relationship revision path, including explicit transitions, endpoint
+  replacement, and endpoint retirement, and relationship state cannot change
+  while either endpoint is under destructive preparation; and
+- destructive attempt ownership must outrank every older replacement-only
+  result even when the participant had never previously been prepared. During
+  mutation and after destructive failure, withdrawn guarantees cannot be
+  restored by stale optimistic publication.
+
+The spike also demonstrated that persistence must select only participants
+declared as part of the persistent product, that an invalid participant cannot
+start replacement-only work whose publication is already impossible, and that
+a successor participating in relationships needs a complete arrangement
+amendment rather than participant-only redeclaration. Exact resume can preserve
+logical authority, participant references, and accepted revisions while
+creating new Python objects and a new execution-session identity; another run
+loading the same artifact receives new participant identities plus explicit
+artifact lineage.
+
+These conclusions are architectural evidence, not approval of the spike's
+names or container shapes. The fake backend does not exercise real
+Accelerate/DeepSpeed behavior, actual serialization, concurrency or locking,
+process failure during physical publication, or production migration. The
+known-implementation catalog and candidate evidence are stand-ins for a later
+contract/conformance implementation. Optimization ownership remains purposely
+unsettled; jointly preparing an optimizer in a backend call did not decide the
+optimization exchange.
+
+The binding/preparation pressure-test item is complete. The next architecture
+dependency is the optimization exchange, followed by the step exchange. Only
+after those are coherent should the current-to-target implementation mapping
+and governing OpenSpec be derived from the full design.

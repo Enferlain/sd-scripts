@@ -1230,6 +1230,63 @@ prepared optimizer/scheduler values remain opaque Trainer-owned candidate
 state here; their exact request, construction, and lifecycle remain for the
 later optimization exchange.
 
+### Executable pressure test of the exchange
+
+An isolated executable spike under
+`docs_design/models-strategy-trainer/executable_spike/` now exercises the
+binding and preparation semantics without importing or changing production
+code. Its Python names and storage shapes are provisional; the architectural
+result is the behavior the scenarios forced.
+
+The pressure test confirms the established flow:
+
+```text
+complete authored definition
+  -> contract establishment and derived obligations
+  -> authority-scoped participant and relationship incarnations
+  -> validated materialization and identity-preserving replacement
+  -> one attempt-scoped preparation job
+  -> unpublished candidate work
+  -> authority + Trainer publication
+  -> current execution, backend, artifact, and resume projections
+```
+
+It also makes four cross-owner constraints explicit:
+
+1. A Trainer-owned backend group is not independently current. A consumer may
+   use it only while the binding authority still reports every covered
+   participant as prepared. Authority route state and Trainer backend state
+   are separate ownership surfaces whose agreement creates the usable view.
+2. Inseparable backend coverage constrains future preparation before any
+   destructive work begins. A later job may replace, expand, or merge complete
+   existing groups, but it may not omit a member of any group it overlaps.
+   Retiring one member evicts the whole backend group and withdraws every
+   surviving member's prepared guarantee until a coherent group is rebuilt.
+3. A relationship revision invalidates prepared views derived from both
+   endpoints regardless of whether the revision came from an explicit
+   relationship transition, endpoint replacement, or endpoint retirement.
+   Relationship state cannot change while either endpoint is under destructive
+   preparation.
+4. Destructive-attempt ownership dominates all older optimistic work. Once an
+   in-place attempt withdraws guarantees, an older replacement-only result
+   cannot restore them during the attempt or after failure. Only successful
+   completion of the owning attempt, destructive re-establishment, or accepted
+   binding replacement can restore a usable state.
+
+The spike further supports the existing identity decisions: preparation
+wrappers and backend composites do not replace participant references; exact
+resume restores logical authority and accepted revisions into new Python
+objects; loading an artifact into another run creates new participant
+incarnations with lineage; and a successor that participates in relationships
+requires a complete arrangement amendment so obligations and relationship
+incarnations are re-established together.
+
+The spike does not establish final Python APIs, concurrency primitives,
+serialization formats, or Accelerate/DeepSpeed integration. Its fake
+components and conformance catalog only show that the exchange can be made
+enforceable and readable. Real-backend behavior, locking, physical publication,
+and the optimization and step exchanges remain later work.
+
 ## Current-Code Evolution Map
 
 This is a pressure map, not an instruction to preserve current ownership.
@@ -1321,6 +1378,10 @@ modification/backward are not automatically the same result field.
 | EX-022 | working | all ordinarily fallible preparation and validation precedes an unobservable final installation of already-built authority-owned and Trainer-owned state; only destructive in-place work publishes its required invalid/preparing transition earlier |
 | EX-023 | working | within one logical run authority, each authority-established participant reference permanently identifies exactly one incarnation; accepted state revisions preserve it, retirement only closes current use, and a new reference establishes a different incarnation connected by explicit lineage when applicable |
 | EX-024 | working | exact runtime resume preserves authority and participant identity only when their accepted identity and revision state is persisted and restored; otherwise continuation begins new authority-scoped identities with explicit lineage |
+| EX-025 | working | Trainer-owned backend coordination state is usable only in conjunction with matching authority-owned prepared guarantees for every participant it covers; neither ownership surface alone defines current prepared state |
+| EX-026 | working | inseparable backend coverage constrains preparation before destructive work: later groups may replace, expand, or merge complete existing groups but may not omit an overlapped member, and retirement of one member evicts the group and withdraws surviving members until coherent rebuild |
+| EX-027 | working | every relationship revision withdraws dependent prepared endpoint views regardless of transition path, and relationship state cannot change while either endpoint is under destructive preparation |
+| EX-028 | working | destructive-attempt ownership and withdrawn-guarantee state reject every older optimistic preparation result during mutation and after failure; only an accepted re-establishment or replacement restores current use |
 
 No working entry becomes an OpenSpec requirement merely because it appears in
 this table. Discussion should either accept it, refine it, or mark it
@@ -1343,13 +1404,13 @@ Placeholder.
 
 Continue concrete design through the nearest dependencies only:
 
-1. Pressure-test the completed accepted-strategy, binding, preparation,
-   identity, and resume semantics against the recorded scenarios and current
-   code evidence.
-2. Settle optimization ownership and the optimization exchange without letting
+1. Settle optimization ownership and the optimization exchange without letting
    joint backend preparation dictate that contract.
-3. Settle the step exchange from the Trainer's execution needs and the accepted
+2. Settle the step exchange from the Trainer's execution needs and the accepted
    strategy projections.
+3. Derive the concrete current-to-target code mapping, module placement, and
+   migration milestones from the completed architecture rather than from the
+   provisional executable-spike types.
 
 Concrete Python representation, current-to-target code mapping, module
 placement, and migration milestones follow in
