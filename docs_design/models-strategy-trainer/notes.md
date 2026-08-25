@@ -649,3 +649,222 @@ detail question is the concrete authored-strategy input and accepted
 establishment result through which the contract system derives obligations and
 creates the internal binding authority without adding a second Trainer-facing
 strategy wrapper.
+
+## Code-derivation dependency path corrected (2026-08-24)
+
+The user emphasized again that all current production code predates the target
+direction and asked for the best dependency path for figuring out the eventual
+code. Direct inspection of the launcher, configuration validation, strategy
+factory and aggregate ABC, family strategy constructors, Trainer, phases,
+mode implementations, and objective boundary confirmed that current code must
+remain evidence rather than an upstream design authority.
+
+The active launcher currently validates configuration before a strategy
+exists, constructs a family-selected strategy and a separate mode, and lets
+Trainer construct a separate objective. Trainer then becomes the mutable owner
+of strategy-produced components and passes its projections back into strategy
+and mode calls. The aggregate `TrainingStrategy` ABC also mixes operations
+that the future design classifies as core exchanges, recognized capabilities,
+strategy-internal features, and conditional family behavior. Designing the new
+authoring API or validator directly from those classes would preserve the
+fragmentation the direction intends to remove.
+
+The exchange record now distinguishes three orders:
+
+```text
+runtime direction
+  authored definition -> establishment -> accepted strategy -> Trainer
+
+design-dependency direction
+  intended Trainer -> exchanges/results -> accepted strategy state
+    -> establishment/conformance -> authored input
+
+current-code migration evidence
+  launcher/factories -> strategy+mode+objective -> mutable Trainer/phases
+    -> typed islands and migration mappings
+```
+
+The recommended derivation sequence is therefore: define the intended Trainer
+skeleton; build a semantic Trainer-consumption table; derive the accepted
+`TrainingStrategy` boundary; complete binding, preparation, optimization, and
+step dependencies in that order; derive establishment and known/custom
+conformance from the accepted result; design the authored-definition API; and
+only then choose final Python placement and migration milestones. This does
+not require copying today's Trainer or finalizing all exchanges at once.
+Binding and preparation remain first because later exchanges depend on their
+accepted current state.
+
+The next bounded discussion artifact is the semantic Trainer-consumption
+table: for each core exchange and recognized capability, record request,
+result, lifecycle point, required accepted-state guarantees, and side-effect
+owner without treating today's method signatures as the answer.
+
+That first frame was added to the exchange record in the same pass. It treats
+admission as a pre-Trainer contract boundary; arrangement/binding,
+preparation, optimization, and step as the four core surfaces; and caching,
+validation, sampling, trained-artifact persistence, and runtime restoration as
+recognized pipeline capabilities. Logging, metadata, resource observation,
+interruption, and cleanup remain cross-cutting Trainer/pipeline ownership that
+consume typed results without owning live strategy state. The frame explicitly
+does not promote today's tokenizer, VAE/text-encoder/denoiser,
+`trainable_model`, `TrainingMode`, or `ObjectiveRuntime` surfaces into the
+future contract. The first row to refine is arrangement materialization and
+binding, with preparation kept beside it because both operate over the same
+accepted identities.
+
+## Open-question audit separated design from code shape (2026-08-25)
+
+The first eight open-register entries were reviewed against the direction,
+exchange decisions, chronological notes, inventory, and relevant metadata
+identity precedent. The audit used one rule: an architecture question remains
+open only when different answers would materially change behavior, ownership,
+lifecycle, or system boundaries. Exact classes, fields, constructors,
+registrations, generics, envelopes, and module placement belong to the later
+current-to-target code mapping.
+
+Results so far:
+
+- former question 1 has settled establishment/one-strategy semantics; only the
+  Python construction API remains;
+- former question 2 is deferred implementation design for exposing known
+  built-in/custom conformance after the required information is known;
+- former question 3 has settled obligation/evidence authority and timing
+  principles; concrete types are exchange-local code design;
+- former question 4 is resolved and duplicated the construction boundary;
+- question 5 remains as a real design question about durable identity versus
+  lineage across history, metadata, persistence, and resume;
+- former question 6 has settled non-revival/new-incarnation behavior; initial
+  key-reuse support is implementation policy;
+- former question 7 is concrete bound-state/access-view representation; and
+- former question 8 is concrete transition-envelope representation after
+  atomic publication behavior was already settled.
+
+Deferred Python and migration decisions now live in
+`strategy_system_implementation_mapping.md`, which will later map the current
+inventory into target code and OpenSpec milestones. The architecture register
+retains question 5 and the not-yet-audited questions 9–14. The former full
+remaining-work list was replaced with a three-step current design frontier,
+and the compaction handoff was reduced to document roles and the current
+frontier.
+
+## Remaining open-question audit (2026-08-25)
+
+Former questions 9–14 were checked against the settled direction, scenario
+requirements, and the binding/preparation exchange itself. The broad scoped
+read question was narrowed to the preparation projection's exact live access
+meanings and coherent multi-participant source state. Consumer boundaries are
+otherwise settled: Trainer infrastructure and capabilities receive only their
+contract-defined projections, observability receives facts/results rather than
+arbitrary live objects, and persistence receives a coherent product-specific
+artifact projection.
+
+The in-place preparation semantics are settled; lease/token/API shape is code
+design. Distributed ranks participate in one logical accepted transition;
+collective mechanics are runtime implementation. Optimization objects remain
+Trainer-owned even when jointly prepared, while their exact exchange stays in
+the later optimization design. One accepted contract/version now governs one
+run authority: permitted arrangement amendments re-evaluate obligations under
+that contract, whereas another contract/version or Trainer-contract extension
+requires new establishment.
+
+The only remaining preparation-wide architecture question is the commit and
+recovery boundary between authority-owned route publication and Trainer-owned
+runtime/backend publication. The active register therefore contains only
+durable identity versus lineage, preparation read isolation, and prepared-state
+commit/recovery. Earlier exact identity, obligation/evidence type, and
+transition-envelope sections are marked as deferred code design rather than
+open architecture.
+
+## Preparation reads and publication settled (2026-08-25)
+
+Follow-up discussion and external review corrected “single-use preparation
+package” into one **attempt-scoped preparation job** derived atomically from
+coherent accepted authority state. The job may span several ordered or joint
+backend calls and need not be one literal disposable object. Its results remain
+bound to the attempt and its source dependencies. Preparation membership is
+broader than trainability, and backend composites remain coordination state
+rather than replacements for participant identity.
+
+Prepared-state publication was then reduced before introducing a general
+transaction protocol. All ordinarily fallible backend work, component-specific
+preparation, candidate assembly, rank agreement, and contract/freshness
+validation precede final publication. Final publication is an unobservable
+logical installation of already-created authority-owned route/view state and
+Trainer-owned runtime/backend state; it invokes no expected-fallible external
+work, conversion, validation, or callback. Post-publication observation cannot
+roll back accepted current state, while process/rank termination aborts the run
+and belongs to restoration.
+
+Replacement-only failure therefore discards an unpublished candidate while
+preserving still-valid old routes. Destructive in-place preparation remains the
+intentional exception: its attempt first publishes a preparing/invalid state and
+withdraws affected guarantees, which stay withdrawn after failure until state
+is explicitly re-established or replaced. Successful completion uses the same
+non-failing final installation rule. Joint optimizer preparation remains opaque
+Trainer-owned candidate pressure and does not settle the later optimization
+contract. Former questions 9 and 11 are removed from the active register;
+durable identity versus lineage is now its only item.
+
+## Durable participant identity and lineage settled (2026-08-25)
+
+The remaining binding/preparation architecture question was checked against the
+current model-component, metadata, checkpointing, resume, Trainer, and training
+mode code. Today, loaded component keys survive from declarations into live
+components, metadata qualifies model realizations and components by a random
+Trainer session identifier, and resume restores backend/model state plus
+epoch/step. It does not restore a logical run authority, participant
+incarnations, or their accepted revisions. A resumed process currently creates
+a new Trainer session identifier. This is current-code evidence, not the target
+behavior.
+
+The target decision is that, within one logical run authority, each
+authority-established participant reference permanently identifies exactly one
+participant incarnation. The reference is never reassigned or revived. Its
+durable projection combines that authority/run identity, its authored
+participant key, and an incarnation discriminator. Materialization,
+preparation wrapping/casting, identity-preserving replacement, and route
+rebinding preserve the reference; their changing binding, relationship, and
+route revisions do not become identity. Retirement closes current use but
+preserves the same historical identity for history and provenance. A different
+authority/reference is a different incarnation; redeclaring a key after
+retirement, if permitted, receives a new reference. Teacher and student remain
+distinct even when loaded from one source, and incompatible replacement
+establishes a new incarnation. Typed lineage or succession records any
+meaningful descent separately.
+
+Artifacts likewise have artifact/model-revision identity and capture accepted
+participant/run state; they are not participants. Exact runtime resume may
+preserve logical run authority, participant references, accepted arrangement,
+and relevant revisions across new Python objects and processes, while using a
+separate per-execution session identity for observations. It can do so only if
+the snapshot actually persists and restores those facts. Otherwise loading the
+snapshot begins new authority-scoped identities connected through explicit
+resume/derivation lineage rather than pretending the old incarnation survived.
+
+The work order explains the current integration gap more precisely: substantial
+supporting and metadata work came first. When the work then tried to proceed
+properly into model metadata, it exposed problems in the repository's existing
+model, strategy, Trainer, and checkpointing boundaries. That discovery caused
+the pivot into the present rework direction before richer model metadata could
+be completed on top of those boundaries. Model metadata was therefore not a
+mature architectural layer that the Trainer later failed to adopt; trying to
+design and implement it was the pressure test that revealed the architecture
+underneath was not yet what was wanted.
+
+Its need for intentional loaded-component boundaries, durable model identity,
+component provenance, run realizations, artifacts, and lineage remains a direct
+input to this redesign. Current checkpointing's failure to restore a logical
+authority and participant incarnations is one of the capabilities the new
+architecture must make possible, not evidence that metadata is merely an
+external observer with incidental concerns.
+
+Those metadata distinctions therefore directly inform the target requirements.
+They still do not require the current
+`run/<session>/model/<realization>/component/<key>` string shape to become the
+runtime identity mechanism. Participant identity belongs to the binding
+authority, which must expose an intentional durable projection to metadata,
+persistence, and exact-resume restoration. Metadata records and preserves that
+projection rather than reconstructing identity from incidental live objects.
+Exact value types, identifier strings, relationship names, and persistence
+representations remain code-design decisions rather than reasons to keep the
+architecture question open.

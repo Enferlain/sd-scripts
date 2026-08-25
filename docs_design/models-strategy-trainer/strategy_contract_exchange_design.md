@@ -18,6 +18,9 @@ The other records retain their existing roles:
 
 - [`strategy_system_inventory.md`](strategy_system_inventory.md) is evidence
   about current production code and pressure scenarios;
+- [`strategy_system_implementation_mapping.md`](strategy_system_implementation_mapping.md)
+  holds deferred Python/code-shape decisions and will later map current code
+  into the target design and migration milestones;
 - [`notes.md`](notes.md) is chronological discussion history and may contain
   superseded positions; and
 - [`framework_pattern_comparison.md`](framework_pattern_comparison.md) is
@@ -86,6 +89,185 @@ The pre-OpenSpec design is complete enough to propose a governing change when:
 The likely result is one governing OpenSpec change containing several
 capability specifications and numbered implementation milestones. This does
 not imply one big-bang implementation.
+
+## Dependency Path For Deriving The Code
+
+### WORKING METHOD: design backward from the intended Trainer, not from the
+current strategy classes
+
+The runtime direction and the design-dependency direction are intentionally
+opposite:
+
+```text
+runtime use
+  authored definition
+    -> contract establishment
+      -> accepted TrainingStrategy
+        -> Trainer execution
+
+design derivation
+  intended Trainer responsibilities
+    -> Trainer-facing exchanges and observable results
+      -> state and guarantees an accepted TrainingStrategy must provide
+        -> contract establishment and conformance enforcement
+          -> authored-definition inputs and authoring API
+```
+
+This follows from the contract being the acceptance definition **for the
+Trainer**. The authoring input cannot be designed coherently until the accepted
+result is known, and that result cannot be known until the intended Trainer's
+interactions and ownership boundaries are known.
+
+"Start from Trainer" does not mean mechanically preserving today's `Trainer`
+fields, phases, or method calls. The current code predates this direction and
+is migration evidence only. Every current dependency must first be classified
+as one of:
+
+```text
+intended Trainer mechanism
+  timing, infrastructure, distributed coordination, optimization, observation
+
+Trainer-recognized capability
+  a named request/result/lifecycle operation the pipeline deliberately knows
+
+strategy-internal feature
+  authored behavior used behind the complete strategy boundary
+
+model/component mechanic
+  behavior inherent to construction, loading, execution, or serialization
+
+current topology or ownership leakage
+  a convenience projection or mutable back-channel that need not survive
+```
+
+Only the first two categories directly determine the Trainer-facing contract.
+The other categories constrain implementations or migration without enlarging
+that surface automatically.
+
+### Two evidence paths must remain separate
+
+The target semantic dependency path is:
+
+```text
+intended Trainer mechanism
+  -> core and recognized-capability exchanges
+    -> required accepted state, readiness, and results
+      -> accepted TrainingStrategy boundary and internal authority
+        -> establishment-time obligations and conformance checks
+          -> explicit authored definition
+```
+
+The current-code migration path is:
+
+```text
+launcher/config validation/factories
+  -> current family strategy + TrainingMode + objective
+    -> mutable Trainer and phase consumers
+      -> useful typed islands and current pressure cases
+        -> mapping into the target exchanges
+```
+
+The migration path may reveal a missing requirement or a difficult
+transition, but it does not reverse authority and make a current class,
+family-shaped projection, or configuration branch normative.
+
+### Current-code evidence for this order
+
+The active path demonstrates why authoring or validation should not be the
+first API designed:
+
+- `train.py` runs config-only preparation and validation before constructing
+  any strategy, so current validation cannot judge the complete authored
+  arrangement;
+- `build_training_strategy()` selects one family aggregate from
+  `cfg.model.model_type`, while the aggregate constructor initializes some
+  runtime behavior such as tokenizers without filing an accepted contract;
+- `Trainer` separately receives `TrainingStrategy` and `TrainingMode`, then
+  constructs its own objective, so the value reaching Trainer is not yet the
+  one complete authored strategy required by the direction;
+- `Trainer.setup()` installs strategy-produced components as Trainer-owned
+  state, and later phases pass those projections back into strategy and mode
+  calls; and
+- the current `TrainingStrategy` ABC combines core-looking operations,
+  pipeline capabilities, family-internal collaboration, and conditional
+  raising defaults, so its method list is not a semantic definition of the
+  future core.
+
+These facts are evidence for responsibilities that must be represented, not a
+template for the target call graph.
+
+### Derivation sequence
+
+Use this order to determine the eventual code:
+
+1. **Intended Trainer skeleton.** State what the target Trainer owns and what
+   it must accomplish without naming SD-shaped participants or copying the
+   current phase APIs.
+2. **Trainer consumption table.** For each core exchange and recognized
+   capability, define the request meaning, result meaning, lifecycle point,
+   required accepted-state guarantees, and owner of side effects.
+3. **Accepted strategy boundary.** Derive the minimum static declarations,
+   behaviors, scoped current-state views, and internal authority that Trainer
+   must be able to rely on. This is the output side of contract establishment.
+4. **Runtime exchange dependencies.** Complete binding before preparation,
+   preparation before optimization realization, and optimization before the
+   step exchange. Attach caching, validation, sampling, persistence, resume,
+   and other capabilities at the earliest state boundary their requests
+   actually require.
+5. **Contract establishment.** Define how the contract system derives and
+   enforces the obligations necessary to create that accepted boundary.
+6. **Known and custom conformance.** Define how maintained library selections
+   prove the required exchanges and where explicit direct/custom conformance
+   or contract extension begins.
+7. **Authored-definition API.** Only then choose the Python authoring shape
+   that supplies the explicit selections and wiring establishment needs.
+8. **Migration and placement.** Map current strategy facets, mode behavior,
+   objective behavior, phases, and typed islands into reviewed milestones;
+   choose final modules and class names after recurring stages and dependency
+   directions are concrete.
+
+This sequence does not require finalizing all of Trainer before making
+progress. The first bounded artifact is a semantic Trainer-consumption table
+for the four core exchanges and the already recognized capabilities. Binding
+and preparation remain the first exchanges completed because optimization and
+step semantics depend on their accepted current state.
+
+### First intended-Trainer consumption frame
+
+This is a derivation frame, not a final method list. “Trainer consumes” includes
+delegated pipeline orchestration whose lifecycle and result semantics Trainer
+deliberately owns. It does not imply that every implementation lives on the
+central `Trainer` class.
+
+| Concern | Why the intended Trainer/pipeline consumes it | What must already be guaranteed by the accepted strategy | Result and side-effect ownership | Surface |
+| --- | --- | --- | --- | --- |
+| admission | Trainer must never receive an unjudged authored definition | active contract/version, complete explicit authored selections, successful establishment, one seeded internal authority | contract establishment either produces one accepted `TrainingStrategy` or rejects before Trainer construction; it does not materialize runtime objects | pre-Trainer contract boundary |
+| arrangement materialization and binding | execution needs authoritative current participants and relationships without reconstructing family topology | accepted declarations, derived lifecycle/readiness/relationship obligations, permitted unbound initial states, and transition protocols | model/domain producers may construct or load values; only the internal authority accepts bindings, advances revisions, and publishes current state | core |
+| runtime preparation | generic device/distributed infrastructure must prepare concrete execution participants without learning their family anatomy | authoritative source snapshot, required preparation participants, constraints, access meanings, joint-preparation rules, and route obligations | Trainer-owned infrastructure performs generic preparation; specialized component/capability behavior may participate; the authority accepts returned routes/views and invalidates stale dependents | core |
+| optimization realization | Trainer must turn authored training intent into executable trainability, parameter groups, clipping/synchronization participants, optimizer, and scheduler state | accepted training-subject declarations and constraints resolved against current participant bindings and preparation state | optimization/Trainer infrastructure realizes generic trainability and optimizer state; specialized selected behavior returns typed results rather than mutating Trainer | core |
+| training step | Trainer owns batch/step timing, accumulation, final optimization-loss handling, backward, advancement, triggers, and observation | current prepared routes, accepted optimization runtime, strategy-internal objective behavior, and a valid step request context | strategy computes the authored training semantics and returns a differentiable result plus declared observations/state effects; Trainer performs infrastructure actions | core |
+| representation/conditioning caching | the pipeline may schedule and persist reusable data products requested for the run | a selected compatible caching capability, applicable representation/conditioning behavior, readable current bindings/views, and consistency/freshness requirements | data/cache infrastructure coordinates storage; strategy features supply semantic encoding/decoding behavior; typed results update cache/data state without becoming binding authority | recognized capability |
+| validation/evaluation | the pipeline owns when evaluation occurs and how its results enter run control and observation | a selected compatible validation capability, valid evaluation routes/views, and any evaluation-state constraints | capability computes evaluation semantics and results; Trainer owns trigger timing and ordinary runtime mode transitions | recognized capability |
+| sampling/generation | the pipeline owns sampling triggers, requests, output coordination, and observation | a selected compatible sampling capability plus its conditioning, predictor, representation, and persistence requirements | capability performs authored generation behavior; Trainer/pipeline owns scheduling and destination coordination | recognized capability |
+| trained-artifact persistence | the pipeline owns checkpoint timing, retention, destination, publishing, and run coordinates | a selected product capability, coherent authoritative snapshot, declared product/member/representation/consistency semantics, and applicable serializers | product capability resolves semantic plan/contributions; domain serializers convert; Trainer/persistence infrastructure writes and reports the typed artifact result | recognized capability |
+| runtime resume/state restoration | the pipeline owns restoration timing, run coordinates, and infrastructure state | an explicitly selected restoration contract and compatible state contributors, distinct from trained-product persistence | contributors restore their owned state through a coordinated restoration result; Trainer restores its coordinates/infrastructure and re-establishes coherent current runtime state | recognized capability |
+
+Cross-cutting logging, metadata, resource observation, interruption, and cleanup
+remain Trainer/pipeline responsibilities. They may consume accepted transition,
+capability, optimization, step, and artifact results through typed observation
+views, but observation does not become a second owner of live strategy state.
+
+The table deliberately does **not** make current `tokenizers`, `vae`,
+`text_encoders`, `denoiser`, `trainable_model`, `TrainingMode`, or
+`ObjectiveRuntime` universal Trainer-facing inputs. Their underlying meanings
+must reappear only where the relevant core exchange, recognized capability, or
+strategy-internal feature actually requires them.
+
+The first row to refine into a complete request/result/state/failure table is
+arrangement materialization and binding. Runtime preparation is refined beside
+it because its output must rebind the same accepted identities. The remaining
+rows consume those results and therefore cannot determine the binding model
+independently.
 
 ## Settled Inputs From Q1-Q5
 
@@ -283,6 +465,22 @@ Derived obligations may concern one participant, several participants, a
 relationship, a route, a capability, or the complete arrangement. They are not
 forced into a participant-local taxonomy merely because one binding transition
 triggers their re-evaluation.
+
+### WORKING DECISION: one accepted contract version governs one authority
+
+The contract/version accepted during establishment remains fixed for the
+lifetime of that run authority. An explicit arrangement amendment may change
+participants, relationships, routes, or other authored selections where the
+accepted contract permits that evolution. The authority then derives and
+re-evaluates every affected obligation under the same accepted contract before
+publishing the amended state.
+
+An arrangement amendment cannot silently replace the Trainer contract or make
+an undeclared contract extension active. A different core contract, contract
+version, or explicit Trainer-contract extension requires a new establishment
+and a newly accepted strategy authority. Any future facility for migrating a
+live run between contract versions would be a separate, explicit contract and
+recovery feature rather than an ordinary binding transition.
 
 ### WORKING DECISION: runtime producers supply contract-defined evidence
 
@@ -503,7 +701,69 @@ authority. If later contract evolution permits redeclaration with the same
 authored key, the new declaration must receive a different reference; a
 retired reference can never revive.
 
-### OPEN: exact identity representation
+### WORKING DECISION: participant incarnation is authority-scoped and durably projectable
+
+Within one logical run authority, each authority-established `ParticipantRef`
+permanently identifies exactly one participant incarnation. The authority
+never reassigns or revives that reference. Its durable projection must
+therefore qualify the authored `ParticipantKey` by both the logical run
+authority and an incarnation discriminator corresponding to that reference.
+Binding, relationship, route, and other accepted state revisions describe
+change to the incarnation; they are not its identity.
+
+Materialization, wrapping or casting during preparation, compatible
+identity-preserving replacement, and route rebinding preserve the reference.
+Retirement closes it to further current-state transitions and live access, but
+the same reference continues to identify the same historical incarnation for
+history and provenance. A new run authority, redeclaration after retirement,
+or an incompatible replacement establishes a new reference and therefore a
+new incarnation. When the new incarnation descends from earlier state, that
+connection is expressed separately as an explicit typed lineage or succession
+relationship. Loading the same source does not by itself make two participants
+identical; a teacher and student initialized from one checkpoint are distinct
+participants.
+
+Artifacts are also not participant incarnations. An artifact captures accepted
+run state and receives its own artifact and model-revision identity, with
+lineage to the participant/run state from which it was produced. Portable
+catalog identity, source representation, immutable model revision, run
+realization, and participant incarnation are related qualifications, not one
+interchangeable identifier.
+
+Exact runtime resume preserves the logical training-run authority, its
+participant references, the accepted arrangement, and the relevant revisions
+even though Python objects, processes, and wrappers are recreated. Each process
+execution may have a separate execution-session identity for observation. If a
+snapshot does not persist and restore the authority and participant identity
+state, it cannot claim identity-preserving exact resume; using it to begin a
+new run establishes new authority-scoped incarnations connected by explicit
+resume/derivation lineage where applicable.
+
+The substantial metadata work, followed by the attempt to carry it into richer
+model metadata, is the immediate architectural predecessor to this direction.
+Model metadata did not first become a mature layer that was later found to be
+poorly integrated. While trying to proceed into it properly, its need for
+durable model identity, component provenance, run realization, artifact
+identity, and lineage exposed how unclear the existing model/strategy/Trainer
+lifecycle was. That discovery caused the pivot into this redesign before the
+model-metadata work could be completed on an unsuitable foundation.
+
+The fact that current Trainer checkpointing does not yet restore those
+identities is consequently an unfinished capability that this redesign must
+enable, not a surprising disagreement with an already-integrated metadata
+architecture and not a reason to treat the metadata semantics as incidental
+evidence.
+
+That causal role does not make today's metadata record shape the owner of
+future runtime participant identity. In the target architecture, the binding
+authority establishes participant identity and makes its durable facts
+available to metadata, persistence, and restoration. Metadata records and
+preserves that projection; it must not infer identity from whatever live
+objects happen to be available. The current realization/component identifier
+format is therefore valuable evidence of required qualification without being
+the normative representation of `ParticipantRef`.
+
+### DEFERRED CODE DESIGN: exact identity representation
 
 The semantic split does not yet decide whether a reference is an opaque value,
 an authority identifier plus declaration ordinal, a typed handle, or another
@@ -546,17 +806,53 @@ route revisions and survive unrelated changes.
 No route or derived view remains silently fresh by caller convention. The
 authority can answer whether its recorded dependency guarantee still holds.
 
-### OPEN: snapshot contents and read isolation
+### WORKING DECISION: reads are consumer-specific projections
 
-The concrete snapshot design must decide:
+The authority does not expose one general component lookup or unrestricted
+object snapshot. A consumer receives a projection whose meanings are defined
+by the accepted exchange or capability that requested it:
 
-- whether snapshots are immutable values, scoped read handles, or both;
-- how live Python objects are exposed without making the snapshot an
-  unrestricted object dictionary;
-- how an atomic multi-participant read is retained through preparation or
-  persistence; and
-- when a snapshot may be held versus when consumers must copy or resolve a
-  narrower projection.
+- Trainer-owned infrastructure receives only the participants, routes, access
+  meanings, constraints, and revisions required by the preparation or later
+  optimization exchange;
+- strategy-internal features and selected capabilities receive only the
+  participant and relationship views authorized by their accepted contracts;
+- observability receives accepted transition facts, results, and history, not
+  arbitrary live object access; and
+- persistence receives a coherent product-specific artifact-state projection,
+  not the current outer execution objects by default.
+
+Every projection identifies the authority state on which it depends. A
+multi-participant consumer therefore either receives one coherent authority
+view or an explicitly valid fine-grained dependency set; it cannot assemble a
+supposedly current view from unrelated reads by convention.
+
+### WORKING DECISION: preparation is one attempt-scoped coherent job
+
+One preparation attempt is governed by one complete preparation job derived
+atomically from coherent accepted authority state. The job identifies the
+exact strategy-owned inputs, permitted access meanings, target routes,
+constraints, joint groups, mutation permissions, and source dependencies for
+that attempt. Preparation membership is broader than trainability: a frozen
+participant may still require movement, casting, wrapping, compilation, or
+another execution preparation operation.
+
+“One job” is a semantic coordination boundary, not a requirement for one
+backend call, one literal Python object, or an object discarded after one
+method invocation. A job may coordinate several ordered or joint backend
+operations. Every result remains tied to that attempt and its source
+dependencies; it cannot be accepted as the result of another attempt or
+silently reused after those dependencies become stale.
+
+For replacement-only work, the job retains coherence optimistically: all of
+its strategy-owned inputs came from one accepted state, and the authority
+rechecks their dependencies before final publication. For in-place-capable
+work, the authority-recognized attempt transition withdraws affected
+guarantees before mutation and becomes the basis for finalizing success or
+failure. The later optimization and capability exchanges will define their
+own narrow inputs without changing this preparation-state rule. Immutable
+value, scoped-handle, copy, and similar Python representation choices are
+downstream code design.
 
 ## Binding Exchange
 
@@ -694,15 +990,16 @@ be assigned:
 The authority does not infer a new participant in those cases. It rejects the
 replacement and requires an explicit retirement/declaration amendment.
 
-### OPEN: derived-obligation and evidence representation
+### DEFERRED CODE DESIGN: derived-obligation and evidence representation
 
-The design still must determine how the contract system represents obligations
-derived from the participant's complete uses without encoding one SD-shaped
-role taxonomy. It must distinguish facts knowable during establishment from
-evidence required after materialization or preparation, and must support known
-library conformance, direct/custom implementations of an existing contract,
-and explicit contract extensions without making ordinary authors assemble
-validation behavior.
+The concrete design must represent obligations derived from the participant's
+complete uses without encoding one SD-shaped role taxonomy. Its types must
+distinguish facts knowable during establishment from evidence required after
+materialization or preparation, and support known library conformance,
+direct/custom implementations of an existing contract, and explicit contract
+extensions without making ordinary authors assemble validation behavior. The
+authority, timing, and enforcement semantics are settled; exact types and code
+placement follow when the accepted exchanges are mapped into code.
 
 ### Binding result shape
 
@@ -726,9 +1023,10 @@ The result must distinguish canonical current-state effects from historical
 transition facts. Metadata may observe the latter but does not become the live
 authority.
 
-### OPEN: transaction and rejection mechanics
+### DEFERRED CODE DESIGN: transaction and rejection representation
 
-The design still must decide:
+The atomic acceptance and rejection behavior above is settled. Concrete code
+design still must decide:
 
 - how producers obtain permission or an expected-revision token;
 - whether all transitions use one proposal/result envelope or several narrow
@@ -762,7 +1060,7 @@ typed preparation result
   `- backend coordination handles         -> Trainer/runtime infrastructure
 ```
 
-### Preparation projection and plan
+### Preparation job projection and plan
 
 The preparation input must identify:
 
@@ -813,16 +1111,21 @@ optimization-exchange design.
 ### Rebinding guarantee
 
 Prepared execution objects are not authoritative merely because a backend
-returned them. The authority validates the prospective result against its
-source snapshot and the contract-derived preparation, route, relationship, and
-freshness obligations, then accepts all affected route rebindings atomically.
-Trainer publishes the prepared optimization runtime and backend handles only
-after the binding portion is accepted, or through a broader coordination
-protocol that provides the same no-half-published guarantee.
+returned them. Backend work, component-specific preparation needed to make the
+candidate ready, result assembly, rank agreement, and contract/freshness
+validation all occur before final publication. A stale result resolved from an
+authority state that has since changed is rejected or explicitly re-resolved;
+it is never silently installed against a newer arrangement.
 
-A stale result resolved from an authority state that has since changed is
-rejected or explicitly re-resolved. It is never silently installed against a
-newer arrangement.
+After successful validation, one publication coordinator logically commits
+all affected authority-owned route/view changes and the already-built
+Trainer-owned runtime/backend state without exposing a half-published state.
+The final publication boundary performs only internal installation of prepared
+state. It performs no backend work, conversion, contract validation, user or
+observation callback, or other operation expected to fail. The exact code
+mechanism may use guarded state replacement, a generation switch, or another
+equivalent representation without merging the separate ownership of routes,
+optimization runtime, and backend coordination state.
 
 ### WORKING DECISION: in-place mutation freshness invariant
 
@@ -887,23 +1190,45 @@ The exchange must distinguish at least:
 | incomplete keyed result | reject the whole atomic rebinding set |
 | backend result violates route or joint-preparation constraints | reject publication and report the incompatible result |
 | authority changes concurrently before commit | reject stale result; do not partially publish Trainer runtime |
-| Trainer publication fails after authority acceptance | requires an explicit coordination/recovery rule; still OPEN |
+| process or rank terminates during final publication | the run cannot continue; the separate restoration contract re-establishes runtime state rather than attempting in-process partial recovery |
+| post-publication observation or history routing fails | accepted current state remains committed; reporting does not become a rollback authority |
 
-### OPEN: preparation coordination protocol
+### WORKING DECISION: expected fallibility precedes final publication
 
-The design still must settle:
+The normal replacement-only path does not require a general staged-commit or
+rollback protocol:
 
-- whether the authority issues a preparation attempt/lease before external
-  work;
-- how joint model/optimizer/scheduler preparation is keyed without collapsing
-  their ownership;
-- whether route acceptance and Trainer runtime publication need a staged
-  commit protocol;
-- how rank agreement is established while retaining one logical run authority;
-- how ordinary device/dtype movement differs from execution-route preparation;
-- which original/unwrapped access views can be produced generically versus by
-  backend-specific adapters; and
-- how repeated preparation, compilation, or re-preparation is represented.
+```text
+coherent attempt-scoped preparation job
+  -> fallible backend and component work
+  -> complete unpublished candidate
+  -> rank agreement and authority validation
+  -> non-failing logical state installation
+  -> observation and history routing
+```
+
+If replacement-only work fails before publication, its candidate is discarded
+and the old authoritative routes remain current when their guarantees still
+hold. Publication installs already-created, already-validated state through an
+unobservable coordination boundary. Failures outside the architecture's
+ordinary control, such as process or rank termination, abort the run and belong
+to restoration rather than an elaborate in-process distributed transaction.
+
+The in-place-capable path has one necessary earlier state publication: before
+external mutation, the authority accepts the attempt and withdraws the
+affected guarantees. That preliminary safety transition is deliberately not
+the final prepared-state publication. If fallible work then fails, the affected
+state remains invalid until explicitly re-established or replaced; the system
+does not pretend to roll back an arbitrary external mutation. On success, the
+same non-failing final installation rule applies.
+
+All ranks participate in one logical accepted transition; rank-local replicas
+and backend handles do not become independent authorities. Device/dtype
+movement, wrapping, compilation, and repeated preparation use this exchange
+whenever they change authority-visible routes, views, or guarantees. Jointly
+prepared optimizer/scheduler values remain opaque Trainer-owned candidate
+state here; their exact request, construction, and lifecycle remain for the
+later optimization exchange.
 
 ## Current-Code Evolution Map
 
@@ -991,6 +1316,11 @@ modification/backward are not automatically the same result field.
 | EX-017 | superseded | ordinary validation clauses are not composed by strategy authors; the contract system derives them from explicit known selections, while custom implementation conformance or contract extension must be deliberate |
 | EX-018 | working | the binding exchange begins by contract-validating the complete authored definition, deriving obligations, and establishing the strategy's internal authority before the resulting `TrainingStrategy` may reach Trainer |
 | EX-019 | working | automatic contract enforcement does not imply automatic assembly: authors explicitly choose and wire the arrangement, while the contract system supplies ordinary validity knowledge and reports incompatible or missing choices |
+| EX-020 | working | one accepted contract/version governs one run authority; permitted arrangement amendments re-evaluate obligations under it, while another contract/version or Trainer-contract extension requires new establishment |
+| EX-021 | working | one preparation attempt is governed by one coherent authority-derived job that may span several backend operations; membership is not limited to trainables and every result remains bound to the attempt's source dependencies |
+| EX-022 | working | all ordinarily fallible preparation and validation precedes an unobservable final installation of already-built authority-owned and Trainer-owned state; only destructive in-place work publishes its required invalid/preparing transition earlier |
+| EX-023 | working | within one logical run authority, each authority-established participant reference permanently identifies exactly one incarnation; accepted state revisions preserve it, retirement only closes current use, and a new reference establishes a different incarnation connected by explicit lineage when applicable |
+| EX-024 | working | exact runtime resume preserves authority and participant identity only when their accepted identity and revision state is persisted and restored; otherwise continuation begins new authority-scoped identities with explicit lineage |
 
 No working entry becomes an OpenSpec requirement merely because it appears in
 this table. Discussion should either accept it, refine it, or mark it
@@ -998,76 +1328,41 @@ superseded while preserving the reason.
 
 ## Open Question Register
 
-1. What exact Python authoring and establishment boundary lets the contract
-   system judge the complete authored definition and return the same public
-   `TrainingStrategy` abstraction in an accepted state rather than exposing a
-   second Trainer-facing wrapper?
-2. How does the contract system identify known library implementations and
-   their conformance without automatic assembly, `hasattr()` discovery,
-   family-name branches, or a stringly typed global registry?
-3. What typed representation lets the contract derive participant,
-   relationship, route, readiness, and cross-concern obligations, and what
-   evidence boundaries distinguish establishment-time facts from facts only a
-   materializer or preparation backend can report?
-4. Who constructs the authority at contract establishment, and how is it
-   prevented from accepting state for a raw or differently versioned authored
-   definition?
-5. What is the durable projection of `ParticipantRef`, distinct from its live
-   typed runtime use?
-6. Should retired authored keys be permanently reserved within one authority,
-   or may a later amendment reuse a key while necessarily receiving a new
-   reference?
-7. What exact bound-state and access-view types replace the single
-   `LoadedModelComponent.module` field?
-8. What proposal/result envelope supports atomic multi-participant and
-   participant-plus-relationship transitions?
-9. What scoped read projections may Trainer, strategy features, capabilities,
-   observability, and persistence request?
-10. What exact attempt/transition protocol coordinates in-place preparation
-   after affected guarantees are withdrawn, while replacement-only preparation
-   retains a simpler optimistic path?
-11. What publication/recovery rule prevents authority routes and Trainer-owned
-   runtime from diverging after preparation?
-12. How do ranks agree on one accepted transition while replicas remain
-    backend views rather than independent authorities?
-13. What exact optimization request/result joins backend preparation without
-    letting this exchange decide optimizer construction or ownership early?
-14. How may accepted contract-derived obligations evolve during one run: only
-    through arrangement amendment/new incarnation under the same contract, or
-    through an explicitly versioned contract-extension/re-establishment
-    transition?
+The earlier register has now been audited. Items whose architecture was already
+settled were removed; concrete Python mechanisms are not retained here as open
+architecture questions. Former item 5 is settled by the authority-scoped
+participant-incarnation and resume decisions above. Former items 9 and 11 are
+settled by the attempt-scoped preparation-job and non-failing-final-publication
+decisions. No binding/preparation architecture question remains active in this
+register. This does not settle the deliberately later optimization and step
+exchanges; in particular, the exact optimization preparation request/result
+from former item 13 remains later work under the Optimization Exchange
+Placeholder.
 
-## Immediate Discussion Order
+## Current Design Frontier
 
-Continue concrete design in this order:
+Continue concrete design through the nearest dependencies only:
 
-1. define the authored-strategy input and contract-establishment result that
-   allow only an accepted `TrainingStrategy` to reach Trainer;
-2. define how known selections produce derived obligations, how standard
-   library conformance is known, and where explicit custom conformance or
-   contract extension begins;
-3. complete materialization/replacement proposal and authority-result types
-   around contract-defined evidence and prospective-state enforcement;
-4. define scoped snapshots/access views and default freshness application;
-5. refine the preparation projection/plan so its requirements come from the
-   accepted contract obligations;
-6. define backend result acceptance, mutation failure, and publication
-   coordination;
-7. pressure-test the complete binding/preparation exchange against the six
-   target-first scenarios plus current fine-tune and adapter paths;
-8. proceed to optimization ownership and the optimization exchange; and
-9. define the step exchange and only then draft the governing OpenSpec.
+1. Pressure-test the completed accepted-strategy, binding, preparation,
+   identity, and resume semantics against the recorded scenarios and current
+   code evidence.
+2. Settle optimization ownership and the optimization exchange without letting
+   joint backend preparation dictate that contract.
+3. Settle the step exchange from the Trainer's execution needs and the accepted
+   strategy projections.
+
+Concrete Python representation, current-to-target code mapping, module
+placement, and migration milestones follow in
+`strategy_system_implementation_mapping.md` after the architecture and exchange
+semantics are coherent. The governing OpenSpec follows that mapping.
 
 ## Compaction Handoff
 
-At any context reset, resume from:
-
-- the settled inputs in `strategy_system_direction.md`;
-- the contract-authority correction recorded by superseded EX-007, EX-015, and
-  EX-017 plus replacement decisions EX-018 and EX-019;
-- the latest working/accepted entries in the decision register above;
-- the unresolved questions in the open-question register; and
-- the immediate discussion order.
+At any context reset, use `strategy_system_direction.md` as normative,
+`strategy_system_inventory.md` as current-code evidence, and the latest
+decision register plus current design frontier above as the continuation point.
+Use `strategy_system_implementation_mapping.md` only for deliberately deferred
+code-shape and migration work.
 
 Do not restart the architecture comparison, reopen Q1-Q5, or infer final
 Python class/package names from the working vocabulary.
