@@ -2,9 +2,11 @@
 
 ## Status And Authority
 
-This is the evolving pre-OpenSpec design record for the concrete exchanges
-between the authored training strategy, its internal binding authority, and
-Trainer-owned infrastructure.
+This is the evolving supporting design record for the concrete exchanges
+between authored strategy input, the accepted run arrangement and its binding
+authority, and Trainer-owned infrastructure. The pre-OpenSpec exploration has
+now reached its transition point: the next step is to create the governing
+OpenSpec and continue the intended-Trainer, contract, and exchange design there.
 
 It is deliberately downstream from
 [`strategy_system_direction.md`](strategy_system_direction.md): the direction
@@ -19,18 +21,24 @@ The other records retain their existing roles:
 - [`strategy_system_inventory.md`](strategy_system_inventory.md) is evidence
   about current production code and pressure scenarios;
 - [`strategy_system_implementation_mapping.md`](strategy_system_implementation_mapping.md)
-  holds deferred Python/code-shape decisions and will later map current code
-  into the target design and migration milestones;
+  holds the source-backed current-to-target responsibility map plus remaining
+  Python/code-shape and migration decisions;
 - [`notes.md`](notes.md) is chronological discussion history and may contain
-  superseded positions; and
+  superseded positions;
+- [`strategy_discussion.md`](strategy_discussion.md) and
+  [`strategy_discussion_external.md`](strategy_discussion_external.md) are raw
+  conversation transcripts retained as historical source material, not
+  requirement or design authority; and
 - [`framework_pattern_comparison.md`](framework_pattern_comparison.md) is
   subordinate prior-art research rather than a source of requirements.
 
-This document is not an implemented contract or an implementation plan. Names
+This document is not an implemented contract or an implementation plan. Once
+the governing OpenSpec exists, new normative requirements and design decisions
+belong there; this record remains evidence and supporting derivation. Names
 such as `ParticipantKey`, `ParticipantRef`, `PreparationPlan`, and
 `PreparationResult` are working vocabulary until a decision explicitly marks
-them as accepted. The eventual OpenSpec should be derived from the completed
-exchange semantics rather than treating every working name below as final.
+them as accepted. The OpenSpec should be seeded from the settled semantics here
+without treating every working name below as final.
 
 The training contract system remains the authoritative acceptance definition
 for the Trainer. This record must not move ordinary compatibility knowledge or
@@ -38,9 +46,10 @@ validation composition onto strategy authors. An authored strategy explicitly
 selects and wires its intent, participants, features, capabilities, and bounded
 choices; the contract system judges that complete authored definition, derives
 the obligations implied by its known contracts and implementations, and only
-then establishes the strategy runtime that may reach Trainer. The binding
-authority is the runtime enforcement responsibility of that same accepted
-contract, not a second source of compatibility meaning.
+then establishes an accepted arrangement from which executable run state may
+be bound and prepared. The binding authority is the runtime enforcement
+responsibility of that same accepted contract, not strategy-authored validity
+behavior or a second source of compatibility meaning.
 
 Decision markers have these meanings:
 
@@ -50,7 +59,7 @@ SETTLED INPUT
 
 WORKING DECISION
   current recommended answer for a downstream concrete question; may be
-  refined before OpenSpec
+  refined before the corresponding OpenSpec design or requirement is finalized
 
 SUPERSEDED
   an earlier working answer retained for chronological clarity after a later
@@ -60,7 +69,7 @@ OPEN
   a concrete question that still needs an answer
 ```
 
-## Scope And Completion Gate
+## Scope And OpenSpec Design Gate
 
 This record must define four exchanges:
 
@@ -73,22 +82,27 @@ Binding and runtime preparation are designed together first. Optimization
 ownership and the optimization exchange follow. The step exchange follows
 once it can refer honestly to the accepted optimization boundary.
 
-The pre-OpenSpec design is complete enough to propose a governing change when:
+The governing OpenSpec may now be created from the settled topology,
+responsibility boundaries, Q1–Q5 decisions, completed code inventory, and
+exchange work already recorded. Creating it does not declare the design
+implementation-ready. Its design, requirements, and implementation tasks are
+complete enough to begin production work only when:
 
 - each exchange has defined inputs, results, state effects, allowed external
   side effects, and failure conditions;
-- the standard Trainer-owned optimization profile and explicit research
-  extension are defined;
+- the standard Trainer-owned optimization behavior and explicit contract
+  extension path for research are defined;
 - the exchanges pass the current SD, SDXL, SD3, adapter, deferred-loading,
-  distributed-preparation, persistence, replacement, and compound-strategy
-  pressure scenarios; and
+  distributed-preparation, persistence, replacement, compound-strategy, and
+  progressively stronger custom-operation, imperative-region, and research
+  execution-authority pressure scenarios; and
 - the migration can be divided into reviewed milestones without introducing a
   temporary contract that discards settled identity, revision, route,
   freshness, or persistence meaning.
 
-The likely result is one governing OpenSpec change containing several
-capability specifications and numbered implementation milestones. This does
-not imply one big-bang implementation.
+The result should be one governing OpenSpec change containing several focused
+specifications and numbered implementation milestones. This keeps one coherent
+architecture without implying one big-bang implementation.
 
 ## Dependency Path For Deriving The Code
 
@@ -102,13 +116,14 @@ opposite:
 runtime use
   authored definition
     -> contract establishment
-      -> accepted TrainingStrategy
-        -> Trainer execution
+      -> accepted arrangement
+        -> binding, preparation, and specialization
+          -> Trainer execution of the executable run
 
 design derivation
   intended Trainer responsibilities
     -> Trainer-facing exchanges and observable results
-      -> state and guarantees an accepted TrainingStrategy must provide
+      -> accepted execution meanings, state, authority, and guarantees
         -> contract establishment and conformance enforcement
           -> authored-definition inputs and authoring API
 ```
@@ -117,6 +132,10 @@ This follows from the contract being the acceptance definition **for the
 Trainer**. The authoring input cannot be designed coherently until the accepted
 result is known, and that result cannot be known until the intended Trainer's
 interactions and ownership boundaries are known.
+
+This derivation now belongs in the governing OpenSpec design. The present
+record supplies source-backed support and chronological working detail; it must
+not become a parallel normative design after the OpenSpec exists.
 
 "Start from Trainer" does not mean mechanically preserving today's `Trainer`
 fields, phases, or method calls. The current code predates this direction and
@@ -130,8 +149,8 @@ intended Trainer mechanism
 Trainer-recognized capability
   a named request/result/lifecycle operation the pipeline deliberately knows
 
-strategy-internal feature
-  authored behavior used behind the complete strategy boundary
+authoring-selected feature
+  reusable behavior composed into accepted operations or capabilities
 
 model/component mechanic
   behavior inherent to construction, loading, execution, or serialization
@@ -152,7 +171,7 @@ The target semantic dependency path is:
 intended Trainer mechanism
   -> core and recognized-capability exchanges
     -> required accepted state, readiness, and results
-      -> accepted TrainingStrategy boundary and internal authority
+      -> accepted arrangement and run authority
         -> establishment-time obligations and conformance checks
           -> explicit authored definition
 ```
@@ -183,8 +202,8 @@ first API designed:
   `cfg.model.model_type`, while the aggregate constructor initializes some
   runtime behavior such as tokenizers without filing an accepted contract;
 - `Trainer` separately receives `TrainingStrategy` and `TrainingMode`, then
-  constructs its own objective, so the value reaching Trainer is not yet the
-  one complete authored strategy required by the direction;
+  constructs its own objective, so current construction does not yet produce
+  one complete accepted arrangement;
 - `Trainer.setup()` installs strategy-produced components as Trainer-owned
   state, and later phases pass those projections back into strategy and mode
   calls; and
@@ -206,9 +225,11 @@ Use this order to determine the eventual code:
 2. **Trainer consumption table.** For each core exchange and recognized
    capability, define the request meaning, result meaning, lifecycle point,
    required accepted-state guarantees, and owner of side effects.
-3. **Accepted strategy boundary.** Derive the minimum static declarations,
-   behaviors, scoped current-state views, and internal authority that Trainer
-   must be able to rely on. This is the output side of contract establishment.
+3. **Accepted execution boundary.** Derive the minimum accepted declarations,
+   structured/custom behavior, authorized imperative regions, scoped
+   current-state views, and run authority that Trainer must be able to rely
+   on. This is the output side of contract establishment; it does not require
+   the authored strategy to remain the ordinary runtime integration.
 4. **Runtime exchange dependencies.** Complete binding before preparation,
    preparation before optimization realization, and optimization before the
    step exchange. Attach caching, validation, sampling, persistence, resume,
@@ -239,14 +260,14 @@ delegated pipeline orchestration whose lifecycle and result semantics Trainer
 deliberately owns. It does not imply that every implementation lives on the
 central `Trainer` class.
 
-| Concern | Why the intended Trainer/pipeline consumes it | What must already be guaranteed by the accepted strategy | Result and side-effect ownership | Surface |
+| Concern | Why the intended Trainer/pipeline consumes it | What must already be guaranteed by the accepted arrangement | Result and side-effect ownership | Surface |
 | --- | --- | --- | --- | --- |
-| admission | Trainer must never receive an unjudged authored definition | active contract/version, complete explicit authored selections, successful establishment, one seeded internal authority | contract establishment either produces one accepted `TrainingStrategy` or rejects before Trainer construction; it does not materialize runtime objects | pre-Trainer contract boundary |
+| admission | Trainer must never receive an unjudged authored definition | active contract version and execution/ownership profile, complete explicit authored selections, successful establishment, and one seeded run authority | contract establishment either produces one accepted arrangement or rejects it; binding and preparation subsequently make that accepted meaning executable | pre-Trainer contract boundary |
 | arrangement materialization and binding | execution needs authoritative current participants and relationships without reconstructing family topology | accepted declarations, derived lifecycle/readiness/relationship obligations, permitted unbound initial states, and transition protocols | model/domain producers may construct or load values; only the internal authority accepts bindings, advances revisions, and publishes current state | core |
 | runtime preparation | generic device/distributed infrastructure must prepare concrete execution participants without learning their family anatomy | authoritative source snapshot, required preparation participants, constraints, access meanings, joint-preparation rules, and route obligations | Trainer-owned infrastructure performs generic preparation; specialized component/capability behavior may participate; the authority accepts returned routes/views and invalidates stale dependents | core |
 | optimization realization | Trainer must turn authored training intent into executable trainability, parameter groups, clipping/synchronization participants, optimizer, and scheduler state | accepted training-subject declarations and constraints resolved against current participant bindings and preparation state | optimization/Trainer infrastructure realizes generic trainability and optimizer state; specialized selected behavior returns typed results rather than mutating Trainer | core |
-| training step | Trainer owns batch/step timing, accumulation, final optimization-loss handling, backward, advancement, triggers, and observation | current prepared routes, accepted optimization runtime, strategy-internal objective behavior, and a valid step request context | strategy computes the authored training semantics and returns a differentiable result plus declared observations/state effects; Trainer performs infrastructure actions | core |
-| representation/conditioning caching | the pipeline may schedule and persist reusable data products requested for the run | a selected compatible caching capability, applicable representation/conditioning behavior, readable current bindings/views, and consistency/freshness requirements | data/cache infrastructure coordinates storage; strategy features supply semantic encoding/decoding behavior; typed results update cache/data state without becoming binding authority | recognized capability |
+| training execution | Trainer owns execution according to the active contract and execution/ownership profile rather than one universally fixed `training_step()` shape | current prepared routes, accepted optimization runtime, an accepted structured/custom execution arrangement, any explicitly authorized imperative regions, and only genuinely runtime-varying request state | the Trainer engine coordinates the accepted structure and retained infrastructure authority; prepared operations/capabilities/imperative regions perform only their accepted semantics and effects | core |
+| representation/conditioning caching | the pipeline may schedule and persist reusable data products requested for the run | a selected compatible caching capability, applicable representation/conditioning behavior, readable current bindings/views, and consistency/freshness requirements | data/cache infrastructure coordinates storage; accepted feature implementations supply semantic encoding/decoding behavior; typed results update cache/data state without becoming binding authority | recognized capability |
 | validation/evaluation | the pipeline owns when evaluation occurs and how its results enter run control and observation | a selected compatible validation capability, valid evaluation routes/views, and any evaluation-state constraints | capability computes evaluation semantics and results; Trainer owns trigger timing and ordinary runtime mode transitions | recognized capability |
 | sampling/generation | the pipeline owns sampling triggers, requests, output coordination, and observation | a selected compatible sampling capability plus its conditioning, predictor, representation, and persistence requirements | capability performs authored generation behavior; Trainer/pipeline owns scheduling and destination coordination | recognized capability |
 | trained-artifact persistence | the pipeline owns checkpoint timing, retention, destination, publishing, and run coordinates | a selected product capability, coherent authoritative snapshot, declared product/member/representation/consistency semantics, and applicable serializers | product capability resolves semantic plan/contributions; domain serializers convert; Trainer/persistence infrastructure writes and reports the typed artifact result | recognized capability |
@@ -254,14 +275,15 @@ central `Trainer` class.
 
 Cross-cutting logging, metadata, resource observation, interruption, and cleanup
 remain Trainer/pipeline responsibilities. They may consume accepted transition,
-capability, optimization, step, and artifact results through typed observation
-views, but observation does not become a second owner of live strategy state.
+capability, optimization, training-execution, and artifact results through
+typed observation views, but observation does not become a second owner of
+live run state.
 
 The table deliberately does **not** make current `tokenizers`, `vae`,
 `text_encoders`, `denoiser`, `trainable_model`, `TrainingMode`, or
 `ObjectiveRuntime` universal Trainer-facing inputs. Their underlying meanings
 must reappear only where the relevant core exchange, recognized capability, or
-strategy-internal feature actually requires them.
+authoring-selected feature actually requires them.
 
 The first row to refine into a complete request/result/state/failure table is
 arrangement materialization and binding. Runtime preparation is refined beside
@@ -273,8 +295,9 @@ independently.
 
 The concrete design inherits these constraints:
 
-1. One stable strategy-scoped logical identity denotes one independently
-   addressable semantic participant, not one Python object.
+1. Within one logical run authority, one authority-established participant
+   reference denotes one independently addressable semantic incarnation, not
+   one Python object or authored role label.
 2. Componenthood does not imply executability. An execution-capable
    participant normally has one authoritative `normal` execution route;
    selected capabilities may add materially distinct named routes.
@@ -291,7 +314,7 @@ The concrete design inherits these constraints:
    Python object.
 7. One dedicated per-run binding authority owns canonical participant,
    relationship, access-view, execution-route, revision, dependency, and
-   freshness state inside the complete Trainer-facing strategy boundary.
+   freshness state inside the accepted run arrangement.
 8. Transition producers submit typed proposals through one writer protocol.
    Loaders, capabilities, and Trainer infrastructure do not retain competing
    authoritative copies.
@@ -447,10 +470,11 @@ active training contract system
           reject or establish
                     |
                     v
-        complete TrainingStrategy
-          |- accepted arrangement and capabilities
+          accepted arrangement
+          |- accepted structured/custom execution meanings
+          |- selected capabilities and authorized imperative regions
           |- contract-derived obligations
-          `- internal contract-governed binding authority
+          `- contract-governed run binding authority
 ```
 
 Automatic enforcement does not imply automatic assembly. The contract system
@@ -468,7 +492,7 @@ triggers their re-evaluation.
 
 ### WORKING DECISION: one accepted contract version governs one authority
 
-The contract/version accepted during establishment remains fixed for the
+The contract/version active during establishment remains fixed for the
 lifetime of that run authority. An explicit arrangement amendment may change
 participants, relationships, routes, or other authored selections where the
 accepted contract permits that evolution. The authority then derives and
@@ -478,7 +502,7 @@ publishing the amended state.
 An arrangement amendment cannot silently replace the Trainer contract or make
 an undeclared contract extension active. A different core contract, contract
 version, or explicit Trainer-contract extension requires a new establishment
-and a newly accepted strategy authority. Any future facility for migrating a
+and a newly accepted run authority. Any future facility for migrating a
 live run between contract versions would be a separate, explicit contract and
 recovery feature rather than an ordinary binding transition.
 
@@ -486,7 +510,7 @@ recovery feature rather than an ordinary binding transition.
 
 Current loading proves that a producer must return a live object, but
 `LoadedModelComponent.module: Any`, copied role/capability strings, and an
-optional `None` do not prove that the accepted strategy obligations are met.
+optional `None` do not prove that the accepted arrangement obligations are met.
 Metadata realization facts are durable observations after loading; optimization
 and adapter target refs are consumer-local projections. None is independently
 authoritative for contract acceptance.
@@ -503,7 +527,7 @@ BindingTransitionProposal[Evidence]
   typed evidence required by the accepted contract obligations
 
 Contract-governed transition acceptance
-  accepted strategy definition and derived obligations
+  accepted arrangement definition and derived obligations
   exact proposal and prospective complete state
   prior accepted state when continuity matters
   current participant/relationship/route dependency revisions
@@ -815,8 +839,9 @@ by the accepted exchange or capability that requested it:
 - Trainer-owned infrastructure receives only the participants, routes, access
   meanings, constraints, and revisions required by the preparation or later
   optimization exchange;
-- strategy-internal features and selected capabilities receive only the
-  participant and relationship views authorized by their accepted contracts;
+- accepted feature implementations, operations, and selected capabilities
+  receive only the participant and relationship views authorized by their
+  accepted contracts;
 - observability receives accepted transition facts, results, and history, not
   arbitrary live object access; and
 - persistence receives a coherent product-specific artifact-state projection,
@@ -831,7 +856,7 @@ supposedly current view from unrelated reads by convention.
 
 One preparation attempt is governed by one complete preparation job derived
 atomically from coherent accepted authority state. The job identifies the
-exact strategy-owned inputs, permitted access meanings, target routes,
+exact accepted run inputs, permitted access meanings, target routes,
 constraints, joint groups, mutation permissions, and source dependencies for
 that attempt. Preparation membership is broader than trainability: a frozen
 participant may still require movement, casting, wrapping, compilation, or
@@ -845,7 +870,7 @@ dependencies; it cannot be accepted as the result of another attempt or
 silently reused after those dependencies become stale.
 
 For replacement-only work, the job retains coherence optimistically: all of
-its strategy-owned inputs came from one accepted state, and the authority
+its accepted run inputs came from one accepted state, and the authority
 rechecks their dependencies before final publication. For in-place-capable
 work, the authority-recognized attempt transition withdraws affected
 guarantees before mutation and becomes the basis for finalizing success or
@@ -862,7 +887,7 @@ Binding is a family of typed transitions rather than one `bind()` call.
 
 | Operation | Principal inputs | Accepted result | Canonical state effect |
 | --- | --- | --- | --- |
-| establish validated strategy | authored strategy definition, active contract/version, selected known implementations, bounded choices, and explicit extensions | complete accepted `TrainingStrategy`, derived obligations, participant/relationship references, and initial revisions | validates the authored arrangement and creates its internal run authority before Trainer receives it |
+| establish accepted run arrangement | authored strategy definition, active contract/version, selected known implementations, bounded choices, and explicit extensions | accepted run arrangement, derived obligations, participant/relationship references, and initial revisions | accepts the authored definition and establishes the arrangement's run authority before binding and preparation proceed |
 | materialize participant state | participant reference, expected revision, bound-state proposal, contract-defined realization evidence, and access-view proposals | accepted binding revision, current lifecycle/readiness state, and invalidation outcome | moves a declared participant from unbound to bound when the prospective state satisfies accepted obligations |
 | replace participant state | participant reference, expected binding revision, replacement realization, supersession/lineage facts, and contract-defined evidence | same reference with a new binding revision, or rejection requiring amendment | supersedes authoritative state without silently changing contract-derived participant meaning |
 | transition relationship | relationship reference, expected revision, requested operational state, resolved endpoints/effect facts | new relationship revision and invalidation outcome | changes declared/resolved/active/inactive/detached state independently from participant lifecycle |
@@ -870,7 +895,13 @@ Binding is a family of typed transitions rather than one `bind()` call.
 | rebind execution route | participant reference, route key, expected source revisions, prepared callable and freshness guarantee | new route revision and current authoritative route binding | publishes the callable representation that execution must use |
 | merge/fold | source/host references, expected revisions, declared transformation and retirement policy | transformed host binding, lineage, relationship changes, optional retirement, invalidations | records semantic state transfer rather than hiding it in serialization or module mutation |
 
-### Establish validated strategy
+### Establish accepted run arrangement
+
+“Contract establishment” in this design means establishing the authored filing
+and run arrangement under an already-active Trainer contract, contract version,
+and execution/ownership profile. The contract exists first and guides authoring;
+establishment does not choose or create a contract after an arbitrary strategy
+has been written.
 
 #### Inputs
 
@@ -895,8 +926,8 @@ the selected contracts already define.
 
 #### Result
 
-Successful establishment produces the complete `TrainingStrategy` that may be
-given to Trainer, including behind its boundary:
+Successful establishment produces the accepted run arrangement from which
+binding, preparation, and specialization may proceed. The arrangement contains:
 
 - the accepted contract/version and authored arrangement;
 - the provided and requested capability surface;
@@ -906,10 +937,11 @@ given to Trainer, including behind its boundary:
 - the accepted initial arrangement revision and first atomic snapshot;
 - any currently unfulfilled readiness requirements permitted at the declared
   lifecycle stage; and
-- the one contract-governed binding authority seeded with that accepted state.
+- the one contract-governed binding authority belonging to the accepted run
+  arrangement and seeded with that accepted state.
 
-Failure produces structured author-facing rejection information and no
-Trainer-acceptable strategy.
+Failure produces structured author-facing rejection information. No accepted
+run arrangement exists, and the Trainer-facing runtime may not proceed.
 
 #### Allowed side effects
 
@@ -966,7 +998,7 @@ permitted to mutate an authoritative live object in place.
 
 Replacement may preserve the participant reference only when the new
 realization still fulfills the same meaning and obligations derived from that
-participant's complete use in the accepted strategy.
+participant's complete use in the accepted arrangement.
 
 These changes do not inherently require a new participant identity:
 
@@ -1041,12 +1073,12 @@ design still must decide:
 ## Runtime-Preparation Exchange
 
 Runtime preparation is Trainer-owned infrastructure acting on a narrow,
-revision-pinned projection of strategy state. It may wrap, replace, cast, move,
-compile, shard, or jointly prepare execution objects without learning the
-strategy's family anatomy.
+revision-pinned projection of accepted run state. It may wrap, replace, cast,
+move, compile, shard, or jointly prepare execution objects without learning
+the authored arrangement's family anatomy.
 
 ```text
-strategy/internal authority
+accepted run authority
   exposes preparation projection at snapshot R
                  |
                  v
@@ -1075,8 +1107,8 @@ The preparation input must identify:
 - typed infrastructure items required for joint preparation without declaring
   those items to be logical participants.
 
-The validated strategy exposes the participant routes and preparation
-constraints derived from its accepted contract uses. Trainer infrastructure
+The accepted arrangement exposes the participant routes and preparation
+constraints derived during contract establishment. Trainer infrastructure
 chooses and executes the backend mechanics allowed by the active
 performance/distributed policy. Configuration does not author new participants
 or strategy features through this exchange.
@@ -1262,11 +1294,12 @@ It also makes four cross-owner constraints explicit:
    existing groups, but it may not omit a member of any group it overlaps.
    Retiring one member evicts the whole backend group and withdraws every
    surviving member's prepared guarantee until a coherent group is rebuilt.
-3. A relationship revision invalidates prepared views derived from both
-   endpoints regardless of whether the revision came from an explicit
-   relationship transition, endpoint replacement, or endpoint retirement.
-   Relationship state cannot change while either endpoint is under destructive
-   preparation.
+3. A relationship revision invalidates every prepared view that depends on
+   that relationship, regardless of whether the revision came from an explicit
+   relationship transition, endpoint replacement, or endpoint retirement. The
+   spike invalidates both endpoint views as a conservative policy; a later
+   relationship contract may declare narrower dependencies. Relationship state
+   cannot change while either endpoint is under destructive preparation.
 4. Destructive-attempt ownership dominates all older optimistic work. Once an
    in-place attempt withdraws guarantees, an older replacement-only result
    cannot restore them during the attempt or after failure. Only successful
@@ -1304,12 +1337,225 @@ This is a pressure map, not an instruction to preserve current ownership.
 | DeepSpeed composite handle | backend coordination spanning prepared items | logical participant or replacement for distinct participant identities |
 | `OptimizationPlan` | likely base for the later optimization exchange | strategy/mode materializing the optimizer and retaining infrastructure ownership |
 
-## Optimization Exchange Placeholder
+## Optimization Exchange Design
 
-This section is intentionally incomplete until binding and preparation are
-stable enough to constrain it.
+Binding and preparation are now stable enough to constrain this exchange.
+Unit identity, non-overlap, ownership, and publication have settled working
+answers below; advancement policy and the concrete candidate/request/result
+boundary remain incomplete.
 
-It must eventually define:
+### Current-code evidence checkpoint
+
+The active code already contains the beginning of an optimization exchange,
+but no single authoritative optimization state:
+
+1. `prepare_trainables()` selects live parameters, mutates `requires_grad`,
+   chooses train/eval state, and publishes mode-specific Trainer flags. Adapter
+   mode also constructs, attaches, and initializes the adapter in the same
+   operation.
+2. Both active modes build logical and execution parameter groups and construct
+   an `OptimizationPlan`, but they also instantiate the optimizer. The useful
+   logical/execution distinction is therefore coupled to mode ownership and
+   raw live parameters.
+3. Trainer's optimizer phase separately constructs the scheduler and then asks
+   the mode to prepare modules, optimizer, and scheduler through
+   Accelerate/DeepSpeed. That call replaces execution bindings and optimization
+   objects and chooses synchronization and primary-trainable handles by
+   mutating the whole Trainer.
+4. The standard loop already owns accumulation timing, final loss modification,
+   backward, clipping timing, optimizer/scheduler advancement, zeroing, and
+   train/eval boundaries. It nevertheless asks the mode again for clipping
+   parameters and specialized step behavior instead of consuming one accepted
+   optimization projection.
+5. EDM2 currently adds a learnable sidecar, a second optimizer and scheduler,
+   shared accumulation participation, loss modification, and a separate
+   advancement/zeroing path. It is an example of selected capability or
+   extension behavior that the system must be able to accommodate somehow,
+   not an inherent part of the core optimization model and not proof of its
+   final unit or ownership placement. Schedule-free and fused optimizer
+   behavior separately add ordinary optimizer-runtime policy pressure.
+
+This evidence supports the direction's ownership split: the authored strategy
+owns the meaning of training subjects and selected constraints; the
+Trainer/optimization system resolves live parameters and owns generic
+trainability, optimizer/scheduler, distributed, clipping, synchronization, and
+temporal mechanics; specialized capabilities retain their domain behavior at
+Trainer-owned lifecycle points through typed inputs and results.
+
+### Working target: standard coordinated optimization units
+
+The leading target is a standard Trainer-owned runtime containing one or more
+coordinated optimization units. An optimization unit is one independently
+advanced optimization responsibility whose current revision identifies its
+exact accepted semantic parameter membership, grouping, policy, and semantic
+dependencies. It is not a model, participant, logical parameter group,
+optimizer Python object, concrete parameter set, or backend wrapper. One unit
+may consume several logical groups and parameters from several participants;
+one participant may contribute several logical groups to a unit.
+
+The unit model describes how the optimization system can coordinate accepted
+runtime responsibilities; it does not prescribe a fixed set of units inherent
+to every strategy. A selected capability or explicit extension may contribute
+additional learned state, units, or another accepted coordination need. EDM2
+is only a current example of that pressure and does not decide the capability's
+future exchange or placement.
+
+### WORKING DECISION: optimization unit identity, revision, and realization
+
+The optimization exchange keeps five meanings distinct:
+
+```text
+unit address
+    a stable, non-positional semantic slot in an accepted optimization
+    plan, such as main or edm2
+
+unit identity
+    one run-scoped incarnation of an independently managed optimization
+    responsibility
+
+unit revision
+    the current accepted definition of that responsibility: semantic
+    parameter membership and grouping, optimizer/scheduler policy,
+    advancement policy, and authority-qualified semantic dependencies
+
+runtime realization
+    the concrete parameter handles, optimizer, scheduler, wrappers,
+    prepared objects, and backend coordination state currently realizing
+    one unit identity and revision
+
+mutable optimization state
+    the optimizer/scheduler state and advancement progress accumulated while
+    executing that accepted definition
+```
+
+The address is not a list index and does not identify an incarnation. It may
+come from the accepted standard contract, a selected capability, or explicit
+strategy intent rather than requiring every strategy author to invent a name.
+If a contract permits an address to be reused after retirement, the later unit
+receives a new identity; a first implementation may instead reject same-run
+address reuse. An identity is never reassigned or revived.
+
+The Trainer-owned optimization system establishes unit identity. The identity
+survives accepted replanning of the same independently managed responsibility
+and every replacement of its physical runtime. Changes to accepted semantic
+parameter membership or optimizer-significant grouping,
+optimizer/scheduler policy, advancement policy, or semantic dependencies
+advance the unit revision. Splitting, merging, retiring and later recreating,
+or otherwise replacing the independently managed responsibility establishes
+new unit identities and initial revisions.
+
+Semantic parameter membership is expressed through authority-qualified
+participant and parameter-substructure meaning, not through the identity of
+the current `nn.Parameter` objects. A binding or execution-route change first
+invalidates the affected runtime realization. If the accepted optimization
+definition remains unchanged, the system may realize the same unit identity
+and revision again with new parameter, optimizer, scheduler, wrapper, or
+backend objects. If dependency-aware replanning changes the accepted
+membership, grouping, or policy, the identity remains and the revision
+advances. Merely constructing, wrapping, preparing, recreating, or replacing
+concrete objects does not by itself advance the unit revision.
+
+This distinction applies directly to schedule-free behavior. Selecting or
+changing schedule-free policy changes the accepted unit revision; constructing
+a `ScheduleFreeWrapper` to realize an already accepted policy does not.
+Accelerate or DeepSpeed may then replace that concrete object without changing
+either the unit identity or revision.
+
+A candidate identity and revision may be known during resolution and
+realization, but the initial revision becomes current only when the complete
+realization/preparation attempt succeeds and publishes its coherent result.
+Allocation timing before that publication is a downstream implementation
+choice. Failure leaves no partially current optimization unit or runtime from
+that attempt.
+
+Ordinary optimizer steps do not advance the unit revision. Momentum,
+scheduler counters, and other mutable optimization state evolve under one
+accepted identity and revision and are checkpointed with the relevant training
+coordinate. Independently advancing units may later require unit-local
+advancement coordinates; their exact semantics belong to advancement policy
+and the step exchange rather than this identity decision.
+
+Exact resume of the same logical run restores accepted unit identities,
+revisions, mutable optimization state, and their training coordinates even
+though the process and Python objects are recreated. A new run or fork from a
+checkpoint establishes new unit identities. Its source-checkpoint provenance
+is preserved separately; this decision does not yet require a general lineage
+system for optimization units. The exact Python representation of these
+meanings remains downstream even though their semantic separation is settled.
+
+### WORKING DECISION: standard non-overlap and explicit exception boundary
+
+In the standard profile, each selected semantic parameter belongs to one
+optimization unit and one execution group within that unit. Reaching the same
+concrete parameter through two names or tied/shared paths still counts as
+overlap. Descriptive classifications may overlap, but a group that controls
+optimizer behavior must resolve to one execution owner. The current fine-tune
+grouping already rejects overlapping explicit groups.
+
+Deliberate overlap is not enabled by a bare boolean or by ordinary strategy
+code. It requires a recognized selected capability or an explicit contract
+extension with an accepted coordination policy covering the shared membership,
+advancement order and cadence, gradient/clipping/zeroing behavior, state
+restoration, and backend support. Selecting a library-supported capability
+does not require its strategy author to restate those rules. Overlap alone does
+not transfer generic optimization mechanics to the strategy; behavior outside
+the standard Trainer contract requires an explicit extension, whose changed
+owners and exchanges remain to be defined from a real need.
+
+Optimization units do not absorb every adjacent lifecycle concern. The
+accepted optimization runtime exposes trainability, clipping,
+accumulation/synchronization, and optimizer-unit runtime-mode projections as
+separate coherent views. It may also identify modules whose optimization use
+requires training-mode participation, but Trainer/pipeline lifecycle owns when
+module train/eval transitions occur because validation, sampling, and other
+execution concerns also affect module mode. Optimizer-unit `train()`/`eval()`
+behavior such as schedule-free transitions remains unit runtime behavior
+invoked at Trainer-owned lifecycle points.
+
+### Backend-flexible realization and preparation lifecycle
+
+Optimization is designed after binding/preparation semantics, but its physical
+setup is not simply a later call. Current Accelerate/DeepSpeed paths require
+concrete optimizer and scheduler candidates before their joint preparation
+call, but that ordering is migration evidence rather than a universal
+architecture rule. The required lifecycle is instead:
+
+```text
+accepted bound participants + authored optimization intent + Trainer policy
+  -> resolved logical optimization plan
+  -> one Trainer-owned realization/preparation job
+       realizes trainability and concrete parameters
+       constructs and prepares optimizer/scheduler runtime in the
+         backend-constrained order
+  -> publish prepared bindings and Trainer-owned optimization runtime
+  -> Trainer step mechanism consumes that current runtime
+```
+
+A backend may require concrete optimizers before a joint preparation call, or
+may require participant wrapping/sharding before or during optimizer
+construction. The pre-realization candidate may therefore be a typed recipe or
+plan rather than an already-created optimizer. Trainer retains semantic
+ownership in every staging arrangement, and the job may contain several
+ordered backend calls while remaining one coherent attempt. Before final
+publication, every required participant transformation, optimizer/scheduler
+construction, backend preparation, rank agreement, and validation has
+completed.
+
+The pre-preparation plan and the post-preparation runtime are different
+meanings. Backend grouping may constrain their realization, but does not turn
+an optimizer, scheduler, or composite handle into a strategy participant and
+does not transfer standard optimization ownership to the backend.
+
+The likely evolutionary value in today's `OptimizationPlan` is its separation
+of stable logical groups from backend/optimizer-facing execution groups. A
+target exchange must additionally connect those groups to authority-qualified
+participants and source revisions, realized trainability, clipping and
+synchronization projections, optimizer/scheduler runtime policy, preparation
+dependencies, checkpoint state, and invalidation/replanning. Raw parameters,
+mode flags, a primary-trainable field, and a later mode query cannot remain
+independent sources of truth.
+
+The target exchange is already constrained to cover:
 
 ```text
 authored training subjects and constraints
@@ -1321,34 +1567,72 @@ synchronization/accumulation participants
 optimizer and scheduler materialization
 backend preparation constraints
 standard Trainer-owned backward/step lifecycle
-explicit research extension when ownership differs
+explicit contract extension when standard ownership differs
 ```
+
+These are required exchange meanings, not ten separate open architecture
+questions. The genuinely remaining decisions are listed below.
 
 It must not recreate `TrainingMode`, make model family a training-treatment
 axis, or treat an optimizer/backend object as a strategy participant merely
 because it is prepared jointly.
 
+### Remaining optimization decisions after code and feedback review
+
+The earlier eight-part list mixed settled ownership, target exchange contents,
+concrete code shape, and genuinely open semantics. Training-subject intent,
+logical/execution group separation, coherent projections, freshness, and final
+publication now constrain the target exchange rather than standing as five
+independent architecture questions. Unit identity/revision and the standard
+non-overlap boundary are now also settled above. The remaining semantic
+decisions are:
+
+1. Define the declarative advancement policies supported by the standard
+   Trainer-owned profile and the boundary beyond which an explicit contract
+   extension or version is required. Do not assume that such an extension
+   transfers the changed responsibilities to the strategy itself.
+2. Define optimization candidate/request/result meanings that allow
+   backend-constrained construction and preparation staging without changing
+   Trainer ownership or the settled publication boundary.
+3. Connect the accepted optimization runtime to the accepted execution
+   arrangement, including the execution meanings and authority boundaries the
+   active Trainer contract and execution/ownership profile permit. Do not
+   assume one strategy-owned producer, one differentiable result, or one
+   universal advancement sequence.
+
 ## Step Exchange Placeholder
 
-This section is intentionally incomplete until optimization ownership is
-settled.
+This section is intentionally incomplete until optimization advancement and
+candidate/request/result boundaries are settled. It no longer assumes that the
+authored strategy remains active or that a prepared façade replaces it with one
+`training_step()` operation.
 
-It must eventually distinguish:
+The exchange must be derived from how one Trainer engine executes an accepted
+arrangement that may combine maintained operations, custom operations, and
+explicitly authorized imperative regions. The exact representation may be a
+graph, operation/region form, compiled schedule, lowered Python composition,
+or hybrid; none is selected here. Whatever the representation, authoring-time
+composition, implementation selection, static dependencies, and authority
+requests must be resolved before the hot path.
+
+It must eventually distinguish at least:
 
 ```text
-batch and execution coordinates
-strategy-produced differentiable base loss state
-Trainer-derived final optimization loss
-metrics
-objective-specific observations
-strategy/capability-owned state changes
-forbidden infrastructure actions
+accepted execution structure, dependencies, effects, and ownership
+current prepared routes and optimization/runtime state
+genuinely runtime-varying inputs and execution coordinates
+operation/region outputs, observations, and declared state effects
+Trainer-retained infrastructure and optimization authority
+explicitly transferred imperative authority under the active profile
+forbidden undeclared actions and effects
 ```
 
 Diffusion timesteps remain objective observations rather than universal core
 fields. The current `BatchLossOutput.loss` and `per_sample_loss` distinction is
 evidence that accounting loss and the value consumed by Trainer-owned loss
-modification/backward are not automatically the same result field.
+modification/backward are not automatically the same result field in the
+current standard loop. It does not decide that every future execution profile
+has one loss producer or the same backward/advancement topology.
 
 ## Working Decision Register
 
@@ -1371,7 +1655,7 @@ modification/backward are not automatically the same result field.
 | EX-015 | superseded | a separately transferable single-use `CompatibilityAssessment` is not currently required because contract validation occurs inside authority transition acceptance; structured outcomes may remain part of the transition result/history |
 | EX-016 | working | only the authority installs accepted state, advances revisions, and invalidates dependents; the exact internal separation between obligation evaluation and the public transition result remains an implementation question rather than a second exchange authority |
 | EX-017 | superseded | ordinary validation clauses are not composed by strategy authors; the contract system derives them from explicit known selections, while custom implementation conformance or contract extension must be deliberate |
-| EX-018 | working | the binding exchange begins by contract-validating the complete authored definition, deriving obligations, and establishing the strategy's internal authority before the resulting `TrainingStrategy` may reach Trainer |
+| EX-018 | superseded | the earlier entry combined a valid contract-first rule with the incorrect placement of run authority inside an active `TrainingStrategy`; EX-029 restates the valid rule with the corrected topology |
 | EX-019 | working | automatic contract enforcement does not imply automatic assembly: authors explicitly choose and wire the arrangement, while the contract system supplies ordinary validity knowledge and reports incompatible or missing choices |
 | EX-020 | working | one accepted contract/version governs one run authority; permitted arrangement amendments re-evaluate obligations under it, while another contract/version or Trainer-contract extension requires new establishment |
 | EX-021 | working | one preparation attempt is governed by one coherent authority-derived job that may span several backend operations; membership is not limited to trainables and every result remains bound to the attempt's source dependencies |
@@ -1380,8 +1664,11 @@ modification/backward are not automatically the same result field.
 | EX-024 | working | exact runtime resume preserves authority and participant identity only when their accepted identity and revision state is persisted and restored; otherwise continuation begins new authority-scoped identities with explicit lineage |
 | EX-025 | working | Trainer-owned backend coordination state is usable only in conjunction with matching authority-owned prepared guarantees for every participant it covers; neither ownership surface alone defines current prepared state |
 | EX-026 | working | inseparable backend coverage constrains preparation before destructive work: later groups may replace, expand, or merge complete existing groups but may not omit an overlapped member, and retirement of one member evicts the group and withdraws surviving members until coherent rebuild |
-| EX-027 | working | every relationship revision withdraws dependent prepared endpoint views regardless of transition path, and relationship state cannot change while either endpoint is under destructive preparation |
+| EX-027 | working | every relationship revision invalidates prepared views whose declared dependencies include that relationship regardless of transition path; both endpoint views are the spike's conservative policy rather than a universal breadth rule, and relationship state cannot change while either endpoint is under destructive preparation |
 | EX-028 | working | destructive-attempt ownership and withdrawn-guarantee state reject every older optimistic preparation result during mutation and after failure; only an accepted re-establishment or replacement restores current use |
+| EX-029 | working | contract establishment judges the complete authored definition and produces one accepted arrangement with contract-derived obligations and a run binding authority; the authored strategy need not remain the ordinary Trainer-facing runtime collaborator |
+| EX-030 | working | one accepted arrangement may compose maintained and custom structured operations with explicitly authorized imperative regions; an imperative execution role is distinct from the authored strategy role and receives only authority granted by the active contract and execution/ownership profile |
+| EX-031 | working | the normal path requires a structured accepted execution representation, but its graph/tree/region/schedule/lowered-Python/hybrid form remains open; the rejected `PreparedTrainingProgram` was an all-purpose façade, not evidence that no accepted executable result is needed |
 
 No working entry becomes an OpenSpec requirement merely because it appears in
 this table. Discussion should either accept it, refine it, or mark it
@@ -1397,33 +1684,52 @@ settled by the attempt-scoped preparation-job and non-failing-final-publication
 decisions. No binding/preparation architecture question remains active in this
 register. This does not settle the deliberately later optimization and step
 exchanges; in particular, the exact optimization preparation request/result
-from former item 13 remains later work under the Optimization Exchange
-Placeholder.
+from former item 13 remains later work in the optimization exchange section.
 
 ## Current Design Frontier
 
-Continue concrete design through the nearest dependencies only:
+Continue concrete design inside the governing OpenSpec through the nearest
+dependencies only:
 
-1. Settle optimization ownership and the optimization exchange without letting
-   joint backend preparation dictate that contract.
-2. Settle the step exchange from the Trainer's execution needs and the accepted
-   strategy projections.
-3. Derive the concrete current-to-target code mapping, module placement, and
-   migration milestones from the completed architecture rather than from the
-   provisional executable-spike types.
+1. Seed the change from the normative direction, settled decisions, code
+   inventory, exchange findings, implementation mapping, and chronological
+   corrections without promoting superseded notes.
+2. Pressure-test the intended-Trainer consumption frame and recovered
+   accepted-arrangement topology against maintained
+   SD/SDXL/SD3 behavior and progressively stronger custom-operation,
+   imperative-region, and execution-authority cases. Derive the minimum
+   contract and execution/ownership-profile meanings without selecting a final
+   IR or API.
+3. Reconcile the optimization ownership/exchange work with that topology,
+   preserving the settled standard non-overlap, identity, preparation, and
+   publication semantics while leaving explicit authority transfer
+   contract-governed.
+4. Derive the execution/step exchange from one Trainer engine's consumption of
+   the accepted arrangement rather than from current `process_batch()` or a
+   renamed strategy/program callback.
+5. Refine the existing source-backed current-to-target mapping into final module
+   placement, traced vertical migration milestones, and acceptance tests rather
+   than copying the provisional executable-spike types.
 
-Concrete Python representation, current-to-target code mapping, module
-placement, and migration milestones follow in
-`strategy_system_implementation_mapping.md` after the architecture and exchange
-semantics are coherent. The governing OpenSpec follows that mapping.
+`strategy_system_implementation_mapping.md` supplies the initial mapping and
+remaining code-shape register. The governing OpenSpec design should use it as
+evidence, then own final module placement, requirements, scenarios, migration
+milestones, and tests.
 
 ## Compaction Handoff
 
-At any context reset, use `strategy_system_direction.md` as normative,
-`strategy_system_inventory.md` as current-code evidence, and the latest
-decision register plus current design frontier above as the continuation point.
-Use `strategy_system_implementation_mapping.md` only for deliberately deferred
-code-shape and migration work.
+Before the governing OpenSpec is created, use `strategy_system_direction.md` as
+normative, `strategy_system_inventory.md` as current-code evidence, and the
+latest decision register plus current design frontier above as the continuation
+point. After the change exists, use its design and specs for new normative
+decisions while retaining these records as support. Use
+`strategy_system_implementation_mapping.md` for the source-backed responsibility
+map and remaining code-shape/migration work.
 
-Do not restart the architecture comparison, reopen Q1-Q5, or infer final
+The current topology is authored strategy -> normative contract establishment
+-> accepted arrangement -> binding/preparation/specialization -> one Trainer
+engine. The accepted arrangement may mix structured/custom operations and
+authorized imperative regions. Do not revert this to Trainer <-> active
+strategy, presume a single `training_step()` façade, settle a graph or other IR
+prematurely, restart the architecture comparison, reopen Q1-Q5, or infer final
 Python class/package names from the working vocabulary.

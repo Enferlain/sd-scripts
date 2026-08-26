@@ -1111,7 +1111,11 @@ class BindingAuthority:
 
 
 class TrainingStrategy:
-    """Complete accepted strategy presented to the Trainer-facing pipeline."""
+    """Provisional spike container for one established run.
+
+    Later design calls this the accepted run arrangement. The class name is
+    retained only as historical spike vocabulary and is not a target API.
+    """
 
     def __init__(
         self,

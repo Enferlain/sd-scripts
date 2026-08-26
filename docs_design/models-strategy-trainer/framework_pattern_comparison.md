@@ -7,13 +7,21 @@ design. It is not an adoption proposal, dependency recommendation,
 implementation plan, or claim that the repository should reproduce another
 framework's API.
 
+> **Later topology correction (2026-08-26):** the source audit and boundary
+> lessons in this document remain useful evidence, but its recurring
+> `Trainer -> fulfilled strategy` framing is superseded. The current direction
+> accepts an authored strategy into an executable run arrangement. The Trainer
+> executes that arrangement; the authored strategy need not remain an ordinary
+> runtime collaborator. An authorized imperative escape region is a distinct
+> execution role, not proof that the strategy object must stay active.
+
 The first pass over this topic relied too heavily on public documentation.
 Documentation can establish an intended public API, but it cannot show the
 real ownership graph, wrapper behavior, hidden collaboration surfaces, or cost
 of adapting only part of a framework. The conclusions in this revision are
 therefore based on selected implementation paths as well as documentation.
 
-The comparison exists because the emerging relationship
+The comparison was started because the then-emerging relationship
 
 ```text
 Trainer → fulfilled TrainingStrategy
@@ -81,7 +89,8 @@ line-by-line audit of either external project.
 
 ## What The Public Analogy Conceals
 
-At the public API level, this looks simple:
+Under the superseded topology that motivated this audit, the public API analogy
+looked simple:
 
 ```text
 Lightning Trainer → LightningModule
@@ -109,7 +118,7 @@ distributed Strategy
 
 Lightning's `Strategy` is also not equivalent to this repository's
 `TrainingStrategy`. It represents distributed/device execution behavior. The
-closest analogue to the proposed fulfilled training strategy is the
+closest analogue to the then-proposed fulfilled training strategy is the
 `LightningModule`, but even that object is simultaneously a PyTorch module,
 training recipe, lifecycle-hook provider, logger client, optimizer client, and
 child of a Trainer-owned runtime.
@@ -374,8 +383,8 @@ pair, an attached adapter, or an ecosystem-specific checkpoint layout.
 
 ### Patterns not accepted by default
 
-- Making every fulfilled strategy an `nn.Module` merely to match
-  `LightningModule`.
+- Making every authored strategy or accepted arrangement an `nn.Module` merely
+  to match `LightningModule`.
 - Copying a large hook catalog before the repository has identified the
   trainer-facing semantics it actually needs.
 - Moving generic backward, optimizer, logging, checkpoint, or device policy
@@ -448,8 +457,8 @@ module's `forward()`. Unmarked methods are monitored and may raise if they call
 submodules outside the distributed wrapper. See
 [`wrappers.py:101-267`](https://github.com/Lightning-AI/pytorch-lightning/blob/be98784a1a03581b7051a355ae1084fd352d7cea/src/lightning/fabric/wrappers.py#L101-L267).
 
-This is directly relevant to a fulfilled strategy that may hide several model
-components:
+This is directly relevant to an accepted arrangement that may hide several
+model components:
 
 ```text
 logical component identity
@@ -510,10 +519,10 @@ operations such as `accumulate()` and `backward()` inside the caller-owned
 loop.
 
 That pattern already appears in the active trainer. It has one important
-architectural consequence for the strategy boundary: preparation can return
-wrapped or replacement runtime objects. Whichever object owns authoritative
-loaded state must be able to rebind those prepared objects without leaving
-trainer, strategy, metadata, diagnostics, and saving paths with inconsistent
+architectural consequence for the accepted run boundary: preparation can
+return wrapped or replacement runtime objects. The run binding authority must
+be able to accept those prepared routes without leaving Trainer infrastructure,
+runtime operations, metadata, diagnostics, and saving paths with inconsistent
 references.
 
 Accelerate checkpoint state is also different from family artifact
@@ -583,9 +592,10 @@ and
 [`accelerator.py:2708-2745`](https://github.com/huggingface/accelerate/blob/v1.11.0/src/accelerate/accelerator.py#L2708-L2745).
 
 That confirms the current Trainer should continue to own the temporal decision
-to accumulate and backpropagate. The fulfilled strategy must expose what the
-infrastructure needs for correct synchronization, but it should not need the
-entire `Accelerator` merely to compute model-family behavior.
+to accumulate and backpropagate. The accepted arrangement must expose what the
+infrastructure needs for correct synchronization, while maintained or custom
+operations should not need the entire `Accelerator` merely to express
+model-family behavior.
 
 ### Runtime state and family artifacts
 
@@ -640,7 +650,8 @@ not from literally reducing the runtime to two objects.
 The repository goal should therefore be interpreted as:
 
 ```text
-Trainer receives one fulfilled training-strategy boundary
+contract establishment produces one accepted run arrangement
+Trainer executes that arrangement through one contract-governed boundary
 Trainer does not reconstruct family topology
 internal runtime collaborators may still exist behind typed boundaries
 ```
@@ -655,7 +666,7 @@ from a prepared execution object in at least some backends. This is not an
 optional design flourish. DDP, FSDP, DeepSpeed, precision conversion, and
 compilation can change which object must receive the forward call.
 
-A future bound strategy therefore needs some equivalent of:
+A future accepted run arrangement therefore needs some equivalent of:
 
 ```text
 stable logical component identity
@@ -675,9 +686,9 @@ modules and optimizers. Complete component opacity is therefore not practical.
 The useful boundary is generic exposure rather than family-specific exposure:
 
 ```text
-strategy → preparation participants with stable binding identities
-Trainer  → runtime service prepares those participants
-strategy ← prepared bindings returned under the same identities
+accepted arrangement → preparation requirements with stable identities
+Trainer/runtime service → prepares the concrete participants
+run binding authority ← accepts returned routes under the same identities
 ```
 
 This is a plan/result exchange, not the Trainer learning that participant 1 is
@@ -693,22 +704,26 @@ wrapper redirection, checkpoint semantics, and Trainer access.
 Replacing the current `process_batch()` with a method named `training_step()`
 would leave the architectural problem intact. The repository must define:
 
-- what request state the strategy may rely on;
-- what result meanings the Trainer consumes;
+- what runtime-varying inputs accepted operations or regions may rely on;
+- what outputs, observations, and declared state effects the Trainer consumes;
 - whether loss construction is complete or still subject to Trainer policy;
-- which observations and side effects are allowed;
-- which optimization ownership profile applies.
+- which authority and side effects each operation or region is allowed; and
+- which execution/ownership profile applies.
 
-### 5. Research escape routes transfer ownership
+### 5. Research escape routes require explicit authority
 
 Lightning manual optimization is useful evidence because it is not presented
 as invisible magic. It transfers backward and optimizer-step decisions from
 the automatic loop to the authored module while retaining infrastructure
 services.
 
-This repository can support experimentation similarly, but should state the
-ownership transfer in its contract. “Custom strategy” cannot mean that the
-same contract silently stops constraining Trainer/strategy responsibilities.
+That is Lightning's ownership contract, not the required topology here. This
+repository can support equally strong experimentation by accepting imperative
+regions with explicit authority under a named contract extension or profile.
+The imperative runtime role is distinct from the authored strategy and
+receives only the responsibility the contract grants. “Custom strategy” cannot
+mean that the standard contract silently stops constraining Trainer and
+runtime responsibilities.
 
 ### 6. Runtime snapshots and model artifacts remain separate
 
@@ -730,24 +745,26 @@ should not be collapsed.
 | Concern | Current implementation | External source lesson | Contract implication |
 | --- | --- | --- | --- |
 | loaded state | Trainer owns SD-shaped projections while strategy retains some family facts | original and prepared execution identities must both be tracked | define authoritative bound state and generic execution bindings |
-| distributed preparation | training modes mutate specific Trainer fields after `Accelerator.prepare()` | replacement identities and backend-specific joint setup are normal | strategy publishes preparation participants and accepts rebound results |
-| batch execution | Trainer passes model projections, objective, dtypes, Accelerator, flags, and coordinates into `process_batch()` | one step call is viable only with a defined surrounding runtime contract | derive a typed semantic request/result rather than rename the method |
+| distributed preparation | training modes mutate specific Trainer fields after `Accelerator.prepare()` | replacement identities and backend-specific joint setup are normal | the accepted arrangement exposes preparation requirements; infrastructure returns results and the run authority accepts rebound routes |
+| batch execution | Trainer passes model projections, objective, dtypes, Accelerator, flags, and coordinates into `process_batch()` | authored behavior needs an accepted execution form with a defined surrounding runtime contract | derive the accepted execution meanings and effects rather than rename the method or preserve a live strategy callback |
 | optimization | Trainer, mode, objective, loss modifier, strategy, and Accelerator divide responsibility | automatic and manual paths are explicit ownership modes | define the standard ownership profile and explicit extensions |
 | wrapper-safe calls | strategies call prepared components supplied by Trainer | bypassing a prepared wrapper can be incorrect | execution bindings must be used for forward-like behavior |
 | persistence | family saving and Accelerate state hooks are separate but coordinated through Trainer | runtime and logical artifact state have different consumers | keep separate contracts with shared extraction where justified |
 | observation | metadata reads Trainer component projections | logical identity should survive runtime wrapper replacement | observation should target bound logical state, not incidental Trainer fields |
 
 This table is the useful output of the comparison. It changes the next design
-step from “invent cleaner strategy methods” to “derive the concrete exchanges
-needed between a fulfilled strategy, Trainer, and runtime infrastructure.”
+step from “invent cleaner strategy methods” to “derive the concrete accepted
+execution and infrastructure exchanges needed by the run arrangement and
+Trainer.”
 
 ## Comparison Matrix
 
 | Question | Lightning Trainer + LightningModule | Fabric | Accelerate | Direction for this repository |
 | --- | --- | --- | --- | --- |
 | Who owns the loop? | Lightning Trainer | application | application | repository Trainer |
-| Who authors batch behavior? | LightningModule | application | application | fulfilled strategy |
-| Who owns model internals? | usually LightningModule | application | application | unresolved, leaning toward bound strategy boundary |
+| Who authors training behavior? | LightningModule | application | application | strategy author, using the contract vocabulary and available capabilities |
+| What reaches runtime? | LightningModule | application objects | application objects | accepted run arrangement; exact structured representation remains open |
+| Who owns model internals? | usually LightningModule | application | application | accepted behavior and binding authority hide family anatomy from Trainer |
 | Who owns backward/step timing? | Trainer by default; module in manual optimization | application | application | repository Trainer unless an explicit contract extension changes it |
 | Who owns distributed preparation? | Lightning Trainer/strategies | Fabric service | Accelerator service | repository Trainer using focused infrastructure |
 | Does it define a model-family contract? | no; it defines a framework module contract | no | no | repository must define it |
@@ -798,7 +815,7 @@ the gate.
 
 1. **Consumer-owned contract**
    The intended Trainer defines the behavior and result meanings it requires.
-   Strategy implementations fulfill that contract.
+   Authored strategies must be accepted under that contract before execution.
 2. **Authored aggregate**
    The strategy author explicitly composes model integrations and reusable
    features. The Trainer does not infer or assemble them.
@@ -813,8 +830,9 @@ the gate.
    Distributed preparation and backward remain visible trainer-owned actions
    backed by a focused runtime service.
 6. **Declared escape route**
-   A custom strategy may implement the same trainer-facing semantics
-   differently or target an explicit contract extension.
+   An accepted arrangement may compose maintained and custom structured
+   operations with explicitly authorized imperative regions. The authoring API
+   and exact runtime representation remain open.
 
 ### Avoid
 
@@ -829,9 +847,9 @@ the gate.
 
 ### Not decided by prior art
 
-- whether mode and objective live inside the completed strategy;
-- whether authoritative loaded state is stored directly on the strategy or in a
-  typed value at its boundary;
+- how mode and objective concepts contribute to the accepted arrangement;
+- the exact physical layout of authoritative loaded state inside the accepted
+  run scope;
 - the exact form of the generic preparation and rebinding exchange;
 - the exact training-step result and loss-policy boundary;
 - how validation, sampling, and family persistence divide behavior from
@@ -844,12 +862,12 @@ Prior art narrows the questions but does not answer them:
 
 | Trainer responsibility | Current exchange | Contract question |
 | --- | --- | --- |
-| construct integration | factory returns family aggregate; mode and objective are built separately | what constitutes the one completed strategy accepted by the Trainer? |
-| load/bind model | strategy returns components; Trainer stores and projects them | can the strategy boundary own authoritative bound state without hiding generic preparation needs? |
+| construct integration | factory returns family aggregate; mode and objective are built separately | what authored inputs establish one accepted run arrangement? |
+| load/bind model | strategy returns components; Trainer stores and projects them | how does the accepted run authority own bound state while exposing generic preparation needs? |
 | distributed preparation | Trainer/phase wraps or replaces component references | how are generic preparation targets declared and rebound without exposing family anatomy? |
-| select trainables | mode receives the whole Trainer and returns parameters | can the completed strategy publish semantic trainable groups while preserving mode experimentation? |
-| execute batch | Trainer passes fourteen concerns into `process_batch()` | what minimal request/result meanings does the Trainer actually require? |
-| apply objective/loss policy | split across objective runtime, family strategy, loss modifier, and Trainer | which outcomes belong to strategy fulfillment and which policies remain Trainer-owned? |
+| select trainables | mode receives the whole Trainer and returns parameters | how does authored intent become accepted semantic trainable groups while preserving experimentation? |
+| execute batch | Trainer passes fourteen concerns into `process_batch()` | what accepted execution form lets the Trainer run authored semantics without a live strategy callback? |
+| apply objective/loss policy | split across objective runtime, family strategy, loss modifier, and Trainer | which semantics belong in the accepted arrangement and which mechanics remain Trainer-owned? |
 | validate/sample | family behavior is mixed with traversal, cadence, device, and reporting | what family behavior can be called without copying Lightning's lifecycle-hook catalog? |
 | persist | family serialization may receive the whole Trainer | what typed artifact request/result separates coordinates and orchestration from serialization? |
 | observe model | metadata reads Trainer-owned component projections | how does observation query authoritative bound state without owning or mutating it? |
@@ -865,18 +883,22 @@ The comparison does not change the overall goal:
 repository Trainer
   dictates a bounded training-strategy contract
 
-repository-authored fulfilled strategy
-  explicitly composes the participants selected by the eventual contract
+repository-authored strategy
+  explicitly composes training intent using that contract
+
+contract establishment
+  validates the authored recipe and produces one accepted run arrangement
 
 repository Trainer
-  executes that strategy without reconstructing model-family topology
+  executes the accepted arrangement without reconstructing model-family topology
+  or requiring the authored strategy to remain active
 ```
 
 The source supports a bounded conclusion:
 
 - Lightning provides the closest precedent for a recipe/executor boundary, but
   its implementation is a larger bidirectional object model rather than the
-  narrow typed strategy contract being designed here;
+  contract-established accepted execution boundary being designed here;
 - Fabric is a runtime substrate and wrapper system, not an implementation of
   the missing model-family training contract;
 - Accelerate already supplies that runtime role and imposes real preparation

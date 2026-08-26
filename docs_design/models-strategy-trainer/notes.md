@@ -1,5 +1,10 @@
 # Notes (user and agent)
 
+This file is chronological history. Every dated section records the state at
+that time and may be superseded by a later section. Use the final dated section
+for the current handoff, then consult the normative direction and, once created,
+the governing OpenSpec design and specs for current authority.
+
 ## Current continuation checkpoint (2026-07-30)
 
 The production inventory, framework comparison, and code pressure test are
@@ -930,3 +935,312 @@ The binding/preparation pressure-test item is complete. The next architecture
 dependency is the optimization exchange, followed by the step exchange. Only
 after those are coherent should the current-to-target implementation mapping
 and governing OpenSpec be derived from the full design.
+
+This sequencing conclusion is superseded by the governing OpenSpec transition
+decision of 2026-08-27 below: the mapping now exists, and the remaining design
+should continue inside the governing change while implementation stays gated.
+
+## Optimization ownership code-evidence pass (2026-08-25)
+
+A Verify-level source pass traced current trainable selection, parameter
+grouping, optimizer/scheduler construction, Accelerate/DeepSpeed preparation,
+clipping and synchronization, ordinary step execution, schedule-free runtime
+transitions, and the EDM2 sidecar. The graph generation was current for the
+branch, every cited Python path had no recorded coverage issue and matched
+index metadata, and exact source snippets were read for the material claims.
+This remains a best-effort coverage signal rather than proof of completeness.
+
+The pass confirmed why optimization ownership is a separate architecture
+question rather than a small rename of `TrainingMode`. Today:
+
+- adapter and fine-tune `prepare_trainables()` mix authored-subject resolution,
+  domain construction or family post-processing, `requires_grad` realization,
+  train/eval transitions, and Trainer-state publication;
+- both modes construct useful logical/execution groups and an
+  `OptimizationPlan`, but also instantiate the optimizer themselves;
+- Trainer separately creates the scheduler, while mode-owned accelerator
+  preparation replaces modules, optimizer, and scheduler and publishes the
+  synchronization handle and primary trainable through whole-Trainer mutation;
+- the loop already owns normal timing, loss modification, backward, clipping,
+  optimizer/scheduler advancement, zeroing, and train/eval boundaries, but it
+  re-queries the mode for clipping participants and specialized lifecycle
+  behavior; and
+- EDM2 has a learnable accumulation participant plus its own optimizer,
+  scheduler, advancement, zeroing, and artifact contribution. Schedule-free
+  and fused policies add different runtime behavior without necessarily
+  requiring strategy-owned manual optimization.
+
+The strongest lifecycle clarification is that optimization is semantically
+downstream of accepted bindings but physically crosses preparation. A logical
+plan and concrete optimizer/scheduler candidates must exist before a backend
+can jointly prepare them with modules; the current Trainer-owned optimization
+runtime exists only after that preparation result is published. The working
+frame is therefore:
+
+```text
+accepted bindings + authored intent + Trainer policy
+  -> resolved logical plan
+  -> realized trainability and optimizer/scheduler candidates
+  -> joint runtime preparation where required
+  -> published prepared bindings + optimization runtime
+  -> Trainer-owned step execution
+```
+
+This does not reopen preparation ownership. Backend joint preparation
+constrains realization but does not make optimizer objects strategy
+participants or give the backend semantic optimization authority.
+
+The target should evolve the existing logical-group/execution-group split while
+removing its competing sources of truth. One accepted optimization state must
+connect participant-qualified selection and source revisions to realized
+parameters, logical and execution groups, clipping/synchronization membership,
+optimizer/scheduler policy and runtime, preparation dependencies,
+checkpointing, and invalidation. Raw parameter lists, `_train_*` flags,
+`_primary_trainable`, `_grad_sync_handle`, and later mode queries are current
+evidence, not independent target authorities.
+
+The pass did not settle whether the standard profile contains one or several
+optimization units, which auxiliary behaviors fit normal Trainer coordination,
+or the exact research/manual takeover contract. Those are the first of the
+eight recorded discussion points in the exchange design. A useful working
+distinction for that discussion is that custom optimizers, multiple groups,
+ordinary auxiliary optimizers, schedule-free transitions, backend-specific
+advancement, and Trainer-timed post-step capability behavior may still fit
+standard Trainer ownership. Manual/research ownership is needed only when a
+strategy deliberately replaces named mechanics such as backward count,
+optimizer selection, advancement order, or zeroing; the boundary must prevent
+both Trainer and strategy from performing the same action.
+
+## Optimization feedback reconciliation (2026-08-26)
+
+A follow-up review treated the proposed optimization target as an opinion to
+check against the direction, preparation design, and current code. Most of the
+feedback refined rather than contradicted the target. The exchange design now
+records the following working conclusions without promoting them to accepted
+OpenSpec requirements:
+
+- the standard Trainer-owned runtime should contain one or more coordinated
+  optimization units; a unit is one independently advanced optimizer-owned
+  parameter set, not a participant, model, logical group, or optimizer object;
+- units need stable run-scoped semantic identity plus revision across backend
+  replacement, exact resume, diagnostics, and replanning, while another run
+  establishes its own units; exact representation remains downstream;
+- one parameter should belong to at most one standard unit and one execution
+  group within it. Current fine-tune grouping already rejects overlapping
+  explicit groups. Deliberate overlap requires an accepted ordering/state
+  policy but may remain Trainer-owned when declarative;
+- clipping, accumulation/synchronization, trainability, and runtime-mode needs
+  remain separate coherent projections rather than fields collapsed into an
+  optimizer unit;
+- optimization may declare that modules require training-mode participation,
+  but Trainer/pipeline lifecycle owns module train/eval transitions because
+  sampling, validation, and execution also depend on module mode. Optimizer
+  runtime transitions such as schedule-free `train()`/`eval()` remain
+  unit-local behavior invoked at Trainer-owned times;
+- unusual deterministic cadence or ordering does not by itself require manual
+  optimization. The manual/research boundary begins when a strategy must
+  imperatively decide or perform backward, gradient manipulation, advancement,
+  or zeroing outside the accepted Trainer policy; and
+- the earlier lifecycle overfit current Accelerate/DeepSpeed ordering by
+  placing concrete optimizer creation unconditionally before preparation. The
+  preparation design had already left the construction point open. The target
+  now requires a semantic plan first and a complete published runtime last,
+  while one Trainer-owned realization/preparation job may construct and prepare
+  concrete objects in the order required by its backend.
+
+The former eight-question sequence was replaced with five genuinely remaining
+items: confirm unit identity/revision semantics; confirm standard non-overlap
+and the explicit overlap boundary; settle declarative advancement versus
+imperative takeover; define backend-flexible realization/preparation exchange
+meanings; and then connect the accepted runtime to the step exchange. This does
+not reopen Q1-Q5, binding authority, or the settled preparation publication
+semantics. A later executable optimization spike may help discover readable
+Python shape once these semantics are settled, but it should not substitute
+for them or treat today's backend call order as universal architecture.
+
+## Optimization unit identity and revision decision (2026-08-26)
+
+The first remaining optimization question is settled. A focused pass through
+current optimizer wrapping, Accelerate/DeepSpeed replacement, EDM2's separate
+optimizer, and runtime resume showed that neither an optimizer object nor a
+concrete collection of `nn.Parameter` objects can carry semantic unit
+identity. The exchange design now distinguishes:
+
+- a non-positional unit address in the accepted plan;
+- one run-scoped unit identity for an independently managed optimization
+  responsibility;
+- a revision of that responsibility's accepted semantic parameter membership,
+  optimizer-significant grouping, optimizer/scheduler policy, advancement
+  policy, and semantic dependencies;
+- the concrete runtime realization of that identity and revision; and
+- mutable optimizer/scheduler state and advancement progress.
+
+Wrapping, backend preparation or replacement, process recreation, and
+realizing new concrete parameter handles do not by themselves change unit
+identity or revision. A runtime dependency change invalidates the current
+realization; the same revision may be realized again when its accepted
+definition is unchanged. Replanning that changes accepted membership,
+grouping, policy, or semantic dependencies advances the revision while
+preserving the unit identity. Split, merge, retire-and-recreate, and replacement
+of the independently managed responsibility establish new identities.
+
+The initial candidate becomes current only through successful publication of
+the complete realization/preparation attempt. Exact resume restores the same
+run's unit identities, revisions, mutable state, and training coordinates while
+allowing new Python objects and a new process execution. Another run or fork
+establishes new unit identities and preserves source-checkpoint provenance
+separately; no general optimization-unit lineage mechanism is implied yet.
+Unit-local advancement coordinates may be necessary for differently paced
+units, but belong to the later advancement-policy and step-exchange decisions.
+The remaining optimization register now begins with standard non-overlap and
+the explicit boundary for deliberately overlapping optimization.
+
+## Optimization ownership wording correction and overlap decision (2026-08-26)
+
+A direct re-audit of the normative direction, exchange design, chronological
+notes, inventory, and current code found that two recent working
+interpretations had become more specific than the underlying agreement. This
+checkpoint supersedes the earlier phrases "strategy-owned manual
+optimization," "research/manual takeover," and "imperative takeover" in the
+two preceding optimization notes.
+
+The agreed research path has two levels. A custom strategy may replace the
+standard internal decomposition while still satisfying the active Trainer
+contract. If an experiment changes what the Trainer must do or who owns a
+normally Trainer-owned mechanic, it must target an explicit contract extension
+or version. Nothing settled says that the strategy itself must receive or
+perform the transferred responsibility. The standard strategy contract
+continues to keep generic optimization mechanics Trainer-owned; the exact
+owners and exchanges of any future extension must come from a concrete need.
+
+Current `process_batch()` and `BatchLossOutput` are migration evidence only.
+The first intended-Trainer table is a derivation frame, and the step exchange
+remains a placeholder. The direction requires the accepted strategy to make
+its authored objective/step behavior available to that eventual exchange, but
+does not yet decide the internal producer, request, result shape, or whether a
+method resembling `process_batch()` survives.
+
+EDM2 is likewise a capability/extension example, not an inherent member of the
+core optimization model. Its present learned sidecar, loss participation,
+optimizer/scheduler, advancement, and artifact state prove that the system must
+be able to accommodate such selected behavior. They do not decide that EDM2
+must become a standard optimization unit, that its optimizer becomes
+Trainer-owned, or what its final exchange and placement will be.
+
+The standard non-overlap question is settled. Each selected semantic parameter
+has one optimization unit and one execution group in the standard profile;
+concrete aliasing through tied/shared paths also counts. Deliberate overlap
+requires a recognized capability or explicit extension with an accepted
+coordination policy, not a bare flag or ordinary strategy mutation. A
+library-supported capability carries those rules without making its author
+restate them. This does not itself transfer optimization ownership to the
+strategy.
+
+The remaining optimization register now has three questions: define the
+declarative advancement policies supported by the standard Trainer and the
+contract-extension boundary; define the backend-flexible optimization
+candidate/request/result exchange; and connect the accepted optimization
+runtime to the still-open step exchange.
+
+## Accepted run arrangement topology correction (2026-08-26)
+
+A return to the original architecture discussion exposed a topology mistake in
+several later records. The binding and preparation work had correctly
+established one contract-governed authority for accepted per-run state, but
+subsequent wording placed that authority inside a complete `TrainingStrategy`
+that would remain active and exchange work with the Trainer at runtime. The
+evidence did not require that placement.
+
+This checkpoint supersedes phrases such as `Trainer <-> complete
+TrainingStrategy`, "accepted strategy owns the binding authority," and
+"strategy computes the step and returns a result" when they describe the
+target runtime topology. It specifically supersedes the earlier statement that
+the direction requires an "accepted strategy" to make authored step behavior
+available at runtime. It also supersedes treating an active strategy as the
+ordinary research escape route.
+
+The corrected route is:
+
+```text
+authored strategy
+  -> contract validation and fulfillment
+    -> accepted run arrangement
+      -> binding, preparation, and runtime specialization
+        -> one Trainer engine executes the arrangement
+```
+
+The strategy remains the authored recipe and explicit composition surface. It
+does not need to survive contract establishment as an ordinary per-step
+collaborator. Contract establishment must preserve the authored training
+meaning in an accepted executable form rather than moving model-specific
+knowledge into the Trainer.
+
+The accepted arrangement may combine maintained operations, custom structured
+operations, and explicitly authorized imperative regions. This is not a binary
+choice between a fully declarative graph and a live strategy callback. An
+imperative region is a distinct runtime execution role selected through the
+authored strategy and accepted by the contract; it is not automatically the
+strategy object itself. Custom decorators are one possible authoring API for
+such regions, not an architectural decision.
+
+The normal path therefore needs a structured accepted execution
+representation, but its exact form remains open. It may eventually be a graph,
+tree, region schedule, lowered Python representation, or a hybrid. The earlier
+rejection of an all-purpose `PreparedTrainingProgram` facade does not mean that
+contract establishment produces no executable result, and graph-shaped
+execution is no longer relegated to a hypothetical future feature.
+
+This correction does not reopen the settled participant identity, route,
+binding, preparation, atomic publication, invalidation, persistence, or
+optimization-unit decisions. In particular, Q5 remains settled at the
+responsibility level: one authority accepts and owns canonical current state
+for a run. Its topology is now stated accurately—the authority belongs to the
+accepted run arrangement, not necessarily to an active strategy.
+
+The remaining design work is to derive the minimum accepted execution
+meanings, optimization exchanges, and retained Trainer mechanics from concrete
+normal and increasingly imperative cases. Those cases should discover the
+representation and escape-hatch API; they should not assume a universal graph,
+a `process_batch()` replacement, or a per-step strategy/Trainer conversation in
+advance.
+
+## Governing OpenSpec transition decision (2026-08-27)
+
+The work has reached the point where continuing to develop the intended Trainer
+only in pre-OpenSpec notes would risk producing a one-off design influence. The
+next step is to create one governing model–strategy–Trainer OpenSpec change and
+continue the architecture there. One change may contain several focused specs
+and many reviewed milestones; this is not a big-bang implementation.
+
+The intended Trainer has design authority. Repository goals and current-code
+evidence inform that Trainer; its required mechanics and deliberately supported
+pipeline capabilities define the training contract. The contract then guides
+and constrains strategy authoring and judges authored filings. It does not force
+the Trainer to preserve behavior merely because a current strategy performs it.
+Current SD, SDXL, SD3, adapter, and research paths are evidence and pressure
+tests. A desired case may cause a deliberate Trainer-design change, after which
+the contract follows; no case defines the core automatically.
+
+The OpenSpec should be rooted in the actual code inventory and the complete
+discussion record. The direction document supplies settled normative input;
+the exchange design and implementation mapping supply evolving source-backed
+derivation; the inventory and executable spike supply evidence; framework
+comparison remains subordinate prior art; and these notes preserve chronology,
+including superseded positions. Once created, the OpenSpec design and specs
+become the governing location for new normative decisions rather than another
+parallel living document.
+
+The intended Trainer skeleton belongs in the OpenSpec design. Contract
+requirements and representative SD/SDXL/SD3/custom scenarios belong in focused
+specs. Reviewed vertical migration steps belong in tasks, and acceptance tests
+must prove the scenarios. Each material decision should trace from intended
+Trainer responsibility through contract requirement, accepted-arrangement
+exchange, representative scenario, implementation milestone, and test. This
+trace—not an isolated prototype or persuasive note—is what makes the design
+control the resulting code.
+
+Implementation must not begin merely because the change exists. Its design,
+requirements, and tasks first need the four exchanges, standard and extension
+optimization boundaries, multi-family and imperative pressure cases, and a
+migration that avoids duplicate current-state authorities or knowingly false
+temporary contracts.

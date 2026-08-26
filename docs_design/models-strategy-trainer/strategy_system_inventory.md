@@ -47,10 +47,10 @@ them.
 | 4. State and placement | Complete | State is split across trainer, strategy, mode, objective, cache backends, and scoped context; several files mix component mechanics, family behavior, and run orchestration. |
 | 5. Contract seams | Complete | The current paths expose stable concern-level inputs/results, a partial but scattered compatibility matrix, and concrete conformance scenarios for the next design discussion. |
 | 6. Mode/objective classification | Complete | `TrainingMode` should dissolve; strategy declares intent while Trainer owns generic mechanics and selected capabilities provide specialized behavior through typed exchanges. |
-| 7. Logical identity and routes | Complete | Stable strategy-scoped participant identity is distinct from Python objects; materially different prepared representations use revisioned named routes with explicit freshness. |
+| 7. Logical identity and routes | Complete | Stable authority-established participant identity is distinct from Python objects; materially different prepared representations use revisioned named routes with explicit freshness. |
 | 8. Arrangement transitions | Complete | Declaration, materialization, replacement, route rebinding, relationship transitions, arrangement amendment, and merge/fold have distinct semantics. |
 | 9. Artifact persistence | Complete | Persistence selects coherent semantic products through declaration/request/plan/result rather than serializing an incidental live object. |
-| 10. Binding authority | Complete | One dedicated contract-owned per-run authority lives behind the complete Trainer-facing strategy boundary; remaining work is concrete exchange design. |
+| 10. Binding authority | Complete | One dedicated contract-governed authority owns canonical per-run state. Later design work places it in the accepted run arrangement rather than requiring the authored strategy to remain active at runtime. |
 
 ## Milestone 1: Active Construction And Lifecycle
 
@@ -197,10 +197,10 @@ Evidence:
 - deferred load: `library/training/phases/model_prep.py:37-44`
 - batch call: `library/training/phases/training_loop.py:498-516`
 
-This is the concrete meaning of the trainer/strategy state split. It does not
-yet prove that a bound strategy should own all loaded state, but it does prove
-that the current aggregate strategy is not the sole per-run model integration
-object after construction.
+This is the concrete meaning of the trainer/strategy state split. At this
+evidence milestone it did not prove where authoritative loaded state should
+live, but it did prove that the current aggregate strategy is not the sole
+per-run model integration object after construction.
 
 ### What The Trainer Currently Knows About Model Topology
 
@@ -1047,14 +1047,14 @@ The evidence is strong enough to carry these conclusions forward:
 - add shared semantic conformance tests without freezing inheritance or file
   placement.
 
-### What Remains Genuinely Open
+### What The Inventory Alone Did Not Settle
 
-The inventory does not settle:
+At this evidence milestone, the inventory did not settle:
 
-- whether the active strategy directly owns live loaded state or holds a
-  dedicated typed value at the strategy boundary;
+- where authoritative live state belongs in the eventual accepted run
+  topology;
 - how specialized capabilities divide behavior between Trainer-owned services,
-  domain implementations, and strategy-internal features;
+  domain implementations, and authoring-selected features;
 - the exact public operation split that replaces or narrows `process_batch`;
 - whether feature wiring uses composition, inheritance, decorators, Hydra-like
   import/config selection, or a limited combination;
@@ -1063,12 +1063,18 @@ The inventory does not settle:
   definitions are warranted;
 - the external integration and contract-versioning policy.
 
-Those are now bounded design questions rather than reasons to keep exploring
-the same call paths.
+Later design work has settled some of these questions, including placement of
+authoritative state in the accepted run arrangement rather than in a strategy
+that must remain active. Consult the normative direction and evolving exchange
+design for current decisions. The inventory establishes evidence and does not
+freeze the provisional topology above.
 
 ### Recommended Discussion Order
 
-Before an OpenSpec or production edits, discuss these in order:
+This was the recommended order at the Milestone 5 checkpoint. The subsequent
+inventory, direction, and exchange work completed or refined these discussions;
+it no longer gates creation of the governing OpenSpec. It remains useful as the
+historical dependency order that led to the current design:
 
 1. name the minimum contract concerns and their trainer-facing result
    semantics;
@@ -1089,11 +1095,14 @@ It needs the existing principle to become enforceable:
 CONTRACT
   defines accepted concerns, compatibility, lifecycle, and result meanings
 
-STRATEGY
-  explicitly defines what is trained and how, then rejects contract gaps
+AUTHORED STRATEGY
+  explicitly defines what is trained and how
 
-TRAINER
-  executes the strategy without reconstructing model topology
+CONTRACT ESTABLISHMENT
+  rejects gaps and produces one accepted run arrangement
+
+TRAINER ENGINE
+  executes the accepted arrangement without reconstructing model topology
 ```
 
 This inventory is now complete enough to start that design discussion. It
@@ -1122,8 +1131,8 @@ Trainer-recognized capability/domain behavior
   specialized behavior invoked by the training mechanism through an explicit
   contract; its code need not live in the central Trainer class
 
-strategy-internal feature
-  reusable behavior used by the strategy to compute its training semantics
+authoring-selected feature
+  reusable behavior explicitly selected and wired while authoring the strategy
 
 model/component behavior
   mechanics inherent to a component rather than to the run lifecycle
@@ -1171,12 +1180,12 @@ state.
 | --- | --- | --- |
 | Select adapter targets or fine-tuned component/parameter subjects | strategy declaration, expressed as a training-subject filing | The strategy deliberately says what is intended to train. It does not independently materialize optimizer groups. |
 | Construct and attach an adapter, apply continuation policy, and load initialization weights | Trainer-recognized capability plus adapter-domain behavior | Trainer owns when attachment/preparation happens. Adapter construction and artifact loading remain delegated domain behavior with typed inputs/results. |
-| Apply family-specific post-processing such as SDXL text-encoder tail freezing | strategy-internal feature or component compatibility rule | The standard strategy explicitly wires the rule. It must not be rediscovered from a mode or family-name branch. |
+| Apply family-specific post-processing such as SDXL text-encoder tail freezing | authoring-selected feature or component compatibility rule | The standard strategy explicitly wires the rule. It must not be rediscovered from a mode or family-name branch. |
 | Toggle `requires_grad`, choose train/eval state, and designate synchronization/clipping participants | Trainer/optimization mechanism over the declared training subjects | These are realized execution facts. They should be derived from one optimization/preparation result rather than stored as `_train_*` flags in several owners. |
-| Cast trainables and frozen execution participants for full FP16/BF16 | Trainer precision/preparation mechanism | The strategy supplies participants and constraints; generic precision infrastructure performs casts. Component-specific limitations remain explicit component/features constraints. |
+| Cast trainables and frozen execution participants for full FP16/BF16 | Trainer precision/preparation mechanism | The accepted arrangement supplies participants and constraints; generic precision infrastructure performs casts. Component-specific limitations remain explicit component/feature constraints. |
 | Resolve logical parameter groups | optimization system acting on the strategy's declared subjects and constraints | Evolve `OptimizationPlan`; do not make the strategy or a mode build raw optimizer dictionaries by convention. |
 | Instantiate the optimizer | Trainer-owned optimization mechanism | `get_optimizer()` and scheduler creation belong to one infrastructure-owned realization path. |
-| Call `accelerator.prepare()`, build a DeepSpeed composite, replace module handles, and select the accumulation handle | Trainer/distributed preparation mechanism | The strategy publishes participants and joint-preparation constraints; infrastructure returns authoritative prepared bindings. |
+| Call `accelerator.prepare()`, build a DeepSpeed composite, replace module handles, and select the accumulation handle | Trainer/distributed preparation mechanism | The accepted arrangement exposes participants and joint-preparation constraints; infrastructure returns prepared routes for authority acceptance. |
 | Enable generic gradient checkpointing | Trainer/performance mechanism | Operate over declared trainable/execution participants, not hard-coded denoiser/text-encoder projections. |
 | Run adapter-specific `enable_gradient_checkpointing()` or `prepare_grad_etc()` | explicit component/capability behavior coordinated during Trainer preparation | The component may implement the specialized operation. A fine-tune no-op should not be required to pretend support. |
 | Register Accelerate save/load hooks and restore epoch/step coordinates | Trainer runtime-checkpoint mechanism with explicit state contributors | Adapter or other features may contribute state serialization, but the mode should not own checkpoint registration or the run coordinates. |
@@ -1229,8 +1238,8 @@ batch-state construction lives on its runtime
 | Current responsibility | Classification | Direction |
 | --- | --- | --- |
 | Choose DDPM versus rectified flow from global config | strategy declaration and contract validation | Objective choice is part of how the authored strategy trains. Trainer should not independently choose a second behavioral axis. Configuration may parameterize a choice explicitly exposed by that strategy. |
-| Construct the noise scheduler, timestep sampler/runtime, prediction convention, and objective-specific state | strategy-internal objective feature | The strategy deliberately wires the objective implementation. Trainer may coordinate lifecycle creation without knowing DDPM/RF classes. |
-| Produce corruption/noisy inputs, timesteps/noise levels, targets, and objective weighting | strategy-internal objective feature used by step execution | These are mathematical training semantics. They belong behind the strategy boundary and should not become universal Trainer fields. |
+| Construct the noise scheduler, timestep sampler/runtime, prediction convention, and objective-specific state | authoring-selected objective feature | The strategy deliberately wires the objective implementation. Trainer may coordinate lifecycle creation without knowing DDPM/RF classes. |
+| Produce corruption/noisy inputs, timesteps/noise levels, targets, and objective weighting | authoring-selected objective feature used by accepted execution | These are mathematical training semantics. They must survive into the accepted arrangement and should not become universal Trainer fields. |
 | Advance adaptive timestep scheduling at a global step | objective-feature state transition invoked at Trainer-owned timing | Trainer supplies the step coordinate through the step exchange; the selected feature owns its state transition. |
 | Feed timestep/loss observations back into an adaptive sampler | objective-feature state update consuming a typed step observation | The step result declares the relevant observations. Trainer may route them at the defined boundary without understanding timesteps. |
 | Expose `num_train_timesteps`, `timestep_runtime`, or `alphas_cumprod` for plotting, Huber thresholds, and logging | objective-specific capability/observation, not core strategy vocabulary | Replace direct runtime-field inspection with typed objective observations or logging/metadata contributions where requested. |
@@ -1307,8 +1316,8 @@ exchanges without treating mode or objective as peer runtime owners.
 The first two authoritative-binding questions are settled at the semantic
 level.
 
-- One stable strategy-scoped logical identity denotes one semantically distinct
-  training participant.
+- One stable authority-established logical identity denotes one semantically
+  distinct training participant.
 - Concrete Python objects, implementation types, source/catalog identities,
   wrappers, and parameter scopes do not define that identity.
 - The standard contract provides one normal authoritative prepared execution
@@ -1995,7 +2004,7 @@ even if it can migrate today's SDXL flow.
 The scenario model supports these requirements without yet selecting the final
 Python shape:
 
-1. **One strategy-scoped current authority.** There cannot be independent
+1. **One accepted-run current authority.** There cannot be independent
    authoritative copies on Trainer, loaders, modes, strategy facets, and
    metadata.
 2. **Contract-governed identity and transitions.** Declarations,
@@ -2042,8 +2051,8 @@ metadata and persistence
 
 This rules out Trainer family fields, metadata storage, family-mixin attributes,
 or an unrestricted shared dictionary as the canonical owner. The scenarios
-point toward a binding authority belonging to the **bound strategy contract
-scope**, but they cannot choose a physical layout: an embedded authority, a
+point toward a binding authority belonging to the **accepted run scope**, but
+they cannot choose a physical layout: an embedded authority, a
 paired object, and a separate object can all be constructed to satisfy the same
 normal-path scenarios.
 
@@ -2059,11 +2068,18 @@ scoped access discipline
 incremental migration from LoadedModelComponent
 ```
 
-The resulting direction is a dedicated contract-owned, per-run binding
-authority inside the complete Trainer-facing strategy boundary. Trainer still
-receives one strategy; physical separation of the authority prevents mutable
-binding state from becoming arbitrary strategy-facet fields rather than
-creating a second public object for Trainer to coordinate.
+The responsibility result is a dedicated contract-governed, per-run binding
+authority. The scenarios establish its single-writer semantics, lifetime, and
+scope; they do not establish that the authored strategy must remain the runtime
+object around it.
+
+Later design discussion corrected that topology inference. Contract
+establishment accepts the authored strategy into one run arrangement, and the
+authority belongs to that accepted arrangement. The Trainer executes the
+arrangement without retaining the authored strategy as an ordinary runtime
+collaborator. Physical separation still prevents mutable binding state from
+becoming arbitrary feature fields, but does not create a second competing run
+authority.
 
 Additional scenarios remain useful as conformance tests rather than ownership
 blockers:
