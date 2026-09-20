@@ -11,6 +11,23 @@ Current source confirms four boundaries this continuation must address:
 
 The detailed pre-OpenSpec research is retained in `docs_design/model_metadata_continuation_research.md`. The system-wide query research is retained separately in `docs_design/metadata_query_capability.md`. This change consumes the future shared typed query capability; it does not make model metadata its owner.
 
+The active `rework-model-strategy-trainer` change governs the target live run
+authority and Trainer topology. This change supplies the broader catalog,
+source, provenance, realization-composition, and structural metadata needs
+that architecture must preserve. Runtime-facing metadata work is implemented
+on top of the rework's accepted identity, state, transition, and projection
+boundaries, or designed together with the relevant rework milestone.
+
+The changes overlap on `loaded-model-components`, `model-family-metadata`, and
+`optimization-target-refs`; neither may implement, sync, or archive those
+capabilities without reconciling both delta sets. The typed loading result and
+source/materialization evidence remain metadata requirements, while the rework
+decides canonical live binding authority and consumer projections. Independent
+catalog and provenance foundations may continue when they do not freeze a
+conflicting runtime boundary. There is no blanket whole-change landing order:
+the concrete integration and archive sequence will follow the boundaries and
+milestones chosen by the rework.
+
 The design must also respect these product decisions:
 
 - identities and portable evidence are not personal-machine concepts;

@@ -27,13 +27,14 @@
 
 ## 4. Typed Model Loading And Provenance Contract
 
-- [ ] 4.1 Replace the evidence-free loading tuple with one shared typed loading result containing model version, family-declared components, ordered source observations, source selections, component-to-selection bindings, loading decisions, limitations, and transformations classified as source/materialization, runtime observation, or persisted lineage/revision evidence.
-- [ ] 4.2 Define typed deferred-materialization updates that preserve prior loading evidence while replacing the authoritative loaded-component surface.
-- [ ] 4.3 Add central builders for source representations, selections, component-to-selection bindings, materialization attempts/results, and transformation facts without retaining live modules or accessing metadata storage.
-- [ ] 4.4 Add central emitters, registry routes, relationships, and validation for the new provenance facts.
-- [ ] 4.5 Update trainer setup to retain typed loading/catalog state while preserving its family-declared component convenience views.
-- [ ] 4.6 Add contract tests proving SD/SDXL/SD3 and future families populate the same collection-based schema without family-specific provenance fields or central family-name branches.
-- [ ] 4.7 Run section 4 quality gates, `review-mcp`, and hand off the shared loading/provenance contract before family migrations.
+- [ ] 4.1 Before production work in this section, reconcile the current `rework-model-strategy-trainer` design and deltas with this change's loading, provenance, realization, and structural requirements. Amend this design, the overlapping `loaded-model-components`, `model-family-metadata`, and `optimization-target-refs` deltas, and the remaining section-4 tasks to consume the rework's accepted identity/state/projection boundaries without weakening metadata requirements. Repair the existing `model-family-metadata` modified-requirement scenario omission (`Model loading completes`), validate both changes strictly, obtain the required review, and stop if the shared boundary is not ready.
+- [ ] 4.2 Replace the evidence-free loading tuple with a shared typed loading-evidence result containing model version, family-declared component candidates, ordered source observations, source selections, component-to-selection bindings, loading decisions, limitations, and transformations classified as source/materialization, runtime observation, or persisted lineage/revision evidence. Do not make the result a competing canonical live-binding store.
+- [ ] 4.3 Define typed deferred-materialization evidence and updates that preserve prior loading evidence and integrate through the accepted participant transition boundary selected by the rework.
+- [ ] 4.4 Add central builders for source representations, selections, component-to-selection bindings, materialization attempts/results, and transformation facts without retaining live modules or accessing metadata storage.
+- [ ] 4.5 Add central emitters, registry routes, relationships, and validation for the new provenance facts.
+- [ ] 4.6 Integrate typed loading/catalog evidence at the accepted-arrangement and Trainer boundary selected by the rework while preserving family-declared component views and avoiding a competing canonical binding authority.
+- [ ] 4.7 Add contract tests proving SD/SDXL/SD3 and future families populate the same collection-based schema without family-specific provenance fields or central family-name branches, and that live state is consumed through the rework's accepted projections.
+- [ ] 4.8 Run section 4 quality gates, `review-mcp`, and hand off the shared loading/provenance contract before family migrations.
 
 ## 5. Active Family Source Capture
 

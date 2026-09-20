@@ -2,11 +2,12 @@
 
 ## Status And Authority
 
-This is the evolving supporting design record for the concrete exchanges
+This is the supporting pre-OpenSpec design record for the concrete exchanges
 between authored strategy input, the accepted run arrangement and its binding
-authority, and Trainer-owned infrastructure. The pre-OpenSpec exploration has
-now reached its transition point: the next step is to create the governing
-OpenSpec and continue the intended-Trainer, contract, and exchange design there.
+authority, and Trainer-owned infrastructure. The governing
+[`rework-model-strategy-trainer`](../../openspec/changes/rework-model-strategy-trainer/)
+OpenSpec now exists; intended-Trainer, contract, and exchange decisions continue
+there while this document preserves their derivation and working history.
 
 It is deliberately downstream from
 [`strategy_system_direction.md`](strategy_system_direction.md): the direction
@@ -32,9 +33,9 @@ The other records retain their existing roles:
 - [`framework_pattern_comparison.md`](framework_pattern_comparison.md) is
   subordinate prior-art research rather than a source of requirements.
 
-This document is not an implemented contract or an implementation plan. Once
-the governing OpenSpec exists, new normative requirements and design decisions
-belong there; this record remains evidence and supporting derivation. Names
+This document is not an implemented contract or an implementation plan. New
+normative requirements and design decisions belong in the governing OpenSpec;
+this record remains evidence and supporting derivation. Names
 such as `ParticipantKey`, `ParticipantRef`, `PreparationPlan`, and
 `PreparationResult` are working vocabulary until a decision explicitly marks
 them as accepted. The OpenSpec should be seeded from the settled semantics here
@@ -82,11 +83,12 @@ Binding and runtime preparation are designed together first. Optimization
 ownership and the optimization exchange follow. The step exchange follows
 once it can refer honestly to the accepted optimization boundary.
 
-The governing OpenSpec may now be created from the settled topology,
-responsibility boundaries, Q1–Q5 decisions, completed code inventory, and
-exchange work already recorded. Creating it does not declare the design
-implementation-ready. Its design, requirements, and implementation tasks are
-complete enough to begin production work only when:
+The governing `rework-model-strategy-trainer` OpenSpec has now been created
+from the settled topology, responsibility boundaries, Q1–Q5 decisions,
+completed code inventory, and exchange work already recorded. Its existence
+does not declare the design implementation-ready. Its design, requirements,
+and implementation tasks are complete enough to begin production work only
+when:
 
 - each exchange has defined inputs, results, state effects, allowed external
   side effects, and failure conditions;
@@ -1718,13 +1720,14 @@ milestones, and tests.
 
 ## Compaction Handoff
 
-Before the governing OpenSpec is created, use `strategy_system_direction.md` as
-normative, `strategy_system_inventory.md` as current-code evidence, and the
-latest decision register plus current design frontier above as the continuation
-point. After the change exists, use its design and specs for new normative
-decisions while retaining these records as support. Use
-`strategy_system_implementation_mapping.md` for the source-backed responsibility
-map and remaining code-shape/migration work.
+Continue new normative work in the active `rework-model-strategy-trainer`
+OpenSpec. Use `strategy_system_direction.md` as its normative pre-OpenSpec
+input, `strategy_system_inventory.md` as current-code evidence, and the latest
+decision register plus current design frontier above as supporting derivation.
+Use `strategy_system_implementation_mapping.md` for the source-backed
+responsibility map and remaining code-shape/migration work. Do not replace the
+OpenSpec with a session summary or promote superseded chronological notes over
+the active design and specifications.
 
 The current topology is authored strategy -> normative contract establishment
 -> accepted arrangement -> binding/preparation/specialization -> one Trainer

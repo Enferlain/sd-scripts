@@ -8,20 +8,21 @@ or an implementation plan.
 It records why the current model/strategy/trainer architecture is being
 revisited, the routes considered during discussion, the reactions that ruled
 some routes out, and the direction that currently feels most promising. It is
-intentionally more historical and argumentative than a module README. The
-direction is now settled enough to seed a governing OpenSpec, which should turn
-the relevant conclusions into requirements, design decisions, migration tasks,
-and acceptance tests while this record remains supporting context.
+intentionally more historical and argumentative than a module README. It has
+now seeded the governing
+[`rework-model-strategy-trainer`](../../openspec/changes/rework-model-strategy-trainer/)
+OpenSpec, which carries these conclusions into requirements, design gates,
+migration work, and acceptance tests while this record remains supporting
+context.
 
 The existing strategy system remains the active production architecture while
 this direction is explored.
 
-Until that governing change is created, this document is the normative source
-for the current architectural direction. Once it exists, new normative
-decisions belong in its design and specs. `strategy_system_inventory.md`
-retains code evidence and pressure tests; `notes.md` retains chronological
-checkpoints and may therefore include positions that were later superseded
-here.
+This document is the normative pre-OpenSpec input for the settled architectural
+direction. New normative decisions now belong in the governing change's design
+and specs. `strategy_system_inventory.md` retains code evidence and pressure
+tests; `notes.md` retains chronological checkpoints and may therefore include
+positions that were later superseded here or in the governing change.
 
 ## Why This Discussion Exists
 

@@ -7,16 +7,18 @@ production-code shape and governing OpenSpec. It replaces the earlier
 placeholder that deferred the current-to-target mapping and now serves as a
 supporting input to the governing change.
 
-The design sequence is:
+The design sequence is now:
 
 ```text
 settled architecture + exchange work to date + current-code evidence
-  -> create the governing OpenSpec
+  -> governing rework-model-strategy-trainer OpenSpec
     -> complete its intended-Trainer design and normative requirements
       -> derive target code, migration dependencies, milestones, and tests
 ```
 
-This document is not a source of architectural authority. Use:
+This document is not a source of architectural authority. Use the governing
+[`rework-model-strategy-trainer`](../../openspec/changes/rework-model-strategy-trainer/)
+design and specs for new normative decisions, with:
 
 - [`strategy_system_direction.md`](strategy_system_direction.md) for the
   normative architecture and settled semantics;

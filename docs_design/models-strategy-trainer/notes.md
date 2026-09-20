@@ -1244,3 +1244,40 @@ requirements, and tasks first need the four exchanges, standard and extension
 optimization boundaries, multi-family and imperative pressure cases, and a
 migration that avoids duplicate current-state authorities or knowingly false
 temporary contracts.
+
+## Governing OpenSpec created from full design record (2026-09-19)
+
+The active `rework-model-strategy-trainer` OpenSpec was rebuilt after a prior
+draft was archived. The rebuild re-read the complete normative direction,
+exchange design, production inventory, implementation mapping, and chronological
+notes; audited the archived draft as evidence rather than restoring it; checked
+the current main specs for ownership conflicts; and refreshed the current
+launcher, Trainer, model-preparation, optimizer-preparation, loop, mode,
+strategy, component, optimization, objective, and loss-result code through the
+current code graph and exact source.
+
+The governing change now contains a proposal, a design, seven new capability
+deltas, eight modified-capability deltas, and five numbered design
+gates. It carries forward contract-first authoring, the accepted-run-arrangement
+topology, Q1–Q5, participant identity and resume, preparation publication and
+failure semantics, optimization unit identity and standard non-overlap,
+artifact products, capability coordination, the intended-Trainer consumption
+frame, representative cases, and the no-false-temporary-contract migration
+rule. It does not guess the final execution representation, standard
+advancement policies, step exchange, Python types, or authoring API; those are
+evidence-driven milestones inside the change before production implementation.
+
+The spec audit also corrected a real omission in the archived attempt. Existing
+main specs still required `AdapterMode` to remain the permanent training-side
+owner and described Trainer-owned loaded-component state and mode-shaped
+observability. The active change carries explicit deltas for adapter ownership,
+loaded components, optimization target refs, metadata identity projection, and
+observability rather than relying on prose precedence.
+
+Strict OpenSpec validation passes. OpenSpec's `4/4 artifacts complete` status
+means that the planning files exist and parse; it does not open the production
+gate. The next concrete milestone is task section 1: build the
+source-section-to-requirement matrix, finish main-spec/metadata-change
+reconciliation, expand every intended-Trainer responsibility into complete
+request/result/readiness/effect/failure semantics, and review that baseline
+before deriving execution from the representative cases.
