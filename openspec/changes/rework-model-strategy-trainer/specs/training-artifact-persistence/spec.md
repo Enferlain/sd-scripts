@@ -58,6 +58,22 @@ and external references together.
 - **WHEN** a product contains adapter delta state, embeds one auxiliary member, and references an external base
 - **THEN** its plan and result MUST express all three dependency forms without one misleading completeness flag
 
+### Requirement: Artifact products are independent from training treatment
+The products an accepted arrangement supports and their semantic coverage
+SHALL come from explicit product declarations. Persistence SHALL NOT infer or
+restrict the product set solely from whether the run trains existing
+participant parameters, PEFT state, or a contract-compatible combination.
+
+#### Scenario: Direct parameter training declares a full-model product
+- **WHEN** an accepted arrangement trains selected parameters of existing participants and declares a compatible full-model product
+- **THEN** persistence MUST resolve that product from its declared semantic coverage and dependencies
+- **AND** it MUST NOT require a separate fine-tune mode classification
+
+#### Scenario: PEFT training declares its products explicitly
+- **WHEN** an accepted arrangement trains PEFT state alone or together with existing participant parameters
+- **THEN** adapter, merged full-model, or other product support MUST follow the arrangement's accepted product declarations
+- **AND** persistence MUST NOT infer one mandatory product category solely from the selected training subjects
+
 ### Requirement: Persistence uses one accepted boundary
 Every product member SHALL correspond to one accepted arrangement and one
 Trainer-established persistence boundary while satisfying each contributor's
@@ -101,9 +117,10 @@ participant incarnation.
 
 ### Requirement: Runtime restoration is not trained-artifact persistence
 Runtime snapshots SHALL restore execution, optimization, progress, backend,
-identity/revision, and accepted capability continuation state. They MAY share
-timing, consistency, storage, and writing infrastructure with trained artifacts
-but SHALL NOT be one request type differentiated only by a product kind.
+identity/revision, accepted operation-owned state, and accepted capability
+continuation state. They MAY share timing, consistency, storage, and writing
+infrastructure with trained artifacts but SHALL NOT be one request type
+differentiated only by a product kind.
 
 #### Scenario: Trainer saves both product and resume state
 - **WHEN** one lifecycle boundary emits a trained artifact and a runtime snapshot

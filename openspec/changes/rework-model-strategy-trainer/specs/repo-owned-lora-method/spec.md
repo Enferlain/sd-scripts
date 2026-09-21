@@ -2,10 +2,11 @@
 
 ### Requirement: Repo-owned LoRA runtime realizes from resolved adapter targets
 The LoRA PEFT method SHALL build and load LoRA runtime state from
-optimization-owned resolved adapter targets rather than from method-owned model
-traversal or discovery logic. Realization SHALL occur through the accepted
-adapter capability and participant/relationship transitions rather than
-through `AdapterMode` ownership.
+governed PEFT target-resolution results rather than from method-owned model
+traversal or discovery logic. The strategy SHALL author semantic target intent,
+and the method SHALL then act through method-specific adapter realization and
+participant/relationship transitions rather than through `AdapterMode`
+ownership.
 
 #### Scenario: Building a LoRA runtime for training
 - **WHEN** the pipeline materializes an accepted adapter participant whose selected method is `lora`

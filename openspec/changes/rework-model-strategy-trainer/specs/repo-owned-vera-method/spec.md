@@ -2,10 +2,12 @@
 
 ### Requirement: Repo-owned VeRA runtime realizes from resolved adapter targets
 The VeRA PEFT method SHALL build and load VeRA runtime state from
-optimization-owned resolved adapter targets rather than from method-owned model
-traversal or architecture-specific discovery logic. Realization SHALL occur
-through the accepted adapter capability and participant/relationship
-transitions rather than through `AdapterMode` ownership.
+governed PEFT target-resolution results rather than from method-owned model
+traversal or architecture-specific discovery logic. The strategy SHALL author
+semantic target intent, and the method SHALL then act through method-specific
+adapter realization and
+participant/relationship transitions rather than through `AdapterMode`
+ownership.
 
 #### Scenario: Building a VeRA runtime for training
 - **WHEN** the pipeline materializes an accepted adapter participant whose selected method is `vera`

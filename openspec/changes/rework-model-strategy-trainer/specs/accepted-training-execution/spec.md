@@ -24,20 +24,30 @@ is published.
 
 ### Requirement: Accepted execution survives the authoring object
 The accepted run arrangement SHALL retain the selected implementations,
-configuration, dependencies, operations, capability behavior, state authority,
-and permissions required to execute the authored training meaning without an
-ordinary runtime dependency on the authored strategy object.
+configuration, dependencies, operations, dynamic policies, runtime-state
+contributors, capability behavior, state authority, and permissions required
+to execute the authored training meaning without depending on the authored
+strategy object in its authoring role. Runtime code MAY depend on selected
+executable implementations only through their accepted runtime seams and
+authority.
 
-#### Scenario: Authoring object is released
-- **WHEN** strategy fulfillment succeeds and the authored strategy object is no longer retained
+#### Scenario: Authoring object is released completely
+- **WHEN** strategy fulfillment succeeds and the authored strategy object is not retained in any capacity, including as a selected runtime implementation
 - **THEN** the arrangement MUST still support materialization, preparation, training, selected capabilities, persistence, and restoration
-- **AND** ordinary execution MUST NOT call back into the authoring object to recover static choices
+- **AND** ordinary execution MUST NOT call back into the authoring interface to recover choices already established during fulfillment
+
+#### Scenario: One object supplies separate authoring and runtime seams
+- **WHEN** a selected implementation object participated in strategy authoring and also implements accepted runtime behavior
+- **THEN** its runtime seam MUST receive only accepted inputs and scoped state projections and produce only declared outputs, effects, or transition proposals
+- **AND** any requested arrangement change MUST be evaluated and published through the applicable run-authority transition path
+- **AND** retaining that implementation MUST NOT make the strategy's authoring interface a runtime peer
 
 ### Requirement: Accepted execution has explicit structure and effects
 The arrangement SHALL describe executable operations or regions, their
 dependencies, inputs, outputs, readiness requirements, declared effects,
-observations, failure meanings, and authority. It SHALL NOT be only an
-all-purpose lifecycle object whose methods hide those meanings.
+observations, owned-state definitions and transitions, permitted
+authority-governed transitions, failure meanings, and authority. It SHALL NOT
+be only an all-purpose lifecycle object whose methods hide those meanings.
 
 #### Scenario: Maintained operations are composed
 - **WHEN** a maintained strategy requires representation, conditioning, objective, predictor, and loss behavior
@@ -48,15 +58,48 @@ all-purpose lifecycle object whose methods hide those meanings.
 - **WHEN** the same accepted meanings are implemented as a graph, regions, a schedule, lowered Python, or a hybrid
 - **THEN** the observable dependencies, effects, authority, and results MUST remain conformant
 
+### Requirement: Accepted execution preserves authored dynamic behavior
+Completing strategy authoring SHALL NOT freeze behavior whose accepted meaning
+depends on changing inputs, coordinates, randomness, observations, or owned
+runtime state. The accepted arrangement SHALL retain the selected schedules,
+decision policies, owned-state definitions, accepted initialization sources or
+rules, state transitions, observation inputs, and restoration contributions
+needed to execute that behavior within its accepted bounds.
+
+#### Scenario: Stateful behavior starts without restored state
+- **WHEN** an accepted stateful operation becomes ready without state restored from an earlier execution session
+- **THEN** its state MUST be initialized from the source or rule preserved by the accepted arrangement
+- **AND** initialization that depends on concrete runtime evidence MUST occur only after that evidence satisfies its applicable readiness obligation
+- **AND** neither the Trainer nor the former authoring role may invent a different initial value
+
+#### Scenario: Schedule changes behavior during a run
+- **WHEN** an accepted operation derives its current behavior from step, epoch, phase, or another accepted coordinate
+- **THEN** its current behavior MUST be determined by the accepted schedule semantics for that coordinate
+- **AND** the Trainer MUST NOT require the authored strategy to remain active to choose the current behavior
+
+#### Scenario: Observations update adaptive state
+- **WHEN** an accepted stateful algorithm uses prior observations to update its owned state and later decisions
+- **THEN** those observations and state transitions MUST remain available to that accepted runtime behavior
+- **AND** its owned state MUST participate in applicable persistence or exact-restoration exchanges
+
+#### Scenario: Runtime decision stays within accepted bounds
+- **WHEN** an operation selects among alternatives using current inputs or owned state
+- **THEN** every selectable alternative, required authority, and possible declared effect MUST already be permitted by the accepted arrangement
+- **AND** a choice outside those bounds MUST be rejected rather than treated as ordinary dynamic execution
+
 ### Requirement: Static choices leave the hot path
 Implementation selection, static configuration, wiring, dependency resolution,
 and authority approval SHALL be established before ordinary repeated execution.
 The hot path SHALL receive only genuinely changing inputs, execution
-coordinates, and current prepared runtime state.
+coordinates, current prepared runtime state, and accepted operation-owned
+state. It SHALL NOT be construed to require precomputing, or to prohibit,
+accepted schedules, adaptive updates, bounded runtime decisions, or declared
+transitions.
 
 #### Scenario: Ordinary training step executes
 - **WHEN** the Trainer advances a prepared standard run
 - **THEN** the step MUST NOT rediscover selected features or ask the authoring object which implementation to call
+- **AND** it MAY invoke accepted behavior whose result and owned state depend on the current runtime inputs and observations
 
 ### Requirement: The standard profile retains generic Trainer mechanics
 Under the standard execution/ownership profile, the Trainer engine SHALL retain
@@ -117,3 +160,8 @@ accepted readiness and freshness dependencies.
 #### Scenario: Required route becomes stale
 - **WHEN** an accepted transition invalidates a route required by the execution structure
 - **THEN** execution MUST stop using that route until an accepted current replacement is published
+
+#### Scenario: Behavior requests an authority-governed transition
+- **WHEN** accepted runtime behavior requests a permitted change to participants, relationships, bindings, preparation, optimization, or capability state
+- **THEN** the request MUST pass through the applicable run-authority transition and republication path
+- **AND** the operation MUST NOT mutate canonical run state merely because its ordinary computation is dynamic

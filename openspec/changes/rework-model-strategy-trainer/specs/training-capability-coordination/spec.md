@@ -16,6 +16,10 @@ semantics. Support SHALL be explicit rather than inferred from method presence,
 - **THEN** the strategy acceptance check MUST record its accepted request/result and readiness contract
 - **AND** the pipeline MUST NOT discover support by calling a method and waiting for `NotImplementedError`
 
+#### Scenario: Repository gains another implementation
+- **WHEN** the repository makes a new capability implementation available
+- **THEN** an existing strategy MUST NOT provide or select it unless that strategy's authored definition does so explicitly
+
 ### Requirement: Capability selection is validated before use
 An authored strategy SHALL explicitly provide every capability it exposes or
 requires. Execution configuration MAY request an exposed capability within its
@@ -23,8 +27,13 @@ bounds. Missing or incompatible requested capabilities SHALL fail before their
 runtime trigger.
 
 #### Scenario: Full-model persistence is unavailable
-- **WHEN** configuration requests a full-model product that the accepted strategy does not provide
-- **THEN** the strategy acceptance check or later request validation MUST reject the run before checkpoint time
+- **WHEN** configuration requests a full-model product that the authored strategy does not provide
+- **THEN** strategy fulfillment MUST reject the request when the configuration and incompatibility are already known
+- **AND** if the contract deliberately permits that bounded request to be supplied later, request validation MUST reject it before the persistence capability becomes ready or any checkpoint resources are created
+
+#### Scenario: Provided capability is not requested
+- **WHEN** an accepted arrangement provides a sampling capability but the run's accepted configuration or policy does not request sampling
+- **THEN** the pipeline MUST NOT schedule sampling merely because the capability is available
 
 ### Requirement: Capability coordination does not imply central implementation
 Trainer or delegated pipeline orchestration SHALL own capability trigger
@@ -82,11 +91,24 @@ prediction, representation, and objective-compatible generation behavior.
 ### Requirement: Persistence and restoration remain distinct capabilities
 Trained-artifact persistence and exact runtime restoration SHALL use distinct
 accepted requests, results, and identity meanings even if they share a trigger
-or storage service.
+or storage service. Trainer or delegated pipeline infrastructure SHALL
+coordinate restoration of the coherent run. Accepted operations, capabilities,
+optimization, and backend integrations SHALL contribute only the continuation
+state they own.
 
 #### Scenario: Artifact save succeeds but runtime state is incomplete
 - **WHEN** a semantic model product is written without the authority and optimization state required for exact continuation
 - **THEN** the product result MUST NOT claim resumable-runtime support
+
+#### Scenario: Product and snapshot have different outcomes
+- **WHEN** one lifecycle boundary successfully publishes a trained product but a required runtime-state contributor fails
+- **THEN** the trained-product result MUST remain successful according to its declared product semantics
+- **AND** the runtime-snapshot result MUST report failure or incompleteness and MUST NOT claim exact restoration
+
+#### Scenario: Contributor participates in exact restoration
+- **WHEN** an accepted operation or capability owns state required to resume the same run
+- **THEN** it MUST expose that state through the restoration exchange
+- **AND** it MUST NOT become the coordinator or identity authority for overall run restoration
 
 ### Requirement: Capability results feed observation without transferring ownership
 Metadata, logging, metrics, reports, and resource systems MAY consume accepted

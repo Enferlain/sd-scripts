@@ -52,7 +52,8 @@ memory_trace.html
 *.latent
 *.whl
 *.safetensors
-*7z
+*.7z
+*.zip
 MagicMock
 
 # Tests

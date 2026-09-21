@@ -20,8 +20,13 @@ profiles available before a strategy is authored for that contract.
 ### Requirement: Authors assemble strategies explicitly
 Strategy authors SHALL explicitly select and wire training intent,
 participants, relationships, objective behavior, features, capabilities, and
-bounded choices. Strategy fulfillment SHALL NOT silently select a missing
-implementation, add a dependency, or infer the intended arrangement.
+bounded choices. Authored behavior MAY include stateful algorithms, schedules,
+reactions to observations, bounded decisions from live inputs, declared
+effects, and permitted authority-governed transitions. Authors SHALL declare
+the inputs, owned state, effect vocabulary and bounds, authority, and decision
+bounds needed to judge that behavior. Strategy fulfillment SHALL NOT silently
+select a missing implementation, add a dependency, or infer the intended
+arrangement.
 
 #### Scenario: Required behavior is missing
 - **WHEN** an authored definition omits a provider required by the features, capabilities, or bounded choices it selected
@@ -32,6 +37,11 @@ implementation, add a dependency, or infer the intended arrangement.
 - **WHEN** execution configuration requests use or settings of a capability already exposed by the authored strategy
 - **THEN** the request MAY parameterize that accepted capability within its declared bounds
 - **AND** it MUST NOT select a different internal implementation or assemble a new strategy feature
+
+#### Scenario: Author selects adaptive behavior
+- **WHEN** an authored algorithm changes later behavior from accepted runtime observations
+- **THEN** the strategy MUST identify the algorithm, its observation inputs, its owned state, and its possible effect vocabulary and bounds
+- **AND** it MUST NOT be rejected merely because its outputs cannot be fixed during authoring
 
 ### Requirement: Strategy fulfillment produces acceptance or rejection
 The training contract system SHALL evaluate one complete authored strategy
@@ -59,6 +69,11 @@ combination.
 - **THEN** fulfillment MUST establish every meaning and compatibility decision knowable from the authored definition
 - **AND** the accepted arrangement MUST retain the exact unsatisfied runtime obligation and evidence requirement
 - **AND** dependent use MUST remain unavailable until accepted runtime evidence fulfills it
+
+#### Scenario: A decision is deliberately made during execution
+- **WHEN** authored behavior chooses among alternatives from changing inputs or accepted owned state
+- **THEN** fulfillment MUST evaluate the decision policy, the bounds of its alternatives, their authority, and their possible effects against the active contract and profile
+- **AND** when accepted, the arrangement MUST preserve that policy for execution rather than replacing it with one authoring-time outcome
 
 ### Requirement: Obligations are evaluated at the earliest authoritative evidence point
 Every contract obligation SHALL be evaluated at the earliest lifecycle point

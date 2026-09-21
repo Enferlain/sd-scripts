@@ -93,6 +93,18 @@ The changes already overlap on `loaded-model-components`,
 deltas may not be implemented, synced, or archived independently as though the
 other change did not exist.
 
+Two concrete conflicts must be reconciled rather than inherited silently. The
+metadata change currently requires Trainer to retain the typed
+loading/provenance state as its primary model representation, while this change
+places that evidence in the accepted arrangement or a scoped projection and
+forbids a competing Trainer-owned binding collection. Its target-ref delta also
+uses optimization as the universal target-building actor and preserves an
+unqualified live-parameter field, while this change permits several accepted
+consumers and treats live objects only as revision-pinned projections. The
+metadata requirements for typed evidence, structural identity, and
+observation-local deduplication survive; their runtime owner and access shape
+must be revised at the shared boundary.
+
 The retained boundary is:
 
 - the metadata change's typed loading result and its source/materialization
@@ -219,11 +231,15 @@ Alternatives rejected:
 
 A repository author selects and wires participants, relationships, objective
 behavior, features, capabilities, bounded configuration choices, and any
-explicit custom or extension behavior. Strategy fulfillment checks the
-completed definition against the applicable contract meanings, reports missing
-or incompatible choices, and specializes those general meanings into the
-authoritative obligations for one run. It does not discover features from
-runtime types, choose dependencies, or silently repair a filing.
+explicit custom or extension behavior. That authored behavior may include
+stateful algorithms, schedules, reactions to observations, bounded decisions
+made from live inputs, declared effects, and permitted authority-governed
+transitions; it is not limited to static component selection. Strategy
+fulfillment checks the completed definition against the applicable contract
+meanings, reports missing or incompatible choices, and specializes those
+general meanings into the authoritative obligations for one run. It does not
+discover features from runtime types, choose dependencies, or silently repair
+a filing.
 
 This decision fixes the responsibility and boundary, not the code shape. It
 does not yet require executable validators to live inside the contract
@@ -275,6 +291,12 @@ sampling/generation, trained-artifact persistence, and runtime restoration.
 Their implementations may use shared accepted operations, but their request,
 readiness, results, side effects, and failure semantics remain explicit.
 
+Repository availability, strategy provision, runtime request, and current
+readiness are different facts. A strategy may provide a capability that a
+particular run never requests. Provision alone does not schedule it. Once it is
+requested, it becomes usable only when its accepted dependencies and current
+state satisfy the applicable readiness checkpoint.
+
 ### D4. The authored strategy is a recipe, not the ordinary runtime peer
 
 The authored strategy is the explicit definition of what is trained and how.
@@ -286,15 +308,24 @@ accepted run arrangement
   accepted contract version and execution/ownership profile
   selected implementations, configuration, and dependencies
   participants, relationships, obligations, and capabilities
-  structured maintained/custom execution
+  structured maintained/custom execution and dynamic decision policies
+  owned runtime-state definitions, accepted initialization sources or rules,
+    transitions, and observation inputs
+  permitted authority-governed transitions
   explicitly authorized imperative regions
   one run binding authority
 ```
 
-The authoring object may then be released. Ordinary training, validation,
+The authoring role is then complete and its broad construction interface is no
+longer an ordinary runtime dependency. Ordinary training, validation,
 sampling, persistence, and restoration do not call back into it to recover
-static choices. This does not move capability implementations into Trainer;
-the accepted arrangement retains the selected executable behavior.
+choices already established during fulfillment. The accepted arrangement does,
+however, retain the selected executable implementations, dynamic policies,
+runtime-state contributors, and transition permissions needed to carry out the
+authored meaning. A concrete Python object may implement both an authoring seam
+and an accepted runtime seam, but execution uses only the latter and its
+accepted authority. This does not move capability implementations into
+Trainer.
 
 An imperative runtime role is distinct from the authored strategy role even if
 a future implementation happens to use one Python object for both. Its access
@@ -326,7 +357,7 @@ uses of one authoritative obligation model, not separate sources of validity:
 | Coordinate validation | Selected validation capability, evaluation-ready routes/views and state constraints | Trainer owns trigger/traversal/mode timing; accepted behavior owns evaluation semantics and results. |
 | Coordinate sampling | Selected sampling capability and its prepared conditioning/predictor/representation needs | Trainer/pipeline owns trigger and destination; accepted generation behavior produces typed results. |
 | Persist trained artifacts | Declared product, coherent authority projection, consistency boundary, serializers | Product capability resolves semantic intent; serializers render it; persistence infrastructure writes and reports actual results. |
-| Restore runtime | Restoration contract, identity/revision state, Trainer/backend/optimization and capability contributors | Trainer coordinates restoration and re-establishes coherent current state; contributors restore only their owned state. |
+| Restore runtime | Restoration contract, identity/revision state, Trainer/backend/optimization plus accepted operation and capability contributors | Trainer coordinates restoration and re-establishes coherent current state; contributors restore only their owned state. |
 
 Logging, metadata, resource observation, interruption, and cleanup are
 cross-cutting Trainer/pipeline responsibilities. They consume typed facts and
@@ -577,9 +608,32 @@ against maintained SD/SDXL/SD3 paths and strong research cases.
 
 Static choices, implementation selection, wiring, and permission checks are
 resolved before the hot path. Ordinary step execution receives only changing
-inputs and coordinates plus current prepared state. Trainer must not reconstruct
-model-family anatomy, and the accepted behavior must not repeatedly ask the
-authored strategy for information it already supplied.
+inputs and coordinates plus current prepared and operation-owned state. This
+rule removes repeated discovery and authorization; it does not require the
+accepted behavior itself to be static. Accepted execution may branch on live
+inputs, advance schedules, use randomness, update adaptive state from
+observations, make choices within accepted bounds, and request declared
+effects or transitions. Trainer must not reconstruct model-family anatomy, and
+the accepted behavior must not repeatedly ask the authored strategy for
+information it already supplied.
+
+The design distinguishes four kinds of change:
+
+1. ordinary dynamic execution changes results or operation-owned state within
+   already accepted behavior;
+2. a bounded runtime choice selects among alternatives whose meaning and
+   authority were accepted during fulfillment;
+3. an authority-governed transition changes bindings, relationships,
+   preparation, optimization, or another part of current run state and must
+   follow its accepted transition and republication rules; and
+4. behavior that requires a different contract version or ownership profile
+   requires new strategy fulfillment rather than being smuggled through a
+   runtime branch.
+
+No candidate execution representation may satisfy the design only by reducing
+an authored plan to a frozen linear sequence. It must preserve the stateful,
+adaptive, lifecycle-driven, and explicitly imperative cases admitted by the
+selected contract/profile.
 
 The current `BatchLossOutput` is evidence, not the universal result. In the
 active loop, `per_sample_loss` feeds Trainer-owned loss modification/backward
@@ -636,6 +690,21 @@ its own observation identity. If those facts are not restored—or an artifact
 starts another run—the new run establishes new identities and records lineage
 instead of claiming continuity.
 
+Trainer/pipeline infrastructure coordinates restoration of the coherent run.
+Accepted operations, capabilities, optimization, and backend integrations
+contribute and restore only the continuation state they own. A trained-product
+request and a runtime-snapshot request have independent results: either may
+succeed when the other fails, and neither result may imply the other's
+completeness.
+
+Adapter persistence follows the same separation. Publishing adapter weights is
+an artifact-product operation. Loading a prior adapter artifact into a new run
+is materialization or initialization of a new participant incarnation and
+records lineage to the artifact and its source state. Exact same-run restoration
+instead restores the accepted adapter participant and every required owned
+continuation state from a runtime snapshot. A shared serializer or weight format
+does not collapse these into one save/load lifecycle.
+
 ### D12. TrainingMode dissolves; current specs must be reconciled explicitly
 
 `TrainingMode` is not renamed or wrapped. Its responsibilities split by
@@ -643,15 +712,53 @@ meaning:
 
 | Current mode responsibility | Target owner |
 | --- | --- |
-| Select training treatment and semantic subjects | Authored strategy under the training contract |
-| Build/attach adapters and resolve continuation | Accepted adapter/domain capability coordinated by the pipeline |
+| Select direct, PEFT, or combined training treatment and semantic subjects | Authored strategy under the training contract |
+| Adopt maintained PEFT support and declare the currently supported method set | Reusable strategy-authoring feature under the applicable feature contracts |
+| Select and configure one supported PEFT method for a run | Explicit strategy construction before fulfillment |
+| Declare semantic adapter target intent | Authored strategy through the maintained PEFT integration |
+| Resolve that intent against the current authority-qualified host structure | Governed PEFT realization using shared policy-neutral target references |
+| Construct/load method state against resolved targets and attach it to hosts | Method-specific adapter realization plus authority-governed participant/relationship transitions |
 | Toggle trainability and resolve parameters/groups | Trainer optimization realization |
 | Precision and distributed preparation | Trainer/runtime infrastructure plus explicit component constraints |
-| Clip/sync participants and train/eval timing | Published optimization/lifecycle projections |
-| Specialized post-step behavior | Selected capability at a Trainer-owned lifecycle point |
+| Clip/sync participants and coordinate train/eval timing | Trainer optimization and lifecycle coordination over published projections |
+| Specialized method behavior | Accepted execution operation, or a narrow capability only when the pipeline requests a named operation |
 | Runtime checkpoint contributions | Restoration contributor under Trainer coordination |
 | Artifact semantics and serialization | Product capability plus domain serializer |
 | Diagnostics | Observability over accepted state/results |
+
+The maintained PEFT integration defines the behavior shared by repository
+adapter methods: authored adapter participants and host relationships, target
+resolution inputs, realization and attachment, training-subject contribution,
+preparation constraints, shared lifecycle participation, artifact products,
+and exact-restoration contributions. A particular method supplies only its
+method-specific implementation, settings, state representation, constraints,
+and genuinely unique operations.
+
+Targeting therefore has two distinct meanings. The strategy authors semantic
+intent: which declared hosts or substructures the selected PEFT treatment is
+meant to affect. Governed PEFT realization resolves that intent against a
+coherent, authority-qualified projection of current host structure and gives the
+selected method the resulting scoped targets. After the method realizes its
+state, Trainer optimization consumes returned trainable parameter references
+and owns trainability, grouping, and advancement. The shared target-reference
+model may support both exchanges, but its code location or reuse does not
+transfer semantic targeting policy to optimization.
+
+A strategy adopts that integration deliberately and declares the methods it
+supports at that point in its evolution. Strategy construction may select one
+of those methods for a run; fulfillment rejects methods or targets outside the
+declared set. Adding a repository method later does not silently expand an
+existing strategy. This reusable authoring feature must not become a renamed
+`AdapterMode` object with unrestricted Trainer access.
+
+`FineTuneMode` has no semantic replacement. Directly training selected
+substructures of existing participants is authored training-subject intent
+realized by ordinary Trainer optimization and preparation. Emitting a full
+model is a separate product choice. The target architecture therefore does not
+make direct training, PEFT training, or their contract-compatible combination
+mutually exclusive. A temporary user-facing `finetune` or `adapter` preset may
+choose a maintained strategy composition, but no mode value or mode object
+crosses the accepted-arrangement boundary into Trainer.
 
 This change therefore modifies, rather than merely warns about, existing
 `adapter-system`, `adapter-module-targeting`, `loaded-model-components`,
@@ -686,11 +793,14 @@ following cases together:
 | --- | --- |
 | Ordinary SDXL fine-tune | Multi-component materialization, selected base parameters, DDPM/RF variants, prepared routes, full-model product |
 | SDXL adapter training | Separate adapter participant/state, host relationship, target provenance, attachment, adapter artifact, specialized lifecycle result |
+| Joint base and PEFT training | Existing-participant and adapter subjects coexist without a mode axis, with explicit non-overlap, preparation, lifecycle, restoration, and product meanings |
 | SD | Different component count and unsupported full-model product must fail before execution when selected |
 | SD3 | Three encoders, typed conditioning, rectified flow, component-specific preparation constraints, and declared/deferred materialization |
-| Teacher/student/adapter | Same source with distinct identities, multiple relationships, independent trajectories, compound optimization and products |
-| Pixel or non-image representation | No fake VAE or image-shaped universal field; representation-specific behavior remains selected implementation |
+| Teacher/student distillation | Shared source does not collapse identities; asymmetric roles, relationships, routes, trajectories, optimization participation, and products remain explicit |
+| Pixel or non-latent representation | No fake VAE or latent-shaped universal field; representation-specific behavior remains selected implementation |
+| Video, audio, or other tensor shapes | No universal image-batch or fixed-axis assumption; temporal, channel, sequence, and representation meanings remain selected behavior |
 | Added side network or LLM-containing model | Additional executable/trainable participant without new universal Trainer slots |
+| Scheduled and observation-adaptive behavior | Runtime schedules, feedback-driven state, bounded decisions, observations, persistence, and restoration remain dynamic after authoring ends |
 | Custom structured operation | Replaces maintained decomposition while keeping standard Trainer authority |
 | Strong imperative research region | Requests actual backward, gradient, or advancement authority through an explicit supported profile; acceptance and rejection are testable |
 | Replacement/preparation failure | Stale optimistic candidate, destructive failure, relationship invalidation, backend-group rebuild |
@@ -700,12 +810,19 @@ following cases together:
 
 ### G1. Complete Trainer consumption meanings
 
-For each D5 row, specify request inputs, result, readiness, canonical state
-effects, permitted external effects, and failure behavior. Trace each meaning to
-one or more delta requirements without promoting current family slots. Name
-the owner that derives each governed-realization job and the coordinator of
-final publication across authority-owned and Trainer-owned state; do not leave
-cross-owner atomicity in passive voice.
+For each D5 row, establish the common Trainer-consumption frame: the categories
+of request input, result, readiness evidence, canonical state effect, permitted
+external effect, and failure that its eventual exchange must make explicit.
+Trace each responsibility to one or more delta requirements without promoting
+current family slots. Name the owner that derives each governed-realization job
+and the coordinator of final publication across authority-owned and
+Trainer-owned state; do not leave cross-owner atomicity in passive voice.
+
+G1 locates ownership, evidence checkpoints, and the common exchange questions.
+It does not complete the domain-specific caching, validation, sampling,
+persistence, or restoration protocols. G4 fills in those capability-specific
+requests, results, readiness rules, effects, and failures after execution and
+optimization semantics are settled.
 
 ### G2. Derive accepted execution from representative cases
 
@@ -786,6 +903,13 @@ Trainer responsibility
 This section defines migration rules, not final code milestones. G5 replaces
 the outline with exact reviewed slices.
 
+Old and new launch paths may coexist temporarily for different runs during a
+bounded migration, but one run uses exactly one authority topology. A run
+accepted into the new arrangement must not fall through to active-strategy
+callbacks, `TrainingMode` ownership, or old Trainer binding state. Until a full
+vertical cutover is ready, the old path remains independently selected rather
+than serving as the hidden executor behind a partially installed new contract.
+
 1. Complete and review G1–G4 inside this change. No production code changes.
 2. Choose production types and an accepted-arrangement boundary from the
    completed consumers rather than copying the isolated spike.
@@ -809,11 +933,12 @@ Rollback is performed at coherent milestone boundaries. Runtime recovery from
 a failed preparation attempt follows D8; source-code rollback does not pretend
 to restore an externally mutated live object.
 
-## Open Questions
+## Deferred Production-Shape Choices
 
-The following questions are intentionally deferred because their answers do
-not change the settled architecture or current delta requirements. They are
-answered during G5 after the exchanges expose recurring shapes:
+The following implementation-shape choices are intentionally deferred because
+their answers do not change the settled architecture or current delta
+requirements. They are answered during G5 after the exchanges expose recurring
+shapes:
 
 - final Python class, protocol, and module names;
 - opaque/reference value representation and durable string encoding;

@@ -35,7 +35,10 @@ notes.
   authorized imperative regions through contract-governed extensions.
 - Dissolve `TrainingMode` by moving its authored choices into the strategy,
   its generic mechanics into Trainer/pipeline systems, and its specialized
-  adapter or domain behavior behind typed capability exchanges.
+  behavior into accepted domain realization, execution operations, or narrow
+  capability exchanges according to the behavior's actual meaning. Direct
+  parameter training and PEFT composition do not become replacement runtime
+  modes.
 - Carry the design forward through evidence-backed OpenSpec milestones before
   production migration. Creating the planning artifacts does not by itself
   satisfy the implementation-readiness gate.
@@ -61,7 +64,9 @@ notes.
   realization/advancement, preparation interaction, and extension boundaries.
 - `training-artifact-persistence`: Declared semantic products, state
   projections, plans, members, physical resources, consistency, results, and
-  the boundary between trained artifacts and runtime restoration.
+  the boundary between trained artifacts and runtime restoration, with product
+  support declared independently from direct, PEFT, or combined training
+  treatment.
 - `training-capability-coordination`: Selection, readiness, requests, results,
   lifecycle ownership, and failure semantics for Trainer-recognized caching,
   validation, sampling, persistence, and restoration capabilities.
@@ -72,15 +77,18 @@ notes.
   as loading/model evidence, but move canonical run bindings from Trainer and
   the loaded-component tuple into the accepted run authority.
 - `adapter-system`: Remove `AdapterMode` as the permanent training-side owner;
-  preserve explicit adapter configuration and domain behavior through authored
-  intent, accepted participant/relationship semantics, and pipeline-coordinated
-  capability exchanges.
-- `adapter-module-targeting`: Preserve optimization-owned targeting and
-  repo-owned target provenance while replacing `AdapterMode` orchestration with
-  accepted adapter capability and optimization exchanges.
-- `optimization-target-refs`: Keep component-qualified target meaning and
-  provenance, but make live-object access a revision-pinned consumer projection
-  rather than participant identity or canonical binding state.
+  preserve the repository's reusable PEFT integration, explicit currently
+  supported method sets, method-specific behavior, accepted
+  participant/relationship realization, and narrow capability exchanges where
+  the pipeline genuinely requests a named operation.
+- `adapter-module-targeting`: Preserve repo-owned target meaning and provenance
+  while moving semantic target intent into strategy authoring, concrete target
+  resolution into governed PEFT realization, and parameter grouping into the
+  later Trainer-owned optimization exchange.
+- `optimization-target-refs`: Keep shared component-qualified target meaning
+  and provenance policy-neutral, and make live-object access a revision-pinned
+  consumer projection rather than participant identity, canonical binding
+  state, or evidence that optimization owns adapter targeting.
 - `model-family-metadata`: Consume durable participant, transition, artifact,
   and lineage projections from accepted authorities without making metadata the
   live runtime owner or deriving identity from Python objects.
@@ -89,11 +97,11 @@ notes.
   topology from `TrainingMode`, an active strategy, or family-shaped Trainer
   fields.
 - `repo-owned-lora-method`: Preserve repo-owned LoRA realization and target
-  provenance while replacing its `AdapterMode` trigger with the accepted
-  adapter participant/capability path.
+  provenance while replacing its `AdapterMode` trigger with the shared PEFT
+  integration and accepted adapter-realization path.
 - `repo-owned-vera-method`: Preserve repo-owned VeRA realization, shared state,
   and target provenance while replacing its `AdapterMode` trigger with the
-  accepted adapter participant/capability path.
+  shared PEFT integration and accepted adapter-realization path.
 
 ## Impact
 
