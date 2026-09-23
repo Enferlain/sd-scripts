@@ -15,6 +15,13 @@ joint groups, mutation permissions, freshness guarantees, and typed
 infrastructure items. Preparation SHALL produce candidate state and evidence;
 it SHALL NOT define new compatibility meaning or certify its own result.
 
+Training-side preparation coordination SHALL derive the job from the accepted
+requirements and current authority projection, then coordinate final
+installation of its verified result across the authority-owned routes and
+views and Trainer-owned optimization and backend state. It SHALL NOT keep a
+competing binding map or independently define conformance rules. Each owner
+retains its own state, and none may publish a partial current result.
+
 #### Scenario: Frozen participant requires backend preparation
 - **WHEN** a frozen participant is required by accepted execution and needs movement, casting, wrapping, sharding, or compilation
 - **THEN** the preparation job MUST include it despite its absence from optimization membership
@@ -34,10 +41,19 @@ infrastructure state. They SHALL NOT replace participant references, merge
 participant identities, or become execution routes merely because a backend
 returns them.
 
+Prepared usability SHALL require matching current authority-owned route and
+view guarantees together with the Trainer-owned backend coordination state for
+every participant that state covers. Neither ownership surface alone SHALL
+certify that a participant is ready for execution.
+
 #### Scenario: Composite covers several participants
 - **WHEN** a backend returns one composite coordination handle for multiple participants
 - **THEN** every participant MUST retain its own reference and accepted route meaning
 - **AND** the composite MUST remain Trainer/runtime state
+
+#### Scenario: Backend handle outlives a route guarantee
+- **WHEN** a backend coordination handle still exists but a covered participant's required route is no longer current
+- **THEN** that participant MUST NOT be reported as prepared for execution solely because the handle exists
 
 ### Requirement: Preparation results separate ownership surfaces
 A preparation result SHALL distinguish authority-owned route/view proposals,
@@ -83,6 +99,17 @@ An operation permitted to mutate an authoritative realization in place SHALL
 first establish an authority-recognized destructive attempt and withdraw every
 affected freshness guarantee. Failure SHALL leave those guarantees withdrawn
 until accepted state is replaced or re-established.
+
+The destructive attempt SHALL have an authority-recognized coordination
+identity distinct from its source snapshot, so withdrawing the source
+guarantees does not invalidate that attempt's own completion basis. An older
+optimistic result SHALL NOT use the withdrawn snapshot to restore usability.
+
+#### Scenario: Withdrawing guarantees advances the authority snapshot
+- **WHEN** a destructive attempt withdraws its source route guarantees before mutation
+- **THEN** the authority MUST record a new freshness revision that withdraws those guarantees from the source snapshot
+- **AND** the accepted attempt MUST remain addressable by its distinct coordination identity for completion or failure
+- **AND** an older optimistic result based only on the withdrawn snapshot MUST NOT become current
 
 #### Scenario: In-place mutation fails
 - **WHEN** destructive preparation mutates an authoritative object and then fails

@@ -1,4 +1,9 @@
-## ADDED Requirements
+# repo-owned-vera-method Specification
+
+## Purpose
+Define the repo-owned VeRA method's runtime, shared state, configuration, and trainable-reference behavior.
+
+## Requirements
 
 ### Requirement: Repo-owned VeRA runtime realizes from resolved adapter targets
 The VeRA PEFT method SHALL build and load VeRA runtime state from
