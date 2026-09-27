@@ -1032,6 +1032,225 @@ backend-confirmed restoration, hidden-effect prevention, or exact recovery;
 those remain realization and restoration obligations rather than reasons to
 weaken this boundary.
 
+#### G3.4 Backend-flexible optimization and preparation exchange
+
+The accepted **optimization plan** names units by run-scoped identity and
+definition revision; semantic participant/substructure membership; logical
+groups; optimizer, scheduler, trainability, and advancement policies; and the
+relationships and constraints on which those meanings depend. It contains no
+current `nn.Parameter`, optimizer, wrapper, or backend composite as an identity.
+This is accepted meaning supplied to Trainer optimization, not a second
+strategy-authored recipe for physical construction.
+
+Training-side preparation coordination derives one **request** from that plan,
+the current authority/obligation revision, and the requested execution work.
+It names every required participant and route/view (including frozen
+participants), complete overlapping backend groups, permitted mutation mode,
+and the accepted unit definitions and constraints to realize. It pins the
+relevant participant, binding, relationship, route, and obligation sources;
+conservative whole-snapshot dependency is valid until narrower dependencies
+can be demonstrated. Optimization supplies its unit and grouping requirements
+to this same attempt, not an independent optimizer-preparation publication.
+Known incompatibility is rejected before expected-expensive backend work.
+
+An **optimization candidate** is provisional physical resolution under that
+request. For each semantic unit it accounts for selected members and tied
+aliases, one standard-profile owner and execution group per resolved
+parameter, logical-group correspondence, trainability, gradient/clipping and
+synchronization membership, and an optimizer/scheduler construction policy.
+Several accepted paths may alias one physical parameter within the same unit
+and execution group; their provenance remains visible while that parameter
+appears only once in the optimizer. The standard-profile conflict is a second
+unit or execution group claiming the same parameter, not the mere existence
+of two names for one owner.
+The candidate may be a construction recipe before wrapping or concrete
+objects already built; neither form is current run state. Each backend
+transformation must retain enough provenance to associate its resulting
+parameter and callable views with the accepted member/participant meanings.
+If the backend replaces parameters, it must build or correctly rebind the
+optimizer against the resulting parameters. If that correspondence cannot be
+established, the attempt fails readiness; a plausible optimizer object is not
+evidence that it will update the accepted subjects.
+
+The complete **result** separates authority route/view proposals, a
+Trainer-owned prepared runtime for each semantic unit, Trainer backend and
+inseparable-group coordination state, source/dependency revisions, evidence
+for constraints and member correspondence, and structured failures. Each
+prepared unit retains its address, incarnation, definition revision, logical
+groups, and accepted advancement/source policy independently of the physical
+optimizer's identity or ordering in a returned tuple. Current execution
+requires both a current authority route/view guarantee and matching Trainer
+backend/optimization readiness. A composite backend handle may cover several
+participants or units without merging their identities.
+
+Two valid physical traces realize the same accepted meanings:
+
+| Backend order | Provisional work within one attempt | Required completed evidence |
+| --- | --- | --- |
+| Optimizer before wrapper | Resolve accepted members against source bindings; build unit optimizers and schedulers; jointly or sequentially prepare required participants and optimization objects. | Returned optimizers still target the final prepared parameter views, or the backend provides an evidenced rebind. Every required route, including frozen execution participants, and every unit is accounted for. |
+| Wrapper before optimizer | Prepare/transform required participants; use the transformation's provenance to resolve accepted members against prepared parameter views; build and, if needed, prepare unit optimizers and schedulers. | The resolved post-transform members still implement the same accepted subjects, groups, and policies; every unit and required route is accounted for. |
+
+The ordering is a backend realization choice, not a change to a unit's
+definition revision. Some backends or policies may support only one trace;
+acceptance of semantic meaning does not promise executable readiness under
+every backend. A backend may also require multiple ordered calls, including a
+joint model/optimizer call, inside the same attempt. The result is checked for
+member coverage/non-overlap, optimizer-to-current-member correspondence,
+source freshness, accepted obligations, backend-group completeness, and rank
+agreement before final installation. Only a complete, checked result becomes
+current across the separately owned surfaces. The final visibility change
+does not perform expected-fallible backend work or call observers. Failure of
+replacement-only work leaves still-valid old state current; in-place mutation
+first withdraws affected guarantees as D8 requires. Process/rank loss at the
+publication boundary follows restoration, not an in-process rollback claim.
+
+The [bounded preparation-order experiment](../../../tests/unit/training/test_preparation_exchange_experiment.py)
+checks both traces with two disjoint units and a frozen required participant.
+It also rejects an optimizer left on pre-wrapper parameters, tied or
+backend-created overlap, an incomplete result, and a stale source revision
+before publication. Its single-process replacement models the visibility
+invariant only: it does not implement separate owner stores, rank agreement,
+substantive obligation evaluation beyond revision pinning, a real backend
+provenance or evidenced optimizer-rebind protocol, destructive preparation,
+cross-attempt inseparable-group overlap, or distributed optimizer construction.
+It models one execution group per unit, so cross-group alias checks remain a
+production conformance obligation.
+Those are production realization and conformance work, not reasons to make
+one physical ordering part of authored meaning. G3.5 handles later
+invalidation/replanning, and G3.6 connects prepared units to execution-time
+contributions and outcomes.
+
+#### G3.5 Invalidation and replanning after accepted change
+
+Prepared usability is a claim about **current dependencies**, not a property
+of a surviving Python object. Each prepared route/view, optimization unit
+runtime, and backend group records the accepted obligation and exact
+participant, binding, relationship, substructure, route, unit-definition, and
+backend/preparation revisions that its guarantee needs. A projection without
+a justified narrower set depends on the whole authority snapshot. Comparing
+those dependencies happens before dependent work and again before an in-flight
+candidate publishes. An unrelated change may leave an explicitly precise
+projection usable; sharing an inseparable backend group is a relevant
+dependency even when a participant's own binding did not change.
+An obligation-revision change is not ignored merely because a physical
+binding stayed put: reuse needs authority-backed evidence that the
+projection's applicable obligations remain satisfied under the new revision.
+Without that evidence it becomes stale.
+
+The accepted transition first determines **what changed in meaning**, then
+which current realizations and guarantees depend on it. It does not infer a
+new optimization definition from `requires_grad`, parameter-object identity,
+or a backend wrapper. The following distinctions apply under one accepted
+contract and run authority:
+
+| Accepted event | Semantic unit continuity | Current-use consequence |
+| --- | --- | --- |
+| Ordinary optimizer advancement, a schedule/due-policy decision within accepted bounds, or an accepted operation-state update | Same identity and definition revision; mutable state/progress advances. | No automatic preparation rebuild. A derived product that depends on the changed weights or state may still become stale under its own dependency policy. |
+| Backend rewrap, compilation, route rebinding, or recreation of concrete optimizer objects without changing accepted subjects/policy | Same unit identity and definition revision. | Re-realize affected routes/views and unit runtime against current bindings and backend evidence. Retain only unrelated precise projections outside any affected inseparable group. |
+| Compatible participant binding replacement or accepted parameter surgery that preserves its participant meaning and the unit's semantic selector, grouping, policy, and dependencies | Same participant and unit identities; same unit definition revision, even if new physical parameters resolve under the accepted selector. | Binding/substructure dependencies and affected prepared routes/units become non-current. Re-resolve members, aliases, trainability, and backend preparation. Mutable optimizer state follows an accepted preserve/migrate/reset rule, never object-order inference. |
+| Relationship transition, such as activating an adapter effect | Participant and relationship incarnations remain; a unit's definition stays the same *only if* its accepted subject and semantic dependency definitions stay the same. | Invalidate every relationship-dependent route/view/unit and any inseparable backend group. If the transition changes accepted unit membership or meaning, revise the unit as in the next row. |
+| Accepted training-subject, optimizer-significant grouping, optimizer/scheduler, advancement-policy, or semantic-dependency-definition change | Preserve an independently managed unit's identity but advance its accepted-definition revision. An ordinary bounded runtime policy choice does not count as a definition change. | Old unit runtime cannot advance under the new definition. Replan membership and state-continuity treatment, then prepare and publish the complete new runtime. A transient train/eval or backend `requires_grad` setting does not itself amend the accepted subjects. |
+| Surgery or arrangement amendment changes semantic member selection, or creates/splits/merges/replaces an independently managed responsibility | Revise a continuing unit if its responsibility remains the same; split, merge, retirement/recreation, or replacement establishes new unit identities. An incompatible participant replacement likewise needs a new participant incarnation. | Withdraw affected current guarantees, resolve the new accepted obligations and unit meanings, and prepare from the resulting state. No old optimizer state is silently assigned to a new unit or incompatible member. |
+
+For parameter surgery, the accepted selector's meaning matters. A selector
+that deliberately covers a changing substructure may resolve new physical
+parameters at the **same** unit definition revision after an allowed
+structure-preserving transition. If the accepted selection or grouping itself
+changes, the unit revision advances. Both cases require concrete member and
+alias resolution again. Two paths tied to one parameter within one unit and
+execution group remain one optimizer owner; a second unit or execution group
+claiming it still fails standard-profile resolution.
+When an accepted temporary trainability or lifecycle choice changes a
+consumer-visible runtime projection, its owner updates that coherent
+projection without revising the semantic unit definition; an arbitrary
+`requires_grad` mutation cannot become a new accepted subject by convention.
+
+Concrete traces check the distinctions without making their example names
+universal:
+
+- A compatible denoiser replacement changes its binding from revision 4 to
+  5. A `main` unit at incarnation 10, definition revision 3, still selects the
+  same accepted denoiser substructure. Its old parameter/optimizer runtime is
+  unusable; a new complete preparation may realize **incarnation 10,
+  revision 3** against binding 5 after the accepted optimizer-state
+  continuation rule is satisfied. An optimistic result pinned to binding 4
+  cannot publish afterward.
+- An accepted change from denoiser-only to denoiser-plus-adapter subjects
+  changes that continuing unit's membership: incarnation 10 remains but its
+  definition becomes revision 4. If instead one responsibility is split into
+  independently advanced base and adapter units, the two resulting units get
+  new incarnations; neither inherits incarnation 10 merely by reusing its
+  address or optimizer object.
+- If an adapter relationship changes inside a joint backend group covering
+  denoiser and adapter, both members' prepared guarantees are withdrawn.
+  A separate frozen encoder's route may remain usable when its precise
+  dependencies exclude that relationship and group; a whole-snapshot
+  dependency would conservatively invalidate it too.
+- Progressive distillation can replace the teacher's bound weights, reset
+  accepted EMA and stage-local progress, and replace the student's optimizer
+  at a stage boundary. Teacher binding, student unit definition, and EMA
+  continuity are judged separately: a new optimizer object alone does not
+  create a unit, while a changed accepted schedule or subject revises its
+  definition. The next action waits for the coherent new stage; no partial
+  old/new mixture becomes executable.
+
+Before a structural or policy transition takes effect, training coordinates
+a safe boundary for dependent activities and unit gradient windows. Pending
+contributions are completed, preserved, or discarded only under an accepted
+rule; neither switching routes nor changing a unit definition may silently
+carry old gradients into the new runtime. A replacement-only candidate may be
+built off to the side, but it cannot become current against the wrong
+authority/obligation/unit revisions. If an accepted transition publishes
+before replacement preparation is ready, it atomically withdraws affected
+prepared guarantees and pauses dependent work until a complete new result
+publishes. A staged candidate for prospective state must be checked against
+the actually accepted prospective revisions before any combined publication;
+it may not treat an anticipated amendment as already authoritative. D8's
+destructive path withdraws guarantees **before** in-place mutation and makes
+older optimistic candidates unable to restore them.
+
+The same rule handles group fan-out. If a change affects one member of an
+inseparable backend group, the whole group loses prepared usability; a later
+job must include all overlapping members even when some retain their
+participant and unit meanings. A precise dependency set may spare unrelated
+groups, routes, and units. A conservative full-snapshot dependency instead
+invalidates them explicitly; it cannot pretend they stayed fresh. New
+preparation checks the current accepted obligations, source dependencies,
+member ownership, state-continuity rule, and backend evidence before one
+complete publication. Failure does not make any affected old guarantee valid
+again merely because its Python object still exists.
+
+Unit **identity/revision continuity** and mutable **optimizer-state
+continuity** are separate decisions. Recreating the same unit revision with
+new parameters does not prove that old momentum, scheduler counters,
+accumulated gradients, or backend state can be reused. The accepted transition
+must specify which state is preserved, migrated with evidence, intentionally
+reset, or unavailable; failure to establish the required continuation blocks
+readiness. This is especially important for compatible checkpoint replacement,
+parameter surgery, and stage changes. The exact state migration formats and
+coordinated snapshot mechanism remain G4/G5 work.
+
+For exact same-run restoration, a coherent snapshot restores the authority's
+accepted arrangement and obligation revisions, participant/relationship
+incarnations, unit identities and definition revisions, mutable unit state and
+advancement coordinates, and the other required owner contributions. New
+process objects and backend wrappers are same-revision re-realizations, not
+new units. Restored optimizer state must be matched to the restored semantic
+members and verified before exact continuation becomes ready; an implicit
+reset cannot masquerade as exact resume. A trained artifact or snapshot used
+to start another run instead establishes new authority, participant, and unit
+identities with provenance, not live identity continuity. G4 defines the
+coordinated recoverable cut; this section fixes only the optimization and
+freshness obligations it must preserve.
+For example, restoring the same run's recorded `main` incarnation 10,
+definition revision 3, and mutable state into a new process keeps those
+identifiers after backend re-preparation; loading its weights to start a new
+run does not.
+
+These cases follow the settled D6–D9 and delta-spec rules. They do not
+prescribe a production dependency index, migration API, or fixed
+transition-to-preparation call order; G5 chooses those representations.
+
 ### D10. Accepted execution is structured and authority-bounded
 
 The normal accepted arrangement must preserve:
