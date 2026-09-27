@@ -59,13 +59,23 @@ rather than current phase-function names.
 ### Requirement: Caching separates semantics from storage orchestration
 Representation and conditioning implementations SHALL own semantic cache
 encoding, decoding, schema, and dependency meaning. Data/cache infrastructure
-SHALL own traversal and storage coordination. Cache results SHALL identify
-their accepted dependencies and SHALL become stale when those guarantees fail.
+SHALL own traversal and storage coordination **for cache production**. A
+selected live input provider MAY traverse available sources or cache records
+under its accepted input policy; training input coordination SHALL still check
+readiness and admission before handoff. Neither traversal owner SHALL silently
+take over the other's continuation state. Cache results SHALL identify their
+accepted dependencies and SHALL become stale when those guarantees fail.
 
 #### Scenario: Autoencoder replacement invalidates latent cache
 - **WHEN** accepted autoencoder state changes and a latent cache depends on that realization
 - **THEN** the cache MUST no longer be treated as current
 - **AND** unrelated conditioning cache MAY remain current only through an explicit valid dependency set
+
+#### Scenario: Cache-backed input is produced asynchronously
+- **WHEN** cache production writes a value while a live input provider selects work independently
+- **THEN** cache coordination MUST publish readiness only after its accepted storage and dependency checks succeed
+- **AND** input coordination MUST separately check whether that ready value is admissible for the selected work and current consumer
+- **AND** neither a completed cache write nor a handed-off input may imply that a training action or optimizer unit advanced
 
 ### Requirement: Validation separates evaluation semantics from traversal
 The pipeline SHALL own validation scheduling, data traversal, ordinary

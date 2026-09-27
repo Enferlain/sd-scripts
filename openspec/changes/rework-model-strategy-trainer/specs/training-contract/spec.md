@@ -43,6 +43,15 @@ arrangement.
 - **THEN** the strategy MUST identify the algorithm, its observation inputs, its owned state, and its possible effect vocabulary and bounds
 - **AND** it MUST NOT be rejected merely because its outputs cannot be fixed during authoring
 
+#### Scenario: Author selects several uses of one participant
+- **WHEN** an authored action invokes one participant through different roles, prepared views, or gradient paths
+- **THEN** the strategy MUST describe those uses and their dependencies without declaring duplicate participants merely to express the calls
+
+#### Scenario: Author selects an input policy
+- **WHEN** a strategy selects input sources, transformations, mixture or packing behavior, or bounded stage changes
+- **THEN** fulfillment MUST preserve the selected provider, consumer representation, state owner, dependency and admission meanings
+- **AND** it MUST NOT infer a universal image batch, epoch schedule, or hidden input fallback
+
 ### Requirement: Strategy fulfillment produces acceptance or rejection
 The training contract system SHALL evaluate one complete authored strategy
 using the active contract version and execution/ownership profile. It SHALL
@@ -162,6 +171,16 @@ contract extension or execution/ownership profile.
 - **WHEN** an experiment requests control of a mechanic retained by the standard profile
 - **THEN** strategy fulfillment MUST require a declared supported extension/profile describing the changed owners and exchanges
 - **AND** it MUST reject nominal conformance to the unchanged standard contract
+
+#### Scenario: Two-pass extension omits a required grant or recovery claim
+- **WHEN** a custom region requests two backward passes and temporary parameter editing but lacks the intermediate gradient authority, scoped state access, accumulation compatibility, or recovery meaning required by that supported profile
+- **THEN** fulfillment MUST reject the definition rather than treat a coarse backward/edit declaration as executable
+- **AND** it MUST NOT grant optimizer advancement merely because a selected implementation uses an optimizer wrapper internally
+
+#### Scenario: Backend evidence for an accepted extension is deferred
+- **WHEN** a supported extension's authored ownership split is valid but safe parameter access, synchronization, or clean handback depends on the current backend realization
+- **THEN** fulfillment MUST retain those exact unfulfilled obligations and the applicable readiness checkpoint
+- **AND** governed realization MUST reject an incompatible backend before the imperative region executes
 
 ### Requirement: One accepted contract governs one run authority
 One contract version and execution/ownership profile SHALL govern an accepted

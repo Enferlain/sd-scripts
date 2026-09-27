@@ -10,6 +10,12 @@ migration decisions are completed through the numbered design gates below.
 Production tasks are added only after those gates have evidence, scenarios,
 and acceptance tests.
 
+A bounded, non-integrated executable experiment may inform G2/G3's choice of
+execution representation. It is design evidence, not a production migration
+milestone or an accepted public API: the active Trainer and launcher must not
+consume it, and G5 decides which parts, if any, become production interfaces.
+This exception does not relax the production-readiness gate.
+
 ### Source authority and carry-forward rule
 
 The pre-OpenSpec records have different jobs. They are not interchangeable:
@@ -283,9 +289,8 @@ the main specification.
 
 - Building an automatic feature resolver, strategy synthesizer, or Hydra-based
   strategy authoring language.
-- Choosing graph, tree, region, schedule, lowered-Python, or hybrid execution
-  representation before the representative cases establish its required
-  meanings.
+- Making every tensor operation, worker task, or backend collective a public
+  graph node, or fixing final Python representation classes before G5.
 - Preserving `TrainingMode`, `process_batch()`, the current aggregate strategy
   ABC, or family-shaped Trainer fields merely for migration convenience.
 - Making arbitrary model/component assembly safe in the first migration.
@@ -509,6 +514,9 @@ Every eventual exchange makes six categories explicit: request inputs,
 readiness evidence, result, canonical state effect, permitted external effect,
 and failure. A category may be empty for a particular exchange, but it may not
 be hidden behind whole-Trainer mutation or an active-strategy callback.
+The input-production row below extends the completed G1 common frame with a
+boundary exposed by the later G2 experiments; it does not retroactively claim
+that task 1.4 already specified the input-specific exchange.
 
 | Responsibility | Request and readiness | Successful result and state effect | External effect and failure boundary |
 | --- | --- | --- | --- |
@@ -516,6 +524,7 @@ be hidden behind whole-Trainer mutation or an active-strategy callback.
 | Materialize and bind | Accepted declarations, relationships, lifecycle permissions, source intent, obligations, and expected revisions | Training lifecycle coordination derives the request from accepted obligations and current state; a selected domain producer returns a candidate plus typed evidence; the run authority alone accepts and publishes a new or revised binding | Loading or construction may perform declared I/O before publication. Failure or stale evidence publishes no candidate; destructive replacement follows the separately accepted transition rules. |
 | Prepare runtime | One coherent revision-pinned projection of every required participant, route/view, constraint, joint group, mutation permission, and obligation | Training-side preparation coordination derives the complete job and coordinates verification and final installation; its candidate separates authority-owned route/view changes, Trainer-owned backend state, and optimization runtime | Backend work may allocate, wrap, shard, compile, or communicate before publication. Replacement-only and destructive failures follow D8 and never expose a mixed current state. |
 | Realize optimization | Accepted training subjects and units, grouping/policy meaning, current bindings, and preparation constraints | Trainer optimization infrastructure resolves live membership, trainability, logical/execution groups, optimizer/scheduler state, clipping, synchronization, and lifecycle projections | Optimizer/backend construction may allocate or communicate. Failure installs no partial runtime; later relevant revisions invalidate or require re-realization. |
+| Produce and hand off input | Accepted source, selection, transformation, and packing meaning; current input-policy state; producer dependencies; and the consumer's representation and readiness obligations | Selected input behavior produces model-ready values with the identity, provenance, and logical boundaries required by the consumer; training input coordination checks admission and records handoff without owning the provider's internal policy state | Production may progress independently and perform I/O before handoff. Not-ready, failed, stale, misidentified, or incompatible input cannot be silently substituted or delivered as accepted work. |
 | Execute training | Accepted execution structure, current prepared projections, prepared optimization runtime, changing inputs/coordinates, and granted authority | Accepted behavior returns declared computation outputs, optimization inputs, observations, owned-state updates, effects, or transition requests; Trainer performs retained mechanics | Only accepted effects may cross the execution boundary. Failure follows the active ownership profile, stops unsafe advancement, and cannot mutate canonical state outside an accepted transition. |
 | Coordinate caching | Selected capability, data scope, representation/conditioning behavior, writable destination, and coherent dependency projection | Pipeline traversal/storage and selected codecs produce cache records plus dependency/readiness facts recorded as capability state | Cache writes are external effects. Failure or partial output is reported explicitly and cannot advertise stale or incomplete cache readiness. |
 | Coordinate validation | Selected capability, trigger, evaluation-ready projections, deterministic input/RNG state, and aggregation policy | Trainer/pipeline traversal and accepted evaluation behavior produce typed evaluation results, observations, and updated validation state | Evaluation may consume resources but has no undeclared training-state effect. Failure restores temporary runtime projections and cannot fabricate a successful observation. |
@@ -538,6 +547,7 @@ or folders.
 | Materialize and bind | Training lifecycle coordination derives a candidate job from accepted obligations/current revisions; the selected domain loader or constructor supplies evidence; only the run authority publishes binding/relationship changes. | `run-participant-state`: “Initial realization and later transitions share one enforcement direction”, “Transitions are revision-checked and atomic”; `loaded-model-components`: “Model loading returns the loaded-component surface”. |
 | Prepare runtime | Training-side preparation coordination derives one complete attempt-scoped job and coordinates final publication of authority-owned routes/views with Trainer-owned backend/optimization state; neither side exposes a half-installed result. | `training-runtime-preparation`: “Preparation derives one coherent attempt-scoped job”, “Preparation results separate ownership surfaces”, “Fallible work precedes final publication”, “Stale results never publish against newer state”. |
 | Realize optimization | Trainer optimization derives candidates from accepted subjects/units and current projections; the joint preparation coordinator publishes the prepared optimization runtime with the corresponding authority routes and Trainer backend state. | `training-optimization`: “Trainer owns standard realization and mechanics”, “Realization and preparation form one publication attempt”, “Binding changes invalidate affected optimization runtime”. |
+| Produce and hand off input | Training input coordination manages producer lifecycle, readiness, admission, delivery, and failure routing under accepted obligations; selected input behavior owns live-source traversal, selection/packing policy, and private continuation state. Cache-production traversal remains with caching coordination. An admitted handoff is not proof of action completion or optimization advancement. | `training-contract`: “Authors assemble strategies explicitly”, “Obligations are evaluated at the earliest authoritative evidence point”; `accepted-training-execution`: “Input handoff retains identity and admission meaning”, “Cross-owner action facts remain correlatable”; `training-capability-coordination`: “Caching separates semantics from storage orchestration”. The input-specific scenarios are filed; tasks 4.1 and 4.4 finish cache-production and exact-restoration protocols. |
 | Execute training | Trainer's loop supplies time/input and current prepared projections; accepted behavior executes only its granted operations, while Trainer commits its retained mechanics and the authority handles any requested canonical transition. | `accepted-training-execution`: “Accepted execution survives the authoring object”, “Execution uses current prepared state”, “The standard profile retains generic Trainer mechanics”. |
 | Coordinate caching | The caching capability coordinator derives work from an accepted request and current data/representation dependencies; it publishes readiness only for completed, fresh cache results. | `training-capability-coordination`: “Capability readiness derives from accepted state”, “Caching separates semantics from storage orchestration”. |
 | Coordinate validation | Trainer/pipeline scheduling derives the accepted request from trigger and ready projections; validation coordination publishes observations and capability-owned state only after traversal/evaluation succeeds. | `training-capability-coordination`: “Validation separates evaluation semantics from traversal”, “Capability results feed observation without transferring ownership”. |
@@ -562,8 +572,9 @@ unrestricted mutation rights. The aggregate distinguishes at least:
   participants, relationships, bindings, routes, revisions, and freshness;
 - Trainer execution state: step/epoch progress, accumulation position,
   synchronization and backend state, interruption, and cleanup progress;
-- input state: manifests, prepared input sources, dataloaders, deterministic
-  cursor/RNG facts, and current epoch input;
+- input state: accepted source/policy dependencies, prepared input sources,
+  provider-owned cursors/RNG/buffers and other continuation state, plus
+  training-coordinated readiness, admission, and handoff facts;
 - optimization state: semantic unit identity plus candidate and prepared
   Trainer-owned runtime state;
 - capability state: selected capability readiness, dependencies, requests,
@@ -594,6 +605,7 @@ concrete result types and permitted effects.
 | Materialize/bind | Governed semantic state; only the run authority publishes bindings, relationships, and revisions from accepted candidates. | Preparation, optimization, execution, capabilities, metadata/observation. |
 | Prepare | Governed routes/views via run authority; Trainer execution/backend and optimization state via their owners in one coordinated publication. | Trainer loop, accepted operations, capabilities, observability. |
 | Optimize | Optimization state via Trainer optimization; binding-dependent readiness coordinated with preparation publication. | Trainer loop, artifact/restoration coordination, observability. |
+| Produce/handoff input | Input state; selected input behavior writes its policy and producer continuation state, while training input coordination records readiness/admission and handoff under accepted obligations. | Accepted computation, Trainer scheduling/accounting, caching, observability, restoration. |
 | Execute | Accepted-behavior state via its accepted operation; Trainer execution/progress via Trainer; canonical transitions via authority only. | Optimization, capability triggers, observability, restoration. |
 | Cache | Capability state and input/cache records via caching coordination; no direct authority binding write. | Input preparation, accepted execution/validation, observability. |
 | Validate | Capability state and observation state via validation coordination and observation owner respectively. | Trainer scheduling, accepted adaptive consumers, observability/reporting. |
@@ -840,6 +852,186 @@ candidate/request/result exchange, and its connection to accepted execution
 are design gate G3. EDM2, schedule-free, fused optimizers, and auxiliary learned
 state are pressure cases, not automatic core units or ownership decisions.
 
+#### G3.1 Standard advancement policies
+
+The standard profile accepts **Trainer-coordinated contributions and unit
+advancement**, not one fixed `backward(); step()` sequence. The contract offers
+these policies before strategy authoring; the authored strategy selects and
+connects them, fulfillment accepts the resulting obligations, and preparation
+must show that the selected backend can realize them. An accepted runtime due
+policy may choose among accepted actions using current coordinates and owned
+state. This preserves deterministic unusual cadence and bounded adaptive
+choices without a per-step query to the strategy authoring interface.
+
+Three supported shapes share the same Trainer-owned mechanics:
+
+| Standard shape | Contribution and advancement meaning |
+| --- | --- |
+| One due unit | An accepted action offers a source to one unit. That unit may contribute over a declared accumulation window before it is eligible to advance; the action occurring does not itself prove an optimizer step. |
+| Independently due units | A bounded policy selects accepted actions/units at different cadences, including alternating or nonconsecutive contribution windows. Only the selected unit's gradient window and advancement are touched. Other participants may still take part in its computation under their accepted gradient/view requirements. No G/D pair or one shared global-step counter is built into Trainer. |
+| Jointly due units | One accepted action offers addressed sources to two or more disjoint units. A shared source may admit one backward serving all; distinct sources require accepted per-unit gradient routing rather than an unexamined sum of losses. Contribution, window completion, step order, and per-unit outcomes remain explicit. The action is not an atomic multi-optimizer transaction. |
+
+For **each** shape, the accepted policy identifies the source and gradient
+route for every contributing unit, the accumulation/completion rule, any
+required synchronization participants, the clipping scope and timing, the
+ordered units eligible to advance, the scheduler/update trigger, and the
+zeroing/discard rule. Trainer owns backward or an observably equivalent
+backend lowering, accumulation, synchronization, clipping, optimizer and
+scheduler invocation, final zeroing, and per-unit progress/outcome reporting.
+Selected operations supply the addressed computation values; they do not gain
+those mechanics by returning an optimization input. One source shared by
+several units is not a universal one-backward rule. When distinct sources can
+influence several units, a naive summed backward is invalid if it introduces
+cross-unit gradients the accepted routing did not authorize. Per-unit gradient
+extraction, recomputation, or another lowering is allowed only when it
+preserves the accepted gradients and the backend can support it. Otherwise
+the arrangement is not executable under that backend; it is not silently
+converted to an imperative strategy callback.
+
+Clipping occurs at the accepted synchronized completion boundary, after any
+required unscaling, over the declared unit scope or a declared joint scope
+whose participating units complete together. A unit's pending gradients are
+not cleared merely because a different unit is due. Trainer opens and closes
+each gradient window according to the accepted zeroing rule; a skipped or
+failed attempt cannot silently carry unsafe gradients into the next window.
+Different unit clocks and partially overlapping windows require backend
+support for the selected isolation and synchronization; an implementation
+that cannot realize them must reject readiness before executing that policy.
+This is a backend conformance obligation, not a promise that current
+Accelerate/DeepSpeed preparation already supplies it.
+
+Trainer/pipeline owns action scheduling, progress, training/evaluation
+boundaries, and invocation of accepted lifecycle effects. A unit-local
+optimizer mode or scheduler transition runs at its accepted lifecycle point;
+selected post-advancement behavior (such as adapter regularization) remains
+selected behavior invoked under its declared effect authority. The policy
+must say whether a scheduler follows an action, an attempted optimizer call,
+or a backend-confirmed non-skipped advancement. If it requires a distinction
+the backend cannot report, realization rejects that policy. `step()`
+returning, a backend reporting a skip, progress being recorded, and numerical
+parameter change are different facts; the last is not inferred.
+
+Before mutation, Trainer checks that current unit definitions, prepared
+routes, due selection, offered sources, and gradient scopes match the
+accepted policy. An operation/backward failure may already have changed RNG,
+owned state, or gradients. An optimizer call that fails after entering its
+backend is **uncertain** unless that backend establishes a narrower result.
+In a joint action, previously returned unit calls and later unattempted units
+are reported separately. Trainer stops dependent work after uncertain live
+effects; it neither retries nor rolls back the action by default. No ordinary
+standard policy promises all-or-nothing advancement across units.
+
+Checkpoint ownership follows the same split for all three shapes: Trainer
+contributes each unit's identity/revision, mutable optimizer and scheduler
+state, unit-local contribution/advancement position, any still-pending
+gradients needed to continue, and backend scaling/synchronization state;
+the due-policy owner contributes its changing state; other owners contribute
+input, operation, participant, and progress state. A snapshot may instead be
+taken at a proven quiescent boundary with no pending gradient window. Only a
+coordinated complete cut can claim exact same-run continuation; G4 defines
+its protocol. G3.4–G3.6 still define the concrete prepared runtime and
+attempt/result exchanges, including how those outcomes correlate with input
+handoff and progress. G3.2 separately defines transferred authority.
+
+The bounded [advancement-policy experiment](../../../tests/unit/training/test_advancement_policy_experiment.py)
+checks nonconsecutive per-unit accumulation and distinct-source gradient
+routing. The earlier [joint-unit experiment](research/training-mechanism-sketch.md#second-check-two-optimization-units-due-in-one-action)
+checks shared-source backward and partial failure. These are evidence for the
+semantic distinctions, not proof of distributed lowering, exact restoration,
+or a production policy interface.
+
+#### G3.2 Explicit changed-authority boundary
+
+An extension is a **supported ownership profile offered by the active
+contract**, not permission created by an authored operation calling Trainer
+methods. The authored strategy selects a supported profile and supplies the
+required region, scope, state/effect, and recovery declarations. Fulfillment
+accepts or rejects that filing against the pre-existing contract. The
+accepted runtime region—not the strategy's authoring interface—executes its
+granted work. Unrelated actions in the same run keep their standard owners.
+
+The deliberately narrow SAM-style test profile from G2.5 has one due
+optimization unit and a quiescent gradient window. Its phase ownership is:
+
+| Phase/action | Owner in this chosen split |
+| --- | --- |
+| Due selection, current-readiness check, input handoff, initial gradient clear, and exclusive-interval entry | Trainer/run coordination |
+| First selected computation and backward; reading the scoped first gradient; temporary edit of the accepted parameter substructure | Accepted region executor |
+| Intermediate gradient clear/replacement; second selected computation and backward; restoration of the unperturbed parameter view | Accepted region executor |
+| Clean-handback check, final clipping, optimizer/scheduler advancement, final gradient clear, unit/action progress, triggers, and failure coordination | Trainer/optimization and run coordination |
+
+This profile does **not** transfer the final optimizer step or scheduler to
+the region. Initial/final gradient clears and the *intermediate* clear are
+different scoped actions; the coarse experimental `ZERO_GRAD` mechanic cannot
+describe their owners by itself. Each accepted action/phase has exactly one
+owner. A region requesting `advance`, omitting intermediate gradient control,
+or sharing an owned phase with Trainer is rejected at fulfillment. A selected
+SAM wrapper whose second step restores parameters **and** advances its base
+optimizer does not fit this split unchanged. It must be decomposed, target a
+different explicitly offered profile that transfers advancement and its
+state/failure duties, or be rejected; selecting the wrapper does not silently
+grant ownership.
+
+The region receives the current prepared route/view and only the accepted
+parameter substructure, batch/coordinate values, required selected
+computation, and its own state/RNG projections. It may read first-pass
+gradients, change only the granted parameters temporarily, clear/replace only
+the specified gradients between passes, and emit declared observations and
+owned-state effects. It does not receive unrestricted run authority, a whole
+Trainer, canonical binding setters, or optimizer/scheduler advancement
+handles under this split. The accepted scope is expressed in semantic
+participant/substructure and unit identities plus revisions; physical Python
+parameters are a checked realization, not the grant's identity. Narrow
+interfaces and declared effects make conformance inspectable, but arbitrary
+Python closures can still hide mutation. The profile therefore requires
+trusted selected implementations and runtime evidence where static checking
+cannot prove effects or gradient correctness; it is not a sandbox claim.
+
+Fulfillment decides everything knowable from the authored filing: the
+offered profile, exact phase owners, scoped subject, declared temporary and
+persistent effects, state contributors, allowed accumulation rule, required
+clean handback, and failure/restoration claim. The chosen test profile rejects
+entry with pending accumulated gradients rather than erasing them; a different
+two-pass accumulation policy would need its own accepted synchronization and
+gradient rules. Governed realization then checks current binding/route and
+unit revisions, backend access to the scoped parameters and gradients,
+exclusive-use and snapshot exclusion, synchronization/scaling behavior, and
+whether temporary edits can be restored and evidenced. A backend conflict
+fails readiness **before** the region executes, not as a late grant of broader
+authority. Current Accelerate/DeepSpeed support is not presumed.
+
+On success, the region must hand back evidence that the unperturbed current
+view is restored, the second-pass gradient is ready under the accepted
+synchronization/scaling policy, and all declared region-owned effects are
+accounted for. Trainer checks that handback against the same attempt and
+current revisions before final clipping or advancement. A mere success
+Boolean from arbitrary Python is not proof of restored backend state; the
+concrete evidence and exchange belong to G3.4–G3.6. The region may not publish
+new participant bindings or optimization definitions as a side effect of its
+temporary edit. A requested structural change still goes through the run
+authority's accepted transition path.
+
+Failure during the first pass may leave gradients, RNG, input, or region state
+changed. Failure after perturbation may additionally leave parameters or
+backend state uncertain. Even if restoration succeeds after a failed second
+pass, the action is not complete and Trainer must not step; any narrower
+in-process continuation needs an accepted recovery rule covering *all*
+effects. If restoration or handback is uncertain, affected live use and exact
+snapshots stop until a valid state is re-established. This split permits
+exact snapshots only at coordinated quiescent, unperturbed boundaries and
+requires every persistent region-state contributor to join the same-run
+snapshot. It promises neither mid-region snapshots, automatic rollback, nor
+blind replay. Failure during Trainer's retained final advancement follows
+G3.1's per-unit uncertain-outcome rule, not a special SAM transaction.
+
+The [bounded two-pass experiment](../../../tests/unit/training/test_imperative_authority_experiment.py)
+checks phase ownership, final Trainer advancement after clean restoration,
+pre-mutation rejection, and two distinct failure states on one-process
+PyTorch parameters. It cannot establish distributed exclusive access,
+backend-confirmed restoration, hidden-effect prevention, or exact recovery;
+those remain realization and restoration obligations rather than reasons to
+weaken this boundary.
+
 ### D10. Accepted execution is structured and authority-bounded
 
 The normal accepted arrangement must preserve:
@@ -855,9 +1047,11 @@ retained Trainer authority
 any explicitly granted imperative authority
 ```
 
-This requirement does not select the concrete representation. Graph, tree,
-regions, schedule, lowered Python, and hybrid forms remain candidates to test
-against maintained SD/SDXL/SD3 paths and strong research cases.
+G2.6 selects the semantic representation described below: a hierarchical run
+structure whose cross-owner dependencies and handoffs are explicit, with
+selected Python behavior inside its work boundaries. It is graph-like where
+the run must coordinate distinct owners, not a graph of every tensor or worker
+operation. G5 still chooses concrete Python types and lowering.
 
 Static choices, implementation selection, wiring, and permission checks are
 resolved before the hot path. Ordinary step execution receives only changing
@@ -896,16 +1090,57 @@ optimization inputs, observations, declared effects, and accounting without
 assuming one loss producer, one differentiable tensor, one advancement
 sequence, or diffusion-specific fields.
 
-The standard profile keeps time, accumulation, synchronization, backward,
-clipping, advancement, zeroing, triggers, observation, interruption, and
-cleanup under Trainer ownership. A custom structured operation can replace
-standard decomposition while satisfying that boundary. A different owner for
-one of those mechanics requires an explicit extension/profile; the extension
-states its actual executor and exchanges rather than assuming “the strategy
-takes over.”
+The standard profile keeps training-action time and progress, accumulation,
+synchronization, backward, clipping, advancement, zeroing, triggers,
+observation, interruption, and cleanup under Trainer ownership. A custom
+structured operation can replace standard decomposition while satisfying that
+boundary. A different owner for one of those mechanics requires an explicit
+extension/profile that states its actual executor and exchanges, rather than
+assuming “the strategy takes over.”
 
-The concrete representation and step exchange are design gate G2/G3, not an
-implementation detail to invent while coding.
+G2.6 selects the common execution meanings below. G3 completes the step and
+optimization exchange; G5 chooses its concrete Python representation rather
+than letting the experimental classes become production APIs by default.
+
+#### Input production and handoff
+
+The accepted arrangement preserves which input sources, selection and
+transformation policies, packing rules, consumer representation requirements,
+producer dependencies, and bounded runtime choices were authored or selected.
+Training coordinates producer startup/shutdown, readiness, admission, delivery,
+and failure; selected input behavior may advance independently and owns its
+internal live-source traversal, queue, selection, packing, and continuation
+state. Cache-production traversal remains with caching coordination; the
+cache-backed input boundary is reconciled at tasks 2.7/4.1.
+An ordinary computation receives admitted values, not an unchecked blocking
+read hidden inside its operation. This division does not require input to be
+an optional capability or every provider-internal task to be a graph node.
+
+Readiness and admission are different: a produced value can be available yet
+wrong for the requested work or unacceptable under the current producer,
+participant, or representation dependencies. The handoff preserves the work
+and logical-example identities, provenance, and boundaries or masks that the
+selected consumer, accounting policy, or restoration claim needs. Dataset
+records, logical examples, packed sequences, and physical microbatches are not
+one universal `batch`; the concrete payload remains selected domain behavior.
+Out-of-order completion cannot pair a value with the wrong request. A bounded
+change of accepted selection or packing policy is ordinary runtime state
+evolution, while a change outside those bounds follows the applicable governed
+transition or new fulfillment path.
+
+Selection, production, readiness, admission, handoff, action consumption,
+per-unit optimization outcomes, progress recording, and snapshot durability
+are distinct events. Training's run-level accounting must be able to correlate
+the relevant input delivery, action attempt, and unit outcomes without making
+the input provider own optimization results or treating one action as an atomic
+optimizer transaction. When exact same-run restoration is claimed, a
+coordinated cut must include the input owner's continuation state, accepted
+dependency revisions, handed-off but unfinished work, and an explicit
+replay/skip policy consistent with the other run-state owners. A saved cursor,
+provider pause, or unverified revision label alone does not prove that claim.
+The concrete handoff, attempt-correlation, snapshot, and recovery types remain
+G3–G5 decisions; the executable experiments establish these boundary needs,
+not their final Python API.
 
 ### D11. Artifact persistence is semantic; restoration is separate
 
@@ -1286,6 +1521,314 @@ and stage-transition mechanics; G4 handles caching and product/restoration
 details. This case remains a design pressure test until those boundaries have
 been checked, not a claim of production support.
 
+The common representation can cover these cases without adding teacher,
+student, VAE, audio, or side-network slots to Trainer: independently managed
+state has participant identity; each use names its required prepared view;
+selected operations carry representation, axis, and comparison meaning;
+optimization names only its accepted subjects; and products select their own
+semantic coverage. For example, a student-only product may retain a teacher
+source dependency without embedding a live teacher, while a side-network
+product may depend on a frozen base without claiming to contain it. A stage
+transition changes current authority and preparation state before dependent
+work resumes; it is not inferred from an upstream weight-copy instruction.
+
+### G2 worked case 5: adaptive operation and stronger research authority
+
+An accepted custom operation may replace several maintained model/objective
+calls while leaving the standard Trainer mechanics intact. Consider one that
+selects its next sampling policy from prior loss observations. Its selected
+implementation receives current inputs, coordinates, prepared routes, and its
+own state; it returns computation values, optimization input, observations,
+and declared state changes. Its state has an accepted initialization rule and
+restoration contribution. The operation does not receive the whole Trainer or
+optimizer handles as its normal interface, and the authoring object is not
+consulted each step. This remains standard-profile behavior even though its
+computation and state evolve during the run.
+
+For a deliberately stronger counterexample, consider a two-pass operation
+that requests control of backward and a temporary parameter perturbation
+before Trainer's final optimizer advancement. Under the standard profile,
+that request is rejected: declaring an ordinary computation operation does
+not transfer backward or parameter-mutation authority. If the active contract
+offers a suitable research extension, fulfillment may accept an explicitly
+bounded region whose profile transfers the two backward passes and temporary
+perturbation plus intermediate gradient handling to its executor, retains
+final advancement with Trainer, names its allowed parameters and required
+state, and prevents Trainer from performing those transferred actions in the
+same accepted action. If no such profile is supported, the
+same filing is rejected rather than run through a hidden callback. Failure
+while parameters are perturbed cannot be described as harmless merely because
+the region intended to restore them; uncertain live state must stop dependent
+work and follow the accepted recovery rule.
+
+This tests ownership transfer, not a commitment that the first production
+contract supports this particular method. Scoped access and declared effects
+make ordinary misuse harder and allow checks at the exchange boundary, but
+arbitrary selected Python is not a sandbox. Fulfillment can reject an
+unsupported authority request; realized gradient compatibility and hidden
+mutation may require runtime evidence or trusted implementation discipline.
+
+#### G2.5 ownership and recovery resolution
+
+The adaptive operation above remains a **standard-profile** operation: its
+accepted owner initializes its sampling state from the declared rule, consumes
+declared loss observations, and contributes that state, relevant RNG, and its
+dependency revisions to exact restoration. It does not gain backward or
+optimizer authority by being stateful. If an observation or state update may
+have occurred before an operation fails, the run cannot infer from a missing
+result that the owner's state is unchanged; it stops dependent work unless an
+accepted owner-specific recovery rule establishes a valid state. The common
+freshness and restoration rules are in G2.6 below.
+
+The stronger test is a *possible* two-pass perturbation extension, not a
+promise to ship SAM. The [original SAM method](https://arxiv.org/abs/2010.01412)
+and a [concrete PyTorch example](https://github.com/davda54/sam#usage) show
+why this case needs two forward/backward passes, temporary parameter edits,
+and clearing or replacing first-pass gradients before the second pass. For
+this **chosen test split**, the accepted region does the two passes, scoped
+temporary edit, intermediate gradient handling, and restoration of the
+unperturbed parameters; Trainer retains final clipping, optimizer/scheduler
+advancement, and final cleanup. Trainer may perform initial clearing before
+the region starts. A wrapper that can only perform restoration *and* optimizer
+advancement inside its own `step()` does **not** fit that split unchanged: it
+needs a different supported grant that also transfers advancement, or is
+rejected. G3 defines the concrete advancement policy and exchange.
+
+| Checkpoint | Required meaning for this test split |
+| --- | --- |
+| Fulfillment | The active contract already offers the extension profile; the authored region requests the exact two-pass backward, gradient-handling, and temporary-edit authority, names its unit and parameter substructure, result/effect bounds, state contributors, and recovery claim. Standard-profile filing is rejected. The region's executor is accepted runtime behavior, not the strategy's authoring role. |
+| Realization and readiness | The current prepared route, parameter projection, backend gradient/synchronization behavior, and exclusive-use requirement satisfy those accepted obligations. A syntactically accepted profile is not proof that a backend can perform the edit or gradient exchange safely. |
+| First pass and edit | Trainer owns initial setup; the region owns its first backward, gradient inspection, bounded perturbation, and intermediate clearing/replacement. Trainer neither repeats these actions nor supplies an unrestricted optimizer handle merely because the region is imperative. |
+| Second pass and handback | The region owns its second backward and proves the scoped parameters are again in the accepted unperturbed state before Trainer may clip or advance the due unit. Trainer then owns only its retained final actions and reports their own outcomes. |
+
+Within the run's selected ownership profile, a region's grant is **scoped to
+an accepted action and action phase**. Trainer's
+initial or final zeroing and the region's *intermediate* gradient reset are
+different actions; both cannot own the same reset. A coarse grant of
+backward and temporary parameter editing without intermediate gradient
+control is not enough for this case. The current `ExecutionProfile` experiment
+checks only declared non-overlap of a probe-sized mechanic set. Its acceptance
+of a two-pass declaration does not prove this full exchange, backend support, or
+recovery. Unsupported access, duplicate ownership, or a missing restoration
+claim is rejected during fulfillment when knowable; a backend-only conflict
+fails at governed realization before the region runs. Arbitrary Python is
+not a sandbox, so trusted implementations and narrow scoped access remain
+necessary even after declaration checks.
+
+The region's intermediate reset must also respect the accepted accumulation
+and synchronization policy. It cannot erase gradients accumulated for the
+same unit from earlier microbatches. Fulfillment must either accept a
+specified two-pass accumulation boundary that preserves both passes' intended
+contributions, or reject this split when ordinary accumulation is requested;
+governed realization must verify the backend can honor the selected boundary.
+G3 specifies the concrete policy, not a universal SAM accumulation schedule.
+
+Temporary perturbation creates an exclusive execution interval over the
+affected current views and parameters. Conflicting execution, preparation,
+capability reads, and snapshots cannot observe its intermediate state. A
+successful edit-and-restore does not replace the participant, rebind a route,
+or revise the accepted optimization definition; ordinary final advancement
+changes weights under the same current semantic ownership. If restoration is
+uncertain, however, the affected current-use guarantees are withheld until
+valid state is re-established. This resembles D8's safety response to
+destructive preparation but is an **execution failure**, not a preparation
+attempt or an automatic authority revision for every training step.
+
+| Failure point | Honest continuation claim |
+| --- | --- |
+| Before the temporary edit | Gradients, RNG, input position, or operation-owned state may already have advanced. No blind retry follows merely from unchanged parameters; an accepted reset/discard rule would need to cover all of them. |
+| During edit, second pass, or restoration | Parameters or gradients may be uncertain. Stop dependent work and withhold affected current-use guarantees. A region-specific cleanup may permit in-process continuation only if it proves restoration **and** accounts for every other changed state/effect; otherwise recover from a prior coherent snapshot. |
+| After verified restoration but before Trainer advancement | The model view is clean, but gradients and owner state may not be. Trainer may advance only after the accepted handback checks; failure or missing evidence stops the action rather than silently retrying it. |
+| During or after Trainer advancement | Use the G3 per-unit outcome/failure exchange. A returned, skipped, failed, or uncertain optimizer action is not an atomic action result and never implies numerical parameter change or rollback. |
+| Process/rank loss at any point | The current attempt is not resumed mid-region. Restore the last coherent same-run snapshot and its accepted input/action position, or report exact continuation unavailable. |
+
+For this minimal extension, an exact-restoration snapshot is taken only at a
+quiescent, unperturbed boundary. It must cover accepted region definition and
+grant, scoped participant/binding/route and unit revisions, persistent
+region-owned adaptive state, model and optimizer/backend state, relevant RNG,
+input and progress positions, and the status of any unfinished effects. The
+temporary perturbation itself is *not* a durable participant state or a
+trained-artifact member. Mid-region snapshots or automatic in-process replay
+would require a separately accepted, demonstrably complete protocol; they are
+not promised by this profile. G3 supplies the action/advancement result and
+attempt correlation, and G4 supplies the coordinated snapshot mechanism.
+
+### G2.6 synthesis: one run structure, selected Python work
+
+The representative cases and the bounded [execution experiment](research/training-mechanism-sketch.md#executable-representation-check-bounded-g2g3-evidence)
+support a **hierarchical semantic run structure**. At the run level it names
+work with different lifetimes: repeated training actions, independently
+progressing input production, requested capabilities, and governed
+transitions. At an action boundary it connects selected computations, their
+values, observations, state, and optimization inputs. The connections form a
+graph of *meaning and coordination*, including feedback through versioned
+state; they are not a demand to graph every PyTorch operation. Selected Python
+implementations perform the model mathematics and may encapsulate internal
+worker or backend work. This is the chosen semantic shape, not a commitment
+to the experiment's `Action`, `Value`, or `PreparedRun` classes.
+
+An **operation** is selected executable work with a declared boundary. A
+**region** groups work that has its own scheduling, lifecycle, state owner,
+failure boundary, or granted authority; it need not be a separate Python
+class. An **action** is one accepted coordination boundary at which selected
+computation offers results to the run and due optimization units. It is not
+an atomic parameter-update transaction. The authored strategy explicitly
+selects and connects these meanings; fulfillment checks them under the
+pre-existing contract. Preparation binds the accepted structure to current
+routes and backend/optimization runtime without changing its authored meaning.
+
+| Meaning visible at the accepted boundary | Why the run needs it | What may stay inside selected behavior |
+| --- | --- | --- |
+| Work and lifetime | Name due actions, long-lived producers, capability work, and transition points without one universal step clock. | Internal model calls, worker queues, and physical microbatch schedules. |
+| Values and dependencies | Distinguish value flow, required ordering, current participant/route/relationship dependencies, observation feedback, and versioned handoffs. A tensor shape or role label alone is not compatibility evidence. | Domain payload layout and mathematical transformation. |
+| Readiness and admission | Distinguish a produced or prepared value's availability from its current acceptability under accepted obligations and dependency revisions. | Owner-internal waiting and construction details. |
+| Changing inputs and bounded decisions | Associate admitted input and current coordinates/state with an accepted choice among known actions, policies, or representations. | The selected policy's algorithm and private buffers. |
+| Owned state | Name its owner, initial source/rule, update inputs, dependency set, continuity rule, and restoration contribution. | The owner's internal storage format and update mathematics. |
+| Results, effects, and failures | Distinguish computation values, addressed optimization inputs, observations, accounting, owner-state updates, external effects, and authority-governed transition requests; report the stage and possible effects of failure. | Model-specific result fields not consumed across the boundary. |
+| Authority | State which Trainer mechanics remain standard-owned and which exact actions an accepted extension grants elsewhere. | An implementation's private control flow within that grant. |
+
+Expose a relationship only when fulfillment, preparation, another state
+owner, run coordination, observability, or restoration needs to judge it.
+This rule keeps the structure small without allowing an opaque Python call to
+hide a second training loop or optimizer owner. Scoped access and declared
+effects support checking, but arbitrary Python with a live mutable object is
+not sandboxed; the standard path relies on narrow interfaces and trusted
+selected implementations, and an imperative path needs an explicit authority
+profile. A declared gradient path may still need realized evidence.
+
+The following are readable *meaning sketches*, not proposed builder APIs:
+
+```text
+Authored SDXL action                         Prepared repetition
+  admitted image/caption input                 receive admitted input + current views
+  -> selected latent and conditioning work     run pre-resolved selected computations
+  -> selected predictor/objective              offer addressed loss to denoiser unit
+  -> backward value + timestep observation     route observation to objective owner
+                                                Trainer applies accepted optimization policy
+
+Authored joint-unit action                   Prepared repetition
+  one selected objective -> one loss            compute once; offer same addressed value
+  matrix unit + other unit both due              to two distinct semantic units
+  accepted shared-gradient/order policy         Trainer coordinates backward and reports
+                                                each unit outcome separately
+
+Authored stateful input policy               Run-level execution
+  accepted sources, mixture/pack choices        provider advances on its own clock
+  accepted consumer representation              training admits identity and dependencies
+  bounded stage changes                         action receives model-ready value and
+                                                required logical-example boundaries
+
+Authored two-use model action                Prepared repetition
+  one accepted backbone participant              invoke its teacher/base view without
+  two selected invocation roles                  turning that role into a new participant
+  explicit view and gradient requirements        invoke its adapted/student view with the
+                                                required differentiable path
+```
+
+If choosing those views toggles mutable adapter state, the accepted runtime
+must serialize incompatible invocations and restore the required view after
+failure or stop dependent work if restoration is uncertain; view selection
+alone does not revise the participant binding. Restoring the view re-establishes
+its usability, not the success or recoverability of the failed action.
+
+The current experiment pre-resolves action-local value wiring and executes
+the SDXL-like and alternating actions with the same mechanism; a test-side
+Trainer consumer handles one shared loss offered to two units. A separate
+input provider progresses ahead and out of order, and another selected policy
+changes stage and packs logical examples without changing the prepared action.
+Those checks justify the boundary split above. They do **not** establish real
+backend preparation, distributed agreement, an exact snapshot, or the final
+authoring syntax. The prototype currently lives in
+`library/training/execution.py` but is not imported by the active Trainer or
+launcher; G5 decides whether to retain, relocate, or replace it. In
+particular, the composition test has no run-level
+reporter joining input delivery, action attempt, and per-unit outcomes; that
+join is required by D10. The later [G3.3 whole-run experiment](research/training-mechanism-sketch.md#g33-check-one-candidate-language-spans-run-level-input-and-repeated-actions)
+adds a test-only attempt report for that correlation; its production storage
+and API remain G5 work.
+
+#### Operation-owned state across change and recovery
+
+Every stateful operation or region has an accepted owner and initialization
+rule. If initialization needs a materialized participant or prepared route,
+it waits for that evidence and readiness; neither Trainer nor the former
+authoring role invents a value. The owner alone applies ordinary accepted
+updates, including scheduled changes and feedback from observations. Those
+updates do not by themselves rebuild the run structure or invalidate a
+prepared route.
+
+Each state definition declares the participant, binding, route, relationship,
+observation-source, and other dependencies that determine its *meaning*,
+separately from ordinary live inputs it is expected to observe. Without a
+more precise valid set, its authority-state dependency is conservatively the
+whole snapshot. A relevant dependency change makes dependent state unusable
+until an accepted continuity rule has been applied: preserve it with evidence,
+migrate it, reinitialize it from an accepted rule, or retire it. It is never
+silently carried forward because a Python object or field still exists.
+Compatible replacement may keep participant identity while invalidating
+weight-dependent state; a route-only wrapper change need not reset state
+that does not depend on that route. A relationship change is judged against
+the declared relationship dependency. A new ordinary observation updates
+state; a change to the observation producer's meaning or missing required
+observation is a separate compatibility/readiness question, not an automatic
+reset on every feedback value. A new participant incarnation needs an
+explicitly accepted state transfer rather than identity-by-copy.
+The producer owner publishes any changed source meaning; fulfillment checks
+authored compatibility, and the receiving state owner applies its accepted
+continuity rule against current realization/readiness evidence before new
+feedback is routed. A structural source change also passes through the run
+authority's transition boundary.
+
+When a permitted structural transition changes accepted work, the authority
+and the relevant state owners establish the new obligation/operation-state
+mapping and current prepared view before dependent work resumes. D8's
+replacement-only and destructive paths retain their different failure
+guarantees. An authored interval in which old and new paths intentionally
+coexist is an accepted current structure, not a half-published replacement.
+
+For exact same-run restoration, each required owner contributes its current
+state, accepted state-definition/arrangement revision, dependency evidence,
+relevant RNG and progress, and any unfinished work or effect status needed
+to continue. Trainer/pipeline restoration coordinates those contributions
+with authority, input, optimization, and backend state into one coherent
+recoverable cut. If a required contribution or accepted replay rule is
+missing, the snapshot cannot claim exact continuation. Trained-artifact
+products include operation state only when their own declared product meaning
+selects it; a model-weight product is not a substitute for runtime state.
+After a failed operation that may have changed owned or external state,
+dependent work stops unless an accepted operation-specific recovery rule can
+establish a valid current state. Uncertain parameter or optimizer effects do
+not receive generic rollback or blind replay. G2.5 above specifies the
+stronger region's recovery obligations for its chosen test split; G3 and G4
+still owe the concrete advancement and coordinated snapshot exchanges.
+
+#### Representation choice and hot path
+
+| Candidate | Case result | Decision |
+| --- | --- | --- |
+| Flat per-step DAG | Makes SDXL value flow visible but cannot by itself represent long-lived producers, different clocks, governed transitions, or cross-step feedback. | Not the whole-run representation. |
+| Fine-grained graph of every operation | Could expose dependencies but would force domain math, queues, and backend internals into an oversized common vocabulary. | Use graph-like links only at the accepted coordination boundary. |
+| Regions alone | Give work a clear owner/lifetime but do not express value, freshness, observation, or handoff relationships between regions. | Keep regions with explicit typed relationships. |
+| Schedule or callbacks alone | Select due work but hide its inputs, state dependencies, authority, and failure effects. | Use bounded selected policies to schedule accepted work, not as the whole contract. |
+| Opaque lowered Python alone | Runs quickly, but an unchecked closure cannot supply fulfillment, preparation, restoration, or cross-owner evidence. | Lower already-checked work to Python for the hot path; retain its accepted description. |
+| Hierarchical hybrid | Keeps run-level work and cross-owner links visible while selected Python implements domain algorithms and prepared actions pre-resolve repeated wiring. | Chosen semantic direction; G5 determines storage, classes, and lowering. |
+
+Fulfillment checks static selections, permitted choices, dependencies,
+authority, and state definitions. Governed realization checks concrete and
+backend evidence. Repeated execution uses admitted changing inputs, current
+prepared views, coordinates, and owner state; it invokes a selected due policy
+within accepted bounds and already-resolved work. It must not traverse the
+complete authored strategy, rebuild family anatomy, or repeat contract
+negotiation each step. It **must** still check current freshness/admission
+where state may change and run dynamic schedules or adaptive algorithms.
+Performance and conformance of the eventual lowering remain task 3.7.
+
+This semantic choice leaves the exact standard advancement policies and
+attempt/result exchange to G3, capability-specific and coordinated snapshot
+protocols to G4, and Python types/module placement to G5. None is license to
+replace the hierarchy with an active strategy callback or to claim that the
+experimental runner already implements the whole run.
+
 ## Design Gates Before Production Implementation
 
 ### G1. Complete Trainer consumption meanings
@@ -1315,15 +1858,21 @@ optimization semantics are settled.
 Inspect SDXL fine-tune and adapter first, then the materially different SD and
 SD3 paths and the strong custom/imperative cases. Select the minimum operation
 or region meanings, dependency/effect vocabulary, and execution/ownership
-profile rules. Do not choose the representation by analogy alone.
+profile rules. Do not choose the representation by analogy alone. A bounded
+executable experiment may compare candidate Python shapes, but it does not
+become the production acceptance boundary merely because its tests pass.
 
 ### G3. Complete optimization and step exchanges
 
-Define supported standard advancement policies; the explicit extension
-boundary; backend-flexible optimization candidates/requests/results; and the
-connection among accepted execution, final optimization input, observations,
-state effects, and advancement. Preserve the settled unit identity,
-non-overlap, preparation, and publication rules.
+Define supported standard advancement policies and the explicit extension
+boundary. Construct one bounded whole-run language experiment from G2.6's
+selected meanings before completing backend-flexible optimization
+candidates/requests/results and the connection among accepted execution,
+final optimization input, observations, state effects, and advancement. The
+experiment tests a common coordinator over different accepted arrangements;
+it neither selects the production Python API nor cuts over the active Trainer.
+Preserve the settled unit identity, non-overlap, preparation, and publication
+rules.
 
 ### G4. Complete capability exchanges and overlap reconciliation
 
