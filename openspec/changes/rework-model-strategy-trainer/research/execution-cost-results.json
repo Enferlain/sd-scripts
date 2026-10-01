@@ -1,0 +1,1175 @@
+{
+  "measured_on": "2026-10-01",
+  "fixture": "tests/unit/training/execution_cost_probe.py",
+  "fixture_sha256": "e8e9ace8b4351d44056a8a482e908eaf756b36935fd4a758362a834ebede061c",
+  "candidate_sha256": "5bf5cdb548f106258c218e6b75ba067acb782a6cddb0fd186ba5fdc39faff4fb",
+  "runs": [
+    {
+      "environment": {
+        "python": "3.13.13",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "processor": "",
+        "gc_enabled": true,
+        "clock": "perf_counter_ns",
+        "iterations": 10000,
+        "repeats": 7
+      },
+      "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+      "current_loop": {
+        "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+        "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+        "scope": "actual call expression with direct fixture facade; argument dispatch only"
+      },
+      "timing_us_per_call": {
+        "harness_floor": {
+          "median": 0.0443255,
+          "min": 0.0415624,
+          "max": 0.0493838,
+          "samples": [
+            0.0457175,
+            0.0456976,
+            0.0493838,
+            0.0443255,
+            0.0427885,
+            0.0415624,
+            0.0421234
+          ]
+        },
+        "candidate_1_cheap": {
+          "median": 4.5950007,
+          "min": 4.459423,
+          "max": 4.67395,
+          "samples": [
+            4.6526907,
+            4.5950007,
+            4.608850599999999,
+            4.67395,
+            4.579496600000001,
+            4.459423,
+            4.461774999999999
+          ]
+        },
+        "direct_1_cheap": {
+          "median": 2.6029613,
+          "min": 2.5231403,
+          "max": 2.7459965000000004,
+          "samples": [
+            2.7459965000000004,
+            2.6029613,
+            2.5976448999999997,
+            2.6304353999999996,
+            2.6162915,
+            2.5289886,
+            2.5231403
+          ]
+        },
+        "candidate_4_cheap": {
+          "median": 6.5719867,
+          "min": 6.416926800000001,
+          "max": 6.6727673,
+          "samples": [
+            6.5351214,
+            6.5973847999999995,
+            6.5567676,
+            6.6547052,
+            6.6727673,
+            6.5719867,
+            6.416926800000001
+          ]
+        },
+        "direct_4_cheap": {
+          "median": 2.8279892,
+          "min": 2.7032966000000003,
+          "max": 2.9932331,
+          "samples": [
+            2.7635945,
+            2.8279892,
+            2.8343184,
+            2.8086216,
+            2.8676858000000003,
+            2.9932331,
+            2.7032966000000003
+          ]
+        },
+        "candidate_16_cheap": {
+          "median": 14.3855514,
+          "min": 13.9712437,
+          "max": 14.6037095,
+          "samples": [
+            14.0137428,
+            14.5952613,
+            14.3855514,
+            14.6037095,
+            14.4529899,
+            13.9712437,
+            14.0011534
+          ]
+        },
+        "direct_16_cheap": {
+          "median": 3.5742193,
+          "min": 3.4659101999999997,
+          "max": 3.6808083000000003,
+          "samples": [
+            3.4928506,
+            3.6095675999999997,
+            3.6100776999999997,
+            3.6808083000000003,
+            3.5742193,
+            3.4659101999999997,
+            3.4728325
+          ]
+        },
+        "candidate_4_compute": {
+          "median": 81.0404927,
+          "min": 79.4836277,
+          "max": 82.4428048,
+          "samples": [
+            81.0932732,
+            81.8959159,
+            80.76087729999999,
+            81.0404927,
+            79.891215,
+            82.4428048,
+            79.4836277
+          ]
+        },
+        "direct_4_compute": {
+          "median": 79.435851,
+          "min": 77.9558045,
+          "max": 82.63459510000001,
+          "samples": [
+            79.5244687,
+            82.63459510000001,
+            77.9558045,
+            78.0274604,
+            78.3590053,
+            79.435851,
+            79.715744
+          ]
+        },
+        "current_loop_4_cheap_dispatch": {
+          "median": 4.0122923,
+          "min": 3.8997488,
+          "max": 4.1814482,
+          "samples": [
+            3.9710611,
+            4.1814482,
+            4.0274174,
+            3.8997488,
+            4.0122923,
+            3.9082434,
+            4.093904
+          ]
+        },
+        "workflow_tick": {
+          "median": 18.239189,
+          "min": 16.9556083,
+          "max": 19.4292042,
+          "samples": [
+            18.239189,
+            19.0832141,
+            17.9707224,
+            17.9808224,
+            19.4292042,
+            16.9556083,
+            18.5888817
+          ]
+        },
+        "workflow_lookup": {
+          "median": 0.13599180000000002,
+          "min": 0.1278082,
+          "max": 0.1511836,
+          "samples": [
+            0.1386279,
+            0.1278082,
+            0.1511836,
+            0.13599180000000002,
+            0.1430721,
+            0.13071639999999998,
+            0.1291894
+          ]
+        },
+        "input_admission": {
+          "median": 0.36918900000000004,
+          "min": 0.3587096,
+          "max": 0.3945025,
+          "samples": [
+            0.3719372,
+            0.3632327,
+            0.3587096,
+            0.384122,
+            0.3945025,
+            0.35939659999999995,
+            0.36918900000000004
+          ]
+        },
+        "attempt_correlation": {
+          "median": 3.5729355999999997,
+          "min": 3.4902654,
+          "max": 3.9479986,
+          "samples": [
+            3.5729355999999997,
+            3.5489022,
+            3.4902654,
+            3.6087402,
+            3.9479986,
+            3.5099816,
+            3.7312393000000004
+          ]
+        },
+        "workflow_tick_dormant_256": {
+          "median": 18.0022357,
+          "min": 17.1218334,
+          "max": 18.826278300000002,
+          "samples": [
+            17.555628000000002,
+            18.826278300000002,
+            18.207601399999998,
+            18.117001199999997,
+            18.0022357,
+            17.1218334,
+            17.5871654
+          ]
+        },
+        "workflow_tick_dormant_1024": {
+          "median": 17.559364300000002,
+          "min": 17.4478729,
+          "max": 19.1597944,
+          "samples": [
+            17.7505241,
+            19.1597944,
+            17.559364300000002,
+            17.997079399999997,
+            17.4478729,
+            17.5045782,
+            17.4780312
+          ]
+        },
+        "workflow_tick_units_2": {
+          "median": 18.829510600000003,
+          "min": 18.6869168,
+          "max": 20.3146681,
+          "samples": [
+            18.829510600000003,
+            20.3146681,
+            18.8058187,
+            18.6869168,
+            19.5910795,
+            19.9982517,
+            18.7971796
+          ]
+        },
+        "workflow_tick_units_16": {
+          "median": 32.6485493,
+          "min": 31.899691699999998,
+          "max": 35.0249381,
+          "samples": [
+            31.9588945,
+            35.0249381,
+            31.899691699999998,
+            32.2285655,
+            33.8508263,
+            34.0337037,
+            32.6485493
+          ]
+        }
+      },
+      "allocations": {
+        "candidate_1_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 11096,
+          "retained_extra_bytes_before_gc": 10192,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_1_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 848,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_4_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 25520,
+          "retained_extra_bytes_before_gc": 24592,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_4_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 848,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_16_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 83216,
+          "retained_extra_bytes_before_gc": 82192,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_16_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 848,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_4_compute": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 25648,
+          "retained_extra_bytes_before_gc": 24592,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_4_compute": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 848,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "current_loop_4_cheap_dispatch": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 1368,
+          "retained_extra_bytes_before_gc": 704,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "workflow_tick": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_lookup": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 144,
+          "retained_extra_bytes_before_gc": 56,
+          "retained_extra_bytes_after_gc": 0
+        },
+        "input_admission": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 15184,
+          "retained_extra_bytes_before_gc": 14776,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "attempt_correlation": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 16552,
+          "retained_extra_bytes_before_gc": 15016,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "workflow_tick_dormant_256": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_dormant_1024": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_units_2": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 33896,
+          "retained_extra_bytes_before_gc": 31448,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_units_16": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 57416,
+          "retained_extra_bytes_before_gc": 54016,
+          "retained_extra_bytes_after_gc": 160
+        }
+      },
+      "paired_candidate_minus_direct_us": {
+        "1_cheap": {
+          "median": 1.9632051000000006
+        },
+        "4_cheap": {
+          "median": 3.7693955999999993
+        },
+        "16_cheap": {
+          "median": 10.775473700000001
+        },
+        "4_compute": {
+          "median": 1.5688044999999988
+        }
+      }
+    },
+    {
+      "environment": {
+        "python": "3.13.13",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "processor": "",
+        "gc_enabled": true,
+        "clock": "perf_counter_ns",
+        "iterations": 10000,
+        "repeats": 7
+      },
+      "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+      "current_loop": {
+        "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+        "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+        "scope": "actual call expression with direct fixture facade; argument dispatch only"
+      },
+      "timing_us_per_call": {
+        "harness_floor": {
+          "median": 0.0439994,
+          "min": 0.0428265,
+          "max": 0.055128100000000006,
+          "samples": [
+            0.0435975,
+            0.0440364,
+            0.0468446,
+            0.0435245,
+            0.0439994,
+            0.055128100000000006,
+            0.0428265
+          ]
+        },
+        "candidate_1_cheap": {
+          "median": 4.8337815,
+          "min": 4.5548719,
+          "max": 4.9295345,
+          "samples": [
+            4.787985,
+            4.5775141,
+            4.5548719,
+            4.8809702999999995,
+            4.8337815,
+            4.9295345,
+            4.8819219
+          ]
+        },
+        "direct_1_cheap": {
+          "median": 2.6739108000000003,
+          "min": 2.5711269000000003,
+          "max": 2.7598404999999997,
+          "samples": [
+            2.6468364,
+            2.5711269000000003,
+            2.571821,
+            2.7598404999999997,
+            2.6739108000000003,
+            2.6754418,
+            2.7184611
+          ]
+        },
+        "candidate_4_cheap": {
+          "median": 6.6288597,
+          "min": 6.4610286,
+          "max": 7.1334116000000005,
+          "samples": [
+            6.620979500000001,
+            6.4610286,
+            6.6288597,
+            7.0940601,
+            6.4769445999999995,
+            7.1334116000000005,
+            6.8612491
+          ]
+        },
+        "direct_4_cheap": {
+          "median": 2.8432867,
+          "min": 2.7528791,
+          "max": 3.2291571,
+          "samples": [
+            2.8366111000000003,
+            2.7659385000000003,
+            2.8432867,
+            2.9740845,
+            2.7528791,
+            3.2291571,
+            2.9281511
+          ]
+        },
+        "candidate_16_cheap": {
+          "median": 14.4060599,
+          "min": 14.1217535,
+          "max": 15.2075475,
+          "samples": [
+            14.4675361,
+            14.1217535,
+            14.4060599,
+            15.2075475,
+            14.2854286,
+            14.2622809,
+            14.8913775
+          ]
+        },
+        "direct_16_cheap": {
+          "median": 3.5642015000000002,
+          "min": 3.4996915,
+          "max": 3.7276284,
+          "samples": [
+            3.585871,
+            3.5293081,
+            3.5735895,
+            3.5264534,
+            3.5642015000000002,
+            3.4996915,
+            3.7276284
+          ]
+        },
+        "candidate_4_compute": {
+          "median": 82.06097749999999,
+          "min": 80.52918919999999,
+          "max": 86.8128593,
+          "samples": [
+            81.20695020000001,
+            81.6006186,
+            80.52918919999999,
+            82.06097749999999,
+            83.02124950000001,
+            82.85246839999999,
+            86.8128593
+          ]
+        },
+        "direct_4_compute": {
+          "median": 81.53406729999999,
+          "min": 79.7098478,
+          "max": 83.01407730000001,
+          "samples": [
+            81.7430564,
+            79.7098478,
+            81.2263962,
+            80.48797400000001,
+            81.53406729999999,
+            83.01407730000001,
+            82.57716590000001
+          ]
+        },
+        "current_loop_4_cheap_dispatch": {
+          "median": 3.9680529,
+          "min": 3.9284288999999997,
+          "max": 4.139344299999999,
+          "samples": [
+            4.139344299999999,
+            3.9680529,
+            4.1014621,
+            3.9284288999999997,
+            4.0718419,
+            3.9362443,
+            3.9459717999999997
+          ]
+        },
+        "workflow_tick": {
+          "median": 18.452883999999997,
+          "min": 17.2528319,
+          "max": 19.231001499999998,
+          "samples": [
+            19.095218099999997,
+            18.452883999999997,
+            19.231001499999998,
+            19.1155279,
+            17.9716661,
+            17.2528319,
+            17.453234799999997
+          ]
+        },
+        "workflow_lookup": {
+          "median": 0.1638772,
+          "min": 0.1256091,
+          "max": 0.1850534,
+          "samples": [
+            0.1718654,
+            0.1730545,
+            0.1326143,
+            0.1850534,
+            0.1638772,
+            0.1529125,
+            0.1256091
+          ]
+        },
+        "input_admission": {
+          "median": 0.3765943,
+          "min": 0.3658264,
+          "max": 0.4065018,
+          "samples": [
+            0.39810070000000003,
+            0.37099119999999997,
+            0.3942904,
+            0.4065018,
+            0.3692876,
+            0.3658264,
+            0.3765943
+          ]
+        },
+        "attempt_correlation": {
+          "median": 3.609209,
+          "min": 3.5315918,
+          "max": 3.7707821,
+          "samples": [
+            3.7235596,
+            3.5611848,
+            3.712544,
+            3.7707821,
+            3.5315918,
+            3.553942,
+            3.609209
+          ]
+        },
+        "workflow_tick_dormant_256": {
+          "median": 18.7508924,
+          "min": 17.264996500000002,
+          "max": 19.6531503,
+          "samples": [
+            19.0807943,
+            17.7738703,
+            18.7508924,
+            18.9263696,
+            17.708667300000002,
+            17.264996500000002,
+            19.6531503
+          ]
+        },
+        "workflow_tick_dormant_1024": {
+          "median": 18.2195839,
+          "min": 17.7530948,
+          "max": 19.5400748,
+          "samples": [
+            18.8999836,
+            18.0891914,
+            18.4206394,
+            17.7530948,
+            19.5400748,
+            18.2195839,
+            18.0328005
+          ]
+        },
+        "workflow_tick_units_2": {
+          "median": 19.445124800000002,
+          "min": 18.9376211,
+          "max": 20.1858655,
+          "samples": [
+            20.1858655,
+            19.529309700000002,
+            19.9853686,
+            18.9376211,
+            18.986724900000002,
+            19.2884928,
+            19.445124800000002
+          ]
+        },
+        "workflow_tick_units_16": {
+          "median": 33.3189392,
+          "min": 31.6072384,
+          "max": 35.7174805,
+          "samples": [
+            32.8148678,
+            33.3189392,
+            34.4141847,
+            34.3256216,
+            32.3116299,
+            31.6072384,
+            35.7174805
+          ]
+        }
+      },
+      "allocations": {
+        "candidate_1_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 11096,
+          "retained_extra_bytes_before_gc": 10192,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_1_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_4_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 25520,
+          "retained_extra_bytes_before_gc": 24592,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_4_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_16_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 83216,
+          "retained_extra_bytes_before_gc": 82192,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_16_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_4_compute": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 25648,
+          "retained_extra_bytes_before_gc": 24592,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_4_compute": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "current_loop_4_cheap_dispatch": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 1372,
+          "retained_extra_bytes_before_gc": 704,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "workflow_tick": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_lookup": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 144,
+          "retained_extra_bytes_before_gc": 56,
+          "retained_extra_bytes_after_gc": 0
+        },
+        "input_admission": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 15184,
+          "retained_extra_bytes_before_gc": 14776,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "attempt_correlation": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 16552,
+          "retained_extra_bytes_before_gc": 15016,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "workflow_tick_dormant_256": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_dormant_1024": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_units_2": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 33896,
+          "retained_extra_bytes_before_gc": 31448,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_units_16": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 57416,
+          "retained_extra_bytes_before_gc": 54016,
+          "retained_extra_bytes_after_gc": 160
+        }
+      },
+      "paired_candidate_minus_direct_us": {
+        "1_cheap": {
+          "median": 2.1411485999999997
+        },
+        "4_cheap": {
+          "median": 3.7855729999999994
+        },
+        "16_cheap": {
+          "median": 10.8324704
+        },
+        "4_compute": {
+          "median": 1.4871822000000208
+        }
+      }
+    },
+    {
+      "environment": {
+        "python": "3.13.13",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "processor": "",
+        "gc_enabled": true,
+        "clock": "perf_counter_ns",
+        "iterations": 10000,
+        "repeats": 7
+      },
+      "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+      "current_loop": {
+        "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+        "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+        "scope": "actual call expression with direct fixture facade; argument dispatch only"
+      },
+      "timing_us_per_call": {
+        "harness_floor": {
+          "median": 0.0449793,
+          "min": 0.0429825,
+          "max": 0.055012099999999994,
+          "samples": [
+            0.044718600000000004,
+            0.055012099999999994,
+            0.046138599999999995,
+            0.0449793,
+            0.0442883,
+            0.0464396,
+            0.0429825
+          ]
+        },
+        "candidate_1_cheap": {
+          "median": 4.8929383,
+          "min": 4.7186356,
+          "max": 5.3166036000000005,
+          "samples": [
+            4.7186356,
+            4.8472237,
+            4.8929383,
+            5.0614544,
+            5.3166036000000005,
+            5.1658357,
+            4.8861417000000005
+          ]
+        },
+        "direct_1_cheap": {
+          "median": 2.8624917,
+          "min": 2.645619,
+          "max": 2.9248948,
+          "samples": [
+            2.645619,
+            2.7696704,
+            2.7606599000000003,
+            2.9248948,
+            2.9074458,
+            2.8624917,
+            2.8878304
+          ]
+        },
+        "candidate_4_cheap": {
+          "median": 6.9765355,
+          "min": 6.5655957,
+          "max": 7.5766673,
+          "samples": [
+            6.6955098,
+            6.5655957,
+            6.9845463,
+            6.9191559,
+            7.0594122,
+            6.9765355,
+            7.5766673
+          ]
+        },
+        "direct_4_cheap": {
+          "median": 2.8989034,
+          "min": 2.7652752,
+          "max": 3.3290892,
+          "samples": [
+            2.8727929,
+            2.7652752,
+            2.9178697000000002,
+            2.892958,
+            2.8989034,
+            2.9296605,
+            3.3290892
+          ]
+        },
+        "candidate_16_cheap": {
+          "median": 15.0858544,
+          "min": 14.4922269,
+          "max": 16.1827922,
+          "samples": [
+            14.4922269,
+            15.092556,
+            15.4074888,
+            14.625869,
+            16.1827922,
+            15.0858544,
+            14.8629838
+          ]
+        },
+        "direct_16_cheap": {
+          "median": 3.6947926000000004,
+          "min": 3.5080223999999998,
+          "max": 3.9300698,
+          "samples": [
+            3.5590178,
+            3.6947926000000004,
+            3.7237451999999998,
+            3.5143915000000003,
+            3.9300698,
+            3.712196,
+            3.5080223999999998
+          ]
+        },
+        "candidate_4_compute": {
+          "median": 83.2468108,
+          "min": 81.1898597,
+          "max": 84.7086934,
+          "samples": [
+            82.04390579999999,
+            83.2468108,
+            84.56959540000001,
+            81.1898597,
+            81.6167765,
+            84.7086934,
+            83.5026013
+          ]
+        },
+        "direct_4_compute": {
+          "median": 80.85625599999999,
+          "min": 80.29280650000001,
+          "max": 83.7844122,
+          "samples": [
+            80.29280650000001,
+            82.9881552,
+            80.6148003,
+            81.1748459,
+            80.3369851,
+            83.7844122,
+            80.85625599999999
+          ]
+        },
+        "current_loop_4_cheap_dispatch": {
+          "median": 4.1377541,
+          "min": 3.9253755,
+          "max": 4.2987506,
+          "samples": [
+            3.9799007,
+            3.9253755,
+            4.160203800000001,
+            4.1377541,
+            4.2987506,
+            4.1941911,
+            4.064209
+          ]
+        },
+        "workflow_tick": {
+          "median": 18.473097600000003,
+          "min": 17.876724300000003,
+          "max": 19.432107,
+          "samples": [
+            19.432107,
+            17.876724300000003,
+            18.898130000000002,
+            18.473097600000003,
+            18.360932000000002,
+            19.138334599999997,
+            18.2332614
+          ]
+        },
+        "workflow_lookup": {
+          "median": 0.14407910000000002,
+          "min": 0.1343596,
+          "max": 0.1743841,
+          "samples": [
+            0.141304,
+            0.1379187,
+            0.16070109999999999,
+            0.14407910000000002,
+            0.1743841,
+            0.1472337,
+            0.1343596
+          ]
+        },
+        "input_admission": {
+          "median": 0.3738165,
+          "min": 0.3695788,
+          "max": 0.417387,
+          "samples": [
+            0.3809036,
+            0.37279,
+            0.3695788,
+            0.417387,
+            0.40122199999999997,
+            0.3738165,
+            0.3711681
+          ]
+        },
+        "attempt_correlation": {
+          "median": 3.6738664,
+          "min": 3.5633841000000004,
+          "max": 3.7524452,
+          "samples": [
+            3.6726684,
+            3.6738664,
+            3.5633841000000004,
+            3.7524452,
+            3.7432706,
+            3.6742489000000003,
+            3.6331186
+          ]
+        },
+        "workflow_tick_dormant_256": {
+          "median": 18.1971672,
+          "min": 17.9347365,
+          "max": 19.7452791,
+          "samples": [
+            18.112254099999998,
+            17.9347365,
+            19.7452791,
+            18.1697238,
+            18.4608042,
+            19.123054800000002,
+            18.1971672
+          ]
+        },
+        "workflow_tick_dormant_1024": {
+          "median": 17.956386,
+          "min": 17.683500199999997,
+          "max": 20.127282,
+          "samples": [
+            17.956386,
+            17.816726900000003,
+            20.127282,
+            18.7028149,
+            17.698114399999998,
+            19.157696499999997,
+            17.683500199999997
+          ]
+        },
+        "workflow_tick_units_2": {
+          "median": 19.289711,
+          "min": 18.970162000000002,
+          "max": 20.2310391,
+          "samples": [
+            18.970162000000002,
+            19.289711,
+            20.2310391,
+            20.0467778,
+            19.0761334,
+            19.3703188,
+            19.1792402
+          ]
+        },
+        "workflow_tick_units_16": {
+          "median": 32.675042499999996,
+          "min": 31.820971699999998,
+          "max": 35.1501526,
+          "samples": [
+            32.1737874,
+            34.0224938,
+            33.4089582,
+            35.1501526,
+            32.675042499999996,
+            32.6380338,
+            31.820971699999998
+          ]
+        }
+      },
+      "allocations": {
+        "candidate_1_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 11096,
+          "retained_extra_bytes_before_gc": 10192,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_1_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_4_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 25520,
+          "retained_extra_bytes_before_gc": 24592,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_4_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_16_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 83216,
+          "retained_extra_bytes_before_gc": 82192,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_16_cheap": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "candidate_4_compute": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 25648,
+          "retained_extra_bytes_before_gc": 24592,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "direct_4_compute": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 852,
+          "retained_extra_bytes_before_gc": 344,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "current_loop_4_cheap_dispatch": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 1372,
+          "retained_extra_bytes_before_gc": 704,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "workflow_tick": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_lookup": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 144,
+          "retained_extra_bytes_before_gc": 56,
+          "retained_extra_bytes_after_gc": 0
+        },
+        "input_admission": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 15184,
+          "retained_extra_bytes_before_gc": 14776,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "attempt_correlation": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 16552,
+          "retained_extra_bytes_before_gc": 15016,
+          "retained_extra_bytes_after_gc": 64
+        },
+        "workflow_tick_dormant_256": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_dormant_1024": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 32240,
+          "retained_extra_bytes_before_gc": 29848,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_units_2": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 33896,
+          "retained_extra_bytes_before_gc": 31448,
+          "retained_extra_bytes_after_gc": 160
+        },
+        "workflow_tick_units_16": {
+          "batch_calls": 100,
+          "peak_extra_bytes": 57416,
+          "retained_extra_bytes_before_gc": 54016,
+          "retained_extra_bytes_after_gc": 160
+        }
+      },
+      "paired_candidate_minus_direct_us": {
+        "1_cheap": {
+          "median": 2.1322783999999997
+        },
+        "4_cheap": {
+          "median": 4.046875
+        },
+        "16_cheap": {
+          "median": 11.3736584
+        },
+        "4_compute": {
+          "median": 1.2797913999999935
+        }
+      }
+    }
+  ]
+}

@@ -1251,6 +1251,225 @@ These cases follow the settled D6–D9 and delta-spec rules. They do not
 prescribe a production dependency index, migration API, or fixed
 transition-to-preparation call order; G5 chooses those representations.
 
+#### G3.6 Execution and optimization across run activities
+
+The "step exchange" is the set of **owner-to-owner handoffs** needed to run
+the accepted structure, not one mandatory step call or result packet. The
+contract offers the supported ownership profiles; the authored strategy
+selects behavior and policy; fulfillment fixes their accepted meanings and
+obligations; preparation establishes current executable routes and unit
+runtimes. During the run, coordination supplies changing inputs and checks
+readiness, selected behavior executes within its grant, and each owner reports
+the facts needed by its consumers. An independently progressing activity need
+not wait for, or produce, a training action.
+
+| Boundary | What must cross it | Owner and consequence |
+| --- | --- | --- |
+| Due work and readiness | The accepted activity/action and current coordinates, bounded policy decision and its owned state, required dependencies, and the current readiness result. | Run coordination invokes the accepted due policy and gates dependent work; the policy owner advances its state under its accepted rule. Different activities may have different clocks; a due choice is not proof that work ran. |
+| Independent producer to consumer | Requested work identity, produced identity and actual source dependencies, selected payload and required logical-example/packing boundaries, readiness, admission, handoff, and producer failure. | Selected input behavior owns its queue/workers and continuation; training input coordination owns lifecycle and admission against the current consumer obligation. A ready value may be rejected or await a declared policy. Handoff is not action consumption. |
+| Coordination to accepted operation or region | Admitted input values, changing coordinates, current prepared participant uses/routes/views, accepted owned-state projection, and only the authority granted to this work. | The selected implementation executes; Trainer does not reconstruct its model/objective algorithm or call the authored strategy for choices. Freshness and backend guarantees are checked where the relevant state may have changed, without rediscovering static wiring on every invocation. |
+| Selected work to its consumers | Addressed computation outputs; optimization offers when its profile uses Trainer-owned optimization; observations and accounting values; operation-owned state changes; declared external effects; and proposed authority-governed transitions. These are distinct meanings even if one implementation produces several. | The operation/region owns its selected computation and permitted state/effects. An optimization offer identifies its accepted source, destination unit(s), and gradient requirements but neither steps an optimizer nor certifies advancement. An observation is routed to its declared consumer; a transition proposal cannot publish canonical state itself. |
+| Optimization and region handback | For each unit or transferred phase: contribution/window status, gradient and synchronization readiness, actual attempted mechanics, backend-supported skip/return/uncertain outcome, scheduler/zeroing status, and any required clean-handback evidence. | Trainer owns standard mechanics and per-unit progress; an imperative region owns only its explicitly transferred phases. Trainer checks a region's handback before retained work. A returned optimizer call does not prove numerical parameter change. |
+| Accepted transition and subsequent work | Transition request, authority decision and new revisions, affected dependency invalidation, identity/definition continuity, mutable-state continuation, and preparation readiness for each dependent activity. | The run authority alone publishes participant/relationship changes; the relevant owner updates its own state. G3.5 determines reuse or replanning. A proposal or accepted transition is not itself a ready prepared runtime. |
+
+Only relationships needed by another owner, preparation, coordination,
+observation, or restoration need to be visible at this level. A selected
+operation may keep internal tensors and branching in Python. Likewise, a
+producer may keep its worker schedule private. The accepted structure must
+nevertheless show an externally relevant handoff, dependency, effect, or
+failure instead of hiding a second training loop inside an opaque call.
+The concrete representation may use scoped results, state projections, or
+reporting events; it need not use one universal result class or event log.
+
+**Correlation without a transaction.** The run must relate the accepted work
+address, each invocation/attempt, admitted input work and its actual
+dependencies, operation/region effects, addressed optimization unit
+incarnations and definition revisions, unit-local outcomes, and any progress
+record. These relationships may be distributed across owner-held records;
+training run coordination is responsible for preserving their join even after
+partial failure, using facts supplied by each owner rather than taking over
+their state. G3.8 must make that obligation testable; G5 chooses its storage
+and reporting form. An activity may produce work before an action exists,
+an accepted action may consume several inputs,
+and one action may offer to several units. No input, action, optimizer, or
+global-step counter is the universal identity or completion boundary.
+Completion is judged for the accepted activity and relationship in question:
+produced, ready, admitted, handed off, consumed, contributed, advanced,
+reported, and durably captured are different facts. G4 determines the
+coordinated recoverable snapshot, not this exchange alone.
+
+**Changing behavior is preserved.** Coordinates, batch contents, randomness,
+current routes, observations, and accepted owner state can affect an
+operation's outputs and next decision. A schedule or adaptive sampler may
+change its state and select a bounded alternative without rebuilding the
+accepted arrangement. Its owner records the state/effect even when no
+optimization offer follows. A choice outside accepted bounds is rejected;
+changing participant bindings, unit definitions, or the authority profile
+instead follows G3.5 and the applicable transition/fulfillment path. Ordinary
+optimizer advancement or an adaptive-state update does not automatically
+invalidate prepared execution, though a derived input product can become
+stale under its own dependency policy.
+
+**Failure is local to the reached boundary, not a failed atomic step.** A
+pre-invocation readiness or admission rejection cannot claim selected work
+ran. Once selected Python or a backend call begins, failure may leave its
+owned state, RNG, gradients, input position, external effects, or even live
+parameters changed. A post-return result-shape failure is therefore a
+post-invocation failure with possible effects. The responsible owner reports
+what it can establish and marks the rest uncertain; coordination stops
+dependent work until the accepted recovery rule re-establishes validity.
+For jointly due units, returned, skipped, uncertain, and not-attempted calls
+remain separate. A failed region handback cannot authorize Trainer's retained
+advancement. Neither a zero progress increment nor a missing success result
+proves the state unchanged. No ordinary exchange promises automatic rollback,
+exact replay, or all-or-nothing optimizer advancement.
+
+Concrete arrangements check that these meanings are not a disguised fixed
+input-action-optimizer pipeline. Their names and payload details are examples,
+not universal fields or built-in activity kinds:
+
+- An SDXL-like operation consumes the current batch and coordinates, produces
+  a differentiable optimization source and a separate accounting value, and
+  emits timestep/loss observations to its selected adaptive owner. Later
+  timestep selection changes with that owner's state; timesteps are not core
+  fields.
+- A joint Muon/AdamW-style partition can offer one shared computation to two
+  disjoint units, each with its own contribution and advancement outcome.
+  Alternating generator/discriminator work instead selects distinct actions
+  and units at different due times. The same exchange permits both without
+  making either optimizer ordering a universal sequence.
+- An asynchronous text encoder can publish requested caption work out of
+  order while no training action runs. Admission relates the result to its
+  work/sample/caption and **actual** encoder dependency, not queue order or
+  only the revision requested when work began. If the encoder changes while
+  work is in flight, a produced value from the new state is not mislabeled as
+  old; a genuinely old-state value follows the accepted freshness/lag policy.
+  Producer failure and bounded backpressure belong to its run-level
+  lifecycle, not a blocking read hidden in a model operation. Detached
+  embeddings do not silently replace a required live gradient path through
+  a trainable encoder. The producer's pending/ready/handoff state and the
+  action's later unit outcomes remain separately owned but correlatable.
+- A bounded two-pass imperative region can own its accepted intermediate
+  backward, temporary edit, and gradient clear, then hand back an unperturbed
+  view and final gradient for Trainer's retained clipping/advancement. A
+  failed or uncertain handback stops that advancement; the region does not
+  acquire the whole Trainer or an implicit final optimizer step.
+- A progressive-distillation stage change can request a teacher binding,
+  unit-definition, and owner-state transition. Dependent activities pause,
+  the authority accepts or rejects the change, and affected routes/units are
+  re-prepared before later work. Other independent capability or input work
+  may have its own due and failure boundary; G4 specifies those exchanges.
+
+The [G3.3 candidate](research/training-mechanism-sketch.md#g33-check-one-candidate-language-spans-run-level-input-and-repeated-actions)
+demonstrates pre-resolved action wiring, independent
+input publication, and a local attempt join, while G3.1/G3.2 and G3.4/G3.5
+establish ownership, prepared-unit, and freshness evidence. It does **not**
+demonstrate a general whole-run coordinator, autonomous producer scheduling,
+multiple feeds, operation-owned state and transitions, capability work,
+distributed backend outcomes, or exact restoration. Its `ActionResult`,
+`AttemptReport`, one-feed action, and `completed_actions` counter therefore
+remain experimental. In particular, the multiple-input relation above is an
+exchange requirement, not a behavior proven by that candidate; G3.7 must
+include it among the conformance cases. G3.7 also tests cost, G3.8 files the
+resulting normative requirements, G4 completes capability and restoration
+protocols, and G5 chooses concrete Python types and lowering.
+
+#### G3.7 Conformance and execution-cost acceptance
+
+These gates follow G3.1–G3.6 and D10's hierarchical run structure. They
+evaluate observable meanings independently of experimental class names,
+storage, and lowering. G5 must map each gate to the proposed production
+representation and its implementation milestones. Defining a gate here does
+not claim its full behavior has already been implemented or demonstrated.
+
+Each conformance case needs a positive arrangement, a relevant rejected or
+failed arrangement, and an oracle identifying the required values, identities,
+owner state, gradients/outcomes, and ordering relationships. Deterministic
+local fixtures may use an explicit expected trace or equivalent direct Python.
+Alternative lowerings may reorder internal work only where accepted
+dependencies, numerical/gradient requirements, effects and failure semantics
+permit it; tests must not require identical internal callback or backend-call
+sequences. Backend-specific numerical tolerances and nondeterminism follow
+the accepted numerical policy rather than a universal bitwise-equality rule.
+
+| Case and governing meaning | Required observable test | Existing evidence and remaining implementation check |
+| --- | --- | --- |
+| Ordinary computation and differing modalities; D10/G3.6 | A prepared diffusion-like arrangement and a materially different arrangement retain their selected computation, accounting, observations and representation boundaries. Releasing the authored strategy does not affect execution. Reject malformed outputs after invocation without claiming unchanged state. | `test_execution.py` tests ordinary/alternating work and output failure; G2 supplies SD/SD3 and non-image cases. This is not a production multi-family engine or an author-object-lifetime proof. |
+| Multiple input correlation; D10/G3.6 | One accepted consumer uses work from two sources with distinct identities/dependencies and out-of-order readiness. Preserve both associations through operation effects and unit outcomes. Reject swapped, stale or missing members before joined computation; retain partial handoffs under the selected wait/reissue policy rather than silently duplicating or discarding them. | G3.3 has one feed per action. An action accepting several values is not proof of independently produced inputs or their continuation. This join remains a required implementation case. |
+| Independent production; D10/G3.6 | Production progresses when no training action is due; ready work can remain inadmissible. Changing caption/actual encoder dependencies cannot pair results with the wrong request. Check lifecycle failure, bounded backpressure and shutdown independently of action completion. | Producer and run-language tests supply deterministic local evidence. True concurrent publication, cancellation races and distributed producer behavior need tests when an implementation claims them. |
+| Joint and independently due units; G3.1 | Exercise shared-source and distinct-source gradients, alternating actions and nonconsecutive accumulation windows. Verify each unit's authorized gradients, clipping/synchronization scope, schedule trigger and zeroing rule; reject unsupported routing before mutation. | Execution/advancement tests demonstrate local shared and isolated gradients and accumulation. Backend scaling, skips and distributed synchronization need the applicable backend conformance test. |
+| Membership and realization; G3.4 | Preserve semantic unit identities across both physical construction orders. Consolidate tied aliases in one unit/group; reject cross-owner overlap, stale physical optimizer membership and incomplete publication. | Preparation tests cover a limited local one-group realization. Real backend correspondence, multiple groups and complete cross-owner installation remain implementation checks. |
+| Changing owner state and bounded choices; D10/G3.6 | Live coordinates/observations change selected decisions and owner state without author callbacks or recompilation. Include a state-only effect without an optimization offer. Reject choices outside accepted bounds; after a possible state update and failure, gate dependent work according to the accepted recovery rule. | Input-policy tests cover selected changing state; the G3.7 test confirms a changing selected operation still runs with compilation disabled. Owner continuity, observation delivery and restoration are broader requirements, not proven by a Python closure. |
+| One participant, different uses; G2.6/D10 | Preserve one participant identity with distinct accepted view/gradient requirements; a frozen base may transmit gradients to a selected side network. Unsafe shared-view overlap is rejected or serialized, and uncertain restoration stops dependent use. | G2 worked cases establish required meanings; action wiring alone does not implement view exclusion or backend restoration. |
+| Explicit alternative authority; G3.2 | Standard and granted work coexist. Each phase has one owner; unsupported/duplicate ownership fails before use. A two-pass region supplies the required restored view and final gradient before retained advancement. Failed or uncertain handback cannot authorize advancement or an exact snapshot. | Imperative tests check the local chosen split. Backend evidence/exclusion and other offered profiles require their own conformance checks; arbitrary Python hidden mutation is not statically sandboxed. |
+| Changed or stale preparation; G3.5 | Distinguish ordinary owner-state evolution, same-definition re-realization, revised definitions and new unit identities. Invalidate dependent routes/groups/units; reject an old in-flight result at publication. Unrelated precise projections may survive; pending gradient/state continuation follows its accepted rule. | G3.5 traces and preparation stale-source tests establish part of the evidence. A working transition-to-preparation path and group fan-out still need implementation tests. |
+| Partial execution/advancement failure; G3.1/G3.6 | Relate admitted work and operation effects to returned, skipped, uncertain and unattempted unit/phase outcomes. Stop unsafe dependent work and preserve the primary failure if shutdown also fails. Neither missing completion nor a returned step proves numerical change, rollback or replay safety. | Execution/run-language/imperative tests demonstrate several local boundaries. Scheduler/zeroing failures and backend-specific knowledge must be exercised by their actual owners. |
+| Work beyond training actions; D10/G3.6 | A triggered capability and a permitted stage transition have their own readiness, request, completion and failure relationships. Producer or state-only progress is not forced through an optimizer call or one global clock. | Governing whole-run requirements and G3.5/G3.6 traces require this. Capability protocols and a coordinated recoverable cut are completed in G4; G5 must demonstrate their composition. |
+
+Conformance observations are test oracles, not a requirement for one runtime
+event log. Run coordination owns correlation across owner-supplied facts;
+selected providers, operations, optimization and authority keep their state.
+For each applicable backend/profile, G5's migration gate must identify which
+tests run locally, which require that backend, and which are explicitly
+unsupported and rejected before execution. A local test cannot certify an
+unexercised distributed guarantee. Exact restoration additionally requires
+G4's coordinated snapshot protocol and contributors; these execution tests
+cannot substitute for that gate.
+
+Performance acceptance uses the same conformance arrangements. Every timing
+comparison first demonstrates equivalent selected computation, required
+runtime guards and owner-visible results. Compilation, fulfillment, expensive
+preparation, model/backend compute and I/O are measured separately from steady
+execution; a cheap workload must expose dispatch and bookkeeping directly.
+Dynamic scheduling, adaptive updates and necessary freshness checks remain
+in the timed scope when that case requires them.
+
+| Cost case | Matched baseline and acceptance observation |
+| --- | --- |
+| Cheap action with 1, 4 and 16 selected operations | Compare prepared execution with direct Python using the same inputs, exception boundary, addressed outputs and observations. Record absolute excess microseconds and relative cost; heavy computation cannot be the sole performance case. |
+| Whole-run dispatch and dormant work | Compare one due activity in arrangements with 0, 256 and 1,024 dormant actions. Startup may scale with accepted structure; ordinary dispatch must scale with due work and its relevant dependencies, not scan the entire arrangement. |
+| Admission/freshness and lookup | Vary the relevant dependency count and separately time lookup and admission. Match actual required checks in the direct reference; do not obtain a lower number by removing current-use guards. Transition revalidation is distinguished from routine unchanged-state execution. |
+| One, two and sixteen optimization units | Keep computation fixed while varying addressed contributions/results. Separate coordination, gradient handling and outcome bookkeeping from optimizer/backend compute. Cost may grow with the units actually involved. |
+| Dynamic owner state and policies | Compare the same changing schedule/observation-driven decision and state effects in direct and prepared execution. Assert runtime decisions still change; static construction and strategy discovery must have zero calls in repeated execution. |
+| Granted imperative region | Compare equivalent direct region execution with the same phase ownership, scope checks, exclusion and clean-handback requirements. Separate region math/backward from entry, handback and retained-action overhead. A synthetic grant alone is insufficient. |
+| Governed change | Measure stale rejection, dependency invalidation and accepted transition separately from preparation/rebuild. Include precise unrelated reuse and conservative invalidation; ordinary weight/state evolution must not force structural rebuilding by convention. |
+| Representative active training | Compare the comparable portion of the current loop and an equivalent direct reference under the same selected algorithm/backend. Report total latency/throughput alongside isolated framework cost. Additional capabilities and different algorithms require their own matched scope, not an invented old-loop equivalence. |
+
+Repeated measurements must state Python/backend versions, environment, fixture
+and source revisions, warmup, iteration count, timing scope and retention
+policy. Use at least three independent process runs with multiple samples and
+alternate comparison order. Report spreads and paired excess as well as
+medians; overlapping distributions cannot establish a small regression.
+Do not put noisy wall-clock thresholds in ordinary unit tests. Allocation
+diagnostics run separately from timing and distinguish peak traced bytes,
+post-collection retained state and cumulative allocation rate; one does not
+measure the others. At fixed queue/history/gradient-window bounds, retained
+framework state must not grow with elapsed attempts. Any accepted durable
+history retention is a separately measured policy, not an accidental list.
+
+The initial [G3.7 measurements](research/training-mechanism-sketch.md#g37-conformance-and-cost-check)
+establish a same-environment reference envelope for the common measured
+scope. Before production cutover, the proposed implementation must run the
+matched cheap-action checks against the retained experiment in the same
+environment. Its median excess over direct Python must not exceed that
+reference excess by more than the greater of **1 microsecond per action or
+20% of reference excess**, across three process runs. This is a regression
+allowance for this shared scope, not a universal hardware latency limit.
+New required coordination/guards must be present in both compared paths and
+have a separately justified budget before their implementation milestone;
+they cannot be omitted to fit the old scope. The dormant-work check must show
+no growing cost trend with arrangement size; an increase exceeding the greater
+of **10% of the zero-dormant median or three times its within-run median
+absolute deviation** requires investigation and correction or evidence of a
+changed relevant-work scope before acceptance. These are measurable gates,
+not a choice of graph storage or lowering.
+
+G3.7 completes the test matrix and initial cost evidence. Production
+conformance, extension/backend measurements, capability composition and
+restoration are not closed by these CPU fixtures. G3.8 files the completed
+exchange requirements; G4 completes their capability/recovery protocols;
+G5 assigns concrete tests, environments and budgets to implementation work.
+
 ### D10. Accepted execution is structured and authority-bounded
 
 The normal accepted arrangement must preserve:
