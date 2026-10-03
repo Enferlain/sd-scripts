@@ -17,6 +17,29 @@ profiles available before a strategy is authored for that contract.
 - **THEN** the author MUST be able to select and wire behavior described by the active contract
 - **AND** the author MUST NOT have to infer the Trainer boundary from current family-specific calls
 
+### Requirement: Offered ownership profiles define policies and scoped grants
+Before authoring, the active contract SHALL expose supported standard
+advancement policies and alternative execution grants, including phase owners,
+state-access and effect bounds, contribution and synchronization obligations,
+handback, failure, and continuation meanings. The authored strategy SHALL select
+from those offered meanings; neither a wrapper's internal behavior nor a
+runtime callback SHALL create permission. Region-local grants SHALL leave
+unrelated work's accepted owners intact.
+
+#### Scenario: Standard policy coordinates independently or jointly due units
+- **WHEN** a strategy selects a supported standard policy for differently due units or shared computation offered to several disjoint units
+- **THEN** fulfillment MUST retain its addressed sources, gradient routes, windows, ordering, and outcome obligations
+- **AND** it MUST NOT require an imperative transfer merely because the cadence differs from one optimizer step per action
+
+#### Scenario: A selected wrapper performs a retained phase internally
+- **WHEN** a wrapper advances an optimizer inside a region whose offered grant transfers backward and temporary editing but not final advancement
+- **THEN** fulfillment MUST reject that ownership mismatch unless the strategy selects a different supported profile with the required duties
+- **AND** library availability MUST NOT silently expand the grant
+
+#### Scenario: Ordinary profile is asked to guarantee atomic joint advancement
+- **WHEN** authored behavior requires all-or-nothing multi-unit advancement that the selected profile does not provide
+- **THEN** fulfillment MUST reject the unsupported guarantee rather than infer rollback or replay from one action boundary
+
 ### Requirement: Authors assemble strategies explicitly
 Strategy authors SHALL explicitly select and wire training intent,
 participants, relationships, objective behavior, features, capabilities, and
@@ -27,6 +50,13 @@ the inputs, owned state, effect vocabulary and bounds, authority, and decision
 bounds needed to judge that behavior. Strategy fulfillment SHALL NOT silently
 select a missing implementation, add a dependency, or infer the intended
 arrangement.
+
+Where another owner, preparation, coordination, observation, or restoration
+depends on them, those declarations SHALL also preserve work and handoff
+relationships, gradient demands and routing, required numerical-state
+lifetimes, phase ownership, and completion/recovery meanings. Private
+implementation details SHALL NOT require universal graph nodes or public
+tensor operators merely because they exist.
 
 #### Scenario: Required behavior is missing
 - **WHEN** an authored definition omits a provider required by the features, capabilities, or bounded choices it selected
@@ -51,6 +81,11 @@ arrangement.
 - **WHEN** a strategy selects input sources, transformations, mixture or packing behavior, or bounded stage changes
 - **THEN** fulfillment MUST preserve the selected provider, consumer representation, state owner, dependency and admission meanings
 - **AND** it MUST NOT infer a universal image batch, epoch schedule, or hidden input fallback
+
+#### Scenario: Author requests differentiated work across owners
+- **WHEN** selected computation exposes outputs or derivatives to another accepted owner
+- **THEN** fulfillment MUST retain the derivative demands, applicable seeds and routing, gradient cuts, destinations, lifetime requirements, and responsible owners
+- **AND** concrete backend evidence that is not yet available MUST remain an explicit readiness obligation rather than an author assertion of support
 
 ### Requirement: Strategy fulfillment produces acceptance or rejection
 The training contract system SHALL evaluate one complete authored strategy
@@ -156,6 +191,16 @@ representation and code ownership of checking logic remain to be derived.
 - **WHEN** an authored strategy selects a known maintained implementation
 - **THEN** strategy fulfillment MUST use the applicable shared conformance knowledge
 - **AND** it MUST NOT accept a bare author assertion or role/type inference as proof
+
+#### Scenario: Several strategies use the same supported coordination meaning
+- **WHEN** ordinary authored arrangements use an offered gradient, handoff, advancement, or ownership policy
+- **THEN** conformance MUST apply shared rules for that meaning
+- **AND** authors MUST NOT recreate its ordinary validators or accept a weaker meaning through strategy-local checking
+
+#### Scenario: Internal lowering changes while accepted meaning stays fixed
+- **WHEN** preparation fuses, partitions, or otherwise realizes selected work differently
+- **THEN** shared conformance MUST judge required owner-visible interactions, numerical and gradient policy, effects, outcomes, and recovery relationships
+- **AND** equal final values or nominal type compatibility alone MUST NOT certify equivalence
 
 ### Requirement: Custom behavior uses an explicit conformance or extension path
 A custom implementation that preserves the active Trainer boundary SHALL file

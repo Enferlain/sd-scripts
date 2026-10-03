@@ -68,7 +68,8 @@ The accepted structure SHALL retain work with different lifetimes and
 coordinates, including repeated training actions, selected input production,
 requested capability work, and permitted run transitions. It SHALL expose the
 cross-owner dependencies, handoffs, readiness, effects, and failure boundaries
-needed for coordination or restoration. Pre-resolved action-local computation
+needed for coordination or restoration in a hierarchical whole-run structure.
+Pre-resolved action-local computation
 MAY be part of that structure but SHALL NOT substitute for its run-level
 meaning. Selected implementations MAY keep their internal mathematics,
 workers, and backend scheduling private.
@@ -82,6 +83,57 @@ workers, and backend scheduling private.
 - **WHEN** accepted progress makes a requested capability due
 - **THEN** run-level coordination MUST check its current readiness, route its request, and retain its result or failure separately from the training action
 - **AND** the selected capability implementation MAY keep its internal work outside the common execution structure
+
+#### Scenario: Owned state advances without an optimization offer
+- **WHEN** an accepted activity updates its state or emits an observation without producing optimization input
+- **THEN** its effects, completion, and dependent decisions MUST retain their accepted meaning
+- **AND** coordination MUST NOT force that work through an optimizer action or one universal run clock
+
+### Requirement: Equivalent execution preserves required interactions
+Prepared execution SHALL preserve the accepted input associations and admission,
+computation and gradients under the applicable numerical policy, dynamic
+decisions and required observation order, owned-state and external effects,
+authority, current-use dependencies, completion and failure facts, and
+restoration relationships. Fusion, partitioning, chunking, or another backend
+schedule MAY change private work only while those obligations remain satisfied.
+Required interactions SHALL NOT have to remain individual runtime dispatches.
+Generating Trainer-owned mechanics into an executable SHALL NOT transfer their
+authority to selected computation.
+
+#### Scenario: Combined execution preserves a feedback boundary
+- **WHEN** preparation combines work whose later decision depends on an earlier observation
+- **THEN** the combined execution MUST deliver that observation before the dependent decision and preserve all other required owner interactions
+- **AND** equal final values MUST NOT substitute for those interactions
+
+#### Scenario: Combined work loses a known partial outcome
+- **WHEN** a proposed lowering cannot preserve a known unit outcome or an accepted capability, transition, admission, or snapshot interaction
+- **THEN** that lowering MUST fail readiness for the accepted profile rather than substitute weaker completion or recovery semantics
+
+### Requirement: Differentiated work preserves routing and numerical lifetime
+Where another accepted owner relies on it, the description SHALL preserve
+outputs and derivative demands, seed information where applicable, subject or
+input-path routing, intentional gradient cuts, contribution destinations and
+windows, numerical policy, and phase ownership. Governed preparation SHALL
+establish the required retained state or supported recomputation, completion,
+and safe-release conditions. This SHALL NOT require a project-owned autodiff
+engine, public tensor-operation graph, or continuation object for every call.
+
+#### Scenario: A frozen participant transmits a required gradient
+- **WHEN** a frozen participant lies on a derivative path to an accepted training subject
+- **THEN** prepared execution MUST preserve that path while leaving the frozen participant outside optimization membership
+- **AND** unsupported routing MUST fail readiness rather than silently detach the path
+
+#### Scenario: One derivative is ready while another needs earlier state
+- **WHEN** a first contribution is ready but another required derivative, recomputation, or device use still relies on earlier numerical state
+- **THEN** conflicting mutation MUST wait until that required use completes or is satisfied by a supported isolated representation
+- **AND** earlier advancement MUST still satisfy all accepted window, synchronization, clipping, and ordering obligations
+- **AND** a revision label alone MUST NOT be treated as retention of numerical contents
+
+#### Scenario: Derivative work crosses an independently coordinated boundary
+- **WHEN** another owner requests or completes derivatives outside a closed execution region
+- **THEN** the handoff MUST preserve originating invocation, required state, remaining requests, and completion, cancellation, and release rules
+- **AND** cancellation or failure MUST NOT release still-used resources or certify uncertain gradients as usable
+- **AND** replay or recomputation MUST follow the accepted state, RNG, and effect rule
 
 ### Requirement: Participant identity and individual uses remain distinct
 The accepted structure SHALL distinguish one participant's identity from each
@@ -181,6 +233,9 @@ The execution contract SHALL distinguish computation outputs, values consumed
 by optimization, accounting values, observations, and declared state effects
 without requiring one loss producer, one differentiable tensor, one
 advancement sequence, or diffusion timestep fields.
+An optimization offer under Trainer-owned mechanics SHALL identify its accepted
+source, destination units, and gradient requirements without itself advancing
+an optimizer or certifying contribution completion.
 
 #### Scenario: Diffusion objective reports timesteps
 - **WHEN** a selected diffusion objective produces timestep observations
@@ -206,6 +261,12 @@ handoff SHALL preserve the work and logical-example identity, provenance,
 dependency revisions, consumer representation, and boundaries required by
 the selected computation, accounting, or restoration policy. The core exchange
 SHALL NOT require universal image, token, epoch, or fixed-batch fields.
+Production provenance SHALL identify the source states actually used, with
+the associations required by the selected admission policy. It MAY describe
+one protected state or snapshot, or structured provenance over multiple
+states and portions of the produced work; the exchange SHALL NOT require one
+state/version per product. Such provenance SHALL NOT by itself authorize
+mixed-state production or establish its admissibility.
 
 #### Scenario: Encoded inputs finish out of order
 - **WHEN** an independent producer returns a ready value for an earlier or later work request
@@ -227,18 +288,63 @@ SHALL NOT require universal image, token, epoch, or fixed-batch fields.
 - **THEN** its owner MUST contribute its continuation state, dependency revisions, and the status of produced, ready, handed-off, and unfinished work required by its accepted replay or skip policy
 - **AND** an incomplete contribution MUST NOT be reported as an exact recoverable input position
 
+#### Scenario: One consumer joins independently produced inputs
+- **WHEN** accepted computation needs several inputs whose producers finish out of order
+- **THEN** admission MUST preserve each requested and produced work identity, actual dependencies, and association with that consumer
+- **AND** a missing, swapped, or inadmissible member MUST prevent joined computation or follow an explicitly accepted wait, reissue, or fallback policy
+- **AND** partial handoffs MUST NOT be silently duplicated or discarded
+
+#### Scenario: Producer dependency changes while work is in flight
+- **WHEN** a selected producer finishes work after its source state changes
+- **THEN** the result MUST preserve actual production-state provenance rather than merely repeat the dependency requested when work began
+- **AND** admission MUST apply the accepted freshness or lag policy before consumer use
+- **AND** a detached produced value MUST NOT silently substitute for a required live derivative path
+
+#### Scenario: Produced work spans several source states
+- **WHEN** accepted production uses different source states for portions of one product
+- **THEN** the handoff MUST preserve structured provenance associating those portions with the states actually used to the extent required by the admission policy
+- **AND** admission MUST evaluate that provenance rather than assume one launch or completion version describes the whole product
+- **AND** mixed-state work MUST NOT become admissible merely because its provenance is available
+
 ### Requirement: Cross-owner action facts remain correlatable
-The run SHALL retain enough accepted work and attempt identity to relate an
-input handoff, selected action, operation effects, per-unit optimization
-outcomes, progress recording, and snapshot durability without assigning all
-of those facts to the input provider or claiming that one action is an atomic
-optimizer transaction. G3 defines the result/reporting meaning; G5 chooses
-its concrete Python form.
+Run coordination SHALL preserve the relationships among accepted work
+addresses and invocation/attempts, admitted inputs and actual dependencies,
+operation/region effects, addressed unit incarnations and definition revisions,
+unit-local outcomes, progress records, and snapshot durability, including after
+partial failure. Each owner SHALL supply the facts it owns without transferring
+its state ownership. These relationships MAY span owner-held records and SHALL
+NOT require one universal result object, event log, step counter, or fixed
+input-action-optimizer sequence.
 
 #### Scenario: One input leads to two different unit outcomes
 - **WHEN** one admitted input feeds an action whose first optimization unit returns and second unit has an uncertain outcome
 - **THEN** the run MUST keep the input and action attempt associated with both separate unit outcomes
 - **AND** it MUST NOT mark the entire action as an all-or-nothing update or infer that either unit's parameters numerically changed
+
+#### Scenario: Several input handoffs lead to separate outcomes
+- **WHEN** an action consumes several admitted inputs and later only some addressed mechanics complete
+- **THEN** run coordination MUST preserve every input-to-attempt association and the known, uncertain, and unattempted outcomes supplied by the responsible owners
+- **AND** correlation MUST NOT depend on one input being the action's identity or on every owner sharing one progress clock
+
+### Requirement: Completion and failure follow the accepted activity relationships
+Produced, ready, admitted, handed-off, consumed, contributed, advanced,
+reported, and durably captured SHALL remain distinct facts wherever accepted
+consumers depend on them. Before invocation, rejection SHALL NOT imply selected
+work ran. Once selected or backend work begins, the responsible owner SHALL
+report known effects and outcomes separately from uncertainty; dependent
+unsafe work SHALL stop until an accepted recovery establishes validity.
+Missing completion SHALL NOT prove unchanged state, automatic rollback,
+all-or-nothing advancement, or replay safety.
+
+#### Scenario: Production completes before a consuming action exists
+- **WHEN** an independent activity makes work ready before its consumer is due
+- **THEN** its production completion MUST remain meaningful independently of action or optimization completion
+- **AND** readiness MUST NOT imply admission, consumption, or update contribution
+
+#### Scenario: Shutdown fails after partial execution failure
+- **WHEN** selected work or retained mechanics fail and cleanup also fails
+- **THEN** reporting MUST preserve the primary failure, cleanup failures, and separately known effects and outcomes
+- **AND** cleanup failure MUST NOT overwrite evidence needed to gate dependent work or recover
 
 ### Requirement: Custom structured execution preserves the accepted boundary
 An author SHALL be able to replace maintained internal decomposition with a
@@ -290,6 +396,22 @@ cannot perform a hidden mutation.
 - **WHEN** the active profile has no accepted mid-region restoration protocol
 - **THEN** exact same-run snapshots MUST be limited to coherent quiescent boundaries with unperturbed parameters and all required owner contributions
 
+#### Scenario: A two-pass region returns a produced gradient
+- **WHEN** the supported split gives a region backward and temporary-edit authority while Trainer retains final clipping and advancement
+- **THEN** Trainer MUST verify restoration of the required current view, accepted gradient readiness, and accounted region effects against the same attempt and current dependencies
+- **AND** Trainer MUST NOT perform another standard backward on that handback
+- **AND** a failed or uncertain handback MUST NOT authorize retained advancement
+
+#### Scenario: The selected two-pass profile requires a quiescent window
+- **WHEN** that profile's entry is requested while the scoped unit has pending contributions from earlier work
+- **THEN** entry MUST be rejected before the region's mutation rather than clear those contributions to make the profile appear applicable
+- **AND** a different accumulation treatment MUST require its own accepted policy and backend support
+
+#### Scenario: Region fails after restoring its temporary edit
+- **WHEN** a failed region restores parameters but other reached effects or its contribution remain incomplete or uncertain
+- **THEN** restoration alone MUST NOT make the action successful or authorize advancement
+- **AND** continuation MUST require the accepted recovery rule covering all relevant effects
+
 ### Requirement: Execution uses current prepared state
 An operation or region SHALL execute only while every required participant
 route, relationship, optimization runtime, and capability state satisfies its
@@ -313,3 +435,68 @@ accepted readiness and freshness dependencies.
 - **WHEN** an authored transition deliberately keeps old and new execution paths active during an accepted interval
 - **THEN** the authority MUST publish that coexistence as one coherent current arrangement with each path's applicable dependencies and readiness
 - **AND** the interval MUST NOT be treated as a partially published replacement merely because both paths are present
+
+### Requirement: Current-use protection spans owners and actual use
+Admission, execution, conflicting mutations and publication, and capability
+access SHALL share a protocol protecting the required current-state use.
+Protection SHALL cover backward, recomputation, transfers, outstanding device
+work, and handback verification through retained mechanics wherever those uses
+require the same state. Conflicting work SHALL wait, be rejected, or use a
+supported isolation policy. Freshness checks alone SHALL NOT substitute for
+protection, and this requirement SHALL NOT prescribe a particular lock.
+
+#### Scenario: A conflicting publication follows a successful freshness check
+- **WHEN** an admitted use still needs current state and another owner proposes an incompatible edit or publication
+- **THEN** coordination MUST prevent that conflict for the required use lifetime
+- **AND** checking revisions before invocation MUST NOT permit the state to change unsafely afterward
+
+#### Scenario: Region protection crosses the handback boundary
+- **WHEN** retained Trainer mechanics need a region's restored view and produced gradient
+- **THEN** protected access MUST continue or transfer without a gap through handback verification and those retained uses
+- **AND** capability readers MUST NOT observe an excluded intermediate state
+
+#### Scenario: Partial acquisition or cancellation leaves uncertain state
+- **WHEN** acquisition, execution, cancellation, or cleanup may leave affected state uncertain
+- **THEN** releasing access MUST NOT make dependent work usable before accepted recovery establishes valid state
+- **AND** known outcomes and primary and cleanup failures MUST remain available
+- **AND** withholding ordinary use MUST NOT prohibit authorized restoration or replacement needed for recovery
+
+### Requirement: Conformance and execution cost are checked against accepted meaning
+Production acceptance SHALL cover materially different standard and granted
+arrangements using observable values, identities, state, gradients, effects,
+outcomes, and required order rather than prototype class names or private call
+sequences. Each applicable case SHALL include positive and rejected or failed
+variants; local evidence SHALL NOT certify untested backend or restoration
+guarantees. Performance checks SHALL compare semantically matched execution
+with equivalent direct Python and, where comparable, current-loop scope, isolate
+framework overhead with cheap workloads, and apply documented regression and
+scaling budgets for the compared scope and environment. Required dynamic
+decisions and safety checks SHALL remain in the measured scope. New required
+coordination or guards SHALL be present in both compared paths and receive
+a separately justified budget rather than be omitted to fit an earlier scope.
+Dispatch cost SHALL scale with due work and its relevant dependencies rather
+than with unrelated dormant arrangement size. Numerical tolerances and
+reference fixtures SHALL be acceptance-policy choices for the applicable
+change, not permanent semantic requirements of accepted execution.
+
+#### Scenario: A faster lowering omits a required runtime guard
+- **WHEN** a candidate benchmark removes admission, freshness, protected access, or a dynamic decision required by that arrangement
+- **THEN** the timing MUST NOT qualify as a conformant matched comparison
+- **AND** additional required coordination MUST have an equivalent reference and separately justified budget
+
+#### Scenario: A cost comparison adds required coordination
+- **WHEN** a candidate performs required coordination not covered by an earlier benchmark scope
+- **THEN** acceptance MUST use an equivalent reference and a separately justified budget for that added scope
+- **AND** the result MUST NOT claim that the earlier measurement covers the added coordination
+
+#### Scenario: Dormant work and retained history increase
+- **WHEN** a prepared arrangement has more dormant work but unchanged due work and relevant dependencies
+- **THEN** ordinary dispatch MUST NOT scan the whole arrangement by convention
+- **AND** fixed queue, history, and gradient-window bounds MUST yield bounded retained framework state over elapsed attempts
+- **AND** intentional durable-history retention MUST be measured as its own accepted policy
+
+#### Scenario: A cost result is used as production evidence
+- **WHEN** performance measurements support acceptance
+- **THEN** they MUST record matched scope, source revisions, environment, warmup, iteration counts, retention policy, spreads, and paired excess across at least three independent process runs with multiple samples and alternating comparison order
+- **AND** allocation diagnostics MUST distinguish peak bytes, retained state, and cumulative allocation rate rather than treat them as interchangeable
+- **AND** dispatch-only or CPU-local results MUST NOT claim full Trainer, granted-region, or backend performance

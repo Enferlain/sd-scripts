@@ -34,6 +34,11 @@ mutable optimizer/scheduler state.
 - **WHEN** an independently managed optimization responsibility is split, merged, retired, or recreated
 - **THEN** the new responsibilities MUST receive new unit identities
 
+#### Scenario: Ordinary state evolves within an accepted definition
+- **WHEN** optimizer state advances or a selected schedule or due policy chooses within its accepted bounds
+- **THEN** the unit MUST retain its identity and definition revision
+- **AND** the system MUST NOT rebuild preparation solely because that ordinary state changed
+
 ### Requirement: Semantic membership is authority-qualified
 Optimization membership SHALL identify accepted participants and parameter
 substructure rather than current `nn.Parameter` object identity. A binding or
@@ -51,8 +56,13 @@ aliases SHALL count as the same parameter. Deliberate overlap SHALL require a
 recognized capability or explicit extension with accepted coordination rules.
 
 #### Scenario: Tied parameter is selected twice
-- **WHEN** two target paths resolve to one tied parameter under the standard profile
-- **THEN** resolution MUST reject or consolidate duplicate ownership rather than create two optimizer owners
+- **WHEN** several accepted target paths resolve to one tied parameter within the same unit and execution group
+- **THEN** resolution MUST consolidate the aliases into one optimizer member while preserving their provenance
+- **AND** repeated references alone MUST NOT be treated as competing ownership
+
+#### Scenario: Aliases claim competing owners
+- **WHEN** resolved aliases assign the same parameter to different units or execution groups under the standard profile
+- **THEN** resolution MUST reject the conflicting ownership before execution
 
 #### Scenario: Deliberate overlap is requested
 - **WHEN** an experiment requires one parameter in multiple advancement responsibilities
@@ -67,6 +77,19 @@ position.
 #### Scenario: Backend combines logical groups
 - **WHEN** a backend or optimizer materializes several logical groups into an execution-specific shape
 - **THEN** logical identity and diagnostic meaning MUST remain available independently from that concrete grouping
+
+### Requirement: Accepted optimization meaning precedes physical construction
+The accepted optimization plan SHALL retain unit identities and definition
+revisions, semantic membership, logical groups, trainability,
+optimizer/scheduler and advancement policies, semantic dependencies, and
+constraints independently from current parameter and backend objects.
+Provisional candidates and published runtimes SHALL remain distinguishable
+from that accepted meaning.
+
+#### Scenario: Two backends require different construction orders
+- **WHEN** the same accepted plan is realized with optimizer-before-wrapper or wrapper-before-optimizer ordering
+- **THEN** both realizations MUST preserve the accepted unit, member, group, policy, and dependency meanings
+- **AND** changing physical construction order MUST NOT itself revise the unit definition
 
 ### Requirement: Trainer owns standard realization and mechanics
 Under the standard profile, Trainer/optimization infrastructure SHALL realize
@@ -107,14 +130,49 @@ internal construction order.
 - **THEN** the same exchange MUST permit that order without changing the accepted semantic plan
 
 ### Requirement: Binding changes invalidate affected optimization runtime
-Every optimization runtime SHALL declare the participant, relationship,
-substructure, and preparation revisions on which it depends. An accepted change
-that breaks those dependencies SHALL remove the runtime from current use until
-re-realization or replanning succeeds.
+Every optimization runtime SHALL have authority-verifiable dependency evidence
+covering the applicable participant, relationship, binding, route, substructure,
+unit-definition, obligation, and backend/preparation revisions. That evidence
+MAY be established through an authority snapshot, a prepared generation's
+dependency evidence, or a justified narrower dependency set; it SHALL NOT
+require every runtime object to store an explicit tuple of those revisions.
+Without a justified narrower dependency set the runtime SHALL depend
+conservatively on its source authority snapshot.
+An accepted change that breaks those dependencies SHALL remove the runtime
+from current use until re-realization or replanning succeeds. Reuse under a
+changed obligation revision SHALL require authority-backed evidence that the
+applicable obligations remain satisfied.
 
 #### Scenario: Adapter attachment changes parameter structure
 - **WHEN** an accepted relationship transition changes the available optimization substructure
 - **THEN** affected units MUST become non-current and be re-resolved before another advancement
+
+#### Scenario: A change affects an inseparable backend group
+- **WHEN** an accepted change invalidates one member of an inseparable backend group
+- **THEN** every covered route and unit runtime depending on that group MUST lose prepared usability
+- **AND** an unrelated precise projection MAY remain usable only when its dependencies exclude the affected state and group
+
+#### Scenario: Parameter surgery preserves the accepted selector
+- **WHEN** an allowed structure-preserving transition changes physical parameters without changing the accepted selector, grouping, policy, or semantic dependencies
+- **THEN** the unit MUST retain its definition revision while its members, aliases, trainability, and backend runtime are re-resolved
+- **AND** an arbitrary runtime trainability flag MUST NOT redefine accepted membership
+
+### Requirement: Unit identity continuity does not imply state continuity
+Before affected work resumes after replacement, surgery, replanning, or a
+stage transition, the responsible owners SHALL establish the accepted
+preserve-with-evidence, migrate, reset, or unavailable treatment of mutable
+optimizer/scheduler, gradient-window, and backend state. Pending contributions
+SHALL be completed, preserved, or discarded only under an accepted rule.
+
+#### Scenario: Compatible replacement recreates the same unit
+- **WHEN** a compatible participant replacement preserves unit identity and definition revision but recreates its parameter objects
+- **THEN** readiness MUST require evidence for the selected optimizer-state continuation treatment
+- **AND** matching identity or parameter-list position MUST NOT silently reuse momentum, gradients, or scheduler state
+
+#### Scenario: Transition occurs during an accumulation window
+- **WHEN** an accepted structural or policy change affects a unit with pending contributions
+- **THEN** dependent work MUST wait for the accepted window-continuation rule and complete current publication
+- **AND** old contributions MUST NOT silently enter the new runtime
 
 ### Requirement: Advancement authority is profile-defined
 The active execution/ownership profile SHALL explicitly define supported
@@ -131,6 +189,61 @@ require an accepted extension and SHALL NOT create dual ownership.
 - **THEN** Trainer MUST not also advance the same unit for that accepted action
 - **AND** checkpoint and failure semantics MUST identify the actual owner
 
+### Requirement: Standard advancement supports independently and jointly due units
+The standard profile SHALL support one due unit, independently due units, and
+jointly due disjoint units through accepted policies rather than one fixed
+training-step sequence. Each policy SHALL identify addressed sources and
+gradient routes, contribution and accumulation-window completion rules,
+synchronization and scaling requirements, clipping scope and timing, ordered
+eligible advancement, scheduler triggers, zeroing/discard rules, lifecycle
+effects, and failure and continuation ownership. Due decisions MAY use live
+coordinates and accepted owned state without consulting the authoring interface.
+Executable readiness SHALL require backend support for the selected policy.
+
+#### Scenario: Independent units contribute on different clocks
+- **WHEN** a bounded policy selects nonconsecutive contributions for independently due units
+- **THEN** Trainer MUST preserve each unit's own gradient window and progress
+- **AND** work on one unit MUST NOT clear another unit's pending gradients or imply its advancement
+
+#### Scenario: Several units receive one shared source
+- **WHEN** an accepted action offers one source to several disjoint units
+- **THEN** Trainer MAY use shared backward work only when it satisfies all accepted gradient, window, synchronization, and ordering requirements
+- **AND** each unit MUST retain its own contribution and advancement outcome
+
+#### Scenario: Distinct sources could introduce cross-unit gradients
+- **WHEN** several sources can influence parameters outside their accepted destination units
+- **THEN** execution MUST preserve the accepted per-unit gradient routing through a supported lowering
+- **AND** readiness MUST reject unsupported routing rather than silently sum sources or detach required paths
+
+#### Scenario: Clipping requires synchronized window completion
+- **WHEN** a unit or accepted joint scope becomes eligible for clipping and advancement
+- **THEN** Trainer MUST apply the accepted synchronization, unscaling, completion, and clipping boundaries before invoking advancement
+- **AND** a backend unable to isolate or synchronize the selected windows MUST fail readiness before executing that policy
+
+#### Scenario: Scheduler depends on a backend-reported advancement
+- **WHEN** the accepted scheduler trigger distinguishes an action, an attempted optimizer call, and a confirmed non-skipped advancement
+- **THEN** runtime MUST use the required backend-supported distinction
+- **AND** readiness MUST reject a policy whose required distinction the backend cannot report
+
+### Requirement: Optimization reports contributions and reached mechanics separately
+The optimization owner SHALL report addressed unit incarnations and definition
+revisions, contribution/window and gradient readiness, reached mechanics,
+backend-supported returned, skipped, uncertain, and not-attempted outcomes,
+and relevant scheduler, zeroing, and progress facts. A returned call SHALL NOT
+be treated as proof of numerical parameter change. A joint action SHALL NOT
+imply atomic advancement, automatic rollback, or safe replay.
+
+#### Scenario: First unit returns and second unit fails inside its backend
+- **WHEN** the first due unit's optimizer call returns and a second call fails after entering the backend
+- **THEN** reporting MUST preserve the first call's known outcome and mark the second uncertain unless backend evidence narrows that outcome
+- **AND** later unattempted mechanics MUST remain distinguishable
+- **AND** dependent unsafe work MUST stop until an accepted recovery establishes validity
+
+#### Scenario: Scheduler or final zeroing fails after an optimizer returns
+- **WHEN** a later retained mechanic fails after an optimizer call has returned
+- **THEN** reporting MUST preserve the known optimizer outcome separately from the scheduler or zeroing failure
+- **AND** missing overall completion MUST NOT erase reached effects or certify gradients safe for reuse
+
 ### Requirement: Exact restoration preserves unit state only within the same run
 Exact restoration SHALL restore accepted unit identities, revisions, mutable
 optimizer/scheduler state, and advancement coordinates when continuing the
@@ -140,3 +253,13 @@ retain source provenance separately.
 #### Scenario: Same run resumes with recreated optimizer objects
 - **WHEN** a complete snapshot restores the same logical run in a new process
 - **THEN** unit identities and revisions MUST remain stable despite new Python objects
+
+#### Scenario: Exact continuation needs an unfinished gradient window
+- **WHEN** exact same-run continuation requires pending contributions or backend scaling/synchronization state
+- **THEN** the optimization contributor MUST supply that state and its accepted member, policy, revision, and progress associations to the coordinated snapshot
+- **AND** restoration MUST verify correspondence to restored semantic members before continuation
+- **AND** an implicit reset MUST NOT be reported as exact restoration
+
+#### Scenario: Snapshot uses a quiescent optimization boundary
+- **WHEN** the accepted restoration policy avoids capturing pending gradients
+- **THEN** snapshot coordination MUST establish a boundary with no required unfinished gradient window and all other owner contributions coherent

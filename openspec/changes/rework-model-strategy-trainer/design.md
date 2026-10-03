@@ -1011,6 +1011,14 @@ new participant bindings or optimization definitions as a side effect of its
 temporary edit. A requested structural change still goes through the run
 authority's accepted transition path.
 
+This is an already-produced gradient handback, not a request for Trainer to
+run standard backward again. Current-use protection must cover handback
+verification and the retained mechanics that rely on those same views and
+gradients. Releasing exclusion and then rechecking revisions does not close
+the race with a conflicting edit or publication. An implementation may retain
+the interval or transfer protected access without a gap; this does not require
+one particular lock or result type.
+
 Failure during the first pass may leave gradients, RNG, input, or region state
 changed. Failure after perturbation may additionally leave parameters or
 backend state uncertain. Even if restoration succeeds after a failed second
@@ -1281,6 +1289,78 @@ failure instead of hiding a second training loop inside an opaque call.
 The concrete representation may use scoped results, state projections, or
 reporting events; it need not use one universal result class or event log.
 
+**Preparation preserves required interactions, not internal call sequences.**
+Preparation may change how accepted work executes, but must preserve every
+fact and interaction required by its accepted consumers, owners and recovery
+rules. This includes input identity/admission, computation and gradients under
+the accepted numerical policy, owned-state and external effects, dynamic
+decisions and observation order, authority, current-use dependencies,
+separately reportable completion/failure outcomes, and restoration coverage.
+Matching the final loss or weights alone is insufficient. A lowering cannot
+silently change the algorithm, defer feedback past a decision that needs it,
+or erase a required opportunity for admission, capability work, transition or
+snapshot coordination.
+
+Fusion, partitioning, loop chunking and different backend schedules are
+permitted where those obligations remain satisfied. Private values, branches
+and calls need not remain separate executable nodes. Required boundaries may
+survive as scoped access, completion facts, guards or owner reports inside a
+combined executable rather than as individual dispatches. Generating
+Trainer-owned mechanics into that executable does not transfer their
+authority to a selected operation. If a lowering cannot preserve required
+partial outcomes or supported interactions, it is not ready for that accepted
+profile; preparation must not substitute a weaker meaning. These are shared
+conformance obligations, not a demand that every author implement validators
+or that arbitrary Python can be proved conformant statically.
+
+**Differentiated work connects gradient meaning to state lifetime.** Wherever
+another owner relies on it, the accepted description preserves the relevant
+outputs and requested derivatives, seed information where applicable, subject
+or input-path routing, intentional gradient cuts, contribution destinations
+and windows, applicable numerical policy, and the executor owning each phase.
+Governed preparation establishes how the selected implementation/backend
+satisfies those demands,
+including any required saved values, numerical state or recomputation
+conditions, supported requests, actual completion and safe release. An
+unsupported derivative route or retention requirement fails readiness rather
+than silently detaching a path, summing losses or changing ownership.
+
+A ready gradient does not by itself authorize an update. If another required
+derivative, recomputation or device use still needs the earlier parameter or
+view state, conflicting mutation waits. A supported isolated representation
+may permit earlier mutation only when it preserves the remaining work's
+accepted meaning and all other window, synchronization, clipping and ordering
+requirements are satisfied. Backend evidence may prove that fewer values
+need retaining; without it, use a conservative safe lifetime. A revision
+identifier alone does not retain numerical contents.
+
+When derivative work crosses an independently coordinated boundary, preserve
+its association with the originating invocation, required state and remaining
+requests, and the completion/release or cancellation rule. This is a lifetime
+and handoff obligation, not a mandatory continuation object for every forward
+call or a project-owned autodiff engine. Existing framework differentiation
+may realize it implicitly within closed work; supported imported or compiled
+regions may realize the same meaning differently. Failure or cancellation
+must not release still-used resources or certify uncertain gradients/state as
+usable; replay or recomputation requires the accepted state/RNG/effect rule.
+
+The hierarchy and its relationships must preserve the necessary language
+information: selected work and dynamic policies; values/handoffs and gradient
+routes; scoped state uses, effects and lifetimes;
+ownership/grants and unit obligations; and completion, change and recovery
+facts. This does not prescribe a node type for each category, a persistent
+control IR, public tensor operators or one universal runtime packet. G5
+chooses concrete constructs according to their consumers.
+
+**Protection follows actual use.** Admission, execution and conflicting
+publication must share a current-use protection protocol. A prepared revision
+check alone does not protect mutable state after that check. Protection covers
+the required use lifetime, including backward, recomputation, transfers or
+outstanding device work where applicable; backend evidence may establish a
+narrower safe interval. This applies across owners, including capability
+readers and preparation publication, not only inside one action. The concrete
+acquisition, handoff and completion mechanism remains G5 work.
+
 **Correlation without a transaction.** The run must relate the accepted work
 address, each invocation/attempt, admitted input work and its actual
 dependencies, operation/region effects, addressed optimization unit
@@ -1323,6 +1403,16 @@ remain separate. A failed region handback cannot authorize Trainer's retained
 advancement. Neither a zero progress increment nor a missing success result
 proves the state unchanged. No ordinary exchange promises automatic rollback,
 exact replay, or all-or-nothing optimizer advancement.
+
+Partial acquisition, cancellation and cleanup failures obey the same rule:
+releasing execution rights must not restore usability of uncertain state.
+Before conflicting work can acquire access, affected dependencies must remain
+withheld unless usable state has been established. Preserve known outcomes
+and the primary failure alongside cleanup failures. An accepted recovery may
+restore or replace affected state and re-establish readiness; withholding
+ordinary use must not itself prevent that authorized recovery. These are
+safety obligations, not a prescribed lock implementation or a claim that all
+run activities stop together.
 
 Concrete arrangements check that these meanings are not a disguised fixed
 input-action-optimizer pipeline. Their names and payload details are examples,
@@ -1395,13 +1485,16 @@ the accepted numerical policy rather than a universal bitwise-equality rule.
 | Case and governing meaning | Required observable test | Existing evidence and remaining implementation check |
 | --- | --- | --- |
 | Ordinary computation and differing modalities; D10/G3.6 | A prepared diffusion-like arrangement and a materially different arrangement retain their selected computation, accounting, observations and representation boundaries. Releasing the authored strategy does not affect execution. Reject malformed outputs after invocation without claiming unchanged state. | `test_execution.py` tests ordinary/alternating work and output failure; G2 supplies SD/SD3 and non-image cases. This is not a production multi-family engine or an author-object-lifetime proof. |
+| Equivalent lowering and combined work; G3.6 | Compare separate and combined execution under the same accepted profile. Preserve gradient routing, input association, adaptive feedback before dependent decisions, required capability/transition interactions and separately known partial outcomes. Reject a variant that matches final values but loses a required interaction or reports a returned unit as uncertain merely because later work failed. | Existing CPU comparisons check a narrow unary fixture, not general fusion or chunking. G5 must test the actual lowering against these owner-visible requirements; private call sequences need not match. |
 | Multiple input correlation; D10/G3.6 | One accepted consumer uses work from two sources with distinct identities/dependencies and out-of-order readiness. Preserve both associations through operation effects and unit outcomes. Reject swapped, stale or missing members before joined computation; retain partial handoffs under the selected wait/reissue policy rather than silently duplicating or discarding them. | G3.3 has one feed per action. An action accepting several values is not proof of independently produced inputs or their continuation. This join remains a required implementation case. |
 | Independent production; D10/G3.6 | Production progresses when no training action is due; ready work can remain inadmissible. Changing caption/actual encoder dependencies cannot pair results with the wrong request. Check lifecycle failure, bounded backpressure and shutdown independently of action completion. | Producer and run-language tests supply deterministic local evidence. True concurrent publication, cancellation races and distributed producer behavior need tests when an implementation claims them. |
 | Joint and independently due units; G3.1 | Exercise shared-source and distinct-source gradients, alternating actions and nonconsecutive accumulation windows. Verify each unit's authorized gradients, clipping/synchronization scope, schedule trigger and zeroing rule; reject unsupported routing before mutation. | Execution/advancement tests demonstrate local shared and isolated gradients and accumulation. Backend scaling, skips and distributed synchronization need the applicable backend conformance test. |
+| Delayed derivatives and numerical last use; G3.6 | Use a frozen differentiable conduit and two routed losses. In a supported recomputation variant, the first gradient is ready while the second derivative still requires earlier numerical state; prevent a conflicting update. Contrast a supported isolated-state variant that permits earlier update only when all unit obligations allow it. Check request/invocation association, gradient cuts, completion, cancellation and safe release; reject unsupported routing/retention before invocation. | G3.1 records local distinct-source routing evidence; the concrete proposal's B fixture supplies a retention trace, not an executed lifetime test. G5 must demonstrate the selected backend's live/isolated-state and release mechanisms without requiring a universal continuation object. |
 | Membership and realization; G3.4 | Preserve semantic unit identities across both physical construction orders. Consolidate tied aliases in one unit/group; reject cross-owner overlap, stale physical optimizer membership and incomplete publication. | Preparation tests cover a limited local one-group realization. Real backend correspondence, multiple groups and complete cross-owner installation remain implementation checks. |
 | Changing owner state and bounded choices; D10/G3.6 | Live coordinates/observations change selected decisions and owner state without author callbacks or recompilation. Include a state-only effect without an optimization offer. Reject choices outside accepted bounds; after a possible state update and failure, gate dependent work according to the accepted recovery rule. | Input-policy tests cover selected changing state; the G3.7 test confirms a changing selected operation still runs with compilation disabled. Owner continuity, observation delivery and restoration are broader requirements, not proven by a Python closure. |
 | One participant, different uses; G2.6/D10 | Preserve one participant identity with distinct accepted view/gradient requirements; a frozen base may transmit gradients to a selected side network. Unsafe shared-view overlap is rejected or serialized, and uncertain restoration stops dependent use. | G2 worked cases establish required meanings; action wiring alone does not implement view exclusion or backend restoration. |
-| Explicit alternative authority; G3.2 | Standard and granted work coexist. Each phase has one owner; unsupported/duplicate ownership fails before use. A two-pass region supplies the required restored view and final gradient before retained advancement. Failed or uncertain handback cannot authorize advancement or an exact snapshot. | Imperative tests check the local chosen split. Backend evidence/exclusion and other offered profiles require their own conformance checks; arbitrary Python hidden mutation is not statically sandboxed. |
+| Explicit alternative authority; G3.2 | Standard and granted work coexist with dynamic selected behavior after authoring ends. Each phase has one owner; unsupported/duplicate ownership fails before use. A two-pass region supplies the required restored view and final gradient before retained advancement, without another standard backward. Failed or uncertain handback cannot authorize advancement or an exact snapshot. | Imperative tests check the local chosen split. Backend evidence/exclusion, author-object lifetime and other offered profiles require their own conformance checks; arbitrary Python hidden mutation is not statically sandboxed. |
+| Protected current use across owners; G3.2/G3.6 | Attempt conflicting edits/publication and capability reads during required numerical use, handback verification and retained mechanics; reject, wait or isolate according to accepted dependencies. Inject partial acquisition, cancellation and cleanup failure. Releasing exclusion must not admit dependent work on uncertain state; preserve known outcomes and primary/cleanup failures, and allow authorized recovery to re-establish readiness. | Existing local tests do not demonstrate this shared protocol. The concrete proposal's section 5a supplies a worked trace, not executable race, backend-completion or recovery evidence. G5 must test its actual access and completion mechanism; G4 supplies coordinated snapshot recovery. |
 | Changed or stale preparation; G3.5 | Distinguish ordinary owner-state evolution, same-definition re-realization, revised definitions and new unit identities. Invalidate dependent routes/groups/units; reject an old in-flight result at publication. Unrelated precise projections may survive; pending gradient/state continuation follows its accepted rule. | G3.5 traces and preparation stale-source tests establish part of the evidence. A working transition-to-preparation path and group fan-out still need implementation tests. |
 | Partial execution/advancement failure; G3.1/G3.6 | Relate admitted work and operation effects to returned, skipped, uncertain and unattempted unit/phase outcomes. Stop unsafe dependent work and preserve the primary failure if shutdown also fails. Neither missing completion nor a returned step proves numerical change, rollback or replay safety. | Execution/run-language/imperative tests demonstrate several local boundaries. Scheduler/zeroing failures and backend-specific knowledge must be exercised by their actual owners. |
 | Work beyond training actions; D10/G3.6 | A triggered capability and a permitted stage transition have their own readiness, request, completion and failure relationships. Producer or state-only progress is not forced through an optimizer call or one global clock. | Governing whole-run requirements and G3.5/G3.6 traces require this. Capability protocols and a coordinated recoverable cut are completed in G4; G5 must demonstrate their composition. |
@@ -1447,22 +1540,32 @@ measure the others. At fixed queue/history/gradient-window bounds, retained
 framework state must not grow with elapsed attempts. Any accepted durable
 history retention is a separately measured policy, not an accidental list.
 
-The initial [G3.7 measurements](research/training-mechanism-sketch.md#g37-conformance-and-cost-check)
+The following numerical gates are **production regression acceptance policy
+for this migration**, not permanent semantic requirements of accepted training
+execution. The initial [G3.7 measurements](research/training-mechanism-sketch.md#g37-conformance-and-cost-check)
 establish a same-environment reference envelope for the common measured
-scope. Before production cutover, the proposed implementation must run the
-matched cheap-action checks against the retained experiment in the same
-environment. Its median excess over direct Python must not exceed that
+scope. Before this migration's production cutover, the proposed implementation
+must run the matched cheap-action checks against the retained experiment in
+the same environment. The reference fixture and measurement probe must remain
+available until those production-cutover checks have passed. Its median
+excess over direct Python must not exceed that
 reference excess by more than the greater of **1 microsecond per action or
 20% of reference excess**, across three process runs. This is a regression
 allowance for this shared scope, not a universal hardware latency limit.
 New required coordination/guards must be present in both compared paths and
 have a separately justified budget before their implementation milestone;
-they cannot be omitted to fit the old scope. The dormant-work check must show
+they cannot be omitted to fit the old scope, and their budget cannot replace
+these migration gates for comparable scope. The dormant-work check must show
 no growing cost trend with arrangement size; an increase exceeding the greater
 of **10% of the zero-dormant median or three times its within-run median
 absolute deviation** requires investigation and correction or evidence of a
 changed relevant-work scope before acceptance. These are measurable gates,
-not a choice of graph storage or lowering.
+not a choice of graph storage or lowering. After this migration is accepted,
+its reference fixture and numerical tolerances do not become a permanent
+architecture contract. Later changes establish their own documented regression
+policies while retaining the enduring requirements for semantically matched
+comparisons, required runtime guards, relevant-work scaling, and bounded
+retention.
 
 G3.7 completes the test matrix and initial cost evidence. Production
 conformance, extension/backend measurements, capability composition and

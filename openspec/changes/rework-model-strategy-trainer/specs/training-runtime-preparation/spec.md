@@ -15,6 +15,12 @@ joint groups, mutation permissions, freshness guarantees, and typed
 infrastructure items. Preparation SHALL produce candidate state and evidence;
 it SHALL NOT define new compatibility meaning or certify its own result.
 
+When optimization participates, the request SHALL include the accepted unit
+incarnations and definition revisions, semantic membership and logical groups,
+policies, dependencies, and constraints supplied by the accepted optimization
+plan. Optimization SHALL contribute to the same attempt rather than publish
+an independently prepared optimizer runtime.
+
 Training-side preparation coordination SHALL derive the job from the accepted
 requirements and current authority projection, then coordinate final
 installation of its verified result across the authority-owned routes and
@@ -66,6 +72,53 @@ runtime facts, and structured failures.
 - **THEN** the result MUST preserve which values belong to the run authority, optimization runtime, and backend infrastructure
 - **AND** joint creation MUST NOT imply joint semantic ownership
 
+#### Scenario: Backend composite covers several optimization units
+- **WHEN** one physical backend handle or returned collection covers several accepted units
+- **THEN** the result MUST preserve each unit's identity, definition revision, logical groups, policies, dependencies, and correspondence independently from physical handle identity or tuple position
+
+### Requirement: Optimization candidates preserve accepted member correspondence
+Provisional optimization resolution SHALL account for semantic members and
+aliases, logical-to-execution-group correspondence, trainability, gradient,
+clipping and synchronization membership, and optimizer/scheduler construction.
+Backend transformations SHALL retain evidence connecting final parameters and
+callable views to those accepted meanings. Before publication, every optimizer
+SHALL target the final accepted member realization or have an evidenced rebind;
+a plausible optimizer object SHALL NOT suffice.
+
+#### Scenario: Optimizer is constructed before parameters are replaced
+- **WHEN** backend preparation transforms parameters after optimizer construction
+- **THEN** validation MUST establish that the returned optimizer targets the final prepared members or reject the candidate
+- **AND** an evidenced rebind MAY satisfy that correspondence without revising accepted unit meaning
+
+#### Scenario: Parameters are prepared before optimizer construction
+- **WHEN** the backend requires transformed parameters first
+- **THEN** resolution MUST use transformation provenance to establish the same accepted subjects and groups before constructing the optimizer
+- **AND** physical order MUST NOT become a strategy-authored semantic requirement
+
+#### Scenario: Transformation creates aliases or conflicting ownership
+- **WHEN** accepted paths resolve or transform into shared physical parameters
+- **THEN** the candidate MUST consolidate aliases within the same accepted unit and execution group with provenance
+- **AND** it MUST reject standard-profile overlap across units or execution groups before publication
+
+### Requirement: Readiness establishes differentiated and granted-work support
+Governed preparation SHALL evaluate the current implementation/backend evidence
+for accepted derivative routes, numerical-state retention or recomputation,
+safe completion and release, gradient-window and synchronization requirements,
+scoped state access, and any granted phase's protection and handback obligations.
+Unsupported requirements SHALL fail readiness without changing the accepted
+algorithm or granting broader authority. Supported framework or compiled
+realizations MAY implement these meanings without one universal continuation
+or tensor-graph interface.
+
+#### Scenario: Backend cannot realize an accepted two-pass split
+- **WHEN** the chosen backend cannot provide scoped parameter/gradient access, protected temporary edits, or the required clean-handback evidence
+- **THEN** preparation MUST reject executable readiness before that region executes
+- **AND** semantic acceptance of its declarations MUST NOT imply backend support
+
+#### Scenario: Requested derivatives need unsupported retained state
+- **WHEN** the accepted derivative or recomputation demands cannot preserve required numerical state under the chosen backend
+- **THEN** preparation MUST reject readiness rather than detach a path, overwrite needed state, or silently change gradient routing
+
 ### Requirement: Fallible work precedes final publication
 All ordinarily fallible backend work, component preparation, candidate
 assembly, rank agreement, evidence collection, obligation evaluation, and
@@ -83,6 +136,11 @@ external work or callbacks.
 - **WHEN** reporting or history routing fails after the prepared state is current
 - **THEN** the accepted current state MUST remain committed
 - **AND** observation MUST NOT become a rollback authority
+
+#### Scenario: Publication conflicts with an outstanding protected use
+- **WHEN** an otherwise valid candidate would replace or mutate state still required by execution, derivative work, or another accepted owner
+- **THEN** publication MUST respect the shared current-use protocol through completion, rejection, or supported isolation
+- **AND** source freshness alone MUST NOT permit conflicting publication during that use
 
 ### Requirement: Replacement-only failure preserves still-valid prior state
 Preparation that cannot mutate authoritative inputs in place SHALL keep its
@@ -128,6 +186,16 @@ publication SHALL reject the stale result or require explicit re-resolution.
 #### Scenario: Relationship changes during preparation
 - **WHEN** a relationship dependency changes after an optimistic job is resolved
 - **THEN** the result MUST be rejected before publication
+
+#### Scenario: Unit meaning changes while participant bindings remain unchanged
+- **WHEN** a candidate's accepted unit definition or applicable obligation revision is superseded before publication
+- **THEN** unchanged physical participant bindings MUST NOT make that candidate current
+- **AND** publication MUST reject it or require explicit re-resolution against the accepted current revisions
+
+#### Scenario: Precise reuse excludes an unrelated change
+- **WHEN** a prepared projection has justified precise dependencies that remain valid after an unrelated accepted change
+- **THEN** it MAY remain usable only with evidence that its applicable obligations and any inseparable backend-group dependencies remain satisfied
+- **AND** a conservative source-snapshot dependency MUST instead become stale when that snapshot changes
 
 ### Requirement: Inseparable backend groups constrain later preparation
 A later preparation job that overlaps an inseparable current backend group
