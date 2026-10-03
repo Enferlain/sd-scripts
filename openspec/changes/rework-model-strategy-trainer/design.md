@@ -527,8 +527,8 @@ that task 1.4 already specified the input-specific exchange.
 | Produce and hand off input | Accepted source, selection, transformation, and packing meaning; current input-policy state; producer dependencies; and the consumer's representation and readiness obligations | Selected input behavior produces model-ready values with the identity, provenance, and logical boundaries required by the consumer; training input coordination checks admission and records handoff without owning the provider's internal policy state | Production may progress independently and perform I/O before handoff. Not-ready, failed, stale, misidentified, or incompatible input cannot be silently substituted or delivered as accepted work. |
 | Execute training | Accepted execution structure, current prepared projections, prepared optimization runtime, changing inputs/coordinates, and granted authority | Accepted behavior returns declared computation outputs, optimization inputs, observations, owned-state updates, effects, or transition requests; Trainer performs retained mechanics | Only accepted effects may cross the execution boundary. Failure follows the active ownership profile, stops unsafe advancement, and cannot mutate canonical state outside an accepted transition. |
 | Coordinate caching | Selected capability, data scope, representation/conditioning behavior, writable destination, and coherent dependency projection | Pipeline traversal/storage and selected codecs produce cache records plus dependency/readiness facts recorded as capability state | Cache writes are external effects. Failure or partial output is reported explicitly and cannot advertise stale or incomplete cache readiness. |
-| Coordinate validation | Selected capability, trigger, evaluation-ready projections, deterministic input/RNG state, and aggregation policy | Trainer/pipeline traversal and accepted evaluation behavior produce typed evaluation results, observations, and updated validation state | Evaluation may consume resources but has no undeclared training-state effect. Failure restores temporary runtime projections and cannot fabricate a successful observation. |
-| Coordinate sampling | Selected capability, trigger, destination, request set, and prepared conditioning/predictor/representation projections | Trainer/pipeline orchestration and accepted generation behavior produce typed sample results and updated sampling state | Image or media writes and tracker publication are explicit effects. Failure restores temporary projections and reports which requested outputs did or did not materialize. |
+| Coordinate validation | Selected capability, trigger, evaluation-ready projections, accepted input/RNG and measurement policy | Trainer/pipeline traversal and accepted evaluation behavior produce typed evaluation results, observations, and declared owned-state effects | Evaluation may consume resources but has no undeclared training-state effect. Failure restores temporary projections or gates unsafe use, and cannot fabricate a completed measurement. |
+| Coordinate sampling | Selected capability, trigger, destination, request set, and prepared conditioning/predictor/representation projections | Trainer/pipeline orchestration and accepted generation behavior produce typed sample results and updated sampling state | Selected output writes/publication and observation are explicit effects. Failure restores temporary projections or gates unsafe use, and reports which requested outputs did or did not materialize. |
 | Persist trained artifacts | Declared product, coherent product-specific projection, consistency boundary, transformations, serializers, and destination | Product resolution and serialization produce a result describing actual members and physical resources without changing participant identity | File or remote publication is explicit and may partially fail. The result reports actual output independently from runtime-snapshot success. |
 | Restore runtime | Restoration contract, snapshot identity, authority revisions, progress/input state, Trainer/backend/optimization state, and registered accepted-operation/capability contributors | Trainer coordinates contributor-owned restoration and publishes one coherent same-run state with restored progress and freshness | Snapshot reads and backend reconstruction are explicit effects. Failure never resumes from a partially restored mixture and is distinct from loading a trained artifact into a new run. |
 
@@ -550,17 +550,17 @@ or folders.
 | Produce and hand off input | Training input coordination manages producer lifecycle, readiness, admission, delivery, and failure routing under accepted obligations; selected input behavior owns live-source traversal, selection/packing policy, and private continuation state. Cache-production traversal remains with caching coordination. An admitted handoff is not proof of action completion or optimization advancement. | `training-contract`: “Authors assemble strategies explicitly”, “Obligations are evaluated at the earliest authoritative evidence point”; `accepted-training-execution`: “Input handoff retains identity and admission meaning”, “Cross-owner action facts remain correlatable”; `training-capability-coordination`: “Caching separates semantics from storage orchestration”, “Cache publication and consumer admission are distinct”, “Independent cache production has bounded lifecycle and owned continuation”. G4.1 files the cache-production exchange below; task 4.4 completes coordinated exact-restoration protocols. |
 | Execute training | Trainer's loop supplies time/input and current prepared projections; accepted behavior executes only its granted operations, while Trainer commits its retained mechanics and the authority handles any requested canonical transition. | `accepted-training-execution`: “Accepted execution survives the authoring object”, “Execution uses current prepared state”, “The standard profile retains generic Trainer mechanics”. |
 | Coordinate caching | The caching capability coordinator derives work from an accepted request and current data/representation dependencies; it publishes readiness only for completed, fresh cache results. | `training-capability-coordination`: “Capability readiness derives from accepted state”, “Caching separates semantics from storage orchestration”, “Cache requests and results preserve the selected computation”, “Cache freshness follows actual computation dependencies”, “Cache publication and consumer admission are distinct”, “Cache storage lifecycle preserves outstanding use”, “Independent cache production has bounded lifecycle and owned continuation”. |
-| Coordinate validation | Trainer/pipeline scheduling derives the accepted request from trigger and ready projections; validation coordination publishes observations and capability-owned state only after traversal/evaluation succeeds. | `training-capability-coordination`: “Validation separates evaluation semantics from traversal”, “Capability results feed observation without transferring ownership”. |
-| Coordinate sampling | Trainer/pipeline scheduling derives a request from selected trigger/destination and ready projections; sampling coordination reports actual outputs and capability state after generation/publication. | `training-capability-coordination`: “Sampling separates generation semantics from orchestration”, “Capabilities have named request and result semantics”. |
+| Coordinate validation | Trainer/pipeline scheduling derives the request from accepted scope, measurement policy, and current protected projections; validation coordination publishes completed measurements only when their accepted coverage/reduction boundary succeeds. Partial outcomes and declared effects remain separately reportable through their owners. | `training-capability-coordination`: “Validation separates evaluation semantics from traversal”, “Validation results preserve measurement and effect meaning”, “Evaluation and generation use protected current state”, “Capability temporary projections have scoped cleanup”. G4.2 completes the exchange below. |
+| Coordinate sampling | Trainer/pipeline scheduling derives a request from accepted generation choices, destination, and current protected projections; sampling coordination distinguishes generation, output publication, and observation outcomes for each required work/output association. | `training-capability-coordination`: “Sampling separates generation semantics from orchestration”, “Sampling results distinguish generation publication and reporting”, “Evaluation and generation use protected current state”, “Capability temporary projections have scoped cleanup”. G4.2 completes the exchange below. |
 | Persist trained artifacts | Persistence coordination derives the accepted product plan from a coherent state projection; publication of the artifact result follows actual writes and does not publish a fictitious product on partial failure. | `training-artifact-persistence`: “Artifact persistence has declaration, request, plan, and result stages”, “Artifact results report actual output”, “Persistence uses one accepted boundary”. |
 | Restore runtime | Trainer/pipeline restoration coordination derives the job from the accepted snapshot contract and registered state contributors; it coordinates one coherent final publication across authority, Trainer/backend, optimization, input, and contributor-owned state. | `training-capability-coordination`: “Persistence and restoration remain distinct capabilities”; `run-participant-state`: “Runtime identity and lineage remain separate”; `training-runtime-preparation`: “Process failure belongs to restoration”. |
 
-The capability rows intentionally stop at a common request/evidence/ownership
-frame. Their failure statements are common-frame obligations here, not a
-claim that every capability delta already contains its full failure protocol.
-G4 must make the corresponding domain-specific failure requirements explicit
-before production implementation. None requires SDXL-shaped universal inputs,
-and no coordinator may bypass the authority's binding and revision checks.
+The capability rows provide a common request/evidence/ownership frame;
+completed G4 exchanges below refine their domain-specific protocols. This
+table alone does not claim every capability delta is complete. Remaining G4
+tasks must make their corresponding failure requirements explicit before
+production implementation. None requires SDXL-shaped universal inputs, and no
+coordinator may bypass the authority's binding and revision checks.
 
 #### G4.1 Caching exchange
 
@@ -583,9 +583,12 @@ The cooperating owners remain distinct:
 - The selected input provider owns consumption traversal, sample/caption
   selection, transformations/packing, and its private continuation state.
 - Run coordination owns the accepted activities' lifecycle and cross-owner
-  handoff/failure relationships. Through training input coordination it checks
-  admission before consumer use, without taking over provider algorithms or
-  repeatedly querying the strategy.
+  handoff/failure relationships. The consuming coordination surface checks
+  admission under that consumer's existing obligations: training input
+  coordination for training inputs, or the relevant capability coordination
+  for validation/generation consumption, directly or through shared input
+  coordination. This does not transfer provider algorithms or create separate
+  acceptance rules, and requires no repeated strategy queries.
 
 These are responsibilities, not four new classes or a fixed execution chain.
 Pre-training caching, lazy production on a miss, and independently progressing
@@ -593,9 +596,9 @@ production use the same boundary meanings where selected and supported.
 
 | Exchange category | Required caching meaning |
 | --- | --- |
-| Request inputs | Selected capability/codec and representation boundary; requested work or production-source scope; exact relevant input/variant and transformation meaning; required consumer schema; producer dependencies and consistency/reuse policy; destination/storage support; accepted miss, capacity, cancellation, and failure policies. Bounded requests may be derived during execution without changing the accepted implementation. |
+| Request inputs | Selected accepted computation/behavior, capability/codec, and representation boundary; requested work or production-source scope; exact relevant input/variant and transformation meaning; required consumer schema; producer dependencies and consistency/reuse policy; destination/storage support; accepted miss, capacity, cancellation, and failure policies. Bounded requests may be derived during execution without changing the accepted behavior. |
 | Readiness evidence | Required source bindings/views and protected producer-state access; current obligation/dependency evidence; permitted placement and resource capacity; usable storage. Reuse additionally needs evidence for the stored value's actual inputs, representation, and source state. Known unsupported combinations fail at fulfillment; facts only available during production are checked at their authoritative point and before publication/use. |
-| Result | Correlation to the request and production attempt; completed values or bundles, their actual input/transformation and production-state provenance, schema/dependency evidence, storage access, and publication outcome. Pending, failed, cancelled, stale-for-the-request, and uncertain work remain distinguishable. Partial job coverage does not imply complete coverage. |
+| Result | Correlation to the request and production attempt; completed publication units, their actual input/transformation and production-state provenance, schema/dependency evidence, storage access, and publication outcome. Pending, failed, cancelled, stale-for-the-request, and uncertain work remain distinguishable. Partial job coverage does not imply complete coverage. |
 | Canonical state effect | Cache coordination records verified cache availability and production continuation. Input selection, packing, delivery, and exposure state remain with their own owners. Cache results do not publish participant bindings, amend optimization, or advance training progress. |
 | External effect | Accepted source reads, encoding/transfer, payload/index writes, and storage lifecycle changes. Eviction, compaction, or replacement cannot invalidate an outstanding accepted read; access must remain protected through its required completion or fail before dependent use. |
 | Failure | Report the reached boundary, actual completed/publicly usable output, known effects, and uncertainty. Incomplete encoding, writing, indexing, or dependency evidence cannot publish readiness. Accepted wait, retry/recompute, fallback, quarantine, or stop policies govern affected work; unsupported or semantics-changing substitutes are rejected. Cleanup failures remain distinct from the primary failure. |
@@ -608,6 +611,15 @@ memory entry, or another selected backend without defining semantic identity.
 The exchange preserves only the associations needed by accepted consumers,
 coordination, observation, and restoration; it imposes no universal image,
 latent, tokenizer, or tensor-axis fields.
+
+The selected computation is not identified solely by a physical Python
+callable, compiler artifact, or backend object. A different realization of the
+same accepted behavior need not invalidate reuse if evidence establishes that
+its relevant computation, numerical/stochastic, and dependency obligations
+remain satisfied. Realization differences remain dependencies where they
+affect those guarantees; neither a matching semantic label nor an assumed
+eager/compiled equivalence is sufficient. This does not introduce a universal
+computation-ID scheme or automatic implementation substitution.
 
 Dependency evidence covers the computation upstream of the cache boundary,
 including relevant source content, realized transformations/randomness,
@@ -636,10 +648,15 @@ caption and preserve the full selected conditioning schema.
 
 **Publication and admission.** Produced, stored, published-ready, admitted,
 handed-off, consumed, and update-contributing are different facts. Readiness
-is published only for a complete usable value/bundle with accepted storage and
-dependency evidence. Its consistency boundary may cover several resources;
-it is not automatically the entire dataset or production job. Other complete
-records may remain ready after an unrelated item fails if the accepted policy
+is published only for a complete usable accepted publication unit with storage
+and dependency evidence. That unit may be a value, bundle, or independently
+consumable chunk where the selected representation permits it; this names a
+consistency boundary, not a new execution-language construct. The boundary may
+cover several resources and is not automatically the entire logical
+representation, dataset, or production job. A complete chunk cannot advertise
+the whole representation as ready, and a consumer requiring a full bundle
+must wait for that bundle's obligations. Other complete records may remain
+ready after an unrelated item fails if the accepted policy
 permits partial coverage. A queue message or orphan payload is not readiness.
 Payload and locator/index availability must agree before dependent reads;
 interrupted writes require the storage implementation's declared recovery
@@ -650,8 +667,12 @@ requested at launch. This may be one protected snapshot or structured
 provenance over portions of the work where the accepted production policy
 allows that. In-flight dependency changes cannot relabel an old result as a
 new one or automatically admit mixed-state work. Publication checks the
-request's current obligations, and consumer admission checks exact work
-association, representation, freshness/lag, and gradient requirements again.
+request's current obligations, and the consuming coordinator checks exact
+work association, representation, freshness/lag, and gradient requirements
+again under its existing consumer obligations. One published representation
+may be admissible for validation but not training, or vice versa; shared
+storage does not imply shared admission or require a universal training-input
+gateway.
 The value's evidence and required source/storage access must remain valid
 through the dependent use, following the shared current-use/completion rules.
 Older-state values may remain stored or serve an explicitly accepted versioned
@@ -714,6 +735,131 @@ from absent call edges. Future-data notes are design evidence, not promises
 that SQLite, a particular shard format, streaming ingestion, learned embedding
 editing, or every asynchronous backend ships in the first migration. This
 exchange adds no execution-language construct or universal training sequence.
+
+#### G4.2 Validation and sampling exchanges
+
+Validation measures accepted behavior; sampling runs selected generation
+behavior. Neither requires another Trainer or an active strategy callback.
+Trainer/pipeline coordination owns due requests, outer input/request traversal,
+resource access, ordinary runtime projections, aggregation execution,
+destinations, and observation routing. Selected domain behavior owns the
+evaluation or generation algorithm and its declared state. Coordination uses
+the existing obligation revision and readiness evidence, not new acceptance
+rules invented at the trigger.
+
+**Validation.** The selected evaluation defines what is measured, the
+contributions needed to compute it, and its reduction/weighting meaning.
+Pipeline aggregation executes that meaning; it does not guess a formula from
+batch losses. A selected reducer can be ordinary Python. This does not require
+a metric expression language or graph nodes for every contribution.
+
+| Exchange category | Required validation meaning |
+| --- | --- |
+| Request inputs | Selected evaluation; requested input scope and stopping/coverage rule; input/provider policy; source-state consistency; prepared view, numerical and derivative requirements; measurement/reduction policy; declared effects and partial/failure policy. Triggers may derive bounded requests during execution. |
+| Readiness evidence | Current accepted source/view access and input admission; supported runtime/gradient requirements; available reduction participants/resources. Known incompatible choices fail during fulfillment; realized/backend evidence is checked when available and before use. |
+| Result | Request/attempt and evaluated-input associations; actual source-state provenance; typed contributions or completed measurements with coverage, weighting/denominator, and reduction meaning as needed by consumers; completion, partial, cancellation, failure, and declared-effect outcomes. No universal scalar or tensor axes are required. |
+| State effect | Validation coordination owns outer traversal/aggregation coordination records; validation history remains observation state under its observation owner. Selected evaluation or another accepted algorithm owns its declared adaptive state/effects. Participant transitions and optimization mechanics retain their existing owners; computing derivatives does not implicitly grant advancement authority. |
+| External effect | Accepted input reads, computation/communication, and routed observations. Any additional publication or service effect must be declared; evaluation does not silently become checkpointing or a training-state writer. |
+| Failure | Preserve reached coverage, known measurements/effects, and uncertainty. An unfinished evaluation cannot claim the requested completed score. An explicitly accepted partial measurement remains labelled with its scope; undefined or empty reductions follow the selected policy, not a fabricated zero. Cleanup and observation failures are separate outcomes. |
+
+For unequal batches, masks, token lengths, or distributed input partitions,
+mean-of-batch-means is valid only if that is the selected measurement.
+Coverage/reduction must account for relevant missing or repeated work and
+rank contributions. Request identity is not an input identity, and a trigger
+step is not proof of the weights actually evaluated. Stable comparison may
+require a protected source state for the entire measurement; a supported
+mixed-state measurement needs explicit consistency and provenance meaning.
+No single version counter is prescribed.
+
+Validation coordination owns outer traversal, not the input provider's
+selection, packing, cursor, or RNG algorithm. Evaluation uses its own provider
+continuation or an explicitly accepted sharing policy; it cannot accidentally
+consume the training cursor. Bounded stream evaluation need not have a dataset
+length or epoch. Cache-backed inputs obey G4.1 admission rules, including
+exact caption/variant and encoder dependencies.
+
+Evaluation is not universally passive or `no_grad`. The recorded BD3LM case
+in [LLM research](research/llm-training.md) uses validation measurements to
+choose a later training noise interval. Such a selected adaptive reaction
+must survive fulfillment, with explicit state ownership, observation delivery,
+allowed derivative work, and continuation contribution. It is not a generic
+Trainer policy, accidental objective mutation, or permission for hidden
+optimizer work. A reaction may be a separate accepted activity; neither its
+completion nor its failure is automatically the measurement's outcome.
+
+**Sampling.** Generation owns conditioning, prediction/objective conventions,
+schedule/guidance, decoding, and output meaning. Pipeline coordination owns
+request timing/traversal, resource access, destinations, writing/publication,
+and result routing through selected implementations. A domain inference loop
+is legitimate selected computation, not a reason to put family algorithms in
+Trainer. Prompt text, image dimensions, PIL images, and PNG are not universal
+exchange fields.
+
+| Exchange category | Required sampling meaning |
+| --- | --- |
+| Request inputs | Selected generator and its supported domain parameters; work/output associations and relevant random-input policy; source/view consistency; destination/publication requirements; declared effects, cancellation, and partial/failure policy. Seeds do not alone promise exact replay. |
+| Readiness evidence | Current protected participant/view and conditioning/representation dependencies; supported generator/objective pairing; required placement/capacity and usable destinations. Known unsupported combinations fail before runtime use without family discovery in Trainer. |
+| Result | Request/attempt and output associations; actual source-state/input provenance; produced payloads and actual saved/published resources where required; separately known generation, publication, observation, cancellation, failure, and effect outcomes. A planned filename is not evidence of a written output. |
+| State effect | Sampling coordination owns request/publication continuation. Selected generation owns its declared algorithmic state; it cannot silently alter authority state or optimization progress. |
+| External effect | Accepted source/service reads, generation/transfer, output writes/publication, and routed observations. Text, video, audio, or related multi-output products use selected schemas and serializers, not an image-shaped core. |
+| Failure | Preserve successful outputs and each failed, uncertain, or unattempted part at the accepted boundary. Generated-but-unsaved differs from saved-but-unreported. Reporting failure cannot erase saved output or authorize regeneration; retry/reissue requires its accepted policy and actual outcome evidence. No job-wide rollback or crash-safe publication is assumed. |
+
+Sample output publication is not automatically trained-artifact persistence
+or an exact runtime snapshot. G4.3 and G4.4 complete those distinct exchanges.
+
+**Shared access and temporary state.** Trigger eligibility is not execution
+readiness. Both capabilities use G3's protected-current-use relationships and
+prepared projections. They cannot blindly unwrap, move, or recast a live
+object or read a stale separate inference representation. A read conflicting
+with a weight update, retained derivative use, or temporary SAM perturbation
+must wait, fail before use, or use a supported isolated/synchronized view
+under its accepted consistency policy. Protect access through actual backend
+completion, not merely the Python return. Actual provenance may be one
+protected state, a snapshot, or accepted structured state/segment evidence;
+recording mixed provenance does not itself authorize mixed-state work.
+
+Pipeline coordination establishes and restores ordinary model/optimizer
+runtime projections, placement, dtype, and RNG according to their declared
+owners and accepted numerical policy. It preserves the prior relevant state,
+including mixed module modes, rather than unconditionally calling
+`train(True)`. Cleanup covers partial setup, execution failure, cancellation,
+and asynchronous completion. RNG isolation must cover the relevant declared
+generators/devices/activities or reject an unsupported overlap; saving one
+global generator is not proof of concurrent isolation or bitwise replay.
+
+If restoration or handback is uncertain, dependent use remains unavailable
+until accepted recovery establishes validity. Exclusion release alone is not
+that evidence. Keep the primary failure and cleanup failures, and retain
+known measurements, outputs, and effects even if final cleanup or a sink
+fails. Stateful effects may have occurred before an invalid/missing result;
+the boundary is not a sandbox for arbitrary Python.
+
+Validation, sampling, input production, and optimization retain their own
+accepted due/completion/failure relationships. A shared trigger does not impose
+the current helper's sample-then-validate order, a universal optimizer clock,
+or a global pause. Capability and algorithm owners contribute their own
+continuation needs; G4.4 defines a coherent restoration cut, not this exchange.
+
+**Evidence and implementation checks.** These complete the semantic exchanges,
+not production capability implementations:
+
+| Bounded evidence / pressure case | Consequence and remaining check |
+| --- | --- |
+| `ValidationScheduler` (`library/training/phases/validation.py:38–95`) and `_run_step_side_effects()` (`library/training/phases/training_loop.py:133–183`) provide useful due logic; `run_sampling_and_validation()` (`library/training/phases/orchestration_helpers.py:60–114`) hard-codes sequencing and broad strategy calls. | Preserve accepted scheduling without carrying that fixed sequence or active strategy boundary into the engine. Test independently due capabilities and their declared dependencies. |
+| SDXL evaluation (`library/strategies/sdxl/validation.py:18–196`) combines selected timestep/L2 meaning with RNG switching, cyclic loader traversal, batch-mean aggregation, and history updates; SD3 (`library/strategies/sd3/validation.py:19–154`) repeats the workflow with different conditioning/representation. | Keep domain evaluation selected while moving outer coordination out. G5 must test unequal weights/masks, partial or empty coverage, distributed reduction when supported, and input-provider continuation without assuming the current loss formula is universal. |
+| `temporarily_in_eval_mode()` (`orchestration_helpers.py:49–57`) changes mode before its `try` and restores training unconditionally; validation and `sample_images_common()` (`library/training/sample_generation.py:435–549`) restore global RNG only on their normal path. | G5 must inject partial setup, evaluation/generation, cancellation, and cleanup failures and verify prior projections or unsafe-use gating. Existing helpers are not proof of scoped restoration. |
+| SD, SDXL, and SD3 sampling (`library/strategies/sd/sampling.py:19–83`, `library/strategies/sdxl/sampling.py:67–150`, `library/strategies/sd3/sampling.py:116–180`) unwrap/move family components and construct generation implementations. SDXL/SD3 flow backends contain selected inference algorithms. | Preserve family algorithm differences without universal component slots; test stale inference views and reads during conflicting temporary mutations using the chosen backend access protocol. |
+| `SamplingRequest` (`sample_generation.py:45–59`) is image-shaped; `sample_image_inference()` (`sample_generation.py:552–625`) saves an image before direct tracker logging. | G5 must distinguish generated, saved, and reported outcomes, including save failure, later sink failure, and a partial multi-request result. Selected non-image/multi-output schemas must not require new Trainer family branches. |
+| Recorded [BD3LM evaluation](research/llm-training.md), [video/audio cases](research/video-audio-training.md), and [train/inference-view coordination](research/preference-and-rl-post-training.md). | Preserve adaptive reactions and domain-specific measurement/generation semantics; these research cases establish requirements/neutrality pressure, not that every algorithm or separate inference backend ships in the first migration. |
+
+Tier 2 graph discovery, traces, and exact-source checks support these bounded
+current-code claims; coverage generation `2026-10-03T01:55:27Z` recorded no gaps
+on relied paths. Dynamic strategy dispatch was verified in source, not inferred
+from absent edges. Existing scheduling/parser tests and local G3 experiments
+do not demonstrate real concurrent view protection, distributed reduction,
+full RNG isolation, or exact recovery. Those implementation checks remain G5;
+no new execution-language construct, universal result object, or fixed run
+sequence is selected here.
 
 #### Run state is composed, not universally owned
 
@@ -1857,11 +2003,118 @@ Product, semantic member, and physical resource remain separate. One member
 may be sharded and one resource may contain several participants. “Bundle” is
 packaging, not proof of completeness.
 
-Trainer/runtime infrastructure establishes the persistence boundary and
-coordinates ranks. The product capability declares semantic coverage and
-transformations. Domain serializers perform mechanical conversion and writing.
-A serializer does not infer a merge, delta, pruning, or semantic quantization
-from incidental runtime objects.
+#### G4.3 product coverage and use
+
+SDXL, SD3, adapter, and learned-sidecar products are migration examples, not
+four product categories or the limits of persistence. A declared product
+selects what its intended consumer needs, not everything loaded, optimized,
+or used during training. It may select raw or EMA state and omit training-only
+teachers, discriminators, losses, and optimization machinery. Selection does
+not require a universal EMA slot or a new participant for every saved value.
+
+The declaration specifies the product's supported use and required state and
+information. The plan embeds or explicitly references the weights, buffers,
+normalization statistics, codebooks, construction configuration, installation
+relationships, and implementation/representation dependencies needed for that
+use. Capability-owned contributions remain owned by their domain. This does
+not require pickling algorithms, embedding every dependency, or promising
+compatibility with arbitrary consumers.
+Implementation dependencies here are requirements for reconstruction/use,
+such as architecture/configuration versions or required custom operations;
+they do not automatically include the training Python class/object identity,
+wrapper, or exact compiled artifact.
+
+Consumer dependencies, training/preparation dependencies, and historical
+provenance are distinct. A teacher can remain in provenance without being
+required at inference. An adapter's base dependency must describe the state
+it actually requires. In joint base-plus-PEFT training, an adapter-only product
+does not contain the base updates; the product's embedded coverage or an
+identified compatible external dependency must account for them when required
+for the declared use. The original load path alone does not establish that fact.
+
+#### G4.3 capture, export, and publication exchange
+
+- **Declaration and request:** accepted product behavior names coverage,
+  supported representations and transformations, required versus optional
+  constituents, dependencies, consistency, and completion conditions. A
+  lifecycle request selects a declared product, destination, and permitted
+  choices; it does not rediscover coverage from current wrappers or mode.
+- **Plan and readiness:** persistence coordination resolves a product-specific
+  plan under the accepted obligations and source dependencies. Known semantic
+  incompatibilities are rejected during fulfillment; concrete source or
+  backend obligations are checked when authoritative evidence exists. No
+  serializer invents another validity rule. Training compatibility alone does
+  not prove that merging, pruning, or quantizing a product is supported.
+- **Stable capture:** infrastructure coordinates the boundary and ranks;
+  contributors provide their declared state and consistency evidence. Capture
+  preserves the selected raw/EMA state, topology, relationships, dependencies,
+  and lineage at that boundary. A borrowed live tensor or object reference is
+  not automatically a stable capture. Required reads must remain protected
+  through actual backend completion, not merely a Python call returning.
+- **Export work:** selected implementations transform and serialize the
+  protected source. Export is not permission to change canonical run state.
+  Any temporary live-state effect must be explicitly permitted, coordinated
+  against conflicting use, and restored before use resumes. A failed cleanup
+  gates unsafe use without erasing known artifact output. Canonical changes
+  require the existing run-authority transition path.
+- **Actual result:** writing, local resource completion, remote publication,
+  and observation have distinguishable outcomes where applicable. Results
+  associate actual resources with semantic members and report required or
+  optional omissions, known partial effects, pending/uncertain completion,
+  and failures. Checksums identify what was measured; a tensor/model hash is
+  not silently reported as a whole-resource checksum. An absent result or a
+  raised exception does not establish that no output was produced.
+- **Resource lifetime:** persistence infrastructure uses the actual resource
+  set for retention and cleanup, respecting sharing and outstanding reads,
+  including asynchronous publication. It must not delete or overwrite a
+  resource still needed by accepted pending work. This is not a guarantee of
+  permanent availability for every external dependency.
+
+Freshness is checked when acquiring current source state. Once a stable
+capture satisfies the accepted product obligations, later serialization or
+publication can finish after the live arrangement changes. The result still
+describes the captured state, not the arrangement current at completion. A
+request requiring the latest state can impose a stronger accepted condition;
+historical captured products do not become current-state projections.
+
+Required shards, manifests, reconstruction information, and dependencies must
+satisfy the product's declared completion conditions before it is reported
+complete. Independently valid members can be reported even when another fails.
+An external dependency satisfies completion according to the accepted policy:
+embedded state, an available/resolvable resource, or a stable compatible
+external reference can each be a supported requirement. Under a reference-only
+policy, an adapter product can be complete even if its base is currently
+unreachable. Completion does not imply self-containment, current usability
+without resolving dependencies, or continued availability of external resources.
+Neither multi-file writing nor remote publication is assumed transactional,
+and product success remains independent of a simultaneous runtime snapshot.
+
+#### G4.3 research checks and limits
+
+| Recorded case | Requirement on the same persistence exchange |
+| --- | --- |
+| Student export and EMA autoencoder export (`research/teacher-student-distillation.md`, `research/autoencoders-vae.md`) | Select the intended state variant; omit training-only networks without dropping the state needed to use the selected product. |
+| VQ codebook, latent normalization/packing, and control installation (`research/autoencoders-vae.md`, `research/conditioning-and-control-networks.md`) | Preserve required non-parameter state and construction/representation/installation information, without making every constituent a participant. |
+| Joint direct-plus-PEFT training and low-precision merge (`research/precision-and-quantization-training.md`, accepted PEFT composition) | Describe the actual base dependency and export transformation; separate training compatibility from product compatibility. |
+| Distributed members and resources (`research/distributed-training-execution.md`) | Preserve logical coverage across physical shards and report missing required resources, rather than promote rank-local fragments into semantic identities. |
+| Dense-to-MoE and installed attention changes (`research/model-surgery-and-staged-topology.md`) | Identify the captured topology and construction meaning; do not relabel old captured state using the later live stage. |
+| Compound control and AR/NAR adapter products (`research/conditioning-and-control-networks.md`, `research/video-audio-training.md`) | Permit selected cross-component coverage and external dependencies without SD-shaped roles or treating every preparation dependency as an inference dependency. |
+
+Current writers provide additional migration evidence: SDXL combines components
+or uses directory packaging; SD3 emits several files; VeRA includes shared/local
+state and reconstruction settings; learned sidecars are selected domain
+products. These implementations do not demonstrate stable distributed capture,
+complete publication reporting, or the wider cases above. G5 must establish
+those guarantees for each production implementation it deliberately supports.
+
+Persistent dataset indices, cached representations, generated experience, and
+unfinished producer work retain their owning capability's meaning. Shared
+storage or publication infrastructure does not turn them all into trained-model
+products. Exact continuation of such work and coordinated snapshot recovery
+remain G4.4; metadata consumption remains G4.5. Concrete API, capture, backend,
+and publication mechanisms remain G5, not new language constructs at this gate.
+
+#### Restoration remains a separate exchange
 
 Runtime restoration has a different purpose. Exact same-run restoration
 preserves the logical authority, participant and optimization identities,
