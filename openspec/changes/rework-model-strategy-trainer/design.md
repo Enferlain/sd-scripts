@@ -547,9 +547,9 @@ or folders.
 | Materialize and bind | Training lifecycle coordination derives a candidate job from accepted obligations/current revisions; the selected domain loader or constructor supplies evidence; only the run authority publishes binding/relationship changes. | `run-participant-state`: “Initial realization and later transitions share one enforcement direction”, “Transitions are revision-checked and atomic”; `loaded-model-components`: “Model loading returns the loaded-component surface”. |
 | Prepare runtime | Training-side preparation coordination derives one complete attempt-scoped job and coordinates final publication of authority-owned routes/views with Trainer-owned backend/optimization state; neither side exposes a half-installed result. | `training-runtime-preparation`: “Preparation derives one coherent attempt-scoped job”, “Preparation results separate ownership surfaces”, “Fallible work precedes final publication”, “Stale results never publish against newer state”. |
 | Realize optimization | Trainer optimization derives candidates from accepted subjects/units and current projections; the joint preparation coordinator publishes the prepared optimization runtime with the corresponding authority routes and Trainer backend state. | `training-optimization`: “Trainer owns standard realization and mechanics”, “Realization and preparation form one publication attempt”, “Binding changes invalidate affected optimization runtime”. |
-| Produce and hand off input | Training input coordination manages producer lifecycle, readiness, admission, delivery, and failure routing under accepted obligations; selected input behavior owns live-source traversal, selection/packing policy, and private continuation state. Cache-production traversal remains with caching coordination. An admitted handoff is not proof of action completion or optimization advancement. | `training-contract`: “Authors assemble strategies explicitly”, “Obligations are evaluated at the earliest authoritative evidence point”; `accepted-training-execution`: “Input handoff retains identity and admission meaning”, “Cross-owner action facts remain correlatable”; `training-capability-coordination`: “Caching separates semantics from storage orchestration”. The input-specific scenarios are filed; tasks 4.1 and 4.4 finish cache-production and exact-restoration protocols. |
+| Produce and hand off input | Training input coordination manages producer lifecycle, readiness, admission, delivery, and failure routing under accepted obligations; selected input behavior owns live-source traversal, selection/packing policy, and private continuation state. Cache-production traversal remains with caching coordination. An admitted handoff is not proof of action completion or optimization advancement. | `training-contract`: “Authors assemble strategies explicitly”, “Obligations are evaluated at the earliest authoritative evidence point”; `accepted-training-execution`: “Input handoff retains identity and admission meaning”, “Cross-owner action facts remain correlatable”; `training-capability-coordination`: “Caching separates semantics from storage orchestration”, “Cache publication and consumer admission are distinct”, “Independent cache production has bounded lifecycle and owned continuation”. G4.1 files the cache-production exchange below; task 4.4 completes coordinated exact-restoration protocols. |
 | Execute training | Trainer's loop supplies time/input and current prepared projections; accepted behavior executes only its granted operations, while Trainer commits its retained mechanics and the authority handles any requested canonical transition. | `accepted-training-execution`: “Accepted execution survives the authoring object”, “Execution uses current prepared state”, “The standard profile retains generic Trainer mechanics”. |
-| Coordinate caching | The caching capability coordinator derives work from an accepted request and current data/representation dependencies; it publishes readiness only for completed, fresh cache results. | `training-capability-coordination`: “Capability readiness derives from accepted state”, “Caching separates semantics from storage orchestration”. |
+| Coordinate caching | The caching capability coordinator derives work from an accepted request and current data/representation dependencies; it publishes readiness only for completed, fresh cache results. | `training-capability-coordination`: “Capability readiness derives from accepted state”, “Caching separates semantics from storage orchestration”, “Cache requests and results preserve the selected computation”, “Cache freshness follows actual computation dependencies”, “Cache publication and consumer admission are distinct”, “Cache storage lifecycle preserves outstanding use”, “Independent cache production has bounded lifecycle and owned continuation”. |
 | Coordinate validation | Trainer/pipeline scheduling derives the accepted request from trigger and ready projections; validation coordination publishes observations and capability-owned state only after traversal/evaluation succeeds. | `training-capability-coordination`: “Validation separates evaluation semantics from traversal”, “Capability results feed observation without transferring ownership”. |
 | Coordinate sampling | Trainer/pipeline scheduling derives a request from selected trigger/destination and ready projections; sampling coordination reports actual outputs and capability state after generation/publication. | `training-capability-coordination`: “Sampling separates generation semantics from orchestration”, “Capabilities have named request and result semantics”. |
 | Persist trained artifacts | Persistence coordination derives the accepted product plan from a coherent state projection; publication of the artifact result follows actual writes and does not publish a fictitious product on partial failure. | `training-artifact-persistence`: “Artifact persistence has declaration, request, plan, and result stages”, “Artifact results report actual output”, “Persistence uses one accepted boundary”. |
@@ -561,6 +561,159 @@ claim that every capability delta already contains its full failure protocol.
 G4 must make the corresponding domain-specific failure requirements explicit
 before production implementation. None requires SDXL-shaped universal inputs,
 and no coordinator may bypass the authority's binding and revision checks.
+
+#### G4.1 Caching exchange
+
+Caching reuses an accepted intermediate computation; it does not decide which
+training inputs, captions, augmentations, or gradient paths the run should use.
+The selected representation or conditioning implementation defines the cache
+boundary: what computation is already done, what remains live, the complete
+value/schema needed downstream, and the dependencies and reuse guarantees.
+Shared contract conformance judges those meanings; ordinary strategy authors
+do not recreate cache validators. The coordinator evaluates new evidence
+against the existing run-specific obligations, not a second acceptance policy.
+
+The cooperating owners remain distinct:
+
+- Selected domain behavior owns encoding, decoding, representation/schema,
+  and dependency meaning, including stochastic and gradient semantics.
+- Data/cache infrastructure owns cache-production traversal, storage,
+  production work, and readiness publication. Its internal workers need not
+  become individual run-graph nodes.
+- The selected input provider owns consumption traversal, sample/caption
+  selection, transformations/packing, and its private continuation state.
+- Run coordination owns the accepted activities' lifecycle and cross-owner
+  handoff/failure relationships. Through training input coordination it checks
+  admission before consumer use, without taking over provider algorithms or
+  repeatedly querying the strategy.
+
+These are responsibilities, not four new classes or a fixed execution chain.
+Pre-training caching, lazy production on a miss, and independently progressing
+production use the same boundary meanings where selected and supported.
+
+| Exchange category | Required caching meaning |
+| --- | --- |
+| Request inputs | Selected capability/codec and representation boundary; requested work or production-source scope; exact relevant input/variant and transformation meaning; required consumer schema; producer dependencies and consistency/reuse policy; destination/storage support; accepted miss, capacity, cancellation, and failure policies. Bounded requests may be derived during execution without changing the accepted implementation. |
+| Readiness evidence | Required source bindings/views and protected producer-state access; current obligation/dependency evidence; permitted placement and resource capacity; usable storage. Reuse additionally needs evidence for the stored value's actual inputs, representation, and source state. Known unsupported combinations fail at fulfillment; facts only available during production are checked at their authoritative point and before publication/use. |
+| Result | Correlation to the request and production attempt; completed values or bundles, their actual input/transformation and production-state provenance, schema/dependency evidence, storage access, and publication outcome. Pending, failed, cancelled, stale-for-the-request, and uncertain work remain distinguishable. Partial job coverage does not imply complete coverage. |
+| Canonical state effect | Cache coordination records verified cache availability and production continuation. Input selection, packing, delivery, and exposure state remain with their own owners. Cache results do not publish participant bindings, amend optimization, or advance training progress. |
+| External effect | Accepted source reads, encoding/transfer, payload/index writes, and storage lifecycle changes. Eviction, compaction, or replacement cannot invalidate an outstanding accepted read; access must remain protected through its required completion or fail before dependent use. |
+| Failure | Report the reached boundary, actual completed/publicly usable output, known effects, and uncertainty. Incomplete encoding, writing, indexing, or dependency evidence cannot publish readiness. Accepted wait, retry/recompute, fallback, quarantine, or stop policies govern affected work; unsupported or semantics-changing substitutes are rejected. Cleanup failures remain distinct from the primary failure. |
+
+**Identity and reuse.** A logical sample is not a cache record, request, caption
+variant, or file path. One sample may use several cached representations or
+variants; several samples may share one reusable value when its complete
+accepted dependencies match. Storage access may address a file, shard member,
+memory entry, or another selected backend without defining semantic identity.
+The exchange preserves only the associations needed by accepted consumers,
+coordination, observation, and restoration; it imposes no universal image,
+latent, tokenizer, or tensor-axis fields.
+
+Dependency evidence covers the computation upstream of the cache boundary,
+including relevant source content, realized transformations/randomness,
+encoder state, tokenizer/formatting, precision, output selection, and schema
+where the selected semantics depend on them. These are examples, not a
+mandatory universal key tuple. A path, caption hash, unchanged participant
+reference, or unchanged binding revision alone cannot establish all of them.
+Ordinary weight updates can invalidate derived values without replacing the
+participant or rebuilding prepared execution. Conversely, unrelated
+downstream updates need not invalidate a precisely evidenced upstream cache.
+Persistent values from an earlier run use the same evidence and admission
+rules against the new run's obligations. Prior availability or matching
+authored addresses do not prove current compatibility or transfer participant
+identity; reuse needs evidenced correspondence to the current producers and
+representation requirements.
+
+For example, cached frozen Qwen states and T5 token information can feed a live
+trainable LLM adapter. Adapter updates leave that upstream cache valid; encoder
+updates affect its producer-state guarantee. A detached value cannot replace
+a required derivative path through a trainable encoder. Likewise, reusing one
+realized crop or caption does not preserve a policy that requests different
+ones, and an approximate embedding edit is not exact re-encoding. Such changed
+algorithms require their own explicitly accepted behavior, not a cache miss
+shortcut. If supported, a mixed hit/miss path must encode the actual requested
+caption and preserve the full selected conditioning schema.
+
+**Publication and admission.** Produced, stored, published-ready, admitted,
+handed-off, consumed, and update-contributing are different facts. Readiness
+is published only for a complete usable value/bundle with accepted storage and
+dependency evidence. Its consistency boundary may cover several resources;
+it is not automatically the entire dataset or production job. Other complete
+records may remain ready after an unrelated item fails if the accepted policy
+permits partial coverage. A queue message or orphan payload is not readiness.
+Payload and locator/index availability must agree before dependent reads;
+interrupted writes require the storage implementation's declared recovery
+behavior rather than an assumed crash-safe transaction.
+
+The result describes the source state actually used, not merely the state
+requested at launch. This may be one protected snapshot or structured
+provenance over portions of the work where the accepted production policy
+allows that. In-flight dependency changes cannot relabel an old result as a
+new one or automatically admit mixed-state work. Publication checks the
+request's current obligations, and consumer admission checks exact work
+association, representation, freshness/lag, and gradient requirements again.
+The value's evidence and required source/storage access must remain valid
+through the dependent use, following the shared current-use/completion rules.
+Older-state values may remain stored or serve an explicitly accepted versioned
+policy; they cannot remain current under a guarantee that has failed. A route
+change alone need not invalidate a stored value if its accepted semantic and
+numerical dependencies demonstrably remain satisfied.
+Published availability records completed storage and production provenance,
+not a perpetual current-use guarantee. A query claiming current usability must
+evaluate current dependency evidence, including ordinary producer-state
+changes that do not revise bindings. Implementations may proactively withdraw
+affected guarantees or re-evaluate them at query/admission; neither may expose
+a failed guarantee as current. This does not require one notification path or
+invalidate unchanged physical availability merely to record incompatibility.
+
+**Independent production and continuation.** The run structure may relate
+cache production and consumption without one shared step/epoch clock or a
+dataset-wide startup barrier. A selected implementation exposes bounded work,
+resource placement, backpressure, readiness, cancellation, and failure to run
+coordination while retaining its private queue/workers. Assignment follows
+accepted data ownership and distributed topology, not a universal modulo over
+all process ranks. Background work is not permission for unsafe concurrent
+access to training weights or unlimited same-device allocation.
+
+An exhausted cache or failed producer follows the accepted policy. Waiting,
+recomputing, or an explicitly equivalent fallback may preserve requested work;
+silently choosing another caption/sample or using incomplete conditioning does
+not. A provider that intentionally selects a ready subset owns that exposure
+policy and its continuation. Cache coordination cannot infer that policy from
+arrival order or claim selection, consumption, or optimizer advancement from
+a completed write. Lifecycle stop/cancellation must account for in-flight
+work before releasing resources or establishing recoverable state.
+
+For exact continuation, cache coordination contributes the production position,
+pending/ready/publication state, dependencies, and stored-resource guarantees
+needed by the selected recovery policy. The provider separately contributes
+selection/packing/RNG and handoff state. Reconstructible cache payloads may be
+reissued rather than embedded in every snapshot where the accepted recovery
+claim permits it. Saving an index, pausing a producer, or restoring a queue
+alone does not establish a coherent cut with model/optimizer/input state.
+G4.4 defines that cross-owner snapshot protocol; G5 chooses concrete types and
+backend publication/access mechanisms.
+
+**Evidence and implementation limits.** The following checks complete the
+caching meanings, not a claim that the current backend implements them:
+
+| Pressure case / current evidence | Required consequence |
+| --- | --- |
+| `Trainer.train()` (`library/training/runners/trainer.py:256–301`) invokes caching before the loop; `CachingEngine.cache_dataset()` (`library/data/caching_engine.py:252–348`) processes a finite manifest and synchronizes ranks. | Preserve useful batch/encoding machinery without making full-manifest completion a universal execution prerequisite. Independently progressing production needs its own supported implementation and lifecycle tests. |
+| `CacheBackend` (`caching_engine.py:71–208`) accepts image tensors and per-entry paths; `CacheEntry` (`library/data/structures.py:54–112`) stores one image, caption, and latent/TE paths. | Decouple cached representation and storage access from image/sample identity; allow shared/variant records and sharded or bounded storage without requiring those backends in the first migration. |
+| SDXL TE encoding/validation (`library/strategies/sdxl/caching.py:472–630`) records a caption hash and checks it only when present; `_load_te_outputs()` (`library/data/dataloader.py:311–330`) loads assigned paths. | Complete producer/schema dependency evidence and per-request admission are required; a successful old validity check does not demonstrate them. |
+| Current configuration (`library/config/config_validation.py:90–100,152–158,624–647`) rejects dynamic-caption caching and cache/offload combinations. | Those restrictions protect the current implementation; future supported exact variant/miss/offload arrangements must be judged by their actual obligations, not inherit the old global exclusions. Required live gradients remain a genuine compatibility concern. |
+| [Anima conditioning boundary](research/anima-llm-adapter.md), [data pipeline research](research/training-data-pipeline.md), and [conditioning research](../../../docs_design/future_ideas/text_encoder_conditioning_research.md) distinguish frozen upstream work, live downstream computation, stochastic transformations, and exact caption variants. | Invalidate only genuinely affected dependencies and do not detach gradients or freeze dynamic semantics merely to obtain a cache hit. |
+| [Async production](../../../docs_design/future_ideas/async_data.md), [TE prefetch](../../../docs_design/future_ideas/async_te_offload_otf.md), [shards](../../../docs_design/future_ideas/data_shards.md), [streaming](../../../docs_design/future_ideas/streamed_training.md), and [accounting](../../../docs_design/future_ideas/data_accounting.md). | Preserve bounded independent lifecycle, partial readiness, storage/reader safety, and separate readiness/exposure/advancement. Snapshot-ready epochs and live-ready selection remain selected alternatives, not a universal recommendation. |
+| Existing [producer and composition experiments](research/training-mechanism-sketch.md) simulate out-of-order work, caption/state admission, backpressure, failure, and separate input/optimization outcomes. | They support the owner and handoff distinctions; they do not prove real producer-state protection, concurrent storage publication/eviction, distributed assignment, or exact recovery. G5 conformance must exercise the chosen implementation, including interrupted publication and an outstanding reader during storage changes. |
+
+Graph discovery and exact-source checks support the bounded production claims;
+coverage metadata at generation `2026-10-03T00:09:00Z` recorded no gaps on the
+relied-on paths. Dynamic dispatch was checked in source rather than inferred
+from absent call edges. Future-data notes are design evidence, not promises
+that SQLite, a particular shard format, streaming ingestion, learned embedding
+editing, or every asynchronous backend ships in the first migration. This
+exchange adds no execution-language construct or universal training sequence.
 
 #### Run state is composed, not universally owned
 
