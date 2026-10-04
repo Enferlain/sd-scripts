@@ -1,26 +1,35 @@
 ## MODIFIED Requirements
 
 ### Requirement: Model loading returns the loaded-component surface
-The active model-loading strategy contract SHALL return one shared typed loading-result shape containing the family-declared loaded-component surface plus ordered source observations, source selections, component-to-selection bindings, decisions, transformations, and limitations known by the successful loader instead of the fixed `text_encoders/vae/denoiser` tuple, an evidence-free component tuple, or family-specific provenance fields.
+The model-loading boundary SHALL produce one shared typed loading result
+containing the model version, family-declared top-level component candidates,
+ordered source observations, source selections, component-to-selection
+bindings, loading decisions, transformations, and known limitations rather
+than a fixed `text_encoders/vae/denoiser` tuple, evidence-free component tuple,
+or family-specific provenance fields. The loaded-component surface SHALL remain
+the authoritative top-level
+description of what the loader produced, while the accepted run authority
+alone SHALL validate and publish its candidates as current participant
+bindings. Loading evidence SHALL NOT become a competing canonical live-binding
+collection.
 
 #### Scenario: Loading a training model
-- **WHEN** `ModelLoadingStrategy.load_target_model()` loads a training-capable model family
-- **THEN** it MUST return the model version together with the family-declared loaded-component surface in a typed loading result
-- **AND** the loaded-component surface MUST remain the authoritative top-level component representation for downstream runtime code
-- **AND** the result MUST preserve the successful source selection and component-materialization evidence known at that boundary through the shared collections
+- **WHEN** a model loader produces a training-capable model family's components
+- **THEN** it MUST preserve declared component keys, order, public labels, generic semantics, candidate loaded values, and the successful source/materialization evidence known at that boundary
+- **AND** those candidates MUST enter runtime use through accepted participant materialization
 
 #### Scenario: Families have different source layouts
-- **WHEN** SD, SDXL, SD3, or a future family loads a different number or arrangement of sources/components
+- **WHEN** SD, SDXL, SD3, or a future family loads a different number or arrangement of sources and components
 - **THEN** each family MUST populate the same typed loading-result collections
 - **AND** central consumers MUST NOT require family-specific source fields or family-name branches
 
 #### Scenario: Trainer stores the primary loaded-component state
-- **WHEN** trainer setup receives loaded model state from the strategy layer
-- **THEN** the trainer MUST treat the loaded-component surface as its primary top-level model representation
-- **AND** generic runtime code MUST NOT depend on the old tuple fields as the long-term contract
-- **AND** the trainer MUST retain the typed loading/provenance state required for catalog resolution and realization composition filing
+- **WHEN** Trainer setup coordinates loading for an accepted arrangement
+- **THEN** current participant bindings MUST be owned by the accepted run authority
+- **AND** Trainer MUST NOT retain a competing authoritative loaded-component collection or fixed family slots
+- **AND** the accepted arrangement or its scoped loading/provenance projection MUST retain the typed evidence required for catalog resolution and realization-composition filing
 
 #### Scenario: Deferred loading updates components
-- **WHEN** `load_denoiser_lazily()` or another family materialization boundary changes component presence or component-to-selection binding
-- **THEN** it MUST return an updated typed loading result or typed update preserving the authoritative component surface and new materialization evidence
-- **AND** it MUST NOT discard the prior loading evidence required to explain the final composition
+- **WHEN** a deferred materialization boundary changes component presence or component-to-selection binding
+- **THEN** it MUST return a typed loading result or update that preserves prior loading evidence and reports the new candidate and materialization evidence
+- **AND** the candidate MUST become current only through an accepted participant transition rather than direct replacement of a Trainer-owned component collection

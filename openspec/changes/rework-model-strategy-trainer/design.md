@@ -161,17 +161,14 @@ The changes already overlap on `loaded-model-components`,
 deltas may not be implemented, synced, or archived independently as though the
 other change did not exist.
 
-Two concrete conflicts must be reconciled rather than inherited silently. The
-metadata change currently requires Trainer to retain the typed
-loading/provenance state as its primary model representation, while this change
-places that evidence in the accepted arrangement or a scoped projection and
-forbids a competing Trainer-owned binding collection. Its target-ref delta also
-uses optimization as the universal target-building actor and preserves an
-unqualified live-parameter field, while this change permits several accepted
-consumers and treats live objects only as revision-pinned projections. The
-metadata requirements for typed evidence, structural identity, and
-observation-local deduplication survive; their runtime owner and access shape
-must be revised at the shared boundary.
+G4.6 reconciles two concrete conflicts identified in milestone 1. The companion
+metadata loading delta now agrees that accepted authority owns current bindings
+and loading/provenance evidence is retained in scoped projections, not a
+competing Trainer collection. Its target-ref delta now permits accepted
+consumers rather than naming optimization as the universal builder, and limits
+live access to revision-pinned projections. Typed loading evidence, structural
+identity, and observation-local alias evidence survive. Their concrete type
+integration remains the shared G5/metadata implementation boundary.
 
 The retained boundary is:
 
@@ -210,7 +207,7 @@ target runtime actors.
 | `adapter-module-targeting` | Optimization owns host-module selection; `AdapterMode` appears in target passing, trainable handoff, and `loha` export/merge. Mixed-method overlap was deferred. | Ownership and deferral are `REMOVED`; governed resolution and unsupported-overlap rejection are `ADDED`. Provenance, parameter grouping, `loha`, method settings, continuation, migration fields, and declared-component scope are `MODIFIED`. Method behavior, selector compatibility, strict artifact-continuation default, and non-SD component support survive. |
 | `repo-owned-lora-method` and `repo-owned-vera-method` | Build scenarios name `AdapterMode` and call resolved targets optimization-owned. | Each build/loading requirement is `MODIFIED` to consume governed PEFT results. Method-local algorithm, configuration, state, export, and trainable-provenance requirements survive; methods still do not own host traversal or semantic selection. VeRA's malformed delta-shaped main-spec headings are normalized before validation. |
 | `training-observability` | Producer and startup/resource scenarios allow mode-owned filtered state and mode/strategy authority. | Three requirements are `MODIFIED`: accepted projections/results supply facts, Trainer or accepted behavior choose when to emit, and observability owns formatting/routing without becoming authority. Sinks, ordering, resource separation, trackers, and provenance diagnostics survive. |
-| `model-family-metadata` | Existing realization identity can be misread as live participant identity. | An `ADDED` requirement distinguishes authority-issued incarnation and exact-run restoration from catalog, source, realization, artifact, and cross-run lineage identities. Existing typed catalog/build/emission/projection and external-parity requirements survive. |
+| `model-family-metadata` | Existing realization identity can be misread as live participant identity; companion composition and filing rules assume loader/preparation success establishes current history. | Shared `MODIFIED` distinction/filing requirements use accepted publication and checkpoint-scoped finalization, preserving all existing scenario identifiers. `ADDED` requirements distinguish runtime and durable identity, accepted history, actual product/restoration outcomes, and required delivery from optional telemetry. Existing typed catalog/build/emission/projection and external-parity requirements survive. |
 
 Two migration-scoped rules need explicit limits. The existing
 `optimization-target-refs` selector and grouping requirements continue through
@@ -241,23 +238,32 @@ permission to restore old targeting or mode ownership.
 
 | Metadata area | Unchanged requirement | Overlap disposition and dependent milestone |
 | --- | --- | --- |
-| Catalog identity and source provenance | Durable catalog assignment, portable evidence, source selections, ordered materialization evidence, and lineage remain metadata-owned. | Metadata foundation tasks 2–3 can proceed independently. Its loading task 4.1 must reconcile this change's participant authority and D5 materialization exchange before tasks 4.2–4.6 publish runtime-facing loading state; family task 5 and composition task 6 then consume accepted transitions, not Trainer-owned bindings. |
-| `loaded-model-components` | One typed loading-evidence shape, family-declared components, successful source decisions, deferred updates, and limitations remain required. | The metadata delta's `Trainer stores the primary loaded-component state` scenario conflicts directly. This change's `MODIFIED` scenario governs current bindings; metadata task 4.1 must replace the old owner while retaining evidence in an accepted scoped projection. Loader candidates become current only through authority publication. |
-| `optimization-target-refs` and structural metadata | Qualified structural paths, distinct live-object/storage observations, alias evidence, optional catalog links, and observation-local execution deduplication remain required. | The metadata delta's optimization-only builder and unqualified live-parameter field conflict. This change's policy-neutral refs and revision-pinned consumer views govern runtime use. Metadata structural tasks 9 onward may supply structural identities but cannot make live parameters durable identity, metadata the binding authority, or catalog resolution a prerequisite for an otherwise valid live view. This change's optimization task 3 consumes shared refs without taking PEFT target policy. |
-| `model-family-metadata` and resource intelligence | Typed model/realization/artifact facts, append-only composition history, registry filing, qualified resource owners, and bounded structural queries remain required. | Authority-issued participant and artifact results supply durable projections; metadata filing does not establish live identity. This change's product/restoration tasks 4.3–4.5 and metadata composition/artifact tasks 6–7 must agree on revisions and actual product results. Resource intelligence remains an observer. |
+| Catalog identity and source provenance | Durable catalog assignment, portable evidence, source selections, ordered materialization evidence, and lineage remain metadata-owned. | Ownership disposition reconciled in G4.6. Metadata foundation tasks 2–3 remain independent. Source evidence may describe loader candidates, while accepted composition requires authority publication. Metadata task 4.1 verifies concrete G5 integration before tasks 4.2–4.6; family task 5 and composition task 6 consume accepted transitions. |
+| `loaded-model-components` | One typed loading-evidence shape, family-declared components, successful source decisions, deferred updates, and limitations remain required. | Both changes now carry the same modified loading requirement and scenario bodies. Authority publication establishes current bindings; accepted scoped projections retain loading/catalog evidence without a competing Trainer collection. Concrete projection/type compatibility remains metadata task 4.1, not an unresolved ownership decision. |
+| `optimization-target-refs` and structural metadata | Qualified structural paths, distinct live-object/storage observations, alias evidence, optional catalog links, and observation-local execution deduplication remain required. | Companion structural associations now use policy-neutral refs, accepted consumers, and revision-pinned live projections. Alias evidence does not globally deduplicate semantic owners; same-unit/group aliases and unsupported cross-unit/group overlap retain distinct treatment. Metadata structural tasks 9 onward and consumer task 12.1 preserve this boundary without requiring catalog resolution for a valid live view. |
+| `model-family-metadata` and resource intelligence | Typed model/realization/artifact facts, append-only composition history, registry filing, qualified resource owners, and bounded structural queries remain required. | Both changes now carry matching modified distinction/filing requirements, including `Model loading completes`. Companion provenance/design/tasks use accepted publication, named checkpoint finalization, original capture associations, and required-history delivery separate from reached effects. G4.5 supplies metadata/resource consumer rules; concrete schema/query integration remains G5 and metadata tasks 6–7/9–12. Resource intelligence remains an observer. |
 
-These are boundary dependencies, not a whole-change landing order. Before
-either change syncs an overlapping spec, both deltas must be reconciled with
-the realized authority, projection, and evidence types. Metadata task 4.1 is
-the explicit shared-boundary gate, including repair of its
-`model-family-metadata` modified-requirement scenario omission; it must be
-revisited when this change's participant and D5 types become concrete, and
-both changes must pass strict validation then.
-The rework's `loaded-model-components` delta currently uses the same new
-scenario headings as the metadata delta (including different source layouts
-and deferred loading). Metadata task 4.1 must compare those headings and
-their bodies with the rework delta again before either change syncs; a repair
-or rename on one side cannot silently diverge from the other.
+These are boundary dependencies, not a whole-change landing order. G4.6 files
+the semantic dispositions in both existing changes and repairs the companion's
+omitted `Model loading completes` scenario; it does not complete the companion
+implementation gate or authorize sync/archive. Metadata task 4.1 remains the
+explicit verification against concrete G5 authority, projection, and evidence
+types. Both changes must pass strict validation and required review at that
+integration gate. Shared loading and model-fact modified requirements must
+retain matching scenario identifiers and bodies; an edit or rename on one
+side cannot silently diverge from the other.
+
+The G4.6 audit also corrects older participant-state wording that would turn
+restoration lacking identity facts into a new run. Required identity/revision
+state missing from a same-run request means incomplete restoration and gated
+execution; new identities require a separately requested new run with lineage.
+Capability and product deltas retain G4.1–G4.5's admitted dependencies, protected
+use, actual partial/uncertain outcomes, external-dependency completion policy,
+and separation of artifacts, runtime recovery, required metadata, and optional
+observations. Adapter/method deltas already displace mode/targeting ownership;
+their selector, provenance, method-local behavior, and bounded migration rules
+remain as recorded above. Task 4.6's validation/review gate applies to these
+dispositions before the milestone can be marked complete.
 
 OpenSpec requires a MODIFIED requirement to retain the current main-spec
 scenario identifiers. The two `optimization-target-refs` scenario headings
@@ -924,6 +930,141 @@ G2–G4 refine the domain-specific contents of these categories before
 production types are chosen. The frame above fixes the ownership questions the
 training-first sweep can already answer without pretending that the detailed
 execution, optimization, or capability protocols are complete.
+
+#### G4.5 Metadata and observability consume accepted run facts
+
+The metadata system is a recently built foundation, not a fixed constraint on
+the new training system. Its central typed-item, builder, validation, registry,
+backend, query, and projection responsibilities remain useful. Its schemas,
+identity associations, and accumulation/query logic can change when the
+accepted run needs distinctions that they do not preserve today. Keeping that
+foundation does not mean forcing a dynamic whole run into its current
+one-session, one-loaded-realization, step/epoch-facing inputs.
+
+**Origin truth and durable representation are different authorities.** The run
+authority establishes participants, relationships, accepted transitions, and
+current bindings. Optimization, input, selected behavior, capabilities, and
+backend owners establish their own state, progress, and results. They expose
+scoped facts at the boundary where those facts become authoritative. Central
+metadata builders translate explicit inputs into typed items; metadata owns
+item validation, durable identity qualification, relationships, accumulation,
+and export. That validation does not establish a new live participant or judge
+whether an execution route is currently usable. Metadata may retain historical
+binding/route facts, but not live module handles or a competing canonical
+binding collection. Observability formats and routes observations rather than
+reconstructing the arrangement through the old Trainer hub.
+
+| Origin-owned meaning | Consumer input and retained distinction |
+| --- | --- |
+| Logical run and runtime identities | Authority-qualified run, participant/relationship incarnations, and optimization-unit identities remain distinct from execution-session/attempt, authored address, catalog/source/revision, realization/composition, and artifact identities. Available associations are explicit, not guessed from a name, role, path, or Python object. |
+| Accepted transitions and current projections | Accepted arrangement/obligation, binding, relationship, route/view, unit-definition, and relevant owner-state dependencies qualify the observation. Failed/stale attempts remain attempt outcomes, not accepted topology history. Retired references retain historical meaning. |
+| Activity progress and outcomes | Producer/request/input/operation/unit/capability facts retain their required cross-owner associations, independent coordinates, actual provenance, and known/skipped/failed/uncertain/unattempted outcomes. No global step substitutes for them all. |
+| Product and snapshot publication | Descriptive export facts and requested scope are distinguished from actual product/member/resource publication, required/optional coverage, local/remote outcomes, and snapshot capture/publication/restoration guarantees. |
+| Diagnostics and resource evidence | Accepted component and optimization projections supply subjects, labels, order, aliases, membership, and preparation state. Resource observations keep measurement basis, process/rank/device scope, owner evidence, and validity rather than promoting a display label into ownership. |
+
+**History is associated with the state observed, not the time it was filed.**
+Within one run, compatible replacement keeps the participant incarnation while
+recording changed binding/state dependencies; retirement followed by a new
+participant at the same authored address does not overwrite the old identity.
+Separately authority-established teacher or EMA participants remain distinct
+even when roles or sources overlap. Teacher/student labels can instead name
+execution roles of one participant, and selected EMA state can be an artifact
+or state variant rather than a separately accepted participant. Metadata records
+the supplied identity and state provenance; neither label creates an incarnation.
+Wrappers, replicas, access views, and named
+routes do not independently decide participant identity. A durable model
+realization/composition observation can be associated with these runtime facts
+without becoming the participant reference itself.
+
+Recorded history preserves its observed revision/scope and source identity.
+An older observation arriving after a newer one remains older evidence; backend
+arrival order or wall-clock time is not an authority revision. Where no supported
+ordering/correspondence exists, consumers report ambiguity or incompleteness
+rather than inventing a current state. Ordinary weight updates, adaptive state
+changes, and produced-data versions are not all topology/binding revisions.
+Their required state provenance is supplied by the owner or capture result.
+This does not require a universal event log, serializing every runtime update,
+or retaining unrestricted live state in metadata.
+
+**Restoration preserves the logical run and changes the execution session.**
+D11's restored participant, relationship, and unit identities and applicable
+revisions retain their meaning. Observations from the new session are
+distinguishable from historical attempts in the earlier session; rebuilding
+modules does not create new incarnations. A new run initialized from an
+artifact instead records explicit lineage between different identities.
+Observation or tracker identifiers cannot replace the saved logical run
+identity. The existing `MetadataSnapshot` is a collected-record view for
+metadata queries/projections, not the G4.4 snapshot of required execution state.
+Metadata may describe or reference a recovery snapshot, but cannot certify its
+continuation coverage merely because its own store was saved successfully.
+
+**Actual results drive product and run reporting.** Header/export facts may be
+prepared before a serializer writes; they do not establish that a resource was
+written or a product completed. Post-write reporting consumes D11's captured
+state/provenance and actual publication result, not whatever participant happens
+to be current when the report is built. Local success, pending/failed upload,
+optional omissions, partial/uncertain output, and independent snapshot results
+remain separate. Similarly, a producer's ready result is not a consumed input,
+and a returned optimizer call does not prove numerical parameter change or
+all-unit success. Reports can summarize these facts, but cannot strengthen
+their guarantees or silently discard uncertainty to fit a single completion
+flag. Public labels, family order within a declared view, and adapter provenance
+remain useful presentation facts, not runtime topology selectors.
+
+**Resource accounting receives evidence, not inferred ownership.** A component
+key or phase label alone cannot qualify an owner across incarnations, sessions,
+or activities. Estimates and measurements remain distinguished; the accepted
+scope and validity of owner-bearing evidence determine how resource consumers
+associate them. Physical sharing/alias deduplication is observation-local and
+does not merge logical participants or optimization identities. Missing owner
+evidence produces an accounting gap, not fabricated ownership. Bounded module
+inspection by an authorized measurement producer remains possible; downstream
+reports consume its supplied facts, not an unrestricted Trainer or strategy.
+
+**Observation delivery is not algorithmic feedback or recovery publication.**
+Optional telemetry can use bounded buffering and declared drop/degradation
+policies outside latency-critical storage paths. Sink failure cannot erase an
+accepted transition or known execution/product outcome, and retrying a filing
+does not retry training work. Required history, provenance, product metadata,
+or restoration state follows its accepted completeness/durability policy and
+cannot be silently dropped as optional telemetry. If a required filing fails,
+the relevant publication or subsequent dependent use remains incomplete or
+unavailable under that policy; an already reached effect is not rolled back.
+Observation gaps remain visible rather than making missing evidence mean that
+an operation never ran. Delivery/retry must preserve fact identity and must not
+manufacture a second semantic transition.
+
+Feedback required by an adaptive algorithm remains an accepted owner-to-owner
+execution exchange even if a copy is logged. Disabling/dropping tracker metrics
+must not suppress that feedback or advance the algorithm twice on log retry.
+That required algorithmic state belongs to its continuation owner, not a
+telemetry buffer. These distinctions permit swappable sinks without making
+backend ingestion ordering part of training semantics.
+
+**Current-to-target evidence and remaining work.** The G4.5 graph/source pass
+found current session-derived realization IDs and once-retained filing in
+`Trainer._file_model_realization_metadata`, pre-write artifact fact filing in
+`Trainer._build_checkpoint_metadata`, and broad mode/strategy/Trainer inputs in
+`build_trainer_diagnostic_rows`, `build_training_startup_summary`, and report
+context construction. The central model builder already returns module-free
+typed facts from explicit inputs, while the resource layer already preserves
+measurement basis and evidence-qualified accounting. These are evidence of
+useful responsibilities and required input changes, not final APIs or proof
+of the target runtime. In particular, the current buffer's degradation policy
+does not establish required-history durability.
+
+The existing `model-family-metadata` and `training-observability` deltas carry
+the consumer requirements and positive/negative scenarios. Catalog/source,
+structural, and revisioned-composition work in the companion metadata change
+remains required where applicable; its runtime-facing ownership is reconciled
+with accepted transitions, not independently implemented around old Trainer
+bindings. A composition described as final/prepared is final for its named
+checkpoint, not a promise that the run can never change again. G4.6 reconciles
+the overlapping deltas. G5 and the metadata implementation work choose concrete
+fact fields, identity links, query/accumulation rules, delivery policies, and
+migration tests; existing metadata weak points may be corrected there rather
+than preserved for their own sake. No new execution-language construct or
+production metadata implementation is established by this filing.
 
 ### D6. One run authority owns participant and relationship state
 

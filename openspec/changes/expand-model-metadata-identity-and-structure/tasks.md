@@ -27,7 +27,7 @@
 
 ## 4. Typed Model Loading And Provenance Contract
 
-- [ ] 4.1 Before production work in this section, reconcile the current `rework-model-strategy-trainer` design and deltas with this change's loading, provenance, realization, and structural requirements. Amend this design, the overlapping `loaded-model-components`, `model-family-metadata`, and `optimization-target-refs` deltas, and the remaining section-4 tasks to consume the rework's accepted identity/state/projection boundaries without weakening metadata requirements. Repair the existing `model-family-metadata` modified-requirement scenario omission (`Model loading completes`), validate both changes strictly, obtain the required review, and stop if the shared boundary is not ready.
+- [ ] 4.1 Before production work in this section, verify this change against the concrete identity/state/projection types selected by `rework-model-strategy-trainer` G5. Its G4.6 reconciliation records the shared ownership rules and restores the `Model loading completes` scenario; do not treat those planning corrections as completion of this implementation gate. Compare both overlapping delta sets and amend concrete integration assumptions without weakening loading, provenance, realization, or structural requirements. Validate both changes strictly, obtain the required review, and stop if the shared boundary is not ready.
 - [ ] 4.2 Replace the evidence-free loading tuple with a shared typed loading-evidence result containing model version, family-declared component candidates, ordered source observations, source selections, component-to-selection bindings, loading decisions, limitations, and transformations classified as source/materialization, runtime observation, or persisted lineage/revision evidence. Do not make the result a competing canonical live-binding store.
 - [ ] 4.3 Define typed deferred-materialization evidence and updates that preserve prior loading evidence and integrate through the accepted participant transition boundary selected by the rework.
 - [ ] 4.4 Add central builders for source representations, selections, component-to-selection bindings, materialization attempts/results, and transformation facts without retaining live modules or accessing metadata storage.
@@ -47,13 +47,13 @@
 
 ## 6. Revisioned Realization Composition
 
-- [ ] 6.1 Add accepted successful realization-composition observation facts with stable realization identity, transactionally unique monotonic revision, `initial`/`intermediate`/`final` state, ordered component-to-selection bindings, prior-revision link, and lifecycle evidence.
-- [ ] 6.2 Add separate materialization-attempt events with started/succeeded/failed outcomes and links to the effective/prior and resulting composition when available.
-- [ ] 6.3 Add validation and views for latest successful and finalized composition that use revision/state semantics rather than attempt or backend iteration order.
-- [ ] 6.4 Change initial post-load filing to create composition revision 1 and retain its accepted identity state.
-- [ ] 6.5 Change deferred-loading/model-preparation boundaries to file attempt events, append a composition revision only after successful observation, and append an explicit final revision; sanitize failure events and never mask the original exception.
-- [ ] 6.6 Link produced model artifacts to the applicable final composition revision while preserving the stable realization identity.
-- [ ] 6.7 Add tests for unchanged initial-to-final composition, successful deferred presence changes, failed attempt without revision consumption, retry after failure, concurrent revision allocation, ambiguous/invalid revisions, and artifact linkage.
+- [ ] 6.1 Add accepted realization-composition observation facts with stable realization identity, transactionally unique monotonic revision, `initial`/`intermediate`/`final` state qualified by the relevant readiness checkpoint, ordered component-to-selection bindings, prior-revision link, and originating accepted-state correspondence. Finalization must permit later accepted changes; filing order must not redefine semantic history.
+- [ ] 6.2 Add separate materialization/publication-attempt evidence distinguishing loading success from accepted, rejected, unpublished, and uncertain publication outcomes, with links to the effective/prior and resulting accepted composition when available. A successfully loaded candidate alone must not establish composition history.
+- [ ] 6.3 Add validation and views for latest accepted and checkpoint-finalized composition using originating revision/state correspondence rather than attempt, arrival, or backend iteration order; report missing or ambiguous correspondence without inventing current state.
+- [ ] 6.4 File the first authority-published composition as revision 1 and retain its accepted identity associations without keeping live bindings in metadata.
+- [ ] 6.5 Change deferred-loading/preparation publication boundaries to supply attempt evidence and accepted composition observations, including explicit checkpoint finalization; sanitize failure events and never mask the original exception. Required filing failure must report incomplete durable coverage without rolling back reached publication, and delivery retry must not create a second semantic transition.
+- [ ] 6.6 Link produced model artifacts to their actual captured composition and relevant finalized checkpoint while preserving stable realization identity; do not relabel captures with later live state.
+- [ ] 6.7 Add tests for unchanged initial-to-final composition, successful deferred presence changes, stale/rejected loaded candidates, failed attempt without accepted revision consumption, retry after failure, idempotent delivery, concurrent revision allocation, delayed observations, changes after finalization, ambiguous/invalid revisions, and captured artifact linkage.
 - [ ] 6.8 Run section 6 quality gates, `review-mcp`, and hand off realization finalization before section 7.
 
 ## 7. Portable Lineage And Provenance Milestone Completion
@@ -102,7 +102,7 @@
 
 ## 12. Optimization And Resource Consumer Integration
 
-- [ ] 12.1 Relate optimization component/module/parameter target refs to accepted revision/realization path-binding identities when available while preserving live refs, selectors, grouping policy, and live-object deduplication.
+- [ ] 12.1 Relate shared policy-neutral component/module/parameter target refs to accepted catalog/structural path-binding identities when available, preserving selectors and revision-pinned consumer access without requiring catalog resolution for a valid live view. Preserve distinct alias provenance; optimization consolidates same-unit/group aliases and rejects unsupported cross-unit/group overlap under its accepted policy rather than deduplicating semantic ownership globally.
 - [ ] 12.2 Migrate structural resource facts from bare component owners to accepted model/component, structural path-binding, and observation-local object/storage identities using the completed dependency boundary.
 - [ ] 12.3 Align component/parameter/buffer size summaries with accepted descriptors and preserve measured/structural/estimated/derived semantics.
 - [ ] 12.4 Keep early/legacy paths at their current behavior with explicit unresolved ownership when accepted identities are unavailable; degrade resource linkage rather than failing execution or inventing qualified IDs.

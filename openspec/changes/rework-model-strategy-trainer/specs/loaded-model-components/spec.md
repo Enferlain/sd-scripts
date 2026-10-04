@@ -6,7 +6,8 @@ containing the model version, family-declared top-level component candidates,
 ordered source observations, source selections, component-to-selection
 bindings, loading decisions, transformations, and known limitations rather
 than a fixed `text_encoders/vae/denoiser` tuple, evidence-free component tuple,
-or family-specific provenance fields. The loaded-component surface SHALL remain the authoritative top-level
+or family-specific provenance fields. The loaded-component surface SHALL remain
+the authoritative top-level
 description of what the loader produced, while the accepted run authority
 alone SHALL validate and publish its candidates as current participant
 bindings. Loading evidence SHALL NOT become a competing canonical live-binding

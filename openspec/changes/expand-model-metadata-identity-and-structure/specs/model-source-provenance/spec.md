@@ -69,26 +69,39 @@ The system SHALL classify a fact as source/materialization provenance when it is
 - **AND** the original source identity MUST remain intact
 
 ### Requirement: Realization composition observations are immutable and revisioned
-Each run-scoped model realization SHALL own an ordered append-only sequence of composition observations with explicit lifecycle state.
+Each run-scoped model realization SHALL own an ordered append-only sequence of
+composition observations with explicit lifecycle state and correspondence to
+the authority-published state observed. Successful loading evidence SHALL
+remain distinguishable from accepted composition. A finalized observation
+SHALL establish composition for its named readiness checkpoint, not permanent
+immutability of the run or current readiness for a later checkpoint.
 
 #### Scenario: Initial loading completes
-- **WHEN** the first loaded-component surface becomes available
+- **WHEN** the first loading candidates become authority-published state
 - **THEN** the system MUST file composition revision 1 with `initial` state
 - **AND** it MUST preserve component presence and component-to-selection bindings in family declaration order
 
 #### Scenario: Deferred component materializes
-- **WHEN** a later lifecycle boundary loads a previously absent component
+- **WHEN** a later authority publication accepts a previously absent component
 - **THEN** the system MUST file a new monotonically increasing composition revision
 - **AND** it MUST relate that observation to the preceding revision and new materialization evidence
 - **AND** revision allocation MUST be transactionally unique for the owning realization
 
 #### Scenario: Model preparation completes
-- **WHEN** model preparation establishes the composition used for training
-- **THEN** the system MUST file an explicit `final` composition revision even if no component changed
-- **AND** consumers requesting finalized composition MUST select that revision rather than infer finality from timing
+- **WHEN** accepted preparation publication establishes composition for a named training readiness checkpoint
+- **THEN** the system MUST file an explicit `final` composition revision for that checkpoint even if no component changed
+- **AND** consumers requesting finalized composition MUST select the observation corresponding to their requested checkpoint rather than infer finality from timing
+
+#### Scenario: Composition changes after an earlier finalization
+- **WHEN** an accepted transition changes composition after a checkpoint was finalized
+- **THEN** history MUST retain the earlier finalized observation and append the later accepted observation
+- **AND** a consumer requiring the later finalized checkpoint MUST NOT treat the earlier `final` marker as evidence that its current requirements are satisfied
 
 ### Requirement: Materialization attempts are events rather than composition state
-The metadata system SHALL record materialization attempts separately from successful realization-composition observations.
+The metadata system SHALL record materialization and publication attempts
+separately from accepted realization-composition observations. Loader success
+SHALL NOT by itself allocate an accepted composition revision or establish
+runtime readiness.
 
 #### Scenario: Materialization attempt starts
 - **WHEN** a deferred load or replacement begins from an accepted composition
@@ -96,9 +109,14 @@ The metadata system SHALL record materialization attempts separately from succes
 - **AND** it MUST NOT allocate a new composition revision merely because the attempt started
 
 #### Scenario: Materialization attempt succeeds
-- **WHEN** the attempted component surface is successfully materialized and observed
+- **WHEN** the attempted component surface is successfully materialized and accepted by authority publication
 - **THEN** the success event MUST reference the resulting composition observation
 - **AND** only that successful observation may allocate the next composition revision
+
+#### Scenario: Successful loader result is not published
+- **WHEN** loading succeeds but publication rejects the candidate or remains incomplete
+- **THEN** attempt evidence MUST distinguish successful loading from the rejected, unpublished, or uncertain publication outcome
+- **AND** it MUST NOT create an accepted composition revision merely because the candidate exists
 
 #### Scenario: Materialization attempt fails
 - **WHEN** a component materialization fails after an initial observation
@@ -107,22 +125,27 @@ The metadata system SHALL record materialization attempts separately from succes
 - **AND** metadata filing failure MUST NOT replace or mask the original materialization exception
 
 ### Requirement: Composition views use semantic order rather than insertion accidents
-Metadata views SHALL resolve latest and finalized realization composition by validated realization identity, monotonic revision, and lifecycle state.
+Metadata views SHALL resolve latest and finalized realization composition by
+validated realization identity, accepted revision/state correspondence, and
+lifecycle state. Finalized queries SHALL require correspondence to the requested
+readiness checkpoint or captured scope, not an arbitrary `final` marker.
+Observation arrival order SHALL NOT redefine accepted composition order.
 
 #### Scenario: Snapshot contains several composition revisions
 - **WHEN** a consumer requests latest composition
-- **THEN** the view MUST select the highest valid successful observation revision for that realization
+- **THEN** the view MUST select the highest valid accepted observation revision corresponding to the requested realization scope
 - **AND** it MUST NOT rely on backend iteration order alone
 
 #### Scenario: Final composition is required but missing
-- **WHEN** a consumer requests finalized composition and no valid `final` revision exists
+- **WHEN** a consumer requests finalized composition and no valid `final` revision corresponds to its required checkpoint or captured scope
 - **THEN** the query/view MUST return an explicit unavailable/incomplete result or fail according to its contract
-- **AND** it MUST NOT treat `initial` as final implicitly
+- **AND** it MUST NOT treat `initial` or an unrelated older finalized checkpoint as the requested final context implicitly
 
 #### Scenario: Artifact is produced from a realization
-- **WHEN** a model artifact is saved with finalized realization context
-- **THEN** its provenance MUST reference the applicable final composition revision
+- **WHEN** a model artifact is saved from an accepted realization capture
+- **THEN** its provenance MUST reference the composition actually captured and the corresponding finalized checkpoint where its declared product requires that context
 - **AND** it MUST retain the stable owning realization identity
+- **AND** it MUST NOT substitute a later live composition or the most recently filed `final` observation for the captured context
 
 ### Requirement: Provenance facts remain central and family-extensible
 Central metadata SHALL own accepted provenance schemas, validation, records, relationships, and projections while family loaders own truthful source-resolution semantics.

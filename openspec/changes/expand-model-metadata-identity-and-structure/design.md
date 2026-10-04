@@ -161,7 +161,14 @@ The model-loading contract will return a typed result rather than a tuple. It co
 - catalog resolution or enough evidence for the catalog boundary to resolve it;
 - explicit evidence limitations.
 
-Family loaders own truthful source resolution because they know which path succeeded. Central builders convert the typed result into accepted catalog/provenance/realization facts. Live module objects remain in the loaded-component surface and are never stored as metadata.
+Family loaders own truthful source resolution because they know which path
+succeeded. Their typed result contains candidates and loading evidence, not
+canonical current bindings. The accepted run authority alone publishes those
+candidates as current participant state. Central builders convert explicit
+loading evidence and accepted publication facts into catalog/provenance and
+realization observations. Live module objects remain in scoped candidate or
+current consumer projections and are never stored as metadata or retained in a
+competing Trainer-owned binding collection.
 
 All families produce this same loading-result schema. SD and SDXL populate it with their selected local-checkpoint or Diffusers sources, external VAE bindings, conversions, and fallback decisions. SD3 populates the same collections with its unified checkpoint plus any independently selected CLIP-L, CLIP-G, T5, VAE, or deferred denoiser sources. A future family may declare different component topology and namespaced operation details, but it does not define a family-specific provenance shape or require a central family-name branch.
 
@@ -187,13 +194,43 @@ One stable run-scoped realization identity owns an ordered sequence of immutable
 - the lifecycle boundary and timestamp/order evidence;
 - links to the preceding revision and applicable source/materialization facts.
 
-Initial loading files revision 1. A successfully observed deferred materialization or component replacement files another composition revision. Once model preparation has completed, the trainer files a `final` revision even when it is structurally identical to the initial observation; this makes the lifecycle guarantee explicit. Revision allocation is transactionally unique and monotonic for one realization.
+Initial authority publication files composition revision 1. Accepted deferred
+materialization or replacement publication supplies another composition
+observation. Accepted preparation publication files a `final` observation for
+its named readiness checkpoint even when the component structure is unchanged.
+Finalization is checkpoint-scoped: later accepted changes remain possible,
+and an earlier finalized observation cannot satisfy a later checkpoint merely
+because it has a `final` marker. Revision allocation remains transactionally
+unique and monotonic for one realization, with explicit correspondence to the
+originating accepted state rather than metadata arrival order. Retrying the
+same observation does not create a second semantic transition.
 
-Materialization attempts are separate events with `started`, `succeeded`, or `failed` outcomes. An attempt references the effective composition it tried to change; only a successful result that is actually observed can produce the next composition revision. A failed attempt therefore does not become “latest composition,” repeat an unchanged surface as a failed state, or consume a composition revision.
+Materialization/publication attempts remain separate events. Their evidence
+distinguishes loading success from accepted, rejected, unpublished, or uncertain
+publication. An attempt references the effective composition it tried to
+change; only an authority-accepted result can become accepted composition
+history. A successfully loaded but stale or incompatible candidate is still
+attempt evidence, not current composition. Failed attempts do not become
+“latest composition” or consume an accepted composition revision.
 
 Failure-event filing is best-effort and may occur only when the metadata runtime and realization identity are already valid. Filing must not replace or mask the original loading/preparation exception, and retained error facts must use the existing bounded/sanitized failure policy rather than serializing arbitrary exception state. If safe filing fails, training propagates the original exception with the earlier composition history unchanged.
 
-Views select the highest valid successful observation revision for “latest composition” and require a `final` revision when a consumer asks for finalized composition. History is never mutated. Artifact provenance links to the final composition revision that actually produced it when available. Attempt-event order is independent of composition-revision order.
+Views use valid accepted revision/state correspondence for “latest composition”
+and require the `final` observation corresponding to the requested checkpoint
+when finalized context is needed. History is never mutated. Artifact provenance
+links to the composition actually captured, not a newer live composition or an
+arbitrary most-recent `final` record. Attempt-event order is independent of
+composition-revision order. Required composition filing failure reports missing
+durable coverage without undoing a reached runtime publication; delivery retry
+does not repeat the publication.
+
+Shared target references follow the rework's policy-neutral semantics and
+revision-pinned live access. Catalog and structural path-binding associations
+are optional evidence where available, not a prerequisite for an otherwise
+valid live view. Consumers retain distinct path provenance and handle physical
+aliases under their own accepted ownership/grouping policy. Metadata does not
+choose PEFT host targets or deduplicate semantic participants/units by storage
+or object identity.
 
 Alternative considered: delay all realization filing until preparation completes. Rejected because initial and deferred-loading observations are useful for diagnostics and resource intelligence.
 

@@ -160,8 +160,10 @@ or an explicitly valid fine-grained dependency set.
 ### Requirement: Runtime identity and lineage remain separate
 Exact restoration of the same logical run SHALL preserve authority and
 participant identities only when their accepted identity and revision state is
-persisted and restored. A new run or a restoration lacking those facts SHALL
-establish new identities and use explicit lineage or derivation relationships.
+persisted and restored. Missing required identity or revision facts SHALL make
+same-run restoration incomplete; it SHALL NOT silently become a new run. A
+separately requested new run SHALL establish new identities and use explicit
+lineage or derivation relationships where applicable.
 
 #### Scenario: Exact run restoration recreates Python objects
 - **WHEN** a complete runtime snapshot restores the same logical authority in a new process
@@ -172,3 +174,8 @@ establish new identities and use explicit lineage or derivation relationships.
 - **WHEN** run B loads an artifact produced by run A
 - **THEN** run B MUST establish its own participant references
 - **AND** matching authored addresses MUST NOT be treated as shared runtime identity
+
+#### Scenario: Same-run restoration lacks required identity facts
+- **WHEN** a same-run restoration request lacks the authority, participant, or revision facts required by its accepted continuation policy
+- **THEN** it MUST report incomplete restoration and keep dependent execution unavailable
+- **AND** it MUST NOT invent replacement identities, reset required state, or initialize a new run without a separate explicit request
