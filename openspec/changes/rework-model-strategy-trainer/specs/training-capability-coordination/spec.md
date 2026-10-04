@@ -412,6 +412,169 @@ state they own.
 - **THEN** it MUST expose that state through the restoration exchange
 - **AND** it MUST NOT become the coordinator or identity authority for overall run restoration
 
+### Requirement: Runtime snapshots declare accepted continuation coverage
+The accepted restoration policy SHALL identify its continuation guarantee,
+required owner contributions, state definitions and relevant dependencies,
+and consistency and publication requirements. Coverage SHALL follow the
+accepted whole-run arrangement, including authority, operation/region,
+capability, input, optimization, backend, and infrastructure state required
+for continuation. Contributors SHALL retain ownership of their own state.
+Accepted reconstruction rules SHALL be permitted instead of serialization
+where they establish the requested guarantee. Reconstruction SHALL preserve
+selected dynamic behavior, policies, wiring, and authority grants without
+requiring the strategy-authoring object or serialized Python object identity.
+Same-run continuation SHALL NOT by itself promise bit-identical replay;
+the reported guarantee SHALL match the accepted policy and available evidence.
+
+#### Scenario: Adaptive behavior resumes without the authoring object
+- **WHEN** a snapshot covers the accepted objective's adaptive state, relevant RNG and dependencies, and the identified selected implementation is available
+- **THEN** restoration MUST reconstruct its accepted runtime behavior without consulting the former strategy-authoring interface
+- **AND** it MUST NOT silently replace that state with initialization defaults
+
+#### Scenario: Required continuation state is missing
+- **WHEN** model and optimizer state are captured but required input, adaptive operation, or backend state is absent without an accepted reconstruction rule
+- **THEN** the snapshot MUST report incomplete continuation coverage rather than exact-restoration support
+
+#### Scenario: Disposable work can be regenerated under the accepted guarantee
+- **WHEN** the accepted policy allows regeneration of specified unconsumed in-flight work and its required identity and dependency information is captured
+- **THEN** the snapshot MAY support same-run continuation under that policy
+- **AND** it MUST NOT claim bit-identical replay or silently weaken a stronger requested guarantee
+
+### Requirement: Snapshot contributions form a coherent recoverable cut
+Trainer/pipeline infrastructure SHALL coordinate required contributions into
+positions compatible with the accepted activity relationships, revisions,
+handoffs, progress, and known effects. Required contributions across participating
+ranks or replicas SHALL belong to that same coherent recoverable cut, without
+requiring identical state versions or progress coordinates where accepted
+relationships permit them to differ. Independent owners SHALL NOT be forced
+into one universal step clock or capture sequence. The supported capture
+policy SHALL establish safe boundaries, protected versions, or sufficient
+unfinished-work evidence, and SHALL protect reads through actual backend
+completion. A snapshot SHALL NOT claim coherent continuation from inconsistent
+owner positions, unsupported temporary state, or a half-published transition.
+
+#### Scenario: Alternating activities have different progress coordinates
+- **WHEN** discriminator work completed and generator work has not yet begun at a supported capture boundary
+- **THEN** the snapshot MUST preserve their distinct positions and relevant owner state
+- **AND** it MUST NOT require an atomic discriminator-plus-generator cycle or infer progress from one global counter
+
+#### Scenario: Input and optimizer positions disagree
+- **WHEN** a saved optimizer position includes a consumed input whose saved delivery state would present it again as unused
+- **THEN** capture MUST reconcile that inconsistency under the accepted policy or report the snapshot incomplete
+
+#### Scenario: Temporary perturbation is outside the supported capture boundary
+- **WHEN** a snapshot request arrives during the bounded two-pass profile's temporary parameter perturbation
+- **THEN** capture MUST wait for its supported unperturbed boundary or report that the requested capture is unavailable
+- **AND** intermediate perturbed state MUST NOT be published as an exact-restoration snapshot
+
+#### Scenario: Individually durable rank contributions disagree
+- **WHEN** required rank or replica contributions are durably published but their saved positions disagree under the accepted cross-owner relationships
+- **THEN** the snapshot MUST NOT report a coherent recoverable cut merely because each individual publication succeeded
+
+### Requirement: Recovery preserves unfinished work and effect distinctions
+Snapshot and restoration coordination SHALL preserve produced, ready,
+admitted, handed-off, consumed, contributed, advanced, and durable positions
+where continuation depends on them. Each owner SHALL supply the accepted
+preserve, reconstruct, reissue, discard, or reconciliation rule for relevant
+unfinished work, with required work/source identity, dependency provenance,
+and associations to other owners. Required pending gradients, derivative
+continuations, retained versions, and backend state SHALL be recoverable with
+evidence or excluded by an established supported capture boundary. Uncertain
+external or optimization effects SHALL NOT imply safe replay, rollback,
+exactly-once execution, or an all-or-nothing update.
+
+#### Scenario: Producer lags optimization while work is in flight
+- **WHEN** a snapshot has Trainer policy P18, a producer view P17, ready results, and running or pending work
+- **THEN** it MUST account for those positions and their actual state provenance under the accepted input and recovery policies
+- **AND** restoration MUST NOT duplicate consumed work or admit regenerated results merely because their requests predated the snapshot
+
+#### Scenario: Production spans more than one source state
+- **WHEN** a recoverable product records portions generated using different accepted source versions
+- **THEN** restoration and admission MUST preserve its required structured provenance rather than substitute one requested launch version
+
+#### Scenario: One optimization unit advanced before another failed
+- **WHEN** an attempt contains a known first-unit outcome and an uncertain second-unit outcome
+- **THEN** recovery MUST retain those distinctions and stop dependent unsafe work until validity is established
+- **AND** a missing completion record MUST NOT authorize blind replay of the attempt or manufacture a coherent snapshot of uncertain live state
+
+#### Scenario: Unfinished external interaction cannot be recovered
+- **WHEN** continuation requires an external tool's state or effect status that the snapshot and accepted recovery rule cannot establish
+- **THEN** the requested continuation guarantee MUST be reported unavailable
+- **AND** the interaction MUST NOT be silently repeated as though no effect occurred
+
+### Requirement: Snapshot publication and restore readiness have separate outcomes
+The snapshot result SHALL report achieved coverage, consistency and guarantee,
+required publication outcomes, and known partial or uncertain effects.
+Capture success, durable publication, restore readiness, and trained-product
+persistence SHALL remain distinguishable. Required external dependencies
+SHALL be identified with their restoration requirements; complete publication
+SHALL NOT promise their permanent availability. Restore readiness SHALL require
+actual availability and compatibility of resources required at that checkpoint.
+
+#### Scenario: Only some required state resources are durable
+- **WHEN** a model shard is written but a required contributor, rank, or publication destination has not established success
+- **THEN** the snapshot MUST NOT report complete publication under a policy requiring that contribution or destination
+- **AND** reporting MUST preserve known local success and remote or contributor uncertainty separately
+
+#### Scenario: Complete snapshot later loses a required external base
+- **WHEN** a complete snapshot references an identified compatible base that is unavailable during restoration
+- **THEN** the capture result MUST remain distinct from the failed readiness result
+- **AND** dependent execution MUST remain unavailable rather than substitute another base or silently start a new run
+
+### Requirement: Coordinated restoration preserves logical identity with fresh readiness
+Restoration SHALL verify coverage and compatibility against accepted
+obligations and coordinate reconstruction of authority, participant,
+relationship, binding, route, arrangement, progress, and relevant revision
+state with required owner contributions. Correspondence SHALL use accepted
+semantic identity, membership, state definitions, and dependency evidence,
+not incidental wrapper identity or tensor ordering. Same-run restoration SHALL
+preserve participant and optimization incarnations while establishing new
+execution-session and attempt identity. Recreated backend objects SHALL
+establish fresh readiness for restored definitions; saved process handles and
+old attempt evidence SHALL NOT automatically be current. Backend remapping or
+state migration SHALL require explicitly supported correspondence.
+
+#### Scenario: Same run recreates model and optimizer wrappers
+- **WHEN** complete restoration rebuilds physical execution objects for the saved logical authority and accepted unit definitions
+- **THEN** participant, relationship, and optimization identities and applicable revisions MUST retain their saved meaning
+- **AND** affected routes MUST establish current preparation evidence before use under the new execution session
+
+#### Scenario: Staged topology already contains an installed transformation
+- **WHEN** the saved arrangement records an installed component and completed stage transformation
+- **THEN** restoration MUST reconstruct that topology and its owner state before dependent execution
+- **AND** it MUST NOT repeat the transformation merely because fresh Python objects were constructed
+
+#### Scenario: Late result belongs to an earlier execution session
+- **WHEN** a prior attempt returns after restoration has established a new execution session
+- **THEN** its result MUST NOT become current merely because participant addresses still match
+- **AND** adoption MUST require the accepted recovery/admission rule to establish valid provenance and outcome correspondence
+
+#### Scenario: Backend mapping or owner state cannot be restored
+- **WHEN** a changed backend placement or state definition lacks a supported mapping for required saved state
+- **THEN** restoration MUST report that requirement unsatisfied
+- **AND** it MUST NOT report exact continuation by resetting the optimizer or dropping required pending contributions
+
+### Requirement: Failed restoration cannot expose a mixed continuation
+Fallible restoration SHALL occur while affected execution is unavailable.
+Coordinated publication and applicable readiness checks SHALL expose only
+compatible restored state, without requiring every optional route to be
+prepared before unrelated activity. Failure SHALL report unsatisfied coverage,
+known outcomes, and uncertainty and SHALL keep dependent unsafe work stopped.
+Process or rank termination SHALL NOT certify partial installation or automatic
+rollback. A new run initialized from available artifact state SHALL be a
+separate explicit request with new identities and lineage, not an implicit
+exact-restoration fallback.
+
+#### Scenario: Required contributor fails after other owners restore
+- **WHEN** required input state restoration fails after model and optimization state were reconstructed
+- **THEN** dependent training MUST NOT resume with fresh input defaults and restored optimizer state
+- **AND** the restore result MUST report the incomplete arrangement without erasing successful reconstruction facts
+
+#### Scenario: Optional generation route is not yet prepared
+- **WHEN** restored training has satisfied its current checkpoint but an optional sampling route awaits preparation
+- **THEN** training MAY resume under its accepted readiness rules
+- **AND** sampling MUST remain unavailable until its own applicable checkpoint is satisfied
+
 ### Requirement: Capability results feed observation without transferring ownership
 Metadata, logging, metrics, reports, and resource systems MAY consume accepted
 capability requests, results, transition facts, and failures. Observation SHALL

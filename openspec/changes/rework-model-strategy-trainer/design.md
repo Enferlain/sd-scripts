@@ -711,7 +711,7 @@ needed by the selected recovery policy. The provider separately contributes
 selection/packing/RNG and handoff state. Reconstructible cache payloads may be
 reissued rather than embedded in every snapshot where the accepted recovery
 claim permits it. Saving an index, pausing a producer, or restoring a queue
-alone does not establish a coherent cut with model/optimizer/input state.
+alone does not establish a coherent recoverable cut with model/optimizer/input state.
 G4.4 defines that cross-owner snapshot protocol; G5 chooses concrete types and
 backend publication/access mechanisms.
 
@@ -838,7 +838,7 @@ Validation, sampling, input production, and optimization retain their own
 accepted due/completion/failure relationships. A shared trigger does not impose
 the current helper's sample-then-validate order, a universal optimizer clock,
 or a global pause. Capability and algorithm owners contribute their own
-continuation needs; G4.4 defines a coherent restoration cut, not this exchange.
+continuation needs; G4.4 defines a coherent recoverable cut, not this exchange.
 
 **Evidence and implementation checks.** These complete the semantic exchanges,
 not production capability implementations:
@@ -1547,7 +1547,7 @@ members and verified before exact continuation becomes ready; an implicit
 reset cannot masquerade as exact resume. A trained artifact or snapshot used
 to start another run instead establishes new authority, participant, and unit
 identities with provenance, not live identity continuity. G4 defines the
-coordinated recoverable cut; this section fixes only the optimization and
+coherent recoverable cut; this section fixes only the optimization and
 freshness obligations it must preserve.
 For example, restoring the same run's recorded `main` incarnation 10,
 definition revision 3, and mutable state into a new process keeps those
@@ -2114,15 +2114,23 @@ products. Exact continuation of such work and coordinated snapshot recovery
 remain G4.4; metadata consumption remains G4.5. Concrete API, capture, backend,
 and publication mechanisms remain G5, not new language constructs at this gate.
 
-#### Restoration remains a separate exchange
+#### G4.4 Coordinated runtime snapshot and restoration exchange
+
+“Exact same-run restoration” means restoring the same accepted logical run
+while preserving every state, effect, identity, and progress distinction
+required by its accepted continuation policy. It does not imply bit-identical
+replay of transient execution, regenerated disposable work, process-local
+objects, or backend scheduling unless the selected guarantee explicitly
+requires those properties.
 
 Runtime restoration has a different purpose. Exact same-run restoration
 preserves the logical authority, participant and optimization identities,
 accepted arrangement, relevant revisions, mutable state, and run coordinates
 only when the snapshot actually carries and restores them. New Python objects,
-processes, or wrappers do not break identity; a new execution session may have
-its own observation identity. If those facts are not restored—or an artifact
-starts another run—the new run establishes new identities and records lineage
+processes, or wrappers do not break identity; a new execution session has
+its own session and attempt identity for observation and correlation. If those
+facts are not restored—or an artifact starts another run—the new run establishes
+new identities and records lineage
 instead of claiming continuity.
 
 Trainer/pipeline infrastructure coordinates restoration of the coherent run.
@@ -2139,6 +2147,136 @@ records lineage to the artifact and its source state. Exact same-run restoration
 instead restores the accepted adapter participant and every required owned
 continuation state from a runtime snapshot. A shared serializer or weight format
 does not collapse these into one save/load lifecycle.
+
+**Coverage follows the accepted run, not a model file or one step counter.**
+The accepted restoration policy identifies required owners, their state
+definitions and dependencies, and the continuation guarantee requested. Each
+owner supplies its state or an accepted reconstruction rule; stateless or
+reconstructible behavior does not need a serialized object merely to appear in
+the coverage. The snapshot must preserve enough accepted meaning to reconstruct
+selected dynamic behavior, wiring, policies, and grants without retaining the
+strategy-authoring object. It does not pickle the complete running program.
+
+| Contributor | Continuation meaning it owns |
+| --- | --- |
+| Run authority | Logical authority, accepted arrangement and obligations, participant and relationship incarnations, bindings, routes, and relevant revisions, including current stage/topology |
+| Selected operations and regions | Owned adaptive/stateful behavior, state-definition dependencies, relevant RNG, progress, unfinished work, and effects under the accepted authority profile |
+| Input and producer capabilities | Source/work identity, traversal and allocation positions, dependency provenance, admission/handoff/consumption state, ready results, and accepted treatment of in-flight work |
+| Optimization | Unit identity and definition revisions, semantic membership, optimizer/scheduler state, advancement coordinates, and required unfinished gradient windows |
+| Backend integrations | Required numerical, scaling, synchronization, distributed/sharded state and its correspondence to semantic owners; reconstruction of physical execution representations |
+| Trainer/pipeline infrastructure and other capabilities | Owned scheduling/progress, lifecycle and continuation state, cross-owner associations, and required outstanding requests/results |
+
+These are responsibility categories, not mandatory files or a new universal
+state container. Owners keep their writer rights. Logging history is not
+automatically required, but feedback used by an adaptive algorithm is required
+when its owner needs it to continue. Dependency evidence may be derived or
+represented by an accepted generation; it need not be copied into one giant
+revision tuple on every runtime object.
+
+**Capture request, coordinated capture, and snapshot result.** A request names
+the accepted guarantee, required coverage, consistency policy, and publication
+requirements. Infrastructure coordinates protected reads and owner
+contributions. A *coherent recoverable cut* means their saved positions are
+compatible with the accepted relationships: for example, the saved input
+position cannot omit a result that the saved optimizer state already used.
+Required contributions across participating ranks or replicas belong to that
+same coherent recoverable cut; accepted relationships can still permit different
+state versions or progress coordinates.
+Activities can retain independent clocks. Depending on the supported policy,
+coordination can wait for safe boundaries, protect particular state versions,
+or record unfinished work with an accepted recovery rule. There is no universal
+end-of-step boundary, global pause, or transaction across training updates.
+Protection lasts through actual backend reads/completion, not just Python
+return. A snapshot cannot combine inconsistent pre- and post-transition owner
+positions or capture a temporary execution edit outside its supported policy.
+An intentionally published coexistence arrangement remains one coherent current
+arrangement and can be captured at a supported boundary.
+
+The result distinguishes capture, required durable publication, partial or
+uncertain writes, and the guarantee actually established. A directory, model
+file, or successful rank is not evidence that every required contribution was
+captured coherently. Local success and remote publication can differ under the
+accepted storage policy. Trained-product results remain independent. A complete
+snapshot at publication also does not promise that an external base, data
+source, selected implementation, or compatible backend remains available
+forever; those dependencies must be identified and checked when restoring.
+
+**Unfinished work follows its owner's policy.** Produced, ready, handed-off,
+consumed, gradient-contributing, and advanced positions remain distinct where
+continuation depends on them. Ready results can be stored; disposable pending
+work can be reissued only when the accepted rule preserves source/work identity,
+dependency provenance, and its relationship to consumption and advancement.
+Reissue must not train an already consumed result twice. Protected identities,
+snapshots, or structured provenance can account for work spanning multiple
+encoder/policy states. Recreating arbitrary data under the same pathname is
+not a substitute for the required source meaning.
+
+For example, saved Trainer policy P18 and producer view P17 can be compatible
+if the accepted input policy allows that lag and the snapshot also accounts for
+finished, running, and pending work. Saving only P18 and the optimizer is not
+enough. An accepted rule can regenerate disposable in-flight work; this supports
+same-run continuation under that rule, not bit-identical replay of the
+interrupted world. A stronger requested guarantee cannot be silently weakened.
+Restoring a partial interaction with a remote environment/tool requires its
+state and effects to be recoverable too. Unknown external effects do not imply
+exactly-once execution, rollback, or safe retry.
+
+Required unfinished gradients, derivative continuations, retained numerical
+versions, or backend work must be preserved or reconstructible with evidence;
+otherwise capture waits for a supported boundary or reports that coverage is
+unavailable. This is not a requirement to serialize autograd graphs. The bounded
+two-pass profile in G2.5 captures only at an unperturbed, quiescent boundary.
+Similarly, a unit that advanced before another failed is not rolled back by
+snapshotting: capture needs a supported, fully accounted-for position, or
+recovery uses the last prior coherent snapshot rather than replaying the
+uncertain attempt.
+
+**Restore request, owner reconstruction, and readiness result.** Infrastructure
+checks snapshot coverage and required dependencies against the accepted
+obligations, restores logical identity/arrangement and owner contributions,
+and establishes fresh execution readiness. This is dependency-ordered
+coordination, not a fixed model-load/optimizer-load/step-reset sequence.
+Correspondence uses semantic identity, membership, state definitions, and
+revisions—not tensor ordering, authored addresses alone, or wrapper identity.
+Current stage and installed relationships must be restored before dependent
+construction; a completed transformation must not accidentally execute twice.
+
+Recreated objects and backend representations can realize the same saved
+definitions and revisions. Saved route meaning and dependency associations
+survive; process-local handles and old readiness evidence do not become valid
+merely by loading them. Required preparation establishes current evidence
+before affected use. Backend/world-size portability or state migration requires
+explicit supported correspondence; it is not implied by logical identity.
+Required missing state cannot silently become a fresh optimizer, reset sampler,
+or different input stream while reporting exact restoration.
+
+A new execution session has its own observation and attempt identity while
+same-run participant, relationship, and optimization identities remain intact.
+Late results from old attempts are not automatically current. Captured work or
+externally completed work can be adopted only through the accepted recovery and
+admission rule, with its actual provenance and outcomes.
+
+Fallible reconstruction happens while affected execution is unavailable.
+Coordinated publication/readiness exposes only compatible restored state, never
+a mixture of restored and newly initialized required owners. Each activity
+still uses its applicable readiness checkpoint; restoration does not force all
+optional routes to be prepared before unrelated work. A failed restore reports
+which requirements remain unsatisfied and leaves dependent work stopped.
+Process/rank loss does not certify a partial installation or live rollback.
+Initializing a new run from whatever weights are available is a separate
+explicit request with new identities and lineage, not an automatic fallback.
+
+**Evidence and implementation boundary.** The existing identity, optimization,
+preparation, and execution specs already establish the constituent ownership,
+revision, readiness, and failure rules; `training-capability-coordination`
+now files their whole-run snapshot/restoration exchange. The research sketch's
+independent producer and staged-topology cases expose why input, producer,
+stage, and progress contributions matter. The experiments demonstrate local
+handoff/failure/preparation facts, not integrated durable capture or recovery.
+Current Accelerator state hooks are useful owner-contribution evidence, not
+proof of complete accepted-run coverage. G5 must choose formats, contributor
+interfaces, capture protocols, backend mappings, and executable conformance
+tests without inheriting the old fixed setup order.
 
 ### D12. TrainingMode dissolves; current specs must be reconciled explicitly
 
