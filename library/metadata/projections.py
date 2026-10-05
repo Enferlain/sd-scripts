@@ -12,7 +12,10 @@ from library.metadata.backends import MetadataSnapshot
 from library.metadata.graph import MetadataEntityType, MetadataRelationship
 from library.metadata.providers import MetadataRequiredFact
 from library.metadata.records import MetadataRecord, MetadataValue
-from library.metadata.validation import validate_required_facts
+from library.metadata.validation import (
+    validate_modelspec_extension_key,
+    validate_required_facts,
+)
 from library.metadata.values import stringify_metadata_mapping
 
 from library.metadata.exports.resource import (
@@ -25,6 +28,7 @@ from library.metadata.keys import (
     KURO_PREFIX,
     KURO_SCHEMA_VERSION,
     KURO_SCHEMA_VERSION_KEY,
+    MODELSPEC_FACT_KEYS,
     MODELSPEC_PREFIX,
     MODELSPEC_VERSION,
     MODELSPEC_VERSION_KEY,
@@ -189,7 +193,7 @@ class ModelSpecCompatibilityProjection:
         validate_required_facts(snapshot.records, required_facts)
 
         metadata: dict[str, MetadataValue] = {MODELSPEC_VERSION_KEY: MODELSPEC_VERSION}
-        for fact_key in _MODELSPEC_FACT_KEYS:
+        for fact_key in MODELSPEC_FACT_KEYS:
             value = artifact_record.facts.get(fact_key)
             if value is not None:
                 metadata[f"{MODELSPEC_PREFIX}{fact_key}"] = value
@@ -200,6 +204,7 @@ class ModelSpecCompatibilityProjection:
         for key, value in sorted(extension_fields.items()):
             if not isinstance(key, str) or not isinstance(value, str):
                 raise TypeError("Model artifact extension_fields must contain only string keys and values.")
+            validate_modelspec_extension_key(key)
             projected_key = key if key.startswith(MODELSPEC_PREFIX) else f"{MODELSPEC_PREFIX}{key}"
             metadata[projected_key] = value
         return ProjectionResult(metadata)
@@ -289,31 +294,6 @@ def _kuro_entity_prefix(entity_type: str) -> str | None:
 
 
 _REQUIRED_MODELSPEC_FACTS = ("architecture", "implementation", "title", "resolution")
-
-_MODELSPEC_FACT_KEYS = (
-    "architecture",
-    "implementation",
-    "title",
-    "resolution",
-    "description",
-    "author",
-    "date",
-    "hash_sha256",
-    "implementation_version",
-    "license",
-    "usage_hint",
-    "thumbnail",
-    "tags",
-    "merged_from",
-    "trigger_phrase",
-    "prediction_type",
-    "timestep_range",
-    "encoder_layer",
-    "preprocessor",
-    "is_negative_embedding",
-    "unet_dtype",
-    "vae_dtype",
-)
 
 _SS_FAMILY_FIELD_MAPPINGS = {
     ("sd3.checkpointing", "1", "apply_lg_attn_mask"): "ss_apply_lg_attn_mask",

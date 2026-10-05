@@ -1,37 +1,40 @@
 """Typed model-family fact, identity, and validation contracts."""
 
 import base64
-from dataclasses import fields
 import sqlite3
+
+from dataclasses import fields
 
 import pytest
 
 from library.config.dataclasses.output import MetadataConfig
+from library.metadata.keys import MODELSPEC_FACT_KEYS
+from library.models import LoadedModelComponent
+
 from library.metadata import (
+    ArtifactMetadataRecord,
     build_model_artifact_resolution_context,
     build_model_component_identifier,
-    build_model_realization_state,
     build_model_realization_identifier,
+    build_model_realization_state,
     InMemoryMetadataBackend,
     MetadataGraphIndex,
     MetadataItemValidationError,
     MetadataRelationship,
     MetadataRuntime,
-    ArtifactMetadataRecord,
     ModelArtifactFacts,
     ModelArtifactPresentation,
     ModelArtifactResolutionContext,
     ModelComponentMetadataRecord,
-    ModelFamilyMetadataContribution,
     ModelFamilyContributionMetadataRecord,
+    ModelFamilyMetadataContribution,
     ModelFamilyMetadataField,
-    ModelRealizationMetadataRecord,
     ModelRealizationFacts,
+    ModelRealizationMetadataRecord,
     RealizedModelComponentFacts,
     SQLiteMetadataStore,
     validate_metadata_item,
 )
-from library.models import LoadedModelComponent
 
 
 def _realization(run_identifier: str, *, family: str = "sdxl") -> ModelRealizationFacts:
@@ -369,6 +372,27 @@ def test_artifact_facts_reject_missing_required_claims_and_rendered_extensions()
     )
     with pytest.raises(MetadataItemValidationError, match="canonical names"):
         validate_metadata_item(rendered_extension)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("extension_key", (*MODELSPEC_FACT_KEYS, "sai_model_spec"))
+def test_artifact_filing_rejects_reserved_modelspec_extensions(extension_key: str) -> None:
+    facts = ModelArtifactFacts(
+        artifact_identifier="artifact",
+        family_identifier="future",
+        artifact_role="adapter",
+        artifact_format="safetensors",
+        architecture="future-v1/lora",
+        implementation="future-runtime",
+        title="Valid title",
+        resolution="512x512",
+        extension_fields={extension_key: "override"},
+    )
+    runtime = MetadataRuntime()
+
+    with pytest.raises(MetadataItemValidationError, match="reserved ModelSpec field"):
+        runtime.file(facts)
+    assert runtime.snapshot().records == ()
 
 
 @pytest.mark.unit

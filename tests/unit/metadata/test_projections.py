@@ -4,6 +4,8 @@ from dataclasses import replace
 
 import pytest
 
+from library.metadata.keys import MODELSPEC_FACT_KEYS, MODELSPEC_VERSION
+
 from library.metadata import (
     ArtifactMetadataRecord,
     InMemoryMetadataBackend,
@@ -11,6 +13,7 @@ from library.metadata import (
     MetadataEdge,
     MetadataEntityType,
     MetadataIdentity,
+    MetadataItemValidationError,
     MetadataProjectionScopeError,
     MetadataProviderResult,
     MetadataRelationship,
@@ -108,7 +111,7 @@ def test_modelspec_projection_ignores_pre_rendered_legacy_facts() -> None:
 
 
 @pytest.mark.unit
-def test_modelspec_projection_maps_canonical_artifact_facts_and_applies_extensions_last() -> None:
+def test_modelspec_projection_preserves_canonical_facts_and_custom_extensions() -> None:
     runtime = MetadataRuntime()
     runtime.file(
         ModelArtifactFacts(
@@ -124,8 +127,7 @@ def test_modelspec_projection_maps_canonical_artifact_facts_and_applies_extensio
             prediction_type=None,
             extension_fields={
                 "custom_field": "custom-value",
-                "sai_model_spec": "user-version",
-                "title": "Extension Title",
+                "future.sample_rate": "1",
             },
         )
     )
@@ -135,13 +137,43 @@ def test_modelspec_projection_maps_canonical_artifact_facts_and_applies_extensio
     assert result.metadata == {
         "modelspec.architecture": "future-v1/lora",
         "modelspec.implementation": "future-runtime",
-        "modelspec.title": "Extension Title",
+        "modelspec.title": "Configured Title",
         "modelspec.resolution": "1024x768",
-        "modelspec.sai_model_spec": "user-version",
+        "modelspec.sai_model_spec": MODELSPEC_VERSION,
         "modelspec.author": "Metadata Tests",
         "modelspec.custom_field": "custom-value",
+        "modelspec.future.sample_rate": "1",
     }
     assert "modelspec.prediction_type" not in result.metadata
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("extension_key", (*MODELSPEC_FACT_KEYS, "sai_model_spec"))
+@pytest.mark.parametrize("prefix", ("", "modelspec."))
+@pytest.mark.parametrize("long_lived", (False, True))
+def test_modelspec_projection_rejects_reserved_extensions_in_stored_records(
+    extension_key: str,
+    prefix: str,
+    long_lived: bool,
+) -> None:
+    runtime = MetadataRuntime()
+    runtime.file(_artifact("selected.safetensors"))
+    if long_lived:
+        runtime.file(_artifact("other.safetensors"))
+    records = [
+        replace(record, facts={**record.facts, "extension_fields": {f"{prefix}{extension_key}": ""}})
+        if record.identity.identifier == "selected.safetensors"
+        else record
+        for record in runtime.snapshot().records
+    ]
+    backend = InMemoryMetadataBackend()
+    backend.ingest(MetadataProviderResult.from_sequences(provider_id="tests.stored", records=records))
+    projection = ModelSpecCompatibilityProjection(
+        artifact_identifier="selected.safetensors" if long_lived else None,
+    )
+
+    with pytest.raises(MetadataItemValidationError, match="reserved ModelSpec field"):
+        projection.project(backend.snapshot())
 
 
 @pytest.mark.unit

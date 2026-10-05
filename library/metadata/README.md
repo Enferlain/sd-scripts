@@ -301,6 +301,12 @@ Central projections then render repo-owned `kuro.*`, SAI `modelspec.*`, and the
 model-family-owned subset of compatibility-only `ss_*` before the safetensors
 boundary stringifies values.
 
+ModelSpec extension fields may add custom metadata, but may not overwrite the
+projection-owned specification version or canonical artifact fields, including
+optional fields. Supply those values through the typed artifact fields instead.
+Item filing rejects collisions, and projection checks stored records too so
+older or directly ingested records cannot bypass the rule.
+
 The broad flag-driven ModelSpec construction surface has been removed from the
 production library. Supported transitional launchers still count as active when
 they inherit or delegate to a deprecated implementation file, so their artifact

@@ -39,8 +39,10 @@ Family-declared top-level components SHALL remain the highest generic
 model-loading and model-substructure surface. Accepted run participants SHALL
 also support independently managed state outside one source model without
 forcing that state into family component declarations. Lower-level targeting
-SHALL preserve both its model-component provenance and its authority-qualified
-participant context.
+SHALL preserve its authority-qualified participant context and any genuine
+model-component provenance. Participant-owned substructure without such
+provenance SHALL remain targetable without inventing a family component or
+borrowing another participant's ownership.
 
 #### Scenario: Expanding to lower-level targets
 - **WHEN** optimization or adapter behavior needs module-level or parameter-level targets within a loaded model component
@@ -54,3 +56,5 @@ participant context.
 #### Scenario: Additional run participant is not one loaded-model component
 - **WHEN** a run declares an independently managed adapter, teacher, reward model, or other participant alongside a loaded model
 - **THEN** the accepted arrangement MUST represent it without redefining the source model family's component inventory
+- **AND** any accepted module or parameter subjects it owns MUST remain resolvable through shared participant-qualified target meanings even when it has no family-declared component provenance
+- **AND** actual host-component associations MUST remain provenance rather than replace that participant's ownership

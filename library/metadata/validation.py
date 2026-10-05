@@ -7,17 +7,15 @@ from dataclasses import dataclass, fields, is_dataclass
 from types import UnionType
 from typing import Any, cast, TypeGuard, Union, get_args, get_origin, get_type_hints
 
+from library.metadata.keys import (
+    MODELSPEC_FACT_KEYS,
+    MODELSPEC_PREFIX,
+    MODELSPEC_VERSION_KEY,
+)
 from library.metadata.providers import MetadataRequiredFact
 from library.metadata.records import MetadataEdge, MetadataIdentity, MetadataRecord
 from library.metadata.registry import METADATA_ITEM_TYPES, supported_metadata_item_names
 
-from library.metadata.dataclasses.resource import (
-    ResourceAccountingFacts,
-    ResourceAccountingGapFacts,
-    ResourceFactReference,
-    ResourceObservationFrameFacts,
-    ResourceProfileFacts,
-)
 from library.metadata.dataclasses.model import (
     build_model_component_identifier,
     build_model_family_contribution_identifier,
@@ -26,6 +24,14 @@ from library.metadata.dataclasses.model import (
     ModelFamilyMetadataContribution,
     ModelRealizationFacts,
     RealizedModelComponentFacts,
+)
+
+from library.metadata.dataclasses.resource import (
+    ResourceAccountingFacts,
+    ResourceAccountingGapFacts,
+    ResourceFactReference,
+    ResourceObservationFrameFacts,
+    ResourceProfileFacts,
 )
 
 
@@ -52,6 +58,16 @@ class MetadataValidationError(ValueError):
 
 class MetadataItemValidationError(TypeError):
     """Raised when a filed metadata item does not match the accepted shape."""
+
+
+def validate_modelspec_extension_key(key: str) -> None:
+    """Keep extensions separate from canonical facts and the projection version."""
+    canonical_key = key.removeprefix(MODELSPEC_PREFIX)
+    if canonical_key in MODELSPEC_FACT_KEYS or f"{MODELSPEC_PREFIX}{canonical_key}" == MODELSPEC_VERSION_KEY:
+        raise MetadataItemValidationError(
+            f"Model artifact extension field {key!r} conflicts with a reserved ModelSpec field. "
+            "Supply canonical artifact facts through their typed fields; the projection owns its version."
+        )
 
 
 def validate_required_facts(records: Iterable[MetadataRecord], required_facts: Iterable[MetadataRequiredFact]) -> None:
@@ -203,6 +219,7 @@ def _validate_model_item(item: object) -> None:
                 )
             if not isinstance(value, str):
                 raise MetadataItemValidationError("ModelArtifactFacts extension field values must be strings.")
+            validate_modelspec_extension_key(key)
         return
 
     if isinstance(item, ModelFamilyMetadataContribution):
@@ -243,9 +260,7 @@ def _validate_model_item(item: object) -> None:
 def _validate_non_empty_fields(item: object, *field_names: str) -> None:
     for field_name in field_names:
         if not _is_non_empty_string(getattr(item, field_name)):
-            raise MetadataItemValidationError(
-                f"Metadata item {type(item).__name__}.{field_name} must be a non-empty string."
-            )
+            raise MetadataItemValidationError(f"Metadata item {type(item).__name__}.{field_name} must be a non-empty string.")
 
 
 def _validate_string_terms(values: tuple[str, ...], *, field_name: str) -> None:
@@ -268,9 +283,7 @@ def _validate_realized_component_collection(
         ("declaration_order", declaration_orders),
     ):
         if len(values) != len(set(values)):
-            raise MetadataItemValidationError(
-                f"Model components for {realization_identifier!r} must have unique {field_name} values."
-            )
+            raise MetadataItemValidationError(f"Model components for {realization_identifier!r} must have unique {field_name} values.")
 
 
 def _validate_resource_observation_frame(item: object) -> None:

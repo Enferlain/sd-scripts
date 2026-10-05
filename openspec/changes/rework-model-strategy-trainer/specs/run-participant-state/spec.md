@@ -179,3 +179,15 @@ lineage or derivation relationships where applicable.
 - **WHEN** a same-run restoration request lacks the authority, participant, or revision facts required by its accepted continuation policy
 - **THEN** it MUST report incomplete restoration and keep dependent execution unavailable
 - **AND** it MUST NOT invent replacement identities, reset required state, or initialize a new run without a separate explicit request
+
+#### Scenario: Earlier snapshot predates an established retirement
+- **WHEN** same-run restoration requests snapshot K from accepted scope A1 containing live participant P, and later accepted scope A2 is established to have retired P
+- **THEN** restoration MUST report that continuation incompatible and MUST NOT publish P as current or substitute a successor merely because its authored address matches
+- **AND** affected dependent execution MUST remain unavailable
+- **AND** K's original capture outcome and A2's retirement and known or uncertain later effects MUST retain their historical meaning, including when observations arrive late
+- **AND** a new execution session MUST NOT erase the established retirement or authorize blind replay or an implicit new run
+
+#### Scenario: Earlier snapshot has supported continuation without a lifecycle conflict
+- **WHEN** an earlier coherent snapshot has no established terminal-lifecycle conflict and its accepted continuation policy can reconcile relevant later effects and dependencies
+- **THEN** restoration MAY use that earlier cut while retaining required history and effect distinctions
+- **AND** its age alone MUST NOT establish incompatibility or waive required identity, coverage, correspondence, and fresh readiness checks

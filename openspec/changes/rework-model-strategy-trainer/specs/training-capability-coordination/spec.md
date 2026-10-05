@@ -23,8 +23,13 @@ semantics. Support SHALL be explicit rather than inferred from method presence,
 ### Requirement: Capability selection is validated before use
 An authored strategy SHALL explicitly provide every capability it exposes or
 requires. Execution configuration MAY request an exposed capability within its
-bounds. Missing or incompatible requested capabilities SHALL fail before their
-runtime trigger.
+bounds. Missing or incompatible requested capabilities SHALL be rejected at the
+earliest authoritative evidence point. Incompatibilities already knowable during
+strategy fulfillment SHALL be rejected then; deliberately later requests SHALL
+be validated against the same current obligations before the capability becomes
+ready or its use begins. A due or trigger decision MAY derive a bounded request, but
+SHALL NOT establish its validity or executable readiness. Capability-specific
+restrictions on resource creation before request validation SHALL still apply.
 
 #### Scenario: Full-model persistence is unavailable
 - **WHEN** configuration requests a full-model product that the authored strategy does not provide
@@ -34,6 +39,11 @@ runtime trigger.
 #### Scenario: Provided capability is not requested
 - **WHEN** an accepted arrangement provides a sampling capability but the run's accepted configuration or policy does not request sampling
 - **THEN** the pipeline MUST NOT schedule sampling merely because the capability is available
+
+#### Scenario: Trigger-derived request is incompatible
+- **WHEN** an accepted runtime policy derives a bounded request when a capability becomes due and that request violates the current accepted obligations
+- **THEN** request validation MUST reject it before the capability becomes ready or its use begins
+- **AND** the due decision MUST NOT authorize capability execution or resource creation prohibited before request validation
 
 ### Requirement: Capability coordination does not imply central implementation
 Trainer or delegated pipeline orchestration SHALL own capability trigger

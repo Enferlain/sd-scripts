@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-05]
+
+### Fixed
+
+- **ModelSpec extensions cannot overwrite canonical claims** — item validation and final projection reject extensions colliding with the specification version or canonical artifact fields, while preserving custom extensions. Stored records receive the same protection as newly filed facts.
+
 ## [2026-07-20]
 
 ### Added

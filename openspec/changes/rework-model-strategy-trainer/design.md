@@ -202,7 +202,7 @@ target runtime actors.
 | Main spec | Contradiction or inherited constraint | Delta and unchanged dependency |
 | --- | --- | --- |
 | `loaded-model-components` | Trainer is named as the primary loaded-component holder, and loading names the current strategy method. | `MODIFIED` loading and top-level-surface requirements keep family-owned order, keys, labels, and generic semantics, but make the typed loading result candidate/evidence and accepted authority the current binding owner. Non-slot-based expansion survives. |
-| `optimization-target-refs` | Its namespace and mode scenarios imply optimization/modes build all targets, and live objects are embedded in unqualified refs. | `MODIFIED` policy-neutral refs and consumer scenarios separate semantic identity from revision-pinned live projections. Trainer optimization resolves trainable parameters; governed PEFT realization resolves authored host-target intent. Unchanged selector compatibility, component labels/keys, grouping behavior, and declared-component provenance survive. |
+| `optimization-target-refs` | Its namespace and mode scenarios imply optimization/modes build all targets, live objects are embedded in unqualified refs, and universal component ancestry excludes admitted standalone participant state. | `MODIFIED` policy-neutral refs and consumer scenarios separate semantic identity from revision-pinned live projections. Trainer optimization resolves trainable parameters; governed PEFT realization resolves authored host-target intent. Modified selector/expansion applicability preserves existing component-backed labels, keys, selectors, grouping, and provenance while permitting participant-owned substructure without invented family components. |
 | `adapter-system` | Optimization-owned targeting, two `AdapterMode` ownership requirements, and adapter-path persistence assign durable authority to old actors. | Four requirements are `REMOVED`; realization, method configuration, and adapter-facing optimization boundaries are `MODIFIED`. Added requirements assign target intent to authoring, resolution to governed PEFT realization, timing to Trainer/pipeline, and product/loading/restoration to separate exchanges. Broad applicability, typed helpers, and parameter-native grouping survive. |
 | `adapter-module-targeting` | Optimization owns host-module selection; `AdapterMode` appears in target passing, trainable handoff, and `loha` export/merge. Mixed-method overlap was deferred. | Ownership and deferral are `REMOVED`; governed resolution and unsupported-overlap rejection are `ADDED`. Provenance, parameter grouping, `loha`, method settings, continuation, migration fields, and declared-component scope are `MODIFIED`. Method behavior, selector compatibility, strict artifact-continuation default, and non-SD component support survive. |
 | `repo-owned-lora-method` and `repo-owned-vera-method` | Build scenarios name `AdapterMode` and call resolved targets optimization-owned. | Each build/loading requirement is `MODIFIED` to consume governed PEFT results. Method-local algorithm, configuration, state, export, and trainable-provenance requirements survive; methods still do not own host traversal or semantic selection. VeRA's malformed delta-shaped main-spec headings are normalized before validation. |
@@ -210,9 +210,12 @@ target runtime actors.
 | `model-family-metadata` | Existing realization identity can be misread as live participant identity; companion composition and filing rules assume loader/preparation success establishes current history. | Shared `MODIFIED` distinction/filing requirements use accepted publication and checkpoint-scoped finalization, preserving all existing scenario identifiers. `ADDED` requirements distinguish runtime and durable identity, accepted history, actual product/restoration outcomes, and required delivery from optional telemetry. Existing typed catalog/build/emission/projection and external-parity requirements survive. |
 
 Two migration-scoped rules need explicit limits. The existing
-`optimization-target-refs` selector and grouping requirements continue through
-policy-neutral refs; neither authorizes optimization to choose PEFT host
-targets. The `adapter-module-targeting` compatibility rule allows legacy
+`optimization-target-refs` component-backed selectors and existing grouping
+behavior continue through policy-neutral refs, including the accepted
+component learning-rate policy for adapter trainables with genuine host
+associations. They do not force standalone participants into family
+declarations, and neither authorizes optimization to choose PEFT host targets.
+The `adapter-module-targeting` compatibility rule allows legacy
 `component`/`component_key`/`path`/`module` fields only as aliases of the same
 accepted, revision-pinned projection during migration. They are not another
 identity, binding store, or permanent old adapter API. The strict
@@ -1274,6 +1277,23 @@ policy, and runtime. Module train/eval timing remains a pipeline lifecycle
 concern; optimizer-local transitions such as schedule-free modes are invoked at
 Trainer-owned lifecycle points.
 
+Shared target references cover both component-backed and independently managed
+participant-owned module or parameter substructure. Genuine model-component
+provenance retains its declared keys, public labels, local paths, and existing
+selector/grouping compatibility. A standalone learned participant, such as an
+auxiliary loss-weight vector, instead has its own authority-qualified target
+meaning and current scoped parameter projection; it needs no invented family
+component, borrowed host ownership, or raw-pointer-only optimization path.
+Trainer optimization consumes those same shared meanings when resolving its
+accepted semantic subjects to live trainables. Genuine adapter host-target
+associations remain provenance and do not determine ownership of the adapter's
+learned state. Catalog and model-structural associations remain applicable
+optional evidence, not an admission prerequisite for otherwise valid targets.
+
+This resolves audit finding P1-REV-01's applicability gap. It does not select a
+reference class, field layout, selector encoding, or broader metadata catalog
+scope; those concrete choices remain G5 work.
+
 Optimization is semantically downstream of accepted bindings but may
 physically cross preparation. Only these ordering points are fixed:
 
@@ -2269,10 +2289,11 @@ preserves the logical authority, participant and optimization identities,
 accepted arrangement, relevant revisions, mutable state, and run coordinates
 only when the snapshot actually carries and restores them. New Python objects,
 processes, or wrappers do not break identity; a new execution session has
-its own session and attempt identity for observation and correlation. If those
-facts are not restored—or an artifact starts another run—the new run establishes
-new identities and records lineage
-instead of claiming continuity.
+its own session and attempt identity for observation and correlation. If required
+identity or revision facts are missing, same-run restoration remains incomplete
+and dependent execution stays unavailable. A separately requested new run,
+including one initialized from an artifact, establishes new identities and
+records lineage instead of claiming continuity.
 
 Trainer/pipeline infrastructure coordinates restoration of the coherent run.
 Accepted operations, capabilities, optimization, and backend integrations
@@ -2396,6 +2417,23 @@ same-run participant, relationship, and optimization identities remain intact.
 Late results from old attempts are not automatically current. Captured work or
 externally completed work can be adopted only through the accepted recovery and
 admission rule, with its actual provenance and outcomes.
+
+**Earlier capture versus later restore eligibility.** Suppose snapshot K at
+accepted scope A1 contains live participant P, and a later accepted scope A2
+retires P, possibly declaring successor Q at the same authored address. Once
+that retirement is established, same-run restoration cannot publish K's P as
+live again: retirement is terminal for that incarnation, and neither a new
+execution session nor Q's matching address overrides it. K retains its original
+capture guarantee; the incompatible continuation is reported unavailable,
+while A2 and known or uncertain post-cut effects retain their historical meaning.
+Late observations cannot erase that retirement or substitute Q for P. A later
+eligible coherent cut may be used if one exists and its required correspondence
+is established. This does not prohibit every earlier cut or numerical-state
+restoration; other cuts remain subject to the accepted continuation policy,
+effect reconciliation, and fresh readiness. Branching around terminal same-run
+retirement would require an explicit different recovery/identity policy, not a
+G5 storage or type choice. This is Pass 7's derived consequence of D6 and the
+existing restoration rules, not a new universal rollback guarantee.
 
 Fallible reconstruction happens while affected execution is unavailable.
 Coordinated publication/readiness exposes only compatible restored state, never
@@ -3106,6 +3144,57 @@ Finish caching, validation, sampling, artifact persistence, and restoration
 request/result/readiness/failure semantics. Reconcile every changed main spec
 and the active metadata change, distinguishing current migration compatibility
 from target ownership.
+
+#### Concern audit disposition — 2026-10-05
+
+The external concern passes 0–7 examined pinned commit
+`6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48`; their reports remain evidence,
+not normative authority. Pass 7's seven combined source traces established no
+new blocker beyond inherited findings. They support G5 production-shape work
+conditionally, not production implementation or an unconditional verdict on
+the corrected working tree. The bounded local close-out checks the corrections
+below against their neighboring requirements; it does not repeat the whole
+audit or promote inspected experiments into integrated execution evidence.
+
+| Finding | Corrected meaning and home |
+| --- | --- |
+| P1-REV-01 | D9, `loaded-model-components`, and `optimization-target-refs` explicitly admit standalone participant-owned substructure without invented component ancestry; genuine component selectors and host provenance remain intact. Concrete reference/selector encoding remains G5. |
+| P2-REV-01 | G4.4's introduction now agrees with `run-participant-state` and capability restoration: missing required same-run facts leave continuation incomplete; new identities require a separate new-run request. |
+| P4-REV-01 | `training-capability-coordination` rejects incompatible requests at their earliest authoritative evidence point before readiness/use; a runtime trigger may derive a bounded request but cannot validate it or authorize prohibited resource creation. |
+| P6-REV-01 | The metadata foundation rejects ModelSpec extension collisions with canonical facts and the projection-owned version at item filing and final projection of stored records, while retaining custom extensions. Regression coverage checks required/optional fields, bare/prefixed stored keys, and artifact scope. This repairs existing conformance, not a G5 implementation milestone. |
+| P6-NOTE-01 | The companion design's migration and open-question wording now retains the first fingerprint policy's candidate-only status after fixtures pass; automatic equality or merging needs a future explicit accepted policy/spec change. |
+
+Passes 5–6's earlier-cut question is recorded explicitly in G4.4 and
+`run-participant-state`: capture success does not override later established
+terminal retirement. Required history and effect knowledge survive rejected
+restoration. The example leaves other eligible earlier cuts available under
+their accepted policy; it does not add branching, replay, or rollback authority.
+
+G5 still must choose concrete types/APIs, executable representation and
+lowering, protection/backend mechanisms, owner-contribution and recovery
+protocols, and traced migration/conformance/performance tests. Autonomous
+multi-input coordination, backend-complete handback, and coherent durable
+whole-run restoration have not been demonstrated by the bounded experiments.
+The companion's concrete integration, typed-query, and qualified resource-owner
+gates remain open; planning reconciliation does not complete them.
+
+The combined corrections passed both strict OpenSpec validations, scoped
+metadata lint/format/type checks, and all 246 metadata tests under UTC (the
+existing family-parity fixtures assume UTC). The three shared loading/model-fact
+requirement and scenario blocks still match across the changes. `review-mcp`
+approved the corrected working-tree diff against the pinned baseline with
+minor non-blocking notes; this completed review supersedes the earlier
+quota-blocked attempt. The close-out and Pass 6 fix are tracked by
+`sd-scripts-syv.3` and `sd-scripts-syv.2`.
+
+G5 selector work must keep optional catalog/structural qualification distinct
+from genuine family-component ancestry; a catalog association alone does not
+justify a fabricated public component prefix for standalone state. Pre-existing
+duplicate custom-extension spellings and cosmetic error-type differences do
+not reopen this canonical-claim repair or introduce a new implementation task.
+G5 tasks remain unchecked and the main rework stays open. This bounded audit
+close-out permits the next production-shape design task; it does not satisfy
+G5.7 or authorize production apply, spec sync/archive, or a new runtime API.
 
 ### G5. Choose production shapes and traced migration milestones
 

@@ -342,7 +342,7 @@ Unknown external metadata is preserved as source evidence when policy permits, w
 5. Verify restart, rename, fallback, override, deferred-loading, conflict, and lineage behavior; retain the old run-realization projection during compatibility migration.
 6. Pause at the documented handoff until the shared query and qualified resource-component dependencies are accepted.
 7. Add qualified structural inventories/descriptors/resolvers, then integrate optimization and resource consumers.
-8. Introduce fingerprint policies incrementally; keep experimental results non-merging until their test matrix proves the declared semantics.
+8. Introduce fingerprint policies incrementally; keep the first canonical-state policy candidate-only even after its fixture matrix passes. Fixture evidence may inform a future explicitly accepted policy/spec change; it does not itself grant automatic equality or merge authority.
 9. Remove only superseded active seams after parity and migration-ledger checks. `tools/` and textual inversion remain untouched.
 
 The active library must not depend on `tools/` for catalog, provenance, or structure behavior. If the audit finds such a dependency, the active caller is migrated to a library-owned boundary or the milestone stops; `tools/` itself is not edited to complete this change. The dedicated textual-inversion runtime is explicitly exempt from the new typed loading contract during this change and remains a deferred legacy path rather than evidence that the active migration is incomplete.
@@ -353,5 +353,5 @@ Rollback is additive through the provenance milestones: callers can temporarily 
 
 - Which portable issuer namespace and concrete string encoding should Kuro-created lineage/revision identifiers use? The implementation milestone must choose and version it before artifacts are emitted.
 - Which persistent catalog location/configuration becomes the product default across output directories? It must be cross-run and must not rely on a per-output ephemeral database; implementation research will select the existing project-consistent configuration boundary.
-- Which initial known conversion mappings are safe enough for canonical-state comparison rather than candidate-only matching? The fingerprint fixture milestone decides policy-by-policy; absence of proof means no automatic merge.
+- Which initial known conversion mappings could support a future accepted canonical-state equality policy? The fingerprint fixture milestone supplies evidence policy-by-policy, but the first policy remains candidate-only. Automatic normalized equality or merging requires a later explicit accepted policy/spec change, not fixture success alone.
 - Whether a persisted conversion is an alternate representation of one revision or a new descendant revision depends on whether state semantics changed. The initial transformation taxonomy must encode both and reject an unclassified automatic lineage claim.
