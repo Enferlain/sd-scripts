@@ -203,6 +203,7 @@ target runtime actors.
 | --- | --- | --- |
 | `loaded-model-components` | Trainer is named as the primary loaded-component holder, and loading names the current strategy method. | `MODIFIED` loading and top-level-surface requirements keep family-owned order, keys, labels, and generic semantics, but make the typed loading result candidate/evidence and accepted authority the current binding owner. Non-slot-based expansion survives. |
 | `optimization-target-refs` | Its namespace and mode scenarios imply optimization/modes build all targets, live objects are embedded in unqualified refs, and universal component ancestry excludes admitted standalone participant state. | `MODIFIED` policy-neutral refs and consumer scenarios separate semantic identity from revision-pinned live projections. Trainer optimization resolves trainable parameters; governed PEFT realization resolves authored host-target intent. Modified selector/expansion applicability preserves existing component-backed labels, keys, selectors, grouping, and provenance while permitting participant-owned substructure without invented family components. |
+| `component-qualified-selectors` | Unqualified inspection/group-matching and shared-ref requirements can force component prefixes and internal keys onto standalone participant-owned state, despite the target-ref delta. | Four `MODIFIED` requirements scope component-qualified inspection, matching, target selectors, and internal keys to genuine component provenance. Existing model selectors, regex matching, and public-label/internal-key separation survive; standalone targets retain accepted participant/substructure meaning without fabricated ancestry. Concrete standalone syntax remains G5. |
 | `adapter-system` | Optimization-owned targeting, two `AdapterMode` ownership requirements, and adapter-path persistence assign durable authority to old actors. | Four requirements are `REMOVED`; realization, method configuration, and adapter-facing optimization boundaries are `MODIFIED`. Added requirements assign target intent to authoring, resolution to governed PEFT realization, timing to Trainer/pipeline, and product/loading/restoration to separate exchanges. Broad applicability, typed helpers, and parameter-native grouping survive. |
 | `adapter-module-targeting` | Optimization owns host-module selection; `AdapterMode` appears in target passing, trainable handoff, and `loha` export/merge. Mixed-method overlap was deferred. | Ownership and deferral are `REMOVED`; governed resolution and unsupported-overlap rejection are `ADDED`. Provenance, parameter grouping, `loha`, method settings, continuation, migration fields, and declared-component scope are `MODIFIED`. Method behavior, selector compatibility, strict artifact-continuation default, and non-SD component support survive. |
 | `repo-owned-lora-method` and `repo-owned-vera-method` | Build scenarios name `AdapterMode` and call resolved targets optimization-owned. | Each build/loading requirement is `MODIFIED` to consume governed PEFT results. Method-local algorithm, configuration, state, export, and trainable-provenance requirements survive; methods still do not own host traversal or semantic selection. VeRA's malformed delta-shaped main-spec headings are normalized before validation. |
@@ -210,8 +211,9 @@ target runtime actors.
 | `model-family-metadata` | Existing realization identity can be misread as live participant identity; companion composition and filing rules assume loader/preparation success establishes current history. | Shared `MODIFIED` distinction/filing requirements use accepted publication and checkpoint-scoped finalization, preserving all existing scenario identifiers. `ADDED` requirements distinguish runtime and durable identity, accepted history, actual product/restoration outcomes, and required delivery from optional telemetry. Existing typed catalog/build/emission/projection and external-parity requirements survive. |
 
 Two migration-scoped rules need explicit limits. The existing
-`optimization-target-refs` component-backed selectors and existing grouping
-behavior continue through policy-neutral refs, including the accepted
+`optimization-target-refs` and `component-qualified-selectors` component-backed
+selectors and existing grouping behavior continue through policy-neutral refs,
+including the accepted
 component learning-rate policy for adapter trainables with genuine host
 associations. They do not force standalone participants into family
 declarations, and neither authorizes optimization to choose PEFT host targets.
@@ -3159,6 +3161,7 @@ audit or promote inspected experiments into integrated execution evidence.
 | Finding | Corrected meaning and home |
 | --- | --- |
 | P1-REV-01 | D9, `loaded-model-components`, and `optimization-target-refs` explicitly admit standalone participant-owned substructure without invented component ancestry; genuine component selectors and host provenance remain intact. Concrete reference/selector encoding remains G5. |
+| Post-close-out selector applicability | A follow-up against commit `b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c` identified a surviving independent obligation in unchanged `component-qualified-selectors`. Its matching delta now scopes inspection, matching, shared selectors, and internal keys to genuine component provenance; it closes the same P1 applicability concern rather than changing the architecture or selecting standalone syntax. |
 | P2-REV-01 | G4.4's introduction now agrees with `run-participant-state` and capability restoration: missing required same-run facts leave continuation incomplete; new identities require a separate new-run request. |
 | P4-REV-01 | `training-capability-coordination` rejects incompatible requests at their earliest authoritative evidence point before readiness/use; a runtime trigger may derive a bounded request but cannot validate it or authorize prohibited resource creation. |
 | P6-REV-01 | The metadata foundation rejects ModelSpec extension collisions with canonical facts and the projection-owned version at item filing and final projection of stored records, while retaining custom extensions. Regression coverage checks required/optional fields, bare/prefixed stored keys, and artifact scope. This repairs existing conformance, not a G5 implementation milestone. |
@@ -3186,6 +3189,16 @@ approved the corrected working-tree diff against the pinned baseline with
 minor non-blocking notes; this completed review supersedes the earlier
 quota-blocked attempt. The close-out and Pass 6 fix are tracked by
 `sd-scripts-syv.3` and `sd-scripts-syv.2`.
+
+That completed review predates the follow-up selector delta and does not cover
+it. The selector correction and its proposal/ledger reconciliation are tracked
+separately by `sd-scripts-syv.4`; required review remains outstanding because
+the user reports `review-mcp` quota exhaustion. Both changes pass strict
+OpenSpec validation; scoped document checks preserve all seven existing
+selector scenario identifiers and the inspection/regex examples, and whitespace
+checks pass. These checks are not executable selector conformance or a
+substitute for the required review. The earlier audit reports and completed
+review remain historical evidence, not approval of this later edit.
 
 G5 selector work must keep optional catalog/structural qualification distinct
 from genuine family-component ancestry; a catalog association alone does not

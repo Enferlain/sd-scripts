@@ -89,6 +89,10 @@ notes.
   and provenance policy-neutral, and make live-object access a revision-pinned
   consumer projection rather than participant identity, canonical binding
   state, or evidence that optimization owns adapter targeting.
+- `component-qualified-selectors`: Limit required component prefixes and
+  internal component keys to targets with genuine component provenance;
+  preserve existing model inspection/grouping behavior while admitting
+  participant-owned substructure without synthetic component ancestry.
 - `model-family-metadata`: Consume durable participant, transition, artifact,
   and lineage projections from accepted authorities without making metadata the
   live runtime owner or deriving identity from Python objects.
