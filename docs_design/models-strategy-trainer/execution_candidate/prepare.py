@@ -12,7 +12,8 @@ import asyncio
 import copy
 import inspect
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
-from dataclasses import dataclass
+from contextlib import asynccontextmanager
+from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, cast
 
@@ -31,18 +32,36 @@ from .graph import (
     OutOfBounds,
     Producer,
     Repeat,
+    Retain,
+    Release,
     Replace,
     Requested,
     Scope,
+    Sequence,
     Together,
     TwoPass,
     Use,
     Work,
+    block_uses,
     inputs,
     ordered,
     outputs,
+    sequence_order,
 )
-from .state import Contribution, Image, Product, Projection, Replacement, RunState, Stamp, UnitOutcome, join, wait_for_products
+from .state import (
+    Contribution,
+    Image,
+    PreparedView,
+    Product,
+    Projection,
+    Replacement,
+    RetainedState,
+    RunState,
+    Stamp,
+    UnitOutcome,
+    join,
+    wait_for_products,
+)
 
 
 @dataclass(frozen=True)
@@ -54,6 +73,7 @@ class Context:
     choice: Choice
     invocation: int
     stamps: Mapping[str, Stamp]
+    views: Mapping[str, PreparedView] = field(default_factory=dict)
 
 
 @dataclass
@@ -63,6 +83,8 @@ class Frame:
     choice: Choice
     projection: Projection
     invocation: int
+    implementation_returned: bool = False
+    region: object | None = None
 
     def current(self) -> Projection:
         # The lease keeps bindings stable, not numerical state frozen across
@@ -72,29 +94,54 @@ class Frame:
             MappingProxyType({name: self.state.stamp(name) for name in self.projection.models}),
         )
 
-    def context(self, call: Call) -> Context:
+    def context(self, call: Call, retained: RetainedState | None = None) -> Context:
+        if retained is not None:
+            self.state.check_retained(retained, self.region)
+            projection, views = retained.projection, retained.views
+        else:
+            assert self.state.image is not None
+            projection, views = self.current(), self.state.image.views
         return Context(
-            MappingProxyType({use.participant: self.projection.models[use.participant] for use in call.uses}),
+            MappingProxyType({use.participant: projection.models[use.participant] for use in call.uses if use.view is None}),
             MappingProxyType({name: self.state.owners[name] for name in call.states}),
             self.choice,
             self.invocation,
-            MappingProxyType({use.participant: self.state.stamp(use.participant) for use in call.uses}),
+            MappingProxyType({use.participant: projection.stamps[use.participant] for use in call.uses}),
+            MappingProxyType({use.view: views[use.view] for use in call.uses if use.view is not None}),
         )
 
 
 class WorkFailed(RuntimeError):
     """A reached invocation, including invalid output after possible effects."""
 
-    def __init__(self, source: str, frame: Frame, cause: BaseException):
+    def __init__(self, source: str, frame: Frame, cause: BaseException, cleanup_failures: tuple[BaseException, ...] = ()):
         super().__init__(f"{source}: post-invocation failure ({cause})")
         self.source, self.scope, self.invocation, self.cause = source, frame.scope, frame.invocation, cause
+        self.cleanup_failures = cleanup_failures
+        self.implementation_returned = frame.implementation_returned
         assert frame.state.image is not None
         self.unit_outcomes: tuple[UnitOutcome, ...] = tuple(
             copy.copy(outcome)
             for runtime in frame.state.image.units.values()
             for outcome in runtime.outcomes
-            if outcome.invocation == frame.invocation
+            if outcome.invocation == frame.invocation or (frame.region is not None and outcome.region is frame.region)
         )
+
+
+class CallFailed(RuntimeError):
+    """Internal separation of selected execution from mode restoration."""
+
+    def __init__(self, primary: BaseException | None, cleanup: tuple[BaseException, ...]):
+        super().__init__("Selected execution and/or evaluation cleanup failed")
+        self.primary, self.cleanup = primary, cleanup
+
+
+class ProducerFailed(RuntimeError):
+    """Owner-specific evidence, not a universal completion/result object."""
+
+    def __init__(self, source: str, primary: BaseException | None, cleanup: tuple[BaseException, ...], returned: bool):
+        super().__init__(f"{source}: producer execution/cleanup failed")
+        self.source, self.cause, self.cleanup_failures, self.implementation_returned = source, primary, cleanup, returned
 
 
 class GrantedAccess:
@@ -168,14 +215,34 @@ class GrantedAccess:
 class ProviderContext:
     """A provider owns private workers; coordination owns its handoff ports."""
 
-    def __init__(self, source: Producer, state: RunState):
+    def __init__(self, source: Producer, state: RunState, owners: Mapping[str, object]):
         self.source = source
         self._state = state
-        self.states = MappingProxyType({name: state.owners[name] for name in source.states})
+        self.states = owners
         self.ports = MappingProxyType({name: state.feeds[name] for name in source.channels})
 
-    def use_source(self):
-        return self._state.acquire(self.source.uses)
+    @asynccontextmanager
+    async def use_source(self, uses: tuple[Use, ...] | None = None):
+        uses = self.source.uses if uses is None else uses
+        allowed = {use.participant: "read" for use in self.source.uses}
+        allowed.update({use.participant: "write" for use in self.source.uses if use.access == "write"})
+        if any(
+            use.participant not in allowed
+            or use.access not in ("read", "write")
+            or (use.access == "write" and allowed[use.participant] != "write")
+            for use in uses
+        ):
+            raise OutOfBounds("Provider source access exceeds accepted authority")
+        async with self._state.acquire(uses) as projection:
+            try:
+                yield projection
+            except BaseException:
+                self._state.unusable.update(use.participant for use in uses if use.access == "write")
+                raise
+            else:
+                # Complete the write fact before releasing protection. Entry
+                # stamps do NOT describe intermediate/final writes inside it.
+                self._state.returned_writes(uses)
 
     async def publish(self, channel: str, product: Product) -> None:
         if channel not in self.ports:
@@ -262,90 +329,27 @@ class Lowering:
         self.source: dict[str, str] = {}
         self.requests: dict[str, list[asyncio.Queue]] = {}
         self.request_queues: dict[str, asyncio.Queue] = {}
-        self.producers: dict[str, Producer] = {}
-        self.blocks: list[Block] = []
+        self.finished: dict[str, asyncio.Event] = {}
         self._connect(accepted.root)
-        self._check_wait_cycles()
 
     def _connect(self, scope: Scope) -> None:
         if isinstance(scope, Together):
             for child in scope.children:
                 self._connect(child)
+        elif isinstance(scope, Sequence):
+            for block in scope.blocks:
+                self._connect(block)
         elif isinstance(scope, Requested) and scope.enabled:
             queue = asyncio.Queue(maxsize=1)
             self.request_queues[scope.name] = queue
             self.requests.setdefault(scope.source, []).append(queue)
-            self.blocks.append(scope.block)
-        elif isinstance(scope, Producer):
-            self.producers.update(dict.fromkeys(scope.channels, scope))
-        elif isinstance(scope, Repeat):
-            self.blocks.extend(scope.blocks)
-        elif isinstance(scope, Block):
-            self.blocks.append(scope)
-
-    def _check_wait_cycles(self) -> None:
-        """Cold, conservative analysis of declared lease/handoff relationships.
-
-        Prefix readiness holds no lease. Later joins do: they wait for a
-        producer that may need a participant held by another waiting block.
-        Include indirect edges, not just a block's own producer conflict.
-        This can reject feasible schedules; it is not a global liveness proof
-        for arbitrary Python, private provider logic or future regions.
-        """
-        accesses = {}
-        edges: dict[str, set[str]] = {}
-        for block in self.blocks:
-            uses = self._block_uses(block)
-            access = dict.fromkeys((use.participant for use in uses), "read")
-            access.update(dict.fromkeys((use.participant for use in uses if use.access == "write"), "write"))
-            accesses[block.name] = access
-            edges[block.name] = set()
-            prefix = True
-            for item in ordered(block):
-                if not isinstance(item, Join):
-                    prefix = False
-                elif not prefix:
-                    edges[block.name].update(self.producers[channel].name for channel in item.channels)
-        for producer in self.producers.values():
-            edges[producer.name] = {
-                block
-                for block, access in accesses.items()
-                if any(use.participant in access and (use.access == "write" or access[use.participant] == "write") for use in producer.uses)
-            }
-        active: set[str] = set()
-        done: set[str] = set()
-
-        def visit(node: str) -> None:
-            if node in active:
-                raise NotReady(f"Potential lease/source wait cycle in this target: {node}")
-            if node in done:
-                return
-            active.add(node)
-            for dependency in edges[node]:
-                visit(dependency)
-            active.remove(node)
-            done.add(node)
-
-        for node in edges:
-            visit(node)
-
-    def _block_uses(self, block: Block) -> tuple[Use, ...]:
-        uses: list[Use] = []
-        for work in block.work:
-            uses.extend(getattr(work, "uses", ()))
-            units = work.units if isinstance(work, (Differentiate, Advance)) else (work.unit,) if isinstance(work, TwoPass) else ()
-            for unit in units:
-                uses.extend(Use(member[0], "write") for member in self.accepted.units[unit].members)
-            if isinstance(work, Call) and work.evaluation:
-                uses.extend(Use(use.participant, "write") for use in work.uses)
-        return tuple(uses)
+        elif isinstance(scope, Producer) and scope.stop_when is not None:
+            self.finished.setdefault(scope.stop_when, asyncio.Event())
 
     def block(self, block: Block) -> Callable[[Choice, str], Awaitable[int]]:
         work = ordered(block)
-        uses = self._block_uses(block)
+        uses = block_uses(block, self.accepted.units)
         states = tuple(dict.fromkeys(name for item in work if isinstance(item, Call) for name in item.states))
-        if any(isinstance(item, Replace) for item in work) and (uses or states):
-            raise NotReady("This target publishes replacement only outside protected numerical/state work")
         prefix: list[Join] = []
         for item in work:
             if not isinstance(item, Join):
@@ -385,22 +389,54 @@ class Lowering:
 
         return invoke
 
-    def bind(self, work: Work, *, wait_input: bool = True):
+    def bind(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False):
+        declared = outputs(work)
+
+        def check_output(result):
+            if not declared:
+                if result is not None:
+                    raise TypeError("Declared no output")
+            else:
+                values = (result,) if len(declared) == 1 else result
+                if not isinstance(values, tuple) or len(values) != len(declared):
+                    raise TypeError("Returned output structure disagrees with accepted structure")
+                if any(not isinstance(value, output.type) for value, output in zip(values, declared)):
+                    raise TypeError("Returned output type disagrees with accepted schema")
+
         if isinstance(work, Call):
 
             async def invoke(frame, *args):
-                context = frame.context(work)
-                modes = tuple((module, module.training) for model in context.models.values() for module in model.modules())
+                retained = args[-1] if work.retained is not None else None
+                args = args[:-1] if work.retained is not None else args
+                context = frame.context(work, retained)
+                modes = (
+                    tuple((module, module.training) for model in context.models.values() for module in model.modules())
+                    if work.evaluation
+                    else ()
+                )
+                primary = None
+                result = None
                 try:
                     if work.evaluation:
                         for model in context.models.values():
                             model.eval()
                     result = work.implementation(context, *args)
-                    return await result if inspect.isawaitable(result) else result
-                finally:
-                    if work.evaluation:
-                        for module, training in modes:
-                            module.training = training
+                    result = await result if inspect.isawaitable(result) else result
+                    frame.implementation_returned = True
+                    self.state.trace.append(("implementation_returned", (work.name, frame.invocation)))
+                    self.state.returned_writes(work.uses)
+                    check_output(result)  # An invalid return must survive cleanup failure too.
+                except BaseException as error:
+                    primary = error
+                cleanup = []
+                for module, training in modes:
+                    try:
+                        module.training = training
+                    except BaseException as error:
+                        cleanup.append(error)
+                if primary is not None or cleanup:
+                    raise CallFailed(primary, tuple(cleanup))
+                return result
         elif isinstance(work, Join):
             feeds = tuple(self.state.feeds[name] for name in work.channels)
 
@@ -410,12 +446,29 @@ class Lowering:
                 return values[0] if len(values) == 1 else values
         elif isinstance(work, Differentiate):
 
-            async def invoke(frame, loss):
-                return self.state.contribute(loss, work.units, frame.invocation)
+            async def invoke(frame, loss, retained=None):
+                return self.state.contribute(
+                    loss,
+                    work.units,
+                    frame.invocation,
+                    retained=retained,
+                    region=frame.region,
+                    keep_graph=keep_graph,
+                )
         elif isinstance(work, Advance):
 
             async def invoke(frame, contribution):
-                self.state.advance(contribution, work.units, frame.invocation)
+                self.state.advance(contribution, work.units, frame.invocation, region=frame.region)
+        elif isinstance(work, Retain):
+
+            async def invoke(frame):
+                if frame.region is None:
+                    raise NotReady("No accepted cross-block lifetime")
+                return await self.state.retain(work, frame.region)
+        elif isinstance(work, Release):
+
+            async def invoke(frame, retained):
+                await self.state.release(retained, frame.region)
         elif isinstance(work, TwoPass):
 
             async def invoke(frame, *args):
@@ -424,7 +477,11 @@ class Lowering:
                 result = work.implementation(access, models, *args)
                 if inspect.isawaitable(result):
                     await result
-                return access._handback(work.unit)
+                frame.implementation_returned = True
+                self.state.trace.append(("implementation_returned", (work.name, frame.invocation)))
+                contribution = access._handback(work.unit)
+                self.state.returned_writes(work.uses)
+                return contribution
         elif isinstance(work, Replace):
 
             async def invoke(frame, proposal):
@@ -434,26 +491,13 @@ class Lowering:
         else:
             raise NotReady(f"No target rule for {type(work).__name__}")
 
-        declared = outputs(work)
-
         async def checked(frame: Frame, *args):
             self.state.trace.append(("entered", (work.name, frame.invocation)))
+            frame.implementation_returned = False
             try:
                 result = await invoke(frame, *args)
-                if isinstance(work, Call):
-                    # A declared write is conservative dependency evidence,
-                    # not numerical comparison of before/after tensors.
-                    for name in {use.participant for use in work.uses if use.access == "write"}:
-                        self.state.numerical_epochs[name] += 1
-                if not declared:
-                    if result is not None:
-                        raise TypeError("Declared no output")
-                else:
-                    values = (result,) if len(declared) == 1 else result
-                    if not isinstance(values, tuple) or len(values) != len(declared):
-                        raise TypeError("Returned output structure disagrees with accepted structure")
-                    if any(not isinstance(value, output.type) for value, output in zip(values, declared)):
-                        raise TypeError("Returned output type disagrees with accepted schema")
+                if not isinstance(work, Call):
+                    check_output(result)
                 self.state.trace.append(("returned", (work.name, frame.invocation)))
                 return result
             except BaseException as error:
@@ -465,13 +509,156 @@ class Lowering:
                 self.state.unusable.update(frame.projection.models)
                 if isinstance(work, Call):
                     self.state.unusable_states.update(work.states)
+                if isinstance(error, CallFailed):
+                    primary = error.primary
+                    if isinstance(primary, asyncio.CancelledError) and not error.cleanup:
+                        raise primary from error
+                    cause = primary if primary is not None else error.cleanup[0]
+                    raise WorkFailed(work.name, frame, cause, error.cleanup) from error
                 if isinstance(error, asyncio.CancelledError):
                     raise
                 raise WorkFailed(work.name, frame, error) from error
 
         return checked
 
+    def sequence(self, scope: Sequence) -> Callable[[], Coroutine[Any, Any, None]]:
+        """Lower cross-block links to locals, with work-sized current-use protection.
+
+        Retained sources have their OWN lifetime. Acquiring a whole block's
+        future write permissions here would deadlock its earlier release.
+        """
+        groups = sequence_order(scope)
+        work_items = tuple(item for _, work in groups for item in work)
+        bound = []
+        for index, work in enumerate(work_items):
+            keep_graph = (
+                isinstance(work, Differentiate)
+                and work.retained is not None
+                and any(isinstance(later, Differentiate) and later.retained == work.retained for later in work_items[index + 1 :])
+            )
+            function = self.bind(work, keep_graph=keep_graph)
+
+            def protect(item, selected):
+                uses = getattr(item, "uses", ())
+                if isinstance(item, Call) and item.retained is not None:
+                    uses = ()  # The retained source already owns its protected/copy lifetime.
+                if isinstance(item, (Differentiate, Advance)):
+                    access = "write" if isinstance(item, Advance) else "read"
+                    uses = tuple(Use(member[0], access) for unit in item.units for member in self.accepted.units[unit].members)
+                if isinstance(item, TwoPass):
+                    uses = (*uses, *(Use(member[0], "write") for member in self.accepted.units[item.unit].members))
+                if isinstance(item, Call) and item.evaluation:
+                    uses = (*uses, *(Use(use.participant, "write") for use in item.uses))
+                states = item.states if isinstance(item, Call) else ()
+
+                async def protected(frame, *args):
+                    writes = {use.participant for use in uses if use.access == "write"}
+                    own_live = {
+                        name
+                        for retained in self.state.active_retentions.values()
+                        if retained.region is frame.region and not retained.isolated
+                        for name in retained.projection.models
+                    }
+                    if writes & own_live or (isinstance(item, Replace) and own_live):
+                        raise NotReady("A sequence cannot wait on its own protected old-state last use")
+                    async with self.state.acquire(uses, states) as projection:
+                        return await selected(replace(frame, projection=projection), *args)
+
+                return protected
+
+            bound.append(protect(work, function))
+
+        async def enter(name: str, region: object):
+            self.state.invocation += 1
+            frame = Frame(self.state, scope.name, Choice(name), Projection({}, {}), self.state.invocation, region=region)
+            self.state.trace.append(("invocation", (scope.name, name, "", frame.invocation)))
+            return frame
+
+        def completed(name: str):
+            counts = self.state.coordinates.setdefault(scope.name, {})
+            counts[name] = counts.get(name, 0) + 1
+
+        namespace: dict[str, object] = {"enter": enter, "completed": completed}
+        lines = ["async def body(region):", "    choice = None"]
+        variables = {"choice": "choice"}
+        index = 0
+        for block, work in groups:
+            lines.append(f"    frame = await enter({block.name!r}, region)")
+            for item in work:
+                namespace[f"work_{index}"] = bound[index]
+                args = ", ".join(["frame", *(variables[value] for value in inputs(item))])
+                produced = outputs(item)
+                names = [f"v_{index}_{slot}" for slot in range(len(produced))]
+                assignment = ", ".join(names) + " = " if names else ""
+                lines.append(f"    # accepted source {item.name!r}")
+                lines.append(f"    {assignment}await work_{index}({args})")
+                variables.update({output.name: name for output, name in zip(produced, names)})
+                index += 1
+            lines.append(f"    completed({block.name!r})")
+        source = "\n".join(lines) + "\n"
+        self.source[scope.name] = source
+        exec(compile(source, f"<candidate:{scope.name}>", "exec"), namespace)
+        body = cast(Callable[[object], Awaitable[None]], namespace["body"])
+        participants = {use.participant for item in work_items for use in getattr(item, "uses", ())} | {
+            name for item in work_items if isinstance(item, Retain) for name in item.participants
+        }
+        owner_states = {name for item in work_items if isinstance(item, Call) for name in item.states}
+
+        async def sequence():
+            region = object()  # Execution correspondence, not a semantic identity.
+            primary = None
+            try:
+                await body(region)
+            except BaseException as error:
+                primary = error
+                self.state.unusable.update(participants)
+                self.state.unusable_states.update(owner_states)
+
+            # Drain only this region's remaining lifetimes, even on repeated
+            # cancellation. This releases protection, NOT failed gradients or
+            # evidence of uncertainty; it does not make replay safe.
+            async def cleanup():
+                for retained in tuple(self.state.active_retentions.values()):
+                    if retained.region is region:
+                        await self.state.release(retained, region, aborted=True)
+
+            task = asyncio.create_task(cleanup())
+            while not task.done():
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError as error:
+                    if primary is None:
+                        primary = error
+                    self.state.unusable.update(participants)
+                    self.state.unusable_states.update(owner_states)
+                except BaseException:
+                    break
+            cleanup_failure = task.exception()
+            if primary is not None and cleanup_failure is not None:
+                raise BaseExceptionGroup("Sequence execution and lifetime cleanup failed", (primary, cleanup_failure))
+            if primary is not None:
+                raise primary
+            if cleanup_failure is not None:
+                raise cleanup_failure
+
+        return sequence
+
     def scope(self, scope: Scope) -> Callable[[], Coroutine[Any, Any, None]]:
+        body = self._scope(scope)
+        finished = self.finished.get(scope.name)
+        if finished is None:
+            return body
+
+        async def tracked():
+            await body()
+            finished.set()  # Whole lifetime normal completion, not one block invocation.
+            self.state.trace.append(("demand_ended", scope.name))
+
+        return tracked
+
+    def _scope(self, scope: Scope) -> Callable[[], Coroutine[Any, Any, None]]:
+        if isinstance(scope, Sequence):
+            return self.sequence(scope)
         if isinstance(scope, Block):
             body = self.block(scope)
 
@@ -527,24 +714,7 @@ class Lowering:
             return repeat
 
         if isinstance(scope, Producer):
-            provider = ProviderContext(scope, self.state)
-            self.source[scope.name] = f"independent selected activity -> bounded ports {scope.channels}"
-
-            async def producer():
-                failure = None
-                try:
-                    await scope.implementation(provider)
-                except BaseException as error:
-                    failure = error
-                    # Source use failures must not certify still-usable state.
-                    self.state.unusable.update(use.participant for use in scope.uses)
-                    self.state.unusable_states.update(scope.states)
-                    raise
-                finally:
-                    for feed in provider.ports.values():
-                        await feed.close(failure)
-
-            return producer
+            return self.producer(scope)
 
         if isinstance(scope, Requested):
             if not scope.enabled:
@@ -565,3 +735,115 @@ class Lowering:
 
             return requested
         raise NotReady(f"Unsupported scope {type(scope).__name__}")
+
+    def producer(self, scope: Producer) -> Callable[[], Coroutine[Any, Any, None]]:
+        self.source[scope.name] = f"independent activity -> bounded ports {scope.channels}; stop={scope.stop_when!r}"
+        finished = self.finished.get(scope.stop_when) if scope.stop_when is not None else None
+        feeds = tuple(self.state.feeds[name] for name in scope.channels)
+
+        async def producer():
+            stopping = False
+            phase = "starting"
+            if finished is not None and finished.is_set():
+                for feed in feeds:
+                    await feed.end_demand()
+                self.state.trace.append(("producer_not_started", scope.name))
+                return
+
+            async def activity():
+                nonlocal phase
+                if finished is not None and finished.is_set():
+                    self.state.trace.append(("producer_not_started", scope.name))
+                    return
+                # Lookup at actual startup; pin this state until implementation
+                # and explicit cleanup have joined all private work.
+                async with self.state.producer_owner(scope.name, scope.states) as owners:
+                    phase = "execution"
+                    context = ProviderContext(scope, self.state, owners)
+                    primary = None
+                    returned = False
+                    try:
+                        await scope.implementation(context)
+                        returned = True
+                        self.state.trace.append(("production_returned", scope.name))
+                    except BaseException as error:
+                        primary = error
+                    phase = "cleanup"
+                    planned_stop = stopping and isinstance(primary, asyncio.CancelledError)
+                    if primary is not None and not planned_stop:
+                        # Known uncertainty gates other owners immediately,
+                        # even while private cleanup is still awaiting work.
+                        self.state.unusable.update(use.participant for use in scope.uses)
+                        self.state.unusable_states.update(scope.states)
+                        for feed in feeds:
+                            await feed.close(primary)
+                    cleanup = []
+                    if scope.cleanup is not None:
+                        try:
+                            await scope.cleanup(context)
+                        except BaseException as error:
+                            cleanup.append(error)
+                    if cleanup or (primary is not None and not planned_stop):
+                        self.state.unusable.update(use.participant for use in scope.uses)
+                        self.state.unusable_states.update(scope.states)
+                        if cleanup:
+                            raise ProducerFailed(scope.name, primary, tuple(cleanup), returned)
+                        assert primary is not None
+                        raise primary
+                    self.state.trace.append(("producer_quiescent", (scope.name, returned, planned_stop)))
+
+            task = asyncio.create_task(activity())
+            stop = asyncio.create_task(finished.wait()) if finished is not None else None
+            failure = None
+            try:
+                if stop is not None:
+                    await asyncio.wait((task, stop), return_when=asyncio.FIRST_COMPLETED)
+                    if task.done() and not stop.done():
+                        await asyncio.shield(task)  # Report real failure immediately.
+                        for feed in feeds:
+                            await feed.close()
+                        await stop  # Retain port coordination, not the finished private owner.
+                    stopping = True
+                    if phase in ("starting", "execution") and not task.done():
+                        task.cancel()
+                    for feed in feeds:
+                        await feed.end_demand()
+                    self.state.trace.append(("producer_stop_requested", scope.name))
+                await asyncio.shield(task)
+            except asyncio.CancelledError as cancelled:
+                if phase in ("starting", "execution") and not task.done():
+                    task.cancel()
+                # Additional parent cancellation must not detach still-running
+                # cleanup or release its continuation registration prematurely.
+                while not task.done():
+                    try:
+                        await asyncio.shield(task)
+                    except asyncio.CancelledError:
+                        continue
+                    except BaseException:
+                        break
+                secondary = None if task.cancelled() else task.exception()
+                if secondary is not None:
+                    failure = BaseExceptionGroup("Producer interruption and cleanup failure", (cancelled, secondary))
+                    raise failure from cancelled
+                if phase == "starting" and task.cancelled():
+                    # No owner registration or selected work was reached: no
+                    # private cleanup is owed and no effects are inferred. A
+                    # planned pre-start stop is normal, unlike parent failure.
+                    self.state.trace.append(("producer_not_started", scope.name))
+                    current = asyncio.current_task()
+                    if stopping and current is not None and not current.cancelling():
+                        return
+                failure = cancelled
+                raise
+            except BaseException as error:
+                failure = error
+                raise
+            finally:
+                if stop is not None:
+                    stop.cancel()
+                    await asyncio.gather(stop, return_exceptions=True)
+                for feed in feeds:
+                    await feed.close(failure)
+
+        return producer

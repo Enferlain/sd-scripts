@@ -11,14 +11,14 @@ import asyncio
 import copy
 from collections import deque
 from collections.abc import AsyncIterator, Hashable, Mapping
-from contextlib import asynccontextmanager
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from types import MappingProxyType
 
 import torch
 from torch import nn
 
-from .graph import Accepted, NotReady, OutOfBounds, Unit, Use
+from .graph import Accepted, NotReady, OutOfBounds, Retain, Unit, Use, View
 
 
 @dataclass(frozen=True)
@@ -47,6 +47,7 @@ class Contribution:
     invocation: int
     units: tuple[str, ...]
     prepared_keys: tuple[object, ...]
+    region: object | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -63,6 +64,9 @@ class UnitOutcome:
     contribution: str = "not_attempted"
     optimizer: str = "not_attempted"
     reset: str = "not_attempted"
+    advancement_invocation: int | None = None
+    region: object | None = field(default=None, repr=False)
+    source_stamps: tuple[Stamp, ...] = ()
 
 
 @dataclass
@@ -90,6 +94,7 @@ class Image:
     generation: int
     bindings: Mapping[str, Binding]
     units: Mapping[str, UnitRuntime]
+    views: Mapping[str, PreparedView]
 
 
 @dataclass(frozen=True)
@@ -98,11 +103,61 @@ class Projection:
     stamps: Mapping[str, Stamp]
 
 
+@dataclass(frozen=True)
+class PreparedView:
+    """Synchronous CPU view attachment; mode changes cannot span an await.
+
+    Both roles retain the same underlying participant. This is NOT evidence
+    that live mutable module modes are safe under threads or async backends.
+    """
+
+    definition: View
+    model: nn.Module
+
+    def __call__(self, *args, **kwargs):
+        modes = tuple((module, module.training) for module in self.model.modules()) if self.definition.evaluation else ()
+        result, primary = None, None
+        try:
+            if self.definition.evaluation:
+                self.model.eval()
+            with torch.set_grad_enabled(self.definition.gradients):
+                result = self.model(*args, **kwargs)
+        except BaseException as error:
+            primary = error
+        cleanup = []
+        for module, training in modes:
+            try:
+                module.training = training
+            except BaseException as error:
+                cleanup.append(error)
+        if cleanup:
+            raise BaseExceptionGroup("View execution/mode restoration failed", ((primary,) if primary is not None else ()) + tuple(cleanup))
+        if primary is not None:
+            raise primary
+        return result
+
+
+@dataclass
+class RetainedState:
+    """A source version and its lifetime/correspondence evidence, not a new model identity."""
+
+    projection: Projection
+    views: Mapping[str, PreparedView]
+    parameters: Mapping[str, tuple[nn.Parameter, ...]]
+    prepared_keys: Mapping[str, object]
+    isolated: bool
+    region: object
+    lease: AbstractAsyncContextManager[Projection] | None
+    token: object = field(default_factory=object, repr=False)
+    released: bool = False
+
+
 def _footprint(model: nn.Module) -> set[tuple[str, int]]:
     """Cold-path evidence for this target's disjoint-participant restriction.
 
-    Shared execution views need relationship-aware protection/invalidation,
-    which this target has not implemented. Do not mistake separate authored
+    Shared storage across distinct participants needs relationship-aware
+    protection/invalidation, which this target has not implemented. Views of
+    ONE participant use its binding and protection. Do not mistake separate authored
     participant addresses or Python Parameter objects for independent storage.
     Evidence covers registered modules, parameters and buffers, using shared
     objects or matching storage base addresses. It does not inspect private
@@ -153,6 +208,7 @@ class Feed:
         self.closed = False
         self.failure: BaseException | None = None
         self.handed_off: deque[tuple[Hashable, int, tuple[Stamp, ...]]] = deque(maxlen=32)
+        self.discarded: deque[tuple[Hashable, tuple[Stamp, ...]]] = deque(maxlen=32)
         self.high_water = 0
 
     async def publish(self, product: Product) -> None:
@@ -171,8 +227,17 @@ class Feed:
 
     async def close(self, failure: BaseException | None = None) -> None:
         async with self.changed:
-            self.failure = failure
+            if failure is not None:
+                self.failure = failure
             self.closed = True
+            self.changed.notify_all()
+
+    async def end_demand(self) -> None:
+        """This target's explicitly accepted ready-work discard policy."""
+        async with self.changed:
+            self.closed = True
+            self.discarded.extend((key, product.provenance) for key, product in self.ready.items())
+            self.ready.clear()
             self.changed.notify_all()
 
 
@@ -263,6 +328,8 @@ class RunState:
         self.readers: dict[str, int] = {}
         self.writers: set[str] = set()
         self.state_locks: set[str] = set()
+        self.active_producers: dict[str, tuple[str, ...]] = {}
+        self.active_retentions: dict[object, RetainedState] = {}
         self.running = False
         self.completed = False
         self.invocation = 0
@@ -346,13 +413,16 @@ class RunState:
             if self.image is None or name == replacing:
                 for parameter in binding.model.parameters():
                     parameter.requires_grad_(id(parameter) in selected)
-        return Image(self.generation + 1, MappingProxyType(bindings), MappingProxyType(units))
+        views = {name: PreparedView(definition, bindings[definition.participant].model) for name, definition in self.accepted.views.items()}
+        return Image(self.generation + 1, MappingProxyType(bindings), MappingProxyType(units), MappingProxyType(views))
 
     def install(self, candidate: Image, expected: int) -> None:
         if expected != self.generation or candidate.generation != expected + 1:
             raise NotReady("Stale preparation attempt")
         if self.readers or self.writers or self.state_locks:
             raise NotReady("Publication conflicts with protected current use")
+        if self.active_retentions or (self.image is not None and any(unit.pending is not None for unit in self.image.units.values())):
+            raise NotReady("Publication needs a quiescent retained/contribution boundary in this target")
         # Validation is over. No external callbacks or owner initialization here.
         self.image = candidate
 
@@ -402,36 +472,165 @@ class RunState:
         binding = self.image.bindings[participant]
         return Stamp(binding.ref, binding.revision, self.numerical_epochs[participant])
 
-    def contribute(self, loss: torch.Tensor, names: tuple[str, ...], invocation: int) -> Contribution:
+    def returned_writes(self, uses: tuple[Use, ...]) -> None:
+        # Returned declared effects, not proof of a numerical tensor change.
+        for name in {use.participant for use in uses if use.access == "write"}:
+            self.numerical_epochs[name] += 1
+
+    async def retain(self, declaration: Retain, region: object) -> RetainedState:
+        """The copy policy is explicit; revision labels alone never isolate storage."""
+        lease = self.acquire(tuple(Use(name) for name in declaration.participants))
+        projection = await lease.__aenter__()
+        keep_lease = False
+        try:
+            assert self.image is not None
+            runtimes = {name: self.image.units[name] for name in declaration.units}
+            if any(runtime.pending is not None for runtime in runtimes.values()):
+                raise NotReady("Retention starts from quiescent selected contribution windows")
+            if declaration.isolated:
+                models = {name: copy.deepcopy(model) for name, model in projection.models.items()}
+                current_keys = set().union(*(_footprint(binding.model) for binding in self.image.bindings.values()))
+                for name, model in models.items():
+                    self.accepted.participants[name].verify(model)
+                    keys = _footprint(model)
+                    if keys & current_keys:
+                        raise NotReady("An isolated version must not borrow current objects/storage")
+                    current_keys.update(keys)
+                    before, after = projection.models[name].state_dict(), model.state_dict()
+                    if before.keys() != after.keys() or any(not torch.equal(before[key], after[key]) for key in before):
+                        raise NotReady("An isolated version must preserve its declared source state")
+                projection = Projection(MappingProxyType(models), projection.stamps)
+            parameters = {}
+            for name, runtime in runtimes.items():
+                selected = tuple(
+                    {
+                        id(parameter): parameter
+                        for participant, path in runtime.definition.members
+                        for parameter in (projection.models[participant].get_parameter(path),)
+                    }.values()
+                )
+                if len(selected) != len(runtime.parameters):
+                    raise NotReady("Retained version lost accepted alias/member correspondence")
+                parameters[name] = selected
+            retained = RetainedState(
+                projection,
+                MappingProxyType(
+                    {
+                        name: PreparedView(view, projection.models[view.participant]) if declaration.isolated else self.image.views[name]
+                        for name, view in self.accepted.views.items()
+                        if view.participant in projection.models
+                    }
+                ),
+                MappingProxyType(parameters),
+                MappingProxyType({name: runtime.prepared_key for name, runtime in runtimes.items()}),
+                declaration.isolated,
+                region,
+                None if declaration.isolated else lease,
+            )
+            self.active_retentions[retained.token] = retained
+            keep_lease = not declaration.isolated
+            self.trace.append(("retained", (declaration.name, declaration.isolated, tuple(projection.stamps.values()))))
+            return retained
+        finally:
+            if not keep_lease:
+                await lease.__aexit__(None, None, None)
+
+    def check_retained(self, retained: RetainedState, region: object | None) -> None:
+        if retained.released or self.active_retentions.get(retained.token) is not retained or retained.region is not region:
+            raise NotReady("Retained state is released, foreign or outside its accepted lifetime")
+        assert self.image is not None
+        if any(self.image.units[name].prepared_key is not key for name, key in retained.prepared_keys.items()):
+            raise NotReady("Retained derivative member correspondence is stale")
+        if not retained.isolated and any(self.stamp(name) != stamp for name, stamp in retained.projection.stamps.items()):
+            raise NotReady("Protected old state changed before last use")
+
+    async def release(self, retained: RetainedState, region: object, *, aborted: bool = False) -> None:
+        if retained.region is not region or self.active_retentions.get(retained.token) is not retained:
+            raise NotReady("Cannot release a foreign retained lifetime")
+        if not aborted:
+            self.check_retained(retained, region)
+        if retained.lease is not None:
+            await retained.lease.__aexit__(None, None, None)
+        retained.released = True
+        del self.active_retentions[retained.token]
+        self.trace.append(("released", (retained.isolated, tuple(retained.projection.stamps.values()))))
+
+    @asynccontextmanager
+    async def producer_owner(self, name: str, states: tuple[str, ...]) -> AsyncIterator[Mapping[str, object]]:
+        """Pin continuation identity for the actual activity AND its cleanup.
+
+        These are activity-lifetime registrations, not participant leases held
+        while waiting for work. Reset/migration needs quiescence in this target;
+        merely looking up a fresh object would not fix private workers holding
+        the former state. Preserve means the accepted owner can continue.
+        """
+        async with self.condition:
+            if name in self.active_producers or set(states) & self.unusable_states or self.image is None:
+                raise NotReady("Provider continuation state is unavailable or already active")
+            self.active_producers[name] = states
+            owners = MappingProxyType({key: self.owners[key] for key in states})
+        try:
+            yield owners
+        finally:
+            async with self.condition:
+                del self.active_producers[name]
+                self.condition.notify_all()
+
+    def contribute(
+        self,
+        loss: torch.Tensor,
+        names: tuple[str, ...],
+        invocation: int,
+        *,
+        retained: RetainedState | None = None,
+        region: object | None = None,
+        keep_graph: bool = False,
+    ) -> Contribution:
         assert self.image is not None
         runtimes = tuple(self.image.units[name] for name in names)
         if any(runtime.pending is not None for runtime in runtimes):
             raise NotReady("This probe profile requires a quiescent contribution window")
-        parameters = tuple(parameter for runtime in runtimes for parameter in runtime.parameters)
-        gradients = torch.autograd.grad(loss, parameters)
+        if retained is not None:
+            self.check_retained(retained, region)
+            if set(names) - retained.parameters.keys():
+                raise NotReady("No retained derivative destination correspondence")
+        parameters = tuple(
+            parameter
+            for name, runtime in zip(names, runtimes)
+            for parameter in (retained.parameters[name] if retained is not None else runtime.parameters)
+        )
+        gradients = torch.autograd.grad(loss, parameters, retain_graph=keep_graph)
         offset = 0
         for runtime in runtimes:
             record = runtime.outcome(invocation)
+            record.region = region
+            record.source_stamps = tuple(retained.projection.stamps.values()) if retained is not None else ()
             for parameter in runtime.parameters:
-                parameter.grad = gradients[offset]
+                # A custom autograd backward can return an alias of source
+                # state. A cross-block gradient needs its own storage.
+                parameter.grad = gradients[offset].detach().clone()
                 offset += 1
             runtime.pending = invocation
             record.contribution = "ready"
-        return Contribution(invocation, names, tuple(unit.prepared_key for unit in runtimes))
+        return Contribution(invocation, names, tuple(unit.prepared_key for unit in runtimes), region)
 
-    def advance(self, contribution: Contribution, names: tuple[str, ...], invocation: int) -> None:
+    def advance(self, contribution: Contribution, names: tuple[str, ...], invocation: int, *, region: object | None = None) -> None:
         assert self.image is not None
         runtimes = tuple(self.image.units[name] for name in names)
         if (
-            contribution.invocation != invocation
+            (contribution.region is not region or (region is None and contribution.invocation != invocation))
             or contribution.units != names
             or len(contribution.prepared_keys) != len(runtimes)
             or any(key is not runtime.prepared_key for key, runtime in zip(contribution.prepared_keys, runtimes))
-            or any(unit.pending != invocation for unit in runtimes)
+            or any(unit.pending != contribution.invocation for unit in runtimes)
         ):
             raise NotReady("Stale, misaddressed or unverified gradient handback")
+        subjects = {member[0] for runtime in runtimes for member in runtime.definition.members}
+        if any(not retained.isolated and subjects & retained.projection.models.keys() for retained in self.active_retentions.values()):
+            raise NotReady("Ready gradients do not permit an update before protected old-state last use")
         for runtime in runtimes:
-            record = runtime.outcome(invocation)
+            record = runtime.outcome(contribution.invocation)
+            record.advancement_invocation = invocation
             if runtime.definition.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(runtime.parameters, runtime.definition.clip_norm)
             record.optimizer = "uncertain"  # entering backend, not proof of a change
@@ -456,9 +655,14 @@ class RunState:
                 raise NotReady("In-place preparation requires an unimplemented destructive protocol")
             if any(unit.pending is not None for unit in self.image.units.values()):
                 raise NotReady("Replacement with unfinished gradients is unsupported")
+            if self.active_retentions:
+                raise NotReady("Replacement with unfinished retained derivative work is unsupported")
             affected_states = {name: spec for name, spec in self.accepted.states.items() if participant in spec.dependencies}
             if any(spec.on_replace == "reject" for spec in affected_states.values()):
                 raise NotReady("No accepted owner-state continuity for replacement")
+            resetting = {name for name, spec in affected_states.items() if spec.on_replace == "reset"}
+            if any(resetting & set(names) for names in self.active_producers.values()):
+                raise NotReady("Owner reset requires the active producer to finish cleanup first")
             resets = {name: spec.initialize() for name, spec in affected_states.items() if spec.on_replace == "reset"}
             models = {name: binding.model for name, binding in self.image.bindings.items()}
             models[participant] = proposal.model
@@ -474,7 +678,17 @@ class RunState:
 
     def capture(self) -> Capture:
         """A narrow executable cut check, not a production snapshot protocol."""
-        if not self.completed or self.running or self.readers or self.writers or self.state_locks or self.unusable or self.unusable_states:
+        if (
+            not self.completed
+            or self.running
+            or self.readers
+            or self.writers
+            or self.state_locks
+            or self.active_producers
+            or self.active_retentions
+            or self.unusable
+            or self.unusable_states
+        ):
             raise NotReady("Capture needs a finished, usable, quiescent run")
         if self.image is None or any(unit.pending is not None for unit in self.image.units.values()):
             raise NotReady("Capture cannot omit an unfinished contribution")

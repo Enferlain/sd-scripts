@@ -701,7 +701,7 @@ def test_input_readiness_wait_does_not_hold_write_lease_needed_by_its_producer()
     run(check())
 
 
-def test_later_source_wait_with_conflicting_lease_rejects_at_preparation():
+def test_later_source_wait_with_conflicting_lease_rejects_before_loading(monkeypatch):
     async def provider(context):
         return None
 
@@ -717,10 +717,9 @@ def test_later_source_wait_with_conflicting_lease_rejects_at_preparation():
         (scale("model", 0.8),),
         channels=(Channel("input", 1),),
     )
-    state = RunState(Contract().accept(filing))
-    with pytest.raises(NotReady, match="lease/source wait cycle"):
-        prepare(state.accepted, state)
-    assert state.image is None
+    monkeypatch.setattr(Scale, "__init__", lambda *args: pytest.fail("loaded before known target rejection"))
+    with pytest.raises(Rejected, match="lease/source wait cycle"):
+        Contract().accept(filing)
 
 
 def test_readiness_race_does_not_wait_again_under_protected_admission():
@@ -883,7 +882,7 @@ def test_replacement_wrapper_borrowing_current_parameter_is_not_fresh_preparatio
     run(check())
 
 
-def test_indirect_lease_source_wait_cycle_rejects_before_publication():
+def test_indirect_lease_source_wait_cycle_rejects_before_loading(monkeypatch):
     async def source(context):
         return None
 
@@ -909,10 +908,9 @@ def test_indirect_lease_source_wait_cycle_rejects_before_publication():
         (scale("X", 1.0), scale("Y", 2.0)),
         channels=(Channel("F1", 1), Channel("F2", 1)),
     )
-    state = RunState(Contract().accept(filing))
-    with pytest.raises(NotReady, match="lease/source wait cycle"):
-        prepare(state.accepted, state)
-    assert state.image is None
+    monkeypatch.setattr(Scale, "__init__", lambda *args: pytest.fail("loaded before known target rejection"))
+    with pytest.raises(Rejected, match="lease/source wait cycle"):
+        Contract().accept(filing)
 
 
 def test_acyclic_later_source_wait_still_executes():
