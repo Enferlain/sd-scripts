@@ -304,12 +304,23 @@ raw model through `Context.models`. Replacement reattaches both current views
 to the new binding while preserving participant identity. Retained isolated
 views attach to the old copied representation without creating an incarnation.
 
-In this CPU target, target invocation disables gradient recording and briefly
-uses evaluation mode; the conduit records input gradients even though F's
-own parameters are frozen. Mode restoration preserves mixed child modes on
-return or failure. Forward and restoration failures are both retained. These
-are synchronous view calls: they never suspend with a changed module mode.
-This proves neither thread safety nor asynchronous backend completion.
+In this CPU target, `gradients=False` disables gradient recording **and cuts
+returned tensor paths**, including identity/pass-through outputs. It does not
+mutate the input's gradient flags or claim isolated output storage. Supported
+results are tensors, plain tuples/lists/dicts with plain scalar keys, and plain
+scalars/`None`; opaque/custom result structures reject rather than certify a
+cut. That rejection is after model invocation and may follow effects, not a
+harmless pre-execution rejection. Differentiable views keep their result seam.
+
+The target view briefly uses evaluation mode; the conduit records input
+gradients even though F's own parameters are frozen. Call-level evaluation
+covers each declared underlying participant once, including named-view-only
+access, without exposing its raw model through `Context.models`. A view with
+`evaluation=False` inherits the enclosing mode rather than forcing training.
+Mode restoration preserves mixed child modes on return or failure. Forward
+and restoration failures are both retained. These are synchronous view calls:
+they never suspend with a changed module mode. This proves neither thread
+safety nor asynchronous backend completion.
 
 `Sequence` gives these blocks an explicit order and a shared value scope.
 Preparation resolves the cross-block links into direct local variables, binds
@@ -344,12 +355,20 @@ rather than waiting on its own future release. A ready gradient cannot bypass
 the check through the standard advancement service.
 
 The isolated variant performs real CPU module/state copying under source
-protection. It checks copied registered state, member alias correspondence and
-disjoint storage. Origin stamps keep the same participant/binding identity
+protection. It checks checkpoint-visible state and all registered parameters
+and buffers, including nonpersistent buffers, their values and tensor metadata,
+registered module types/modes, path-to-object alias relationships, and disjoint
+storage. Equal deduplicated parameter counts alone cannot establish member
+correspondence: which paths refer to the same member must survive copying.
+Invalid copies reject before retained computation and release their source
+lease. Origin stamps keep the same participant/binding identity
 and old numerical epoch. A revision label, wrapper or copied reference is not
 an isolated version. This is a narrow copying target, **not** a proof that
 arbitrary custom-module private state, hooks, external resources or RNG-driven
 algorithms admit faithful copying.
+The equality check fails closed for NaN-containing registered tensor state,
+even for a faithful copy. This is a conservative target limitation inherited
+from its checkpoint-visible state check, not a universal numerical-policy rule.
 
 Borrowed values from retained work have a conservative lifetime in this
 candidate. They cannot be passed to later work after release, nor can their
@@ -379,11 +398,17 @@ restore cross-block execution, migrate gradients or recover a partial update.
 Recovery would require a compatible prior coherent snapshot or another
 explicit supported policy, neither of which this fixture implements.
 
-`test_routed_views.py` provides 29 added cases: direct numerical routing,
+`test_routed_views.py` now provides 46 cases: direct numerical routing,
 separate views, mixed-mode restoration, live versus genuinely separate old
 storage, shared versus recomputed work, update eligibility, blocked writers,
 pending replacement, partial outcomes, cancellation, borrowed-value release,
-source aliases and absence of hot-path graph discovery.
+source aliases and absence of hot-path graph discovery. Seventeen follow-up
+cases cover the four independently reproduced review findings: changed alias
+partitions despite equal member counts, changed nonpersistent buffers,
+identity outputs escaping a no-gradient cut, and ignored call-level evaluation
+through named views. Positive unchanged-copy cases, registered module modes,
+nested supported/unsupported view outputs, post-invocation effects, raw-plus-
+named deduplication, and combined primary/cleanup failures are included.
 
 The present target supports one first-order contribution per unit in a
 Sequence, with one final advancement and an explicit protected/isolated
@@ -405,15 +430,25 @@ The next separate investigation is comparative lowering/specialization of the
 **same accepted graph**, preserving its boundaries and selected behavior. It
 should not introduce a second independently authored run description.
 
-Verification of this follow-up: 128 tests pass together (116 candidate cases
+Original follow-up verification: 128 tests passed together (116 candidate cases
 and the 12 unchanged execution tests); scoped Ruff lint/format, strict `ty`
 with the extra search path above, example execution and diff checks pass.
 The required `review-mcp` attempt did **not** produce a verdict: it failed
 with provider 429/1308 (five-hour quota exhausted). Subsequent self-checks
 closed the falsely accepted unprotected sequence, block-local grant and broad
-retained evaluation shapes noted above and reran the gates. Bead
-`sd-scripts-syv.7` remains open awaiting required review; no review approval,
-production readiness, architectural adoption or G5 completion is claimed.
+retained evaluation shapes noted above and reran the gates. That original
+checkpoint remained open awaiting required review; it made no review approval,
+production readiness, architectural adoption or G5 completion claim.
+
+Correction checkpoint: 145 tests pass together (133 candidate cases plus the
+12 unchanged execution tests). Scoped Ruff lint/format, strict `ty` with the
+extra search path, example execution and diff whitespace checks pass. The
+required `review-mcp` correction review against `HEAD` (`8103760`) returned:
+all four defects corrected, failure/lease cleanup verified, no concrete
+functional regression. Its two useful non-blocking notes are addressed by the
+NaN-copy limitation above and a two-failing-module cleanup test. The affected
+checks pass again. Neither these fixes nor that review select production APIs,
+establish thread/backend safety, or advance G5.
 
 ## Evidence and its limits
 

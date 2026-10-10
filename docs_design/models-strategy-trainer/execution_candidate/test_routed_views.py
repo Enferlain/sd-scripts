@@ -20,17 +20,19 @@ from .graph import (
     Contract,
     Differentiate,
     NotReady,
+    Output,
     Participant,
     Rejected,
     Release,
     Retain,
     Run,
     Sequence,
+    Unit,
     Use,
     View,
 )
 from .prepare import Engine, WorkFailed, prepare
-from .state import Contribution, Replacement
+from .state import Contribution, PreparedView, Replacement
 from .test_candidate import leaves, run
 
 
@@ -583,3 +585,312 @@ def test_retained_modes_require_synchronous_view_scope_not_broad_async_evaluatio
     )
     with pytest.raises(Rejected, match="named synchronous view modes"):
         Contract().accept(replace(filing, root=replace(root, blocks=(first, *root.blocks[1:]))))
+
+
+@pytest.mark.parametrize("changed_aliases", (False, True))
+def test_isolated_copy_preserves_alias_paths_not_just_distinct_member_count(changed_aliases):
+    entered = []
+
+    class Aliased(nn.Module):
+        def __init__(self, changed=False):
+            super().__init__()
+            self.x = nn.Parameter(torch.tensor(1.0))
+            self.y = nn.Parameter(torch.tensor(1.0)) if changed else self.x
+            self.z = self.x if changed else nn.Parameter(torch.tensor(1.0))
+
+        def __deepcopy__(self, memo):
+            return Aliased(changed_aliases)
+
+    def loss(context):
+        entered.append(True)
+        model = context.models["model"]
+        return model.get_parameter("x") + 2 * model.get_parameter("y") + 3 * model.get_parameter("z")
+
+    filing = Run(
+        Sequence(
+            "aliased-source",
+            (
+                Block(
+                    "derive",
+                    (
+                        Retain("retain", ("model",), ("U",), "old", isolated=True),
+                        Call("loss", loss, outputs=(Output("loss", torch.Tensor),), uses=(Use("model"),), retained="old"),
+                        Differentiate("gradient", "loss", ("U",), "gradient", retained="old"),
+                    ),
+                ),
+                Block("finish", (Release("release", "old"), Advance("step", "gradient", ("U",), after=("release",)))),
+            ),
+        ),
+        (Participant("model", Aliased, lambda model: None),),
+        (Unit("U", (("model", "x"), ("model", "y"), ("model", "z")), learning_rate=0.1),),
+    )
+    ready = prepare(Contract().accept(filing)).publish()
+    assert ready.state.image is not None
+    if changed_aliases:
+        with pytest.raises(WorkFailed, match="alias/member correspondence"):
+            run(Engine(ready).run())
+        assert not entered and ready.state.image.units["U"].steps == 0
+    else:
+        run(Engine(ready).run())
+        model = ready.state.image.bindings["model"].model
+        assert model.get_parameter("x") is model.get_parameter("y")
+        assert len(ready.state.image.units["U"].parameters) == 2
+        assert float(model.get_parameter("x").detach()) == pytest.approx(0.7)
+        assert float(model.get_parameter("z").detach()) == pytest.approx(0.7)
+    assert not ready.state.readers and not ready.state.active_retentions
+
+
+@pytest.mark.parametrize("copied_offset", (0.0, 10.0))
+def test_isolated_copy_checks_registered_nonpersistent_buffers(copied_offset):
+    entered = []
+
+    class Offset(Scale):
+        def __init__(self, weight=1.0, offset=0.0):
+            super().__init__(weight)
+            self.register_buffer("offset", torch.tensor(offset), persistent=False)
+
+        def __deepcopy__(self, memo):
+            copied = Offset(float(self.get_parameter("weight").detach()), copied_offset)
+            copied.requires_grad_(self.get_parameter("weight").requires_grad)
+            return copied
+
+        def forward(self, value):
+            entered.append(True)
+            return super().forward(value) + self.get_buffer("offset")
+
+    filing = routed_views(isolated=True)
+    filing = replace(filing, participants=(Participant("frozen", Offset, lambda model: None), *filing.participants[1:]))
+    ready = prepare(Contract().accept(filing)).publish()
+    assert ready.state.image is not None
+    assert "offset" not in ready.state.image.bindings["frozen"].model.state_dict()
+    if copied_offset:
+        with pytest.raises(WorkFailed, match="registered source state"):
+            run(Engine(ready).run())
+        assert not entered and all(unit.steps == 0 for unit in ready.state.image.units.values())
+    else:
+        run(Engine(ready).run())
+        assert entered
+        assert float(ready.state.image.bindings["b"].model.get_parameter("weight").detach()) == pytest.approx(2.6)
+    assert not ready.state.readers and not ready.state.active_retentions
+
+
+@pytest.mark.parametrize("changed_mode", (False, True))
+def test_isolated_copy_preserves_registered_module_modes(changed_mode):
+    class Modes(Scale):
+        def __init__(self):
+            super().__init__(1.0)
+            self.child = nn.Identity().eval()
+
+        def __deepcopy__(self, memo):
+            copied = Modes().requires_grad_(self.get_parameter("weight").requires_grad)
+            if changed_mode:
+                copied.child.train()
+            return copied
+
+        def forward(self, value):
+            return super().forward(value) * (2 if self.child.training else 1)
+
+    filing = routed_views(isolated=True)
+    filing = replace(filing, participants=(Participant("frozen", Modes, lambda model: None), *filing.participants[1:]))
+    ready = prepare(Contract().accept(filing)).publish()
+    assert ready.state.image is not None
+    if changed_mode:
+        with pytest.raises(WorkFailed, match="registered module state"):
+            run(Engine(ready).run())
+        assert all(unit.steps == 0 for unit in ready.state.image.units.values())
+    else:
+        run(Engine(ready).run())
+        assert float(ready.state.image.bindings["b"].model.get_parameter("weight").detach()) == pytest.approx(2.6)
+    assert not ready.state.readers and not ready.state.active_retentions
+
+
+def test_no_gradient_view_cuts_passthrough_outputs_without_mutating_the_input():
+    observed = []
+
+    def loss(context):
+        value = context.models["a"].get_parameter("weight")
+        target = context.views["target"](value)
+        observed.append((target is value, target.requires_grad, value.requires_grad))
+        return target * value
+
+    filing = Run(
+        Block(
+            "passthrough",
+            (
+                Call("loss", loss, outputs=(Output("loss", torch.Tensor),), uses=(Use("a"), Use("f", view="target"))),
+                Differentiate("gradient", "loss", ("A",), "gradient"),
+                Advance("step", "gradient", ("A",)),
+            ),
+        ),
+        (Participant("a", lambda: Scale(2.0), lambda model: None), Participant("f", nn.Identity, lambda model: None)),
+        (Unit("A", (("a", "weight"),), learning_rate=0.1),),
+        views=(View("target", "f", gradients=False),),
+    )
+    ready = run(execute(filing))
+    assert ready.state.image is not None
+    assert observed == [(False, False, True)]
+    assert float(ready.state.image.bindings["a"].model.get_parameter("weight").detach()) == pytest.approx(1.8)
+
+
+def test_no_gradient_view_cuts_nested_tensor_outputs_and_restores_modes():
+    class Structured(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.child = nn.Identity().eval()
+
+        def forward(self, value):
+            return {"value": value, "other": [value * 2, (value, 4, None)]}
+
+    model = Structured()
+    target = PreparedView(View("target", "model", gradients=False, evaluation=True), model)
+    value = torch.tensor(2.0, requires_grad=True)
+    result = target(value)
+    tensors = (result["value"], result["other"][0], result["other"][1][0])
+    assert all(not tensor.requires_grad for tensor in tensors)
+    assert torch.equal(result["value"], value) and result["value"] is not value
+    # A gradient cut is not an isolated-storage claim.
+    assert result["value"].untyped_storage().data_ptr() == value.untyped_storage().data_ptr()
+    assert result["other"][1][1:] == (4, None)
+    assert value.requires_grad and torch.is_grad_enabled()
+    assert model.training and not model.child.training
+
+
+@pytest.mark.parametrize("shape", ("opaque", "tensor-key"))
+def test_no_gradient_view_rejects_outputs_it_cannot_cut(shape):
+    class Hidden:
+        def __init__(self, value):
+            self.value = value
+
+    class Unsupported(nn.Module):
+        def forward(self, value):
+            return Hidden(value) if shape == "opaque" else {value: "hidden in key"}
+
+    model = Unsupported()
+    model.child = nn.Identity().eval()
+    value = torch.tensor(2.0, requires_grad=True)
+    target = PreparedView(View("target", "model", gradients=False, evaluation=True), model)
+    with pytest.raises(NotReady, match="unsupported output"):
+        target(value)
+    assert model.training and not model.child.training and value.requires_grad
+    assert torch.is_grad_enabled()
+    # No new restriction on differentiable views of selected Python results.
+    PreparedView(View("conduit", "model"), model)(value)
+
+
+@pytest.mark.parametrize("raw_use", (False, True))
+@pytest.mark.parametrize("fail", (False, True))
+def test_call_evaluation_reaches_named_views_and_restores_mixed_modes(raw_use, fail):
+    observed = []
+
+    class Switch(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.child = nn.Identity().eval()
+            self.evaluations = 0
+
+        def eval(self):
+            self.evaluations += 1
+            return super().eval()
+
+        def forward(self, value):
+            return value if self.training else -value
+
+    model = Switch()
+
+    def selected(context):
+        assert bool(context.models) is raw_use
+        observed.append(float(context.views["named"](torch.tensor(2.0))))
+        if fail:
+            raise ValueError("evaluation failed")
+
+    uses = (Use("f", view="named"), Use("f", view="another")) + ((Use("f"),) if raw_use else ())
+    filing = Run(
+        Block("evaluate", (Call("evaluate", selected, uses=uses, evaluation=True),)),
+        (Participant("f", lambda: model, lambda model: None),),
+        views=(View("named", "f"), View("another", "f")),
+    )
+    ready = prepare(Contract().accept(filing)).publish()
+    if fail:
+        with pytest.raises(WorkFailed, match="evaluation failed"):
+            run(Engine(ready).run())
+        assert ready.state.unusable == {"f"}
+    else:
+        run(Engine(ready).run())
+    assert observed == [-2.0] and model.evaluations == 1
+    assert model.training and not model.child.training
+    assert not ready.state.readers and not ready.state.writers
+
+
+def test_unsupported_no_gradient_result_is_post_invocation_failure_with_possible_effects():
+    class Hidden:
+        def __init__(self, value):
+            self.value = value
+
+    class Changed(nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.register_buffer("calls", torch.tensor(0), persistent=False)
+
+        def forward(self, value):
+            self.get_buffer("calls").add_(1)
+            return Hidden(value)
+
+    model = Changed()
+    filing = Run(
+        Block(
+            "selected-work",
+            (Call("call", lambda context: context.views["target"](torch.tensor(2.0)), uses=(Use("f", "write", "target"),)),),
+        ),
+        (Participant("f", lambda: model, lambda model: None),),
+        views=(View("target", "f", gradients=False, evaluation=True),),
+    )
+    ready = prepare(Contract().accept(filing)).publish()
+    with pytest.raises(WorkFailed) as failure:
+        run(Engine(ready).run())
+    assert isinstance(failure.value.cause, NotReady)
+    assert "unsupported output" in str(failure.value.cause)
+    assert int(model.get_buffer("calls")) == 1 and model.training
+    assert ready.state.unusable == {"f"} and not ready.state.writers
+    assert not failure.value.implementation_returned
+    assert ready.state.stamp("f").numerical_epoch == 0  # No returned-effect certificate, not proof of no mutation.
+
+
+@pytest.mark.parametrize("returned", (False, True))
+def test_named_view_call_preserves_primary_and_all_evaluation_cleanup_failures(returned):
+    primary, cleanup = ValueError("selected failure"), RuntimeError("restore failed")
+    later_cleanup = RuntimeError("second restore failed")
+
+    class Fragile(nn.Module):
+        def __init__(self, failure):
+            super().__init__()
+            self.failure = failure
+
+        def __setattr__(self, name, value):
+            if name == "training" and value is True and getattr(self, "armed", False):
+                raise self.failure
+            super().__setattr__(name, value)
+
+    model = Scale(1.0)
+    model.bad = Fragile(cleanup)
+    model.also_bad = Fragile(later_cleanup)
+    model.good = nn.Identity()
+
+    def selected(context):
+        context.views["named"].model.bad.armed = True
+        context.views["named"].model.also_bad.armed = True
+        if not returned:
+            raise primary
+
+    filing = Run(
+        Block("work", (Call("evaluate", selected, uses=(Use("model", view="named"),), evaluation=True),)),
+        (Participant("model", lambda: model, lambda model: None),),
+        views=(View("named", "model"),),
+    )
+    ready = prepare(Contract().accept(filing)).publish()
+    with pytest.raises(WorkFailed) as failure:
+        run(Engine(ready).run())
+    assert failure.value.cause is (cleanup if returned else primary)
+    assert failure.value.cleanup_failures == (cleanup, later_cleanup)
+    assert failure.value.implementation_returned is returned
+    assert model.training and model.good.training and not model.bad.training and not model.also_bad.training
+    assert ready.state.unusable == {"model"} and not ready.state.writers

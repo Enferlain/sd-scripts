@@ -404,22 +404,25 @@ class Lowering:
                     raise TypeError("Returned output type disagrees with accepted schema")
 
         if isinstance(work, Call):
+            # Resolve participating addresses once. Context.models deliberately
+            # omits named-view-only access, but evaluation still covers it.
+            evaluation_names = tuple(dict.fromkeys(use.participant for use in work.uses)) if work.evaluation else ()
 
             async def invoke(frame, *args):
                 retained = args[-1] if work.retained is not None else None
                 args = args[:-1] if work.retained is not None else args
                 context = frame.context(work, retained)
+                evaluation_models = tuple(frame.projection.models[name] for name in evaluation_names) if evaluation_names else ()
                 modes = (
-                    tuple((module, module.training) for model in context.models.values() for module in model.modules())
-                    if work.evaluation
+                    tuple((module, module.training) for model in evaluation_models for module in model.modules())
+                    if evaluation_models
                     else ()
                 )
                 primary = None
                 result = None
                 try:
-                    if work.evaluation:
-                        for model in context.models.values():
-                            model.eval()
+                    for model in evaluation_models:
+                        model.eval()
                     result = work.implementation(context, *args)
                     result = await result if inspect.isawaitable(result) else result
                     frame.implementation_returned = True

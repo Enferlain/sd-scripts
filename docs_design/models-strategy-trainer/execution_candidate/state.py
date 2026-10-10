@@ -103,6 +103,28 @@ class Projection:
     stamps: Mapping[str, Stamp]
 
 
+def _cut_view_output(value):
+    """Cut tensor paths in supported result shapes, never mutate the inputs.
+
+    Opaque results and tensor-valued keys cannot certify a cut in this target.
+    Detaching is NOT a storage-isolation or arbitrary-Python sandbox guarantee.
+    """
+    if isinstance(value, torch.Tensor):
+        return value.detach()
+    scalars = (bool, int, float, complex, str, bytes)
+    if type(value) is tuple:
+        return tuple(_cut_view_output(item) for item in value)
+    if type(value) is list:
+        return [_cut_view_output(item) for item in value]
+    if type(value) is dict:
+        if any(key is not None and type(key) not in scalars for key in value):
+            raise NotReady("No-gradient view has unsupported output keys")
+        return {key: _cut_view_output(item) for key, item in value.items()}
+    if value is None or type(value) in scalars:
+        return value
+    raise NotReady(f"No-gradient view has unsupported output {type(value).__name__}")
+
+
 @dataclass(frozen=True)
 class PreparedView:
     """Synchronous CPU view attachment; mode changes cannot span an await.
@@ -122,6 +144,8 @@ class PreparedView:
                 self.model.eval()
             with torch.set_grad_enabled(self.definition.gradients):
                 result = self.model(*args, **kwargs)
+                if not self.definition.gradients:
+                    result = _cut_view_output(result)
         except BaseException as error:
             primary = error
         cleanup = []
@@ -177,6 +201,50 @@ def _footprint(model: nn.Module) -> set[tuple[str, int]]:
             if isinstance(tensor, nn.Parameter) and parameter_storage.setdefault(pointer, id(tensor)) != id(tensor):
                 raise NotReady("Distinct Parameter views sharing storage require an unimplemented alias mapping")
     return keys
+
+
+def _registered_tensors(model: nn.Module) -> dict[tuple[str, str], torch.Tensor]:
+    return {
+        (kind, path): tensor
+        for kind, members in (
+            ("parameter", model.named_parameters(remove_duplicate=False)),
+            ("buffer", model.named_buffers(remove_duplicate=False)),
+        )
+        for path, tensor in members
+    }
+
+
+def _verify_registered_copy(source: nn.Module, copied: nn.Module) -> None:
+    """Cold-path registered topology/modes, tensor values and path-to-alias evidence."""
+    source_aliases: dict[int, tuple[str, str]] = {}
+    copied_aliases: dict[int, tuple[str, str]] = {}
+    source_modules = dict(source.named_modules(remove_duplicate=False))
+    copied_modules = dict(copied.named_modules(remove_duplicate=False))
+    if source_modules.keys() != copied_modules.keys():
+        raise NotReady("An isolated version must preserve its registered module state")
+    for name, original in source_modules.items():
+        version = copied_modules[name]
+        path = ("module", name)
+        if source_aliases.setdefault(id(original), path) != copied_aliases.setdefault(id(version), path):
+            raise NotReady("Retained version lost accepted alias/member correspondence")
+        if type(original) is not type(version) or original.training != version.training:
+            raise NotReady(f"An isolated version must preserve its registered module state: {name}")
+    before, after = _registered_tensors(source), _registered_tensors(copied)
+    if before.keys() != after.keys():
+        raise NotReady("An isolated version must preserve its registered source state")
+    for path, original in before.items():
+        version = after[path]
+        if source_aliases.setdefault(id(original), path) != copied_aliases.setdefault(id(version), path):
+            raise NotReady("Retained version lost accepted alias/member correspondence")
+        if (
+            original.shape != version.shape
+            or original.dtype != version.dtype
+            or original.device != version.device
+            or original.layout != version.layout
+            or original.requires_grad != version.requires_grad
+            or not torch.equal(original, version)
+        ):
+            raise NotReady(f"An isolated version must preserve its registered source state: {path}")
 
 
 @dataclass(frozen=True)
@@ -499,6 +567,7 @@ class RunState:
                     before, after = projection.models[name].state_dict(), model.state_dict()
                     if before.keys() != after.keys() or any(not torch.equal(before[key], after[key]) for key in before):
                         raise NotReady("An isolated version must preserve its declared source state")
+                    _verify_registered_copy(projection.models[name], model)
                 projection = Projection(MappingProxyType(models), projection.stamps)
             parameters = {}
             for name, runtime in runtimes.items():
