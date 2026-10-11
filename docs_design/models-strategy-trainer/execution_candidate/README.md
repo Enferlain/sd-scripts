@@ -878,3 +878,171 @@ Its minor/informational observations delimit the evidence further:
 These do not expose a lowering defect or require expanding this experiment's
 target. Documentation format and diff checks pass again after recording them;
 runtime code and the measured source hashes are unchanged after review.
+
+## Bounded worker placement and live interaction (2026-10-11)
+
+This experiment addresses a limitation of cooperative execution: a synchronous
+selected call runs on the coordinator thread until it returns. The same accepted
+graph can now place selected **synchronous CPU calls** in host workers:
+
+```python
+ready = prepare(
+    accepted,
+    lowering="inline",  # "calls" remains supported too
+    worker_calls=("compute",),  # addresses of accepted synchronous Calls
+    worker_limit=2,
+).publish()
+await Engine(ready).run()
+```
+
+The placement choice is bound during preparation, not rediscovered by traversing
+the graph per invocation. It adds no semantic graph construct or second authored
+schedule. `Engine` is unchanged. The generated root owns a bounded worker-pool
+lifetime; an unpublished attempt owns no running threads. A semaphore limits
+submitted/in-flight work rather than relying on an unbounded executor queue.
+This experiment's `worker_calls` matches bare work names across active blocks:
+the same name in two alternatives/siblings places both. Work names are only
+block-locally unique; this is not a final scope-qualified placement API.
+`worker_limit` must be a positive integer even when placement is empty.
+
+### Ownership and interaction
+
+```text
+Accepted graph -> existing whole-run lowering
+                         |
+                  coordinator / leases
+                         |
+                  scoped prepared Context
+                         v
+                 selected call in worker
+                         |
+               return + failure/cleanup evidence
+                         v
+             coordinator / existing run-state rules
+```
+
+The coordinator retains admission, participant/owner-state reservations,
+invocation association, numerical-epoch accounting, gradient contribution,
+optimization, outcome publication and run completion. A worker receives only
+the selected call's models/views, owned state, inputs and coordinates—not
+`RunState`, the whole strategy or optimizer services. Ordinary Python is still
+trusted to conform; this is not a mutation sandbox.
+
+**Work need not finish before other activities interact with it.** The live
+interaction test has an independently progressing producer publish a bounded,
+thread-safe endpoint through an ordinary accepted input handoff. After the worker
+enters, the producer sends a value and receives an acknowledgement while the
+call remains active. The selected implementation owns that protocol and decides
+where it can service messages. No universal image-specific fields, private
+producer scheduling or new message-language construct enter the IR.
+
+That interaction does not permit conflicting current-state access. The block
+reservation remains in force through worker execution/cleanup and the block's
+remaining work. Another access or compatible replacement waits. Named eval views
+also acquire physical exclusion: changing shared module modes must not overlap
+another user's access. This reservation does not grant numerical writes or
+advance numerical epochs. Preparation rechecks the target's declared lease/source
+cycles after adding exclusion; one previously valid cooperative arrangement is
+rejected for this worker realization rather than deadlocking silently.
+
+### Cancellation and physical completion
+
+| Observed boundary | Meaning in this target |
+| --- | --- |
+| Waiting for capacity, or physical future successfully cancelled before start | Selected work did not enter; no effects or cleanup are invented for it |
+| Entered work interrupted by coordinator cancellation | Signal a cooperative stop; retain reservation and drain physical execution, including repeated cancellation |
+| Implementation returns after cancellation | Preserve the returned fact/effects, withhold uncertain current use and do not certify run completion or advance downstream optimization |
+| Worker subsequently fails | Preserve its actual cause and the cancellation evidence; no rollback or automatic retry |
+| Invalid output plus failed eval cleanup | Preserve invalid-return evidence and cleanup failures separately; the call was reached and may have effects |
+
+The optional `Context.stop_requested` query exposes a stop request to selected
+worker-placed work that can cooperate; it is `None` on the cooperative path.
+It cannot terminate an arbitrary native call or force
+an implementation to inspect its queue. A non-cooperating call must finish before
+its protection can be released; a call that never finishes can prevent shutdown.
+Host-thread completion is sufficient only for this synchronous CPU target, not
+for asynchronously enqueued GPU/backend work. Python's
+[Future cancellation rules](https://docs.python.org/3.14/library/concurrent.futures.html#concurrent.futures.Future.cancel)
+are the physical distinction, not an atomic training-update guarantee.
+The existing `entered` trace names dispatch entry, which can precede capacity
+waiting; it does not prove physical entry. `worker_not_started` disambiguates a
+dispatch that never invoked selected work. Surrounding physical-context failure
+retains interruption and any selected-return evidence too. The root's explicit
+lifetime guard is not stripped by optimization and preserves a primary failure
+alongside an invalid-lifetime error; it is a guard on the generated target, not
+a new general-purpose recovery mechanism.
+
+Python context variables and the supported CPU numerical context—grad mode,
+inference mode and CPU autocast enablement/dtype/cache—are captured for each
+submission and restored around execution. They are checked against direct calls
+and across reused workers. PyTorch documents
+[grad mode](https://docs.pytorch.org/docs/2.14/generated/torch.no_grad.html) and
+[autocast](https://docs.pytorch.org/docs/2.14/amp.html) as thread-local;
+copying Python context variables alone would not preserve them.
+
+### Evidence and limits
+
+The new focused tests cover both emissions, real CPU values/gradients and unit
+outcomes for adaptive diffusion-like, alternating adversarial and jointly due
+optimization arrangements; producer progress/live messages; conflicting access
+and replacement; bounded capacity; cancellation before/after entry and repeated
+cancellation; late failure; output/cleanup failure; supported context propagation;
+and rejection of unestablished realizations. Race checks use explicit barriers
+and bounded test cleanup, not elapsed-time speedup assertions.
+
+Only ordinary selected synchronous `Call` placement is established. Known async
+implementations are rejected during preparation. A disguised async return fails
+after invocation with possible effects; it does not silently fall back to the
+cooperative path. Ordinary async implementations still have that separate path.
+Any active `Sequence` in a worker-enabled arrangement—including a disjoint one—
+is deliberately rejected pending cross-block/retained-lifetime evidence. Disabled
+capability blocks are not active and do not create this restriction.
+Granted two-pass work, backward and optimizer advancement are not moved to
+threads. A long coordinator-side backward/optimizer call can still block it.
+
+This is not evidence of arbitrary CPU-module thread safety, RNG isolation,
+complete PyTorch TLS capture, task-local numerical context across suspended
+coroutines, distributed/GPU completion, performance speedup, recovery or a
+production worker API. Pure-Python execution with the GIL can interleave; it is
+not parallel Python, and a native call holding the GIL can still prevent other
+Python threads from progressing.
+
+Fresh-process observation in the current uv environment: Python 3.14.5t and
+Torch 2.14.1+cu130 start this import path with the GIL disabled, but preparing
+the numerical joint fixture enables it through `triton._C.libtriton`. The test
+run reports the same fallback warning. No unsafe GIL override was used. Passing
+on 3.14t, retaining a disabled GIL and safe concurrent execution remain separate
+claims. No live Trainer, governing OpenSpec artifacts or G5 checkboxes changed.
+
+Verification before review: 204 tests pass together (192 candidate cases,
+including 34 new worker cases, plus the 12 unchanged execution tests). All eight
+existing examples run; scoped Ruff lint/format, strict `ty` and diff whitespace
+checks pass. This is scoped experiment evidence, not a production migration gate.
+
+The initial required `review-mcp` review against `HEAD` (`dad4b2a5`) read both
+new untracked files and the supporting code. It found no mainline correctness
+bug and confirmed the lease/drain, attribution, context and physical-exclusion
+rules. Follow-up corrections preserve failures outside the selected-call return,
+make the lifetime guard explicit, validate empty-placement options, document
+global-name matching and rejection timing, and remove a synthetic checking-name
+collision without changing the accepted graph. Six additional tests exercise
+those edges.
+
+Final verification: **210 tests pass** (198 candidate cases, including 40 worker
+cases, plus 12 unchanged execution tests). All eight examples run again after the
+corrections; scoped Ruff lint/format, strict `ty` and diff checks pass again.
+The six added cases cover outer-context failure after cancellation/selected return
+under both emissions, primary-failure preservation by the lifetime guard,
+empty-placement option validation, matching names across siblings and checking
+without synthetic-name collisions. The original 34 worker cases also passed
+three repeated runs before the corrections.
+
+The focused follow-up `review-mcp` review against the same `HEAD` read the new
+files from disk, verified every correction, and found **no correctness regression**.
+Its sole actionable item was this final verification record, now added. It noted
+two safe/conservative edges without requesting changes: an executor-construction
+failure can leave an unusable pre-start semaphore until the next lifetime, and
+an exceptional numerical-context capture would conservatively withhold state
+although selected work did not enter. Neither is a new supported recovery claim.
+Only documentation changed after that review; formatting/diff gates were rerun.
+The experiment is complete, not a production API selection or G5 milestone.

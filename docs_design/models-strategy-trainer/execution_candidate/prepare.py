@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import copy
 import inspect
+import threading
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
@@ -43,6 +44,7 @@ from .graph import (
     Use,
     Work,
     block_uses,
+    check_target,
     inputs,
     ordered,
     outputs,
@@ -62,6 +64,7 @@ from .state import (
     join,
     wait_for_products,
 )
+from .workers import NotEntered, PhysicalFailed, Workers
 
 
 @dataclass(frozen=True)
@@ -74,6 +77,7 @@ class Context:
     invocation: int
     stamps: Mapping[str, Stamp]
     views: Mapping[str, PreparedView] = field(default_factory=dict)
+    stop_requested: Callable[[], bool] | None = None
 
 
 @dataclass
@@ -118,6 +122,7 @@ class WorkFailed(RuntimeError):
         super().__init__(f"{source}: post-invocation failure ({cause})")
         self.source, self.scope, self.invocation, self.cause = source, frame.scope, frame.invocation, cause
         self.cleanup_failures = cleanup_failures
+        self.cancellation: asyncio.CancelledError | None = None
         self.implementation_returned = frame.implementation_returned
         assert frame.state.image is not None
         self.unit_outcomes: tuple[UnitOutcome, ...] = tuple(
@@ -131,9 +136,25 @@ class WorkFailed(RuntimeError):
 class CallFailed(RuntimeError):
     """Internal separation of selected execution from mode restoration."""
 
-    def __init__(self, primary: BaseException | None, cleanup: tuple[BaseException, ...]):
+    def __init__(
+        self,
+        primary: BaseException | None,
+        cleanup: tuple[BaseException, ...],
+        cancellation: asyncio.CancelledError | None = None,
+    ):
         super().__init__("Selected execution and/or evaluation cleanup failed")
         self.primary, self.cleanup = primary, cleanup
+        self.cancellation = cancellation
+
+
+@dataclass(frozen=True)
+class CallReturn:
+    """Private physical-call evidence; never a universal run result."""
+
+    value: object
+    returned: bool
+    primary: BaseException | None
+    cleanup: tuple[BaseException, ...]
 
 
 class ProducerFailed(RuntimeError):
@@ -311,10 +332,17 @@ def prepare(
     state: RunState | None = None,
     *,
     lowering: Literal["calls", "inline"] = "calls",
+    worker_calls: tuple[str, ...] = (),
+    worker_limit: int = 1,
 ) -> Preparation:
     """One unpublished attempt: load, verify, prepare units, lower whole run."""
     if lowering not in ("calls", "inline"):
         raise NotReady("Unknown candidate CPU lowering")
+    workers: Workers | None = Workers(worker_limit)
+    if not worker_calls:
+        workers = None
+    if workers is not None:
+        _check_workers(accepted, frozenset(worker_calls))
     state = state or RunState(accepted)
     if state.accepted is not accepted:
         raise NotReady("Preparation belongs to another accepted authority")
@@ -323,17 +351,93 @@ def prepare(
     expected = state.generation
     models = {name: declaration.load() for name, declaration in accepted.participants.items()}
     image = state.candidate(models)
-    lowerer = Lowering(accepted, state, inline_blocks=lowering == "inline")
+    lowerer = Lowering(accepted, state, inline_blocks=lowering == "inline", workers=workers, worker_calls=frozenset(worker_calls))
     root = lowerer.scope(accepted.root)
+    if workers is not None:
+        body = root
+
+        async def placed():
+            with workers.lifetime():
+                await body()
+
+        root = placed
     return Preparation(state, expected, image, root, MappingProxyType(lowerer.source))
+
+
+def _mode_reservations(work: tuple[Work, ...], accepted: Accepted) -> tuple[Use, ...]:
+    # Temporary eval modes are a physical exclusivity requirement, not an
+    # additional numerical-write grant or a reason to advance numerical epochs.
+    return tuple(
+        Use(use.participant, "write")
+        for item in work
+        if isinstance(item, Call)
+        for use in item.uses
+        if use.view is not None and accepted.views[use.view].evaluation
+    )
+
+
+def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
+    scopes: dict[str, Scope] = {}
+    found: set[str] = set()
+
+    def visit(scope: Scope):
+        scopes[scope.name] = scope
+        if isinstance(scope, Sequence):
+            raise NotReady("Worker target has not established cross-block retained lifetimes")
+        if isinstance(scope, Together):
+            for child in scope.children:
+                visit(child)
+        elif isinstance(scope, Repeat):
+            for block in scope.blocks:
+                visit(block)
+        elif isinstance(scope, Requested) and scope.enabled:
+            visit(scope.block)
+        elif isinstance(scope, Block):
+            for item in scope.work:
+                if item.name not in names:
+                    continue
+                if not isinstance(item, Call) or item.retained is not None:
+                    raise NotReady("Worker placement is established only for ordinary synchronous calls")
+                function = item.implementation
+                implementation_call = type(function).__call__
+                if any(
+                    inspect.iscoroutinefunction(value) or inspect.isasyncgenfunction(value) for value in (function, implementation_call)
+                ):
+                    raise NotReady("Worker placement requires a synchronous implementation")
+                found.add(item.name)
+            # Recheck this target's physical lease/source cycles after adding
+            # eval-view exclusion; do not silently introduce a new deadlock.
+            reservations = _mode_reservations(scope.work, accepted)
+            if reservations:
+                scopes[scope.name] = replace(
+                    scope,
+                    work=tuple(
+                        replace(item, uses=(*item.uses, *_mode_reservations((item,), accepted))) if isinstance(item, Call) else item
+                        for item in scope.work
+                    ),
+                )
+
+    visit(accepted.root)
+    if names - found:
+        raise NotReady(f"Unknown/ inactive worker call: {sorted(names - found)}")
+    check_target(scopes, accepted.units, set(scopes))
 
 
 class Lowering:
     """A candidate target, not the language's permanent implementation model."""
 
-    def __init__(self, accepted: Accepted, state: RunState, *, inline_blocks: bool = False):
+    def __init__(
+        self,
+        accepted: Accepted,
+        state: RunState,
+        *,
+        inline_blocks: bool = False,
+        workers: Workers | None = None,
+        worker_calls: frozenset[str] = frozenset(),
+    ):
         self.accepted, self.state = accepted, state
         self.inline_blocks = inline_blocks
+        self.workers, self.worker_calls = workers, worker_calls
         self.source: dict[str, str] = {}
         self.requests: dict[str, list[asyncio.Queue]] = {}
         self.request_queues: dict[str, asyncio.Queue] = {}
@@ -357,6 +461,8 @@ class Lowering:
     def block(self, block: Block) -> Callable[[Choice, str], Awaitable[int]]:
         work = ordered(block)
         uses = block_uses(block, self.accepted.units)
+        if self.workers is not None:
+            uses += _mode_reservations(block.work, self.accepted)
         states = tuple(dict.fromkeys(name for item in work if isinstance(item, Call) for name in item.states))
         prefix: list[Join] = []
         for item in work:
@@ -447,12 +553,74 @@ class Lowering:
             # Resolve participating addresses once. Context.models deliberately
             # omits named-view-only access, but evaluation still covers it.
             evaluation_names = tuple(dict.fromkeys(use.participant for use in work.uses)) if work.evaluation else ()
+            workers = self.workers if work.name in self.worker_calls else None
+
+            def synchronous(context, evaluation_models, args) -> CallReturn:
+                modes = tuple((module, module.training) for model in evaluation_models for module in model.modules())
+                result, primary, returned = None, None, False
+                try:
+                    for model in evaluation_models:
+                        model.eval()
+                    result = work.implementation(context, *args)
+                    if inspect.isawaitable(result) or inspect.isasyncgen(result):
+                        if inspect.iscoroutine(result):
+                            result.close()
+                        raise TypeError("Worker implementation returned asynchronous work")
+                    returned = True
+                    check_output(result)
+                except BaseException as error:
+                    primary = error
+                cleanup = []
+                for module, training in modes:
+                    try:
+                        module.training = training
+                    except BaseException as error:
+                        cleanup.append(error)
+                return CallReturn(result, returned, primary, tuple(cleanup))
 
             async def invoke(frame, *args):
                 retained = args[-1] if work.retained is not None else None
                 args = args[:-1] if work.retained is not None else args
                 context = frame.context(work, retained)
                 evaluation_models = tuple(frame.projection.models[name] for name in evaluation_names) if evaluation_names else ()
+                if workers is not None:
+                    stop = threading.Event()
+                    context = replace(context, stop_requested=stop.is_set)
+                    # Preserve selected-return evidence even if the outer CPU/
+                    # Python context fails on exit. Observe only after the
+                    # physical future is quiescent; no run state enters threads.
+                    selected_return = None
+
+                    def execute():
+                        nonlocal selected_return
+                        selected_return = synchronous(context, evaluation_models, args)
+                        return selected_return
+
+                    try:
+                        finished = await workers.execute(execute, stop)
+                    except PhysicalFailed as error:
+                        if selected_return is not None:
+                            frame.implementation_returned = selected_return.returned
+                            if selected_return.returned:
+                                self.state.trace.append(("implementation_returned", (work.name, frame.invocation)))
+                                self.state.returned_writes(work.uses)
+                            if selected_return.primary is not None:
+                                primary, cleanup = selected_return.primary, (*selected_return.cleanup, error.cause)
+                            else:
+                                primary, cleanup = error.cause, selected_return.cleanup
+                        else:
+                            primary, cleanup = error.cause, ()
+                        raise CallFailed(primary, cleanup, error.cancellation) from error
+                    report = finished.value
+                    frame.implementation_returned = report.returned
+                    self.state.trace.append(("worker_completed", (work.name, frame.invocation, finished.cancellation is not None)))
+                    if report.returned:
+                        self.state.trace.append(("implementation_returned", (work.name, frame.invocation)))
+                        self.state.returned_writes(work.uses)
+                    if report.primary is not None or report.cleanup or finished.cancellation is not None:
+                        primary = report.primary if report.primary is not None else finished.cancellation
+                        raise CallFailed(primary, report.cleanup, finished.cancellation)
+                    return report.value
                 modes = (
                     tuple((module, module.training) for model in evaluation_models for module in model.modules())
                     if evaluation_models
@@ -535,6 +703,9 @@ class Lowering:
             raise NotReady(f"No target rule for {type(work).__name__}")
 
         def failed(frame: Frame, error: BaseException) -> NoReturn:
+            if isinstance(error, NotEntered):
+                self.state.trace.append(("worker_not_started", (work.name, frame.invocation)))
+                raise error.cause from error
             if isinstance(work, Join) and isinstance(error, NotReady):
                 # Rejected before claiming inputs/computation: don't
                 # turn inadmissibility into uncertain numerical effects.
@@ -548,7 +719,9 @@ class Lowering:
                 if isinstance(primary, asyncio.CancelledError) and not error.cleanup:
                     raise primary from error
                 cause = primary if primary is not None else error.cleanup[0]
-                raise WorkFailed(work.name, frame, cause, error.cleanup) from error
+                failure = WorkFailed(work.name, frame, cause, error.cleanup)
+                failure.cancellation = error.cancellation
+                raise failure from error
             if isinstance(error, asyncio.CancelledError):
                 raise error
             raise WorkFailed(work.name, frame, error) from error
