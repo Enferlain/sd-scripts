@@ -22,14 +22,16 @@ infer it from a training step or queue fullness.
 `routed_views()` adds two prepared roles of one frozen participant and two
 destination-specific derivatives. Its blocks share an explicit old-state
 lifetime, not an implicit global training step; see the walkthrough below.
+The [same-graph lowering comparison](#same-graph-block-lowering-comparison)
+below now contrasts two CPU emission paths without changing those meanings.
 
 ```python
-contract = Contract()              # CPU target's offer/rules already exist
-filing = diffusion()               # select and connect maintained behavior
-accepted = contract.accept(filing) # known compatibility/wiring checks
-attempt = prepare(accepted)        # load, verify, resolve, lower; unpublished
-ready = attempt.publish()         # install one coherent current image
-await Engine(ready).run()          # invoke machinery derived from that graph
+contract = Contract()  # CPU target's offer/rules already exist
+filing = diffusion()  # select and connect maintained behavior
+accepted = contract.accept(filing)  # known compatibility/wiring checks
+attempt = prepare(accepted)  # load, verify, resolve, lower; unpublished
+ready = attempt.publish()  # install one coherent current image
+await Engine(ready).run()  # invoke machinery derived from that graph
 ```
 
 `Contract` is deliberately a small probe schema, not the full queryable
@@ -40,17 +42,83 @@ is not being proposed here.
 Run from the repository root:
 
 ```bash
-uv run --no-sync python -m docs_design.models-strategy-trainer.execution_candidate.examples
-uv run --no-sync pytest docs_design/models-strategy-trainer/execution_candidate -q
-uv run --no-sync ruff check docs_design/models-strategy-trainer/execution_candidate
-uv run --no-sync ruff format --check docs_design/models-strategy-trainer/execution_candidate
-uv run --no-sync ty check --extra-search-path docs_design/models-strategy-trainer docs_design/models-strategy-trainer/execution_candidate --error-on-warning
+uv sync --locked
+uv run --locked python -m docs_design.models-strategy-trainer.execution_candidate.examples
+uv run --locked pytest --noconftest docs_design/models-strategy-trainer/execution_candidate tests/unit/training/test_execution.py -q
+uv run --locked ruff check docs_design/models-strategy-trainer/execution_candidate
+uv run --locked ruff format --check docs_design/models-strategy-trainer/execution_candidate
+uv run --locked ty check --extra-search-path docs_design/models-strategy-trainer docs_design/models-strategy-trainer/execution_candidate --error-on-warning
 ```
 
 The extra search path lets `ty` resolve this isolated package beneath the
-hyphenated design directory. This candidate uses Python 3.12+ type-alias syntax;
-verification used Python 3.13.13 and PyTorch 2.11.0+cu130 on CPU. It changes
-neither the project's Python requirement nor dependencies.
+hyphenated design directory. `--noconftest` excludes the old training stack's
+Hydra/schema fixtures; these tests do not use them. It does not disable the
+candidate's own tests or pytest plugins.
+
+### Repository Python 3.14t environment
+
+The repo's `.python-version` selects `3.14t`; project, Ruff and ty metadata
+target Python 3.14. uv 0.12+ installs the project dependencies and default `dev`
+group from the root `uv.lock`. The temporary `execution-research` group and old
+Torch/CUDA extra matrix have been replaced by one Torch 2.14.1 / torchvision
+0.29.1 stack from the CUDA 13.0 index. The examples still use tiny CPU tensors;
+installing a CUDA build does not make this candidate a CUDA/backend test.
+NumPy and the updated image, Hugging Face and optimizer dependencies are now
+part of the project environment, not excluded from candidate installation.
+uv honors `UV_PROJECT_ENVIRONMENT` here (currently `.venv-wsl`); without that
+override it uses the project's `.venv`. This is not a separate research project
+or a pip-managed environment.
+
+The current `pyproject.toml` records the tested baseline and remaining dependency
+considerations: OpenCV needs a source build with uv's configured Limited API
+workaround, so initial synchronization must allow builds. OpenCV, grpc and
+Triton can re-enable the GIL; native Windows support and several optimizer
+upgrade checks remain outstanding. Installation is not full Trainer/API
+compatibility, thread-safety or concurrent-performance evidence. A free-threaded
+build and a workload that actually keeps the GIL disabled are separate checks;
+Forcing `PYTHON_GIL=0` overrides extension declarations and does not demonstrate
+safe free-threaded execution; the checkpoint below does not force it.
+
+Initial final-stack environment check, 2026-10-11: uv **0.12.22** reports the lock and
+installed environment synchronized with no changes needed. Python **3.14.5t**,
+Torch **2.14.1+cu130**, torchvision **0.29.1+cu130**, NumPy **2.5.3** and pytest
+**9.1.1** pass all **145 tests**. The GIL stays disabled through pytest/Torch
+imports but becomes enabled during the tests when `triton._C.libtriton` loads.
+Consequently the final GIL assertion in the command below fails despite the
+tests passing. This checkpoint does not repeat the earlier examples, lint/type
+or compilation gates against the new dependency/tool versions.
+
+Historical Python migration checkpoint, 2026-10-10 (superseded dependency selection):
+Python **3.14.5t**, Torch **2.11.0+cpu**,
+pytest **9.0.2**, Ruff **0.15.17** and ty **0.0.49**. All **145 tests**, all eight
+examples, scoped lint/format and strict typing pass. A CPU
+`torch.compile(..., backend="aot_eager")` forward/backward smoke test passes.
+The test runner checked that the GIL was disabled before imports, after imports
+and after `pytest.main`; the compilation runner checked it before and after
+compilation/backward. This is compatibility evidence, not concurrent execution
+or performance evidence. Earlier checkpoints below used Python 3.13.13 and
+Torch 2.11.0+cu130 on CPU and remain historical records.
+
+To run the tests with separate GIL checks in the same process (this intentionally
+fails if a dependency enables the GIL):
+
+```bash
+uv run --locked python - <<'PY'
+import sys
+import sysconfig
+assert sysconfig.get_config_var("Py_GIL_DISABLED") == 1
+assert not sys._is_gil_enabled()
+import pytest
+import torch
+assert not sys._is_gil_enabled()
+result = pytest.main([
+    "--noconftest", "docs_design/models-strategy-trainer/execution_candidate",
+    "tests/unit/training/test_execution.py", "-q",
+])
+assert not sys._is_gil_enabled()
+raise SystemExit(result)
+PY
+```
 
 ## How the whole thing connects
 
@@ -426,9 +494,10 @@ whole-run language. Ordinary blocks retain their existing conservative
 whole-block lease path; sequences need smaller leases because acquiring a
 future update's write permission before an earlier release would deadlock.
 
-The next separate investigation is comparative lowering/specialization of the
+The follow-up investigation is comparative lowering/specialization of the
 **same accepted graph**, preserving its boundaries and selected behavior. It
-should not introduce a second independently authored run description.
+is now recorded in the comparison below; it does not introduce a second
+independently authored run description.
 
 Original follow-up verification: 128 tests passed together (116 candidate cases
 and the 12 unchanged execution tests); scoped Ruff lint/format, strict `ty`
@@ -451,6 +520,12 @@ checks pass again. Neither these fixes nor that review select production APIs,
 establish thread/backend safety, or advance G5.
 
 ## Evidence and its limits
+
+This subsection records the original block/producer checkpoint. The later
+frozen-view/Sequence investigation above supersedes its limits concerning
+multiple views and retained cross-block work; the comparison below supplies
+the subsequent local cost evidence. Neither follow-up removes the remaining
+backend, authority, concurrency or recovery limits.
 
 Verification checkpoint, 2026-10-09: 87 candidate cases plus the 12 unchanged
 `tests/unit/training/test_execution.py` cases pass (99 total); scoped Ruff,
@@ -579,7 +654,7 @@ unreported producer writes, overwritten cleanup/primary outcome classification,
 and knowable target checks deferred until after loading. It does not adopt these
 constructors as the production API or close G5. The subsequent frozen-view
 pass above adds routed derivatives and cross-block windows; comparative
-specialization remains a separate investigation. No broader guarantees are
+specialization is the separate comparison below. No broader guarantees are
 inferred from either fixture.
 
 That is evidence for this realization approach, not proof that it satisfies
@@ -627,3 +702,179 @@ not equivalence of every permutation of unconnected effectful work.
 
 The production API, specialized lowerings, backend support, broader conformance
 and G5 implementation order remain unselected.
+
+## Same-graph block lowering comparison
+
+This 2026-10-11 experiment compares a small specialization of the existing
+target, not a second execution architecture. `prepare(accepted)` retains the
+normal `"calls"` path. `prepare(accepted, lowering="inline")` selects the
+alternative during preparation. The author does not supply another graph,
+callback sequence or set of compatibility rules.
+
+Both preparations derive their work from the **same Accepted description**:
+
+```text
+accepted hierarchy, selected implementations and relationships
+                              |
+                         preparation
+                     /                  \
+         calls: guarded wrappers    inline: guards in block body
+                     \                  /
+              shared invocation and failure rules
+              unchanged whole-run coordination/state
+```
+
+The paired tests give each realization freshly initialized models, owner state
+and optimizer state. Those are separate experimental executions for comparison,
+not two simultaneously current physical images of one live run. Preparation
+publication still uses the existing authority and generation checks.
+
+### What actually changes
+
+The baseline block calls a guarded async wrapper for each piece of work. That
+wrapper records entry, invokes the selected work, checks its output and records
+return; it also classifies failure and withholds possibly affected state.
+
+The specialized block emits that wrapper shell directly into its generated
+body. It removes one Python async-wrapper invocation per work item. The raw
+invocation, output rule and failure rule are shared with the baseline through
+`Lowering.bind_parts()`, rather than reimplemented as a weaker fast path.
+Selected Python/tensor computation is **not** expanded or fused into this body.
+
+Both paths retain:
+
+- Dependency ordering and accepted source addresses, with no hot-path graph walk.
+- Leading input-readiness waits outside participant leases, followed by protected
+  admission and all-member claim. Work identity and actual provenance survive.
+- Live context, owner state, bounded runtime choices, observations and feedback.
+- Gradient routing, preparation correspondence and independent unit outcomes.
+- Declared effects, protected use, mode restoration, output checks and failure
+  withholding. Implementation return is not confused with clean handback.
+
+Together, Repeat, Requested, producer lifecycle, replacement coordination and
+Engine are unchanged. The cross-block Sequence emission deliberately uses its
+existing path in both modes; identical Sequence source in the tests verifies
+that fallback. Retained derivative lifetimes are not silently optimized away.
+The new choice is a candidate CPU-target option, not a production authoring API.
+Updated Ruff/ty also required explicit strict zips and async-generator annotations
+in the touched implementation; these do not add new state or ownership rules.
+
+### Conformance evidence
+
+`test_specialized_lowering.py` adds 25 cases. The comparisons check values,
+gradients, modes, owner state, progress, identities/revisions, handoff association,
+separately known outcomes and unusable state. They do not demand identical private
+callback traces or physical preparation-object identities.
+
+The same-description positive cases cover adaptive diffusion-like work with
+independent inputs and requested validation, alternating adversarial actions,
+joint units, granted two-pass work, compatible replacement, and retained/live
+versus isolated/recomputed views. The latter check the unchanged fallback, not
+new Sequence specialization. Authoring-object release and absence of static
+wiring discovery are checked in both modes.
+
+Negative/composition cases establish the boundaries that the optimization must
+not erase:
+
+- A advances, B mutates then fails, and C remains unattempted. Known A results,
+  B uncertainty and C non-entry remain distinct; further unsafe use stops.
+- An operation mutates declared state and returns invalid output. Effects remain
+  visible, dependent work does not run, and primary/output failure survives a
+  separate mode-cleanup failure.
+- Incorrect preparation correspondence cannot advance a unit. A returned granted
+  region without restored state cannot hand authority back for advancement.
+- One inadmissible member prevents claiming either joined input. Cancellation
+  releases protection only into withheld, not falsely usable, participant state.
+- Independent production publishes key 2 under encoder state 0, changes the
+  encoder, then publishes key 1 under state 1. The values happen to match, but
+  their identity/provenance does not: only the admissible key 1 contributes;
+  demand-end cleanup explicitly discards unused key 2. Bounded capacity, owner
+  cleanup and completion relationships remain intact in both lowerings.
+
+The checks are CPU/cooperative asyncio evidence. They do not prove arbitrary
+Python conformance, actual thread races, GPU completion or durable recovery.
+
+### Matched local cost
+
+`lowering_cost_probe.py` measures prepared root/block execution, excluding
+acceptance, loading, code generation and Engine entry/exit. It compares the
+same four cheap operations, guards, live contexts, protected state effects and
+bounded diagnostics. A separate tiny joint Torch/SGD case includes numerical
+work; it is not a framework-dispatch-only measurement.
+
+The recorded pass uses three fresh sequential processes, 200 warm-up invocations
+per path and seven paired samples with alternating order. Cheap samples contain
+10,000 invocations; joint samples contain 500. GC is collected before each sample
+and disabled during timing. Allocation diagnostics run separately. An initial
+trial overlapping the test runner was excluded, not pooled into these results.
+
+| Cheap four-operation block | Calls median | Inline median | Median paired saving | Paired saving MAD |
+| --- | ---: | ---: | ---: | ---: |
+| Process 0 | 31.42 µs | 29.61 µs | 1.60 µs | 0.45 µs |
+| Process 1 | 31.44 µs | 29.72 µs | 1.84 µs | 0.36 µs |
+| Process 2 | 30.77 µs | 29.53 µs | 1.24 µs | 0.52 µs |
+
+Paired savings are computed from paired samples, not the difference between
+independent medians. This is about **4–6%** of the baseline cheap-block cost,
+with the required checks still present. Peak traced memory above the starting
+level fell from 5,736 to 5,416 bytes in all three processes; retained memory after
+GC was 272 bytes in both paths. These quantities are not cumulative allocation
+rate and do not establish an allocation-free hot path.
+
+The joint case showed median paired savings of 10.40, 9.18 and 6.36 µs, but
+paired MAD was 1.97, 6.84 and 23.71 µs respectively. That spread is too noisy
+to support a general numerical/optimizer speedup claim.
+
+Raw samples, environment, source hashes and measurement scope are retained in
+[lowering_cost_results.json](lowering_cost_results.json). The environment was
+WSL2 Python 3.14.5t with Torch 2.14.1+cu130, but **the GIL was enabled** after
+native imports. No unsafe GIL override was used; no GPU kernels or threaded
+execution were measured. Reproduce with:
+
+```bash
+uv run --locked python -m docs_design.models-strategy-trainer.execution_candidate.lowering_cost_probe --runs 3 --samples 7 --iterations 10000 --warmup 200
+```
+
+### Finding and remaining limits
+
+The same graph can supply a more specialized physical emission without becoming
+another independently authored run or losing the tested owner-visible meanings.
+The engine does not need a model/algorithm-specific branch for this choice.
+Removing a wrapper gives a modest local benefit; it is not evidence that all
+coordination cost disappears, or that more aggressive lowering is automatically
+valid. Raw async invocations, context/projection allocation and guard work remain.
+
+This comparison does not choose a numerical compiler, establish FSDP/DeepSpeed
+integration, specialize cross-block lifetimes, demonstrate threaded safety,
+implement restoration, select production APIs or satisfy the full G3.7 migration
+gate. More aggressive fusion/capture would need its own evidence for retained
+interaction boundaries, differentiation, authority and failure semantics.
+No governing design, spec, task checkbox or live Trainer code changed.
+
+Verification: all 170 tests pass together (158 candidate cases plus the 12
+unchanged execution tests), all eight examples run, and scoped Ruff lint/format,
+strict `ty` and diff whitespace checks pass on the current uv environment.
+The expected Triton GIL-fallback warning is not treated as GIL-free evidence.
+Required `review-mcp` review against `HEAD` (`33f73a4`) returned with **no
+functional regressions found** and no unsupported claims. It verified the
+shared guard/failure rules, zero/single/multiple output handling, unchanged
+Sequence fallback, publication checks, the new tests and agreement between
+the README numbers and raw results. This is review of the scoped experiment,
+not architectural adoption or G5 readiness.
+
+Its minor/informational observations delimit the evidence further:
+
+- The probe uses `sys._is_gil_enabled()` in the pinned Python 3.14t environment.
+  Availability outside that interpreter profile is not tested or promised.
+- `gc_during_timing: false` records the implemented timing policy, not an
+  independently observed continuous GC-state trace. The selected fixtures have
+  no GC-changing behavior. A future gate must verify its instrumentation too.
+- Tracemalloc reports Python-tracked allocations, not native Torch storage or
+  allocator growth.
+- There is no equivalent direct-Python reference arm here: the comparison is
+  calls versus inline, not the full production G3.7 gate. That gate still needs
+  its separately required reference and broader conformance coverage.
+
+These do not expose a lowering defect or require expanding this experiment's
+target. Documentation format and diff checks pass again after recording them;
+runtime code and the measured source hashes are unchanged after review.

@@ -1,0 +1,555 @@
+{
+  "scope": "matched prepared CPU block dispatch with guards, live contexts, protected access and bounded traces; joint includes compute",
+  "retention": "trace=256 entries; unit outcomes=32; owner counter fixed-size; allocation diagnostics not timed",
+  "claims": "comparative local evidence only, not G3.7 acceptance, GPU performance or free-threaded safety",
+  "runs": [
+    {
+      "run_index": 0,
+      "environment": {
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "free_threaded_build": true,
+        "gil_enabled": true,
+        "gc_during_timing": false,
+        "lowering_source_sha256": "f2e8c648f67eb113ea244b21f439c28e0c79879f53f698cac24873696ae867d5",
+        "cheap_source_sha256": "b1e67144afdd34f2a1dc2938afaea1af7ed0e9abef6af1676e33c22e794aab8c"
+      },
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 10000,
+          "warmup_each": 200,
+          "order": [
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ]
+          ],
+          "ns_per_invocation": {
+            "calls": [
+              31284.3761,
+              30341.3147,
+              31627.962,
+              31423.9118,
+              30654.0592,
+              32454.1231,
+              31950.7372
+            ],
+            "inline": [
+              28910.5662,
+              29521.4884,
+              29614.9823,
+              31348.1296,
+              28603.3842,
+              30852.4451,
+              30697.9124
+            ]
+          },
+          "median_ns": {
+            "calls": 31423.9118,
+            "inline": 29614.9823
+          },
+          "paired_excess_ns": [
+            2373.8099,
+            819.8263000000006,
+            2012.9796999999999,
+            75.78220000000147,
+            2050.6749999999993,
+            1601.6779999999999,
+            1252.8247999999985
+          ],
+          "median_excess_ns": 1601.6779999999999,
+          "paired_excess_mad_ns": 448.9969999999994,
+          "memory": {
+            "calls": {
+              "iterations": 200,
+              "peak_above_start_bytes": 5736,
+              "retained_after_gc_bytes": 272
+            },
+            "inline": {
+              "iterations": 200,
+              "peak_above_start_bytes": 5416,
+              "retained_after_gc_bytes": 272
+            }
+          }
+        },
+        "joint": {
+          "iterations_per_sample": 500,
+          "warmup_each": 200,
+          "order": [
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ]
+          ],
+          "ns_per_invocation": {
+            "calls": [
+              353874.988,
+              342826.022,
+              362333.504,
+              364698.4,
+              366172.274,
+              358651.582,
+              351023.044
+            ],
+            "inline": [
+              341499.896,
+              332737.246,
+              366298.318,
+              367169.402,
+              344044.182,
+              348249.93,
+              338649.12
+            ]
+          },
+          "median_ns": {
+            "calls": 358651.582,
+            "inline": 344044.182
+          },
+          "paired_excess_ns": [
+            12375.092000000004,
+            10088.776000000013,
+            -3964.814000000013,
+            -2471.0019999999786,
+            22128.092000000004,
+            10401.652000000002,
+            12373.923999999999
+          ],
+          "median_excess_ns": 10401.652000000002,
+          "paired_excess_mad_ns": 1973.4400000000023,
+          "memory": {
+            "calls": {
+              "iterations": 200,
+              "peak_above_start_bytes": 38734,
+              "retained_after_gc_bytes": 21349
+            },
+            "inline": {
+              "iterations": 200,
+              "peak_above_start_bytes": 37858,
+              "retained_after_gc_bytes": 20799
+            }
+          }
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "environment": {
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "free_threaded_build": true,
+        "gil_enabled": true,
+        "gc_during_timing": false,
+        "lowering_source_sha256": "f2e8c648f67eb113ea244b21f439c28e0c79879f53f698cac24873696ae867d5",
+        "cheap_source_sha256": "b1e67144afdd34f2a1dc2938afaea1af7ed0e9abef6af1676e33c22e794aab8c"
+      },
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 10000,
+          "warmup_each": 200,
+          "order": [
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ]
+          ],
+          "ns_per_invocation": {
+            "calls": [
+              31440.66,
+              30489.0923,
+              31977.9685,
+              31787.4992,
+              31201.3128,
+              31401.724,
+              33737.7137
+            ],
+            "inline": [
+              29603.3008,
+              29061.0121,
+              29990.2587,
+              29312.0585,
+              29720.1258,
+              29730.5474,
+              30243.0101
+            ]
+          },
+          "median_ns": {
+            "calls": 31440.66,
+            "inline": 29720.1258
+          },
+          "paired_excess_ns": [
+            1837.359199999999,
+            1428.0802000000003,
+            1987.7098000000005,
+            2475.440699999999,
+            1481.186999999998,
+            1671.1765999999989,
+            3494.7036000000007
+          ],
+          "median_excess_ns": 1837.359199999999,
+          "paired_excess_mad_ns": 356.1722000000009,
+          "memory": {
+            "calls": {
+              "iterations": 200,
+              "peak_above_start_bytes": 5736,
+              "retained_after_gc_bytes": 272
+            },
+            "inline": {
+              "iterations": 200,
+              "peak_above_start_bytes": 5416,
+              "retained_after_gc_bytes": 272
+            }
+          }
+        },
+        "joint": {
+          "iterations_per_sample": 500,
+          "warmup_each": 200,
+          "order": [
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ]
+          ],
+          "ns_per_invocation": {
+            "calls": [
+              352082.86,
+              378809.39,
+              335559.924,
+              368079.364,
+              372853.064,
+              355161.448,
+              349528.158
+            ],
+            "inline": [
+              342899.812,
+              363609.536,
+              335330.674,
+              365737.076,
+              371207.888,
+              335522.172,
+              337958.208
+            ]
+          },
+          "median_ns": {
+            "calls": 355161.448,
+            "inline": 342899.812
+          },
+          "paired_excess_ns": [
+            9183.04800000001,
+            15199.853999999992,
+            229.25,
+            2342.2880000000005,
+            1645.1760000000359,
+            19639.275999999954,
+            11569.950000000012
+          ],
+          "median_excess_ns": 9183.04800000001,
+          "paired_excess_mad_ns": 6840.760000000009,
+          "memory": {
+            "calls": {
+              "iterations": 200,
+              "peak_above_start_bytes": 39008,
+              "retained_after_gc_bytes": 21637
+            },
+            "inline": {
+              "iterations": 200,
+              "peak_above_start_bytes": 39059,
+              "retained_after_gc_bytes": 22067
+            }
+          }
+        }
+      }
+    },
+    {
+      "run_index": 2,
+      "environment": {
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "free_threaded_build": true,
+        "gil_enabled": true,
+        "gc_during_timing": false,
+        "lowering_source_sha256": "f2e8c648f67eb113ea244b21f439c28e0c79879f53f698cac24873696ae867d5",
+        "cheap_source_sha256": "b1e67144afdd34f2a1dc2938afaea1af7ed0e9abef6af1676e33c22e794aab8c"
+      },
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 10000,
+          "warmup_each": 200,
+          "order": [
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ]
+          ],
+          "ns_per_invocation": {
+            "calls": [
+              31967.257,
+              30647.8416,
+              30765.4838,
+              30233.9633,
+              30477.8644,
+              30850.473,
+              33038.4538
+            ],
+            "inline": [
+              29282.7446,
+              28915.1902,
+              29530.3824,
+              30110.4576,
+              30499.0368,
+              29527.6729,
+              32321.07
+            ]
+          },
+          "median_ns": {
+            "calls": 30765.4838,
+            "inline": 29530.3824
+          },
+          "paired_excess_ns": [
+            2684.5123999999996,
+            1732.6513999999988,
+            1235.1014000000032,
+            123.50569999999789,
+            -21.17240000000311,
+            1322.8001000000004,
+            717.3838000000032
+          ],
+          "median_excess_ns": 1235.1014000000032,
+          "paired_excess_mad_ns": 517.7176,
+          "memory": {
+            "calls": {
+              "iterations": 200,
+              "peak_above_start_bytes": 5736,
+              "retained_after_gc_bytes": 272
+            },
+            "inline": {
+              "iterations": 200,
+              "peak_above_start_bytes": 5416,
+              "retained_after_gc_bytes": 272
+            }
+          }
+        },
+        "joint": {
+          "iterations_per_sample": 500,
+          "warmup_each": 200,
+          "order": [
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ],
+            [
+              "inline",
+              "calls"
+            ],
+            [
+              "calls",
+              "inline"
+            ]
+          ],
+          "ns_per_invocation": {
+            "calls": [
+              356447.118,
+              359325.218,
+              360779.932,
+              327155.65,
+              330989.686,
+              374994.108,
+              339960.318
+            ],
+            "inline": [
+              324134.61,
+              329252.908,
+              354420.724,
+              324949.128,
+              326469.938,
+              341103.212,
+              365357.144
+            ]
+          },
+          "median_ns": {
+            "calls": 356447.118,
+            "inline": 329252.908
+          },
+          "paired_excess_ns": [
+            32312.50800000003,
+            30072.309999999998,
+            6359.207999999984,
+            2206.521999999997,
+            4519.747999999963,
+            33890.89600000001,
+            -25396.825999999943
+          ],
+          "median_excess_ns": 6359.207999999984,
+          "paired_excess_mad_ns": 23713.102000000014,
+          "memory": {
+            "calls": {
+              "iterations": 200,
+              "peak_above_start_bytes": 41272,
+              "retained_after_gc_bytes": 23834
+            },
+            "inline": {
+              "iterations": 200,
+              "peak_above_start_bytes": 40477,
+              "retained_after_gc_bytes": 23471
+            }
+          }
+        }
+      }
+    }
+  ],
+  "record": {
+    "measured_on": "2026-10-11",
+    "checkout_head": "33f73a4ddcfd781922cdb827172dd072046cdf8e",
+    "worktree": "Uncommitted specialized-lowering experiment on that checkout; exact runtime inputs identified below.",
+    "command": "uv run --locked python -m docs_design.models-strategy-trainer.execution_candidate.lowering_cost_probe --runs 3 --samples 7 --iterations 10000 --warmup 200",
+    "collection": "Three fresh sequential worker processes, alternating paired order. No concurrent test/example commands during this recorded pass. An earlier trial overlapping the test runner was excluded, not pooled.",
+    "limitations": "CPU/cooperative asyncio only, GIL enabled after native imports. No GPU, threads, numerical compilation, production regression gate or cumulative allocation-rate claim.",
+    "file_sha256": {
+      "docs_design/models-strategy-trainer/execution_candidate/prepare.py": "5c3b4329050a1bc5a999da3d1ea907fc0760cae22a65b010216367265cd2d03b",
+      "docs_design/models-strategy-trainer/execution_candidate/state.py": "cf925153a68298fa33676c898d698f4354431cc4527f3df32b390a584a5204de",
+      "docs_design/models-strategy-trainer/execution_candidate/lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+      "docs_design/models-strategy-trainer/execution_candidate/graph.py": "cde1237a24ed737f3c84c5dbfc69d8f6e68e0db645e24195dc795d086be827c1",
+      "docs_design/models-strategy-trainer/execution_candidate/examples.py": "207ecf6145221c94ec0140c97526cfae2e1bbda1495ee46bab8dbefab0d4033f",
+      "pyproject.toml": "c5b2d9d1030bf60c11b455ff6240a8d8b5fa5f1b1a9d1c90b6123443db4ef0cd",
+      "uv.lock": "dd63dbda3d4e2a086af3875eec14e12bd34e0979ea5d760adcf13eb0821572d9"
+    }
+  }
+}

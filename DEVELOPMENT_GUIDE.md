@@ -201,6 +201,38 @@ def train(cfg: RunConfig):
 
 ## 6. Workflow for Contributors
 
+### Python and uv environment
+
+The repository targets Python 3.14 and selects the free-threaded `3.14t` build
+through `.python-version`; `requires-python` alone cannot select the free-threaded
+ABI. Use uv 0.12 or newer and the root `uv.lock` for both project and candidate work:
+
+```bash
+uv sync --locked
+uv run --locked pytest --noconftest docs_design/models-strategy-trainer/execution_candidate tests/unit/training/test_execution.py -q
+```
+
+The default selection installs the project dependencies and `dev` group, with
+Torch 2.14.1 and torchvision 0.29.1 from the CUDA 13.0 index. Optional
+`onnx-cpu` and `onnx-gpu` extras are mutually exclusive. Candidate commands are in its
+[README](docs_design/models-strategy-trainer/execution_candidate/README.md).
+`--noconftest` excludes production Hydra/configuration fixtures unused by these
+tests; it does not disable pytest plugins.
+
+OpenCV currently needs a source build; uv supplies the Limited API workaround
+from `pyproject.toml`. Do not use `--no-build` for initial installation. uv uses
+`.venv` by default or the path selected by `UV_PROJECT_ENVIRONMENT` (currently
+`.venv-wsl` in this workspace).
+
+A free-threaded interpreter does not ensure that the GIL remains disabled after
+imports. The current configuration records OpenCV, grpc and Triton limitations;
+check the actual workload. Forcing `PYTHON_GIL=0` overrides extension declarations
+and is not evidence of safe free-threaded execution. Successful synchronization and candidate tests are
+not certification of the old Trainer, upgraded APIs, native Windows support or
+concurrent access to shared training state.
+
+### Feature and refactoring workflow
+
 1.  **Adding a Feature:**
     - Add key/value to the relevant Dataclass (or create a new one).
     - Update the logic in `library/`.

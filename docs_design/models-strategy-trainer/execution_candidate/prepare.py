@@ -15,7 +15,7 @@ from collections.abc import Awaitable, Callable, Coroutine, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
-from typing import Any, cast
+from typing import Any, Literal, NoReturn, cast
 
 import torch
 
@@ -168,7 +168,7 @@ class GrantedAccess:
         if self.phases not in ([], ["backward", "temporary_edit", "intermediate_reset"]):
             raise NotReady("Unsupported granted backward phase")
         gradients = torch.autograd.grad(loss, self.parameters)
-        for parameter, gradient in zip(self.parameters, gradients):
+        for parameter, gradient in zip(self.parameters, gradients, strict=True):
             parameter.grad = gradient
         self.phases.append("backward")
 
@@ -193,7 +193,7 @@ class GrantedAccess:
         if self.phases != ["backward", "temporary_edit", "intermediate_reset", "backward"]:
             raise NotReady("Unsupported restoration phase")
         with torch.no_grad():
-            for parameter, original in zip(self.parameters, self.original):
+            for parameter, original in zip(self.parameters, self.original, strict=True):
                 parameter.copy_(original)
         self.restored = True
         self.phases.append("restore")
@@ -202,7 +202,7 @@ class GrantedAccess:
         if self.phases != ["backward", "temporary_edit", "intermediate_reset", "backward", "restore"]:
             raise NotReady("Incomplete two-pass handback")
         if not self.restored or any(
-            not torch.equal(parameter.detach(), original) for parameter, original in zip(self.parameters, self.original)
+            not torch.equal(parameter.detach(), original) for parameter, original in zip(self.parameters, self.original, strict=True)
         ):
             raise NotReady("Current view was not restored")
         if any(parameter.grad is None for parameter in self.parameters):
@@ -306,8 +306,15 @@ def _choice(value: object, alternatives, description: str) -> Choice | None:
     return value
 
 
-def prepare(accepted: Accepted, state: RunState | None = None) -> Preparation:
+def prepare(
+    accepted: Accepted,
+    state: RunState | None = None,
+    *,
+    lowering: Literal["calls", "inline"] = "calls",
+) -> Preparation:
     """One unpublished attempt: load, verify, prepare units, lower whole run."""
+    if lowering not in ("calls", "inline"):
+        raise NotReady("Unknown candidate CPU lowering")
     state = state or RunState(accepted)
     if state.accepted is not accepted:
         raise NotReady("Preparation belongs to another accepted authority")
@@ -316,7 +323,7 @@ def prepare(accepted: Accepted, state: RunState | None = None) -> Preparation:
     expected = state.generation
     models = {name: declaration.load() for name, declaration in accepted.participants.items()}
     image = state.candidate(models)
-    lowerer = Lowering(accepted, state)
+    lowerer = Lowering(accepted, state, inline_blocks=lowering == "inline")
     root = lowerer.scope(accepted.root)
     return Preparation(state, expected, image, root, MappingProxyType(lowerer.source))
 
@@ -324,8 +331,9 @@ def prepare(accepted: Accepted, state: RunState | None = None) -> Preparation:
 class Lowering:
     """A candidate target, not the language's permanent implementation model."""
 
-    def __init__(self, accepted: Accepted, state: RunState):
+    def __init__(self, accepted: Accepted, state: RunState, *, inline_blocks: bool = False):
         self.accepted, self.state = accepted, state
+        self.inline_blocks = inline_blocks
         self.source: dict[str, str] = {}
         self.requests: dict[str, list[asyncio.Queue]] = {}
         self.request_queues: dict[str, asyncio.Queue] = {}
@@ -357,19 +365,50 @@ class Lowering:
             prefix.append(item)
         first_joins = {item.name for item in prefix}
         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)
-        bound = tuple(self.bind(item, wait_input=item.name not in first_joins) for item in work)
         lines = ["async def body(frame):", "    choice = frame.choice.payload"]
         variables = {"choice": "choice"}
         namespace: dict[str, object] = {}
-        for index, (item, function) in enumerate(zip(work, bound)):
-            namespace[f"work_{index}"] = function
+        for index, item in enumerate(work):
             args = ", ".join(["frame", *(variables[value] for value in inputs(item))])
             produced = outputs(item)
             names = [f"v_{index}_{slot}" for slot in range(len(produced))]
             assignment = ", ".join(names) + " = " if names else ""
             lines.append(f"    # accepted source {item.name!r}")
-            lines.append(f"    {assignment}await work_{index}({args})")
-            variables.update({output.name: name for output, name in zip(produced, names)})
+            if self.inline_blocks:
+                # Specialize the dispatch/guard shell, not selected algorithms.
+                # The raw invocation, output rule and failure rule are shared
+                # with bind(); Call's evaluation/cleanup still surrounds its
+                # output validation. There is no second authored description.
+                invoke, check_output, failed = self.bind_parts(item, wait_input=item.name not in first_joins)
+                namespace[f"invoke_{index}"] = invoke
+                namespace[f"failed_{index}"] = failed
+                result = names[0] if len(names) == 1 else f"result_{index}"
+                lines.extend(
+                    (
+                        f"    frame.state.trace.append(('entered', ({item.name!r}, frame.invocation)))",
+                        "    frame.implementation_returned = False",
+                        "    try:",
+                        f"        {result} = await invoke_{index}({args})",
+                    )
+                )
+                if check_output is not None:
+                    namespace[f"output_{index}"] = check_output
+                    lines.append(f"        output_{index}({result})")
+                lines.extend(
+                    (
+                        f"        frame.state.trace.append(('returned', ({item.name!r}, frame.invocation)))",
+                        "    except BaseException as error:",
+                        f"        failed_{index}(frame, error)",
+                    )
+                )
+                if len(names) != 1:
+                    if names:
+                        lines.append(f"    {assignment}{result}")
+                    lines.append(f"    del {result}")
+            else:
+                namespace[f"work_{index}"] = self.bind(item, wait_input=item.name not in first_joins)
+                lines.append(f"    {assignment}await work_{index}({args})")
+            variables.update({output.name: name for output, name in zip(produced, names, strict=True)})
         if not work:
             lines.append("    pass")
         source = "\n".join(lines) + "\n"
@@ -389,7 +428,8 @@ class Lowering:
 
         return invoke
 
-    def bind(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False):
+    def bind_parts(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False):
+        """One set of runtime rules used by both CPU emission paths."""
         declared = outputs(work)
 
         def check_output(result):
@@ -400,7 +440,7 @@ class Lowering:
                 values = (result,) if len(declared) == 1 else result
                 if not isinstance(values, tuple) or len(values) != len(declared):
                     raise TypeError("Returned output structure disagrees with accepted structure")
-                if any(not isinstance(value, output.type) for value, output in zip(values, declared)):
+                if any(not isinstance(value, cast(type, output.type)) for value, output in zip(values, declared, strict=True)):
                     raise TypeError("Returned output type disagrees with accepted schema")
 
         if isinstance(work, Call):
@@ -494,33 +534,41 @@ class Lowering:
         else:
             raise NotReady(f"No target rule for {type(work).__name__}")
 
+        def failed(frame: Frame, error: BaseException) -> NoReturn:
+            if isinstance(work, Join) and isinstance(error, NotReady):
+                # Rejected before claiming inputs/computation: don't
+                # turn inadmissibility into uncertain numerical effects.
+                raise error
+            # Withholding survives lease release. No rollback or safe retry.
+            self.state.unusable.update(frame.projection.models)
+            if isinstance(work, Call):
+                self.state.unusable_states.update(work.states)
+            if isinstance(error, CallFailed):
+                primary = error.primary
+                if isinstance(primary, asyncio.CancelledError) and not error.cleanup:
+                    raise primary from error
+                cause = primary if primary is not None else error.cleanup[0]
+                raise WorkFailed(work.name, frame, cause, error.cleanup) from error
+            if isinstance(error, asyncio.CancelledError):
+                raise error
+            raise WorkFailed(work.name, frame, error) from error
+
+        return invoke, None if isinstance(work, Call) else check_output, failed
+
+    def bind(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False):
+        invoke, check_output, failed = self.bind_parts(work, wait_input=wait_input, keep_graph=keep_graph)
+
         async def checked(frame: Frame, *args):
             self.state.trace.append(("entered", (work.name, frame.invocation)))
             frame.implementation_returned = False
             try:
                 result = await invoke(frame, *args)
-                if not isinstance(work, Call):
+                if check_output is not None:
                     check_output(result)
                 self.state.trace.append(("returned", (work.name, frame.invocation)))
                 return result
             except BaseException as error:
-                if isinstance(work, Join) and isinstance(error, NotReady):
-                    # Rejected before claiming inputs/computation: don't
-                    # turn inadmissibility into uncertain numerical effects.
-                    raise
-                # Withholding survives lease release. No rollback or safe retry.
-                self.state.unusable.update(frame.projection.models)
-                if isinstance(work, Call):
-                    self.state.unusable_states.update(work.states)
-                if isinstance(error, CallFailed):
-                    primary = error.primary
-                    if isinstance(primary, asyncio.CancelledError) and not error.cleanup:
-                        raise primary from error
-                    cause = primary if primary is not None else error.cleanup[0]
-                    raise WorkFailed(work.name, frame, cause, error.cleanup) from error
-                if isinstance(error, asyncio.CancelledError):
-                    raise
-                raise WorkFailed(work.name, frame, error) from error
+                failed(frame, error)
 
         return checked
 
@@ -595,7 +643,7 @@ class Lowering:
                 assignment = ", ".join(names) + " = " if names else ""
                 lines.append(f"    # accepted source {item.name!r}")
                 lines.append(f"    {assignment}await work_{index}({args})")
-                variables.update({output.name: name for output, name in zip(produced, names)})
+                variables.update({output.name: name for output, name in zip(produced, names, strict=True)})
                 index += 1
             lines.append(f"    completed({block.name!r})")
         source = "\n".join(lines) + "\n"

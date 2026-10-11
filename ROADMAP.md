@@ -104,7 +104,17 @@ Features intentionally excluded from the Phase 2B `FineTuneMode` migration. Curr
   - `library/training/_deprecated/sdxl_checkpointing.py`
   - Strategies now call `sample_images_common()` directly; checkpointing logic can be inlined into strategies when legacy scripts are removed.
 - [ ] Investigate naming conventions and possible drifts in the objective class and runtime layers
-- [ ] Dep version health check, lots of old versions pinned
+- [ ] Dependency runtime/API compatibility checks after the Python 3.14t refresh
+
+The Python 3.14t migration is tracked by `sd-scripts-syv.8`. The project now has
+one uv-managed environment and lock, default development tools, and a Torch
+2.14.1 / CUDA 13.0 baseline; the temporary CPU research group and old profile
+matrix are gone. Dependency versions have been refreshed, so the remaining
+health check concerns actual API/runtime behavior rather than old pins alone.
+The configuration identifies optimizer migration checks (`pytorch_optimizer`,
+`adv_optm`, RamTorch), native Windows gaps, and extensions that can re-enable
+the GIL. Successful installation does not close those checks or establish safe
+threaded training, and does not advance the training architecture milestones.
 
 ### Near-Term Follow-up
 

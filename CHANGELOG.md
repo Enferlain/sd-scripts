@@ -10,6 +10,13 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-11]
+
+### Changed
+
+- **The project now uses a shared uv-managed Python 3.14t baseline** — interpreter, Ruff and ty targets align on Python 3.14; uv 0.12+ installs the project dependencies and default development tools from the root lock. Torch 2.14.1 / torchvision 0.29.1 use the CUDA 13.0 index, replacing the old Torch/CUDA profile matrix and temporary CPU-only research group.
+- **Dependencies and tooling were refreshed for the new baseline** — updated the Hugging Face, numerical, image, optimizer and development stacks; selected Hydra and safetensors release candidates, configured the OpenCV source-build workaround, and enabled stricter pytest, Ruff and ty checks. Installation does not establish complete runtime/API compatibility. Native Windows support and optimizer migration checks remain outstanding; OpenCV, grpc and Triton can re-enable the GIL as noted in `pyproject.toml`.
+
 ## [2026-10-05]
 
 ### Fixed

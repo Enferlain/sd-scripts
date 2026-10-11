@@ -10,7 +10,7 @@ from __future__ import annotations
 import asyncio
 import copy
 from collections import deque
-from collections.abc import AsyncIterator, Hashable, Mapping
+from collections.abc import AsyncGenerator, Hashable, Mapping
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass, field
 from types import MappingProxyType
@@ -374,7 +374,7 @@ async def join(
         for product in products:
             if product.key != key or not admit(product, projection):
                 raise NotReady(f"Inadmissible work {key!r}; actual provenance retained")
-        for feed, product in zip(feeds, products):
+        for feed, product in zip(feeds, products, strict=True):
             del feed.ready[key]
             feed.handed_off.append((key, invocation, product.provenance))
         condition.notify_all()
@@ -472,7 +472,9 @@ class RunState:
                     else deque(maxlen=32),
                 )
             else:
-                if len(old_unit.parameters) != len(parameters) or any(a is not b for a, b in zip(old_unit.parameters, parameters.values())):
+                if len(old_unit.parameters) != len(parameters) or any(
+                    a is not b for a, b in zip(old_unit.parameters, parameters.values(), strict=True)
+                ):
                     raise NotReady("Unaffected unit lost final member correspondence")
                 units[name] = old_unit
 
@@ -495,7 +497,7 @@ class RunState:
         self.image = candidate
 
     @asynccontextmanager
-    async def acquire(self, uses: tuple[Use, ...], states: tuple[str, ...] = ()) -> AsyncIterator[Projection]:
+    async def acquire(self, uses: tuple[Use, ...], states: tuple[str, ...] = ()) -> AsyncGenerator[Projection]:
         access: dict[str, str] = {}
         for use in uses:
             if access.get(use.participant) != "write":
@@ -625,7 +627,7 @@ class RunState:
         self.trace.append(("released", (retained.isolated, tuple(retained.projection.stamps.values()))))
 
     @asynccontextmanager
-    async def producer_owner(self, name: str, states: tuple[str, ...]) -> AsyncIterator[Mapping[str, object]]:
+    async def producer_owner(self, name: str, states: tuple[str, ...]) -> AsyncGenerator[Mapping[str, object]]:
         """Pin continuation identity for the actual activity AND its cleanup.
 
         These are activity-lifetime registrations, not participant leases held
@@ -665,7 +667,7 @@ class RunState:
                 raise NotReady("No retained derivative destination correspondence")
         parameters = tuple(
             parameter
-            for name, runtime in zip(names, runtimes)
+            for name, runtime in zip(names, runtimes, strict=True)
             for parameter in (retained.parameters[name] if retained is not None else runtime.parameters)
         )
         gradients = torch.autograd.grad(loss, parameters, retain_graph=keep_graph)
@@ -690,7 +692,7 @@ class RunState:
             (contribution.region is not region or (region is None and contribution.invocation != invocation))
             or contribution.units != names
             or len(contribution.prepared_keys) != len(runtimes)
-            or any(key is not runtime.prepared_key for key, runtime in zip(contribution.prepared_keys, runtimes))
+            or any(key is not runtime.prepared_key for key, runtime in zip(contribution.prepared_keys, runtimes, strict=True))
             or any(unit.pending != contribution.invocation for unit in runtimes)
         ):
             raise NotReady("Stale, misaddressed or unverified gradient handback")
