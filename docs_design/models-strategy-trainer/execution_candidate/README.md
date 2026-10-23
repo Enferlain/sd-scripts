@@ -990,13 +990,14 @@ cancellation; late failure; output/cleanup failure; supported context propagatio
 and rejection of unestablished realizations. Race checks use explicit barriers
 and bounded test cleanup, not elapsed-time speedup assertions.
 
-Only ordinary selected synchronous `Call` placement is established. Known async
+At this checkpoint, only ordinary selected synchronous `Call` placement was established. Known async
 implementations are rejected during preparation. A disguised async return fails
 after invocation with possible effects; it does not silently fall back to the
 cooperative path. Ordinary async implementations still have that separate path.
-Any active `Sequence` in a worker-enabled arrangement—including a disjoint one—
-is deliberately rejected pending cross-block/retained-lifetime evidence. Disabled
-capability blocks are not active and do not create this restriction.
+At this checkpoint, any active `Sequence` in a worker-enabled arrangement—including
+a disjoint one—was deliberately rejected pending cross-block/retained-lifetime
+evidence. The composition experiment below supersedes that restriction. Disabled
+capability blocks are not active.
 Granted two-pass work, backward and optimizer advancement are not moved to
 threads. A long coordinator-side backward/optimizer call can still block it.
 
@@ -1046,3 +1047,209 @@ an exceptional numerical-context capture would conservatively withhold state
 although selected work did not enter. Neither is a new supported recovery claim.
 Only documentation changed after that review; formatting/diff gates were rerun.
 The experiment is complete, not a production API selection or G5 milestone.
+
+## Workers and cross-block retained state (2026-10-22)
+
+This bounded composition experiment connects the existing synchronous CPU worker
+placement to the existing `Sequence`/`Retain`/`Release` machinery. The accepted
+graph, its vocabulary, the root engine, worker-pool lifetime, derivative routing
+and optimizer authority do not change. Preparation still chooses placement;
+the graph does not itself select host threads.
+
+```python
+accepted = Contract().accept(routed_views(recompute=True))
+direct = prepare(accepted).publish()
+worker = prepare(
+    accepted,
+    worker_calls=("first-objective", "second-objective"),
+    worker_limit=2,
+).publish()
+```
+
+For this arrangement, worker return and source last use are different boundaries:
+
+```text
+retain old state ---- worker forward returns ---- later derivative ---- release
+     |                         |                        |                |
+     +------------- protected live source or isolated copy -------------+
+                independent production can progress alongside
+```
+
+### What needed connecting
+
+A source retained from current state already owns a cross-block reservation.
+Named evaluation views also temporarily mutate module modes. Acquiring an
+exclusive mode reservation only when the worker enters would require upgrading
+our own retained read reservation, potentially waiting on ourselves. Omitting
+that exclusion would let another reader observe a temporary mode.
+
+Preparation now derives the physical exclusion from the retained calls' declared
+views and acquires it with the live source. This target conservatively holds
+that exclusion for the **whole retained lifetime**, including gaps between
+calls. Later reads and derivative requests in the same region reuse their
+existing source protection rather than reacquire it. An isolated copy owns its
+own views and storage, so its temporary modes do not reserve the current source.
+The physical exclusion grants no numerical-write authority and advances no
+numerical epoch. Non-retained calls in a sequence also receive the existing
+named-mode exclusion when the worker realization is enabled.
+
+Calls receive the same scoped runtime context and no retention/coordination
+handle. They return tensors and ordinary declared results. PyTorch retains the
+tape; backward/contribution, advancement, state checks and outcome association
+remain on the coordinator. The existing sequence emission still resolves
+cross-block values to direct locals. Both `calls` and `inline` configurations
+exercise it; this is not new inline specialization of `Sequence`.
+
+The existing worker cancellation path drains physical execution, including
+selected cleanup, before returning or raising. Only then can sequence failure
+cleanup release remaining retained sources. Release does not erase a ready
+gradient, an already returned optimizer outcome, declared owner-state effects
+or uncertainty. A cancelled queued call retains its `worker_not_started`
+evidence and creates no gradient or numerical-write event; sequence-wide failure
+withholding remains deliberately conservative even in that case.
+
+### Evidence and limits
+
+`test_worker_lifetimes.py` supplies 37 composition/conformance cases across both
+emission configurations, plus two explicit limitation probes described below:
+
+- The same accepted routed-view arrangement runs directly and in workers, with
+  protected current state versus real isolated copies and shared-tape versus
+  recomputation variants. Model state, source stamps, coordinates and
+  per-unit outcomes agree; gradients match the independently established A=3,
+  B=4 oracle. Contribution and advancement entry remain coordinator-side.
+- A bounded producer publishes while a worker is still active. A conflicting
+  reader and replacement remain blocked after worker return, while A's gradient
+  is ready and B still needs earlier state. Last-use release, not thread return,
+  permits conflicting access; unused production is disposed at explicit demand
+  end.
+- Cancellation at the first or later worker, repeated cancellation, late failure,
+  invalid output and ordinary computation failure preserve effects and partial
+  outcomes and drain leases/owned-state reservations. No dependent B derivative
+  or optimizer action runs after the interrupted work.
+- Capacity-wait cancellation never enters selected work or invents gradient
+  outcomes. Ordinary sequences without retention can also use workers.
+- A retained source that needs temporary mode exclusion can still supply its own
+  ordinary reads and later derivative destinations. Known nested conflicting
+  source acquisitions (including a new isolated copy) and non-retained mode
+  upgrades of one's own live source reject during preparation rather than
+  deadlock. The loading-counter fixtures confirm rejection precedes loading.
+
+The result supports composition of these existing mechanisms; it does not
+require another execution-language construct. It does **not** establish minimal
+reservation duration, a general scheduler, arbitrary private wait-cycle analysis,
+concurrent use of arbitrary modules, RNG isolation, all PyTorch thread-local
+state, parallel Python speedup, or GPU/distributed completion. Backward and
+optimizer calls can still block the coordinator. Ordinary Python remains trusted
+to obey declared access/effects and to finish its own synchronous work.
+Cross-block snapshot/restoration, arbitrary nested/dynamic sequences and the
+other previously documented target limits remain unimplemented. The experiment
+does not change production APIs, governing specs or G5 checkboxes.
+
+The required `review-mcp` review returned with no blocking defect in the core
+composition and verified source correspondence, same-region protection reuse,
+physical cancellation drain, mode exclusion and partial outcome preservation.
+It identified two further limits, now exercised explicitly rather than hidden
+behind a general private-wait disclaimer:
+
+- **Undetected cross-scope reservation cycle at this checkpoint.** Two independent sequences can
+  retain X and Y exclusively, then each request a read of the other's source
+  before releasing its own. The target then accepted this graph; both
+  acquisitions wait and neither release can run. A deterministic barrier probe
+  reaches that condition and then cancels, confirming both lifetimes drain.
+  Correct cancellation is not evidence of normal progress or safe scheduling.
+  This is a visible graph-level access relationship, not merely opaque Python
+  behavior. Broader cross-scope reservation readiness remains unestablished.
+- **Conservative false rejection.** A sequence can finish a mode-changing call
+  before waiting on an input from a producer reading that participant. Its
+  per-item reservations do not overlap the input wait, but the inherited
+  whole-block lease/source analysis rejects the worker realization as a cycle.
+  A companion probe demonstrates the direct execution and the conservative
+  preparation rejection. This is a target limitation, not a language rule.
+
+Both were carried into **`sd-scripts-syv.13`**, addressed by the preparation pass
+below. This composition checkpoint did not
+select a general scheduler or claim those interactions are solved. The two
+limitation probes are evidence of gaps, not successful conformance coverage.
+The review's reservation-duplication note is documented in the helper: physical
+uses coalesce on acquisition. Its optional extra freshness assertion was not
+required for correctness under the existing held-source invariants. The reviewer
+read the new test file explicitly from disk; it remains untracked until the user
+chooses to stage it, like other new experiment files. No staging/commit/push was
+performed merely to satisfy the review's process suggestion.
+
+Verification at that checkpoint: **249 tests pass** (237 candidate cases, including 37 new
+composition cases and two limitation probes, plus 12 unchanged execution tests).
+All eight examples, scoped Ruff lint/format, strict `ty` and diff whitespace checks
+pass. The new file passed three repeated processes before review (37 cases) and
+again after adding the limitation probes (39 cases). After review, only tests,
+documentation and an explanatory code comment changed; runtime behavior did not.
+The observed Triton GIL-enablement warning remains: this is CPU
+correctness/coordination evidence, not a GIL-disabled or performance qualification.
+
+## Preparation follows access lifetimes (2026-10-22)
+
+The next bounded pass addresses both recorded cases through one CPU-target
+preparation analysis. `access.py` derives where each activity can wait, what it
+already holds there, what it next requests, and which input producer it awaits.
+These are private, preparation-only facts from the accepted graph, not another
+authored run, a new execution-language vocabulary or a runtime scheduling loop.
+The use helpers are shared with lowering and source acquisition so the check
+follows the target's actual reservation boundaries:
+
+| Execution shape | Access held while waiting for input |
+| --- | --- |
+| Ordinary block's prefix joins | None; prefix readiness precedes its aggregate reservation |
+| Ordinary block's later joins | The block's participant and owner-state reservation |
+| Sequence join (where admitted by the existing contract) | Its own per-item uses plus any live retained sources; prior completed calls have released their per-item access |
+
+Live retentions last until explicit release. Isolated copies request their source
+only while copying, then retain no current-source lease. Physical evaluation-mode
+exclusion remains distinct from numerical-write authority. Joint acquisition is
+all-or-none: its requested resources are not falsely counted as already held.
+Participant resources and owned-state resources use separate keys.
+
+Preparation compares only independently progressing activities. Ordered sequence
+blocks and alternative blocks of one repeated activity are not simultaneous
+waiters. Read/read overlap is compatible; an edge needs an actual read/write or
+write/write conflict, or a declared input-production dependency. Candidate wait
+cycles use at most one phase of each activity. Acyclic tails are removed before
+searching phase-compatible cycles; this is cold-path analysis, not a production
+scalability or hot-path-cost qualification.
+
+The result is a bounded readiness decision, **not automatic rescheduling**:
+
+- The original mutual wait now raises `NotReady` during preparation, before
+  participant loading or owner-state initialization. The diagnostic names the
+  waiting work around the cycle. No hidden serialization, copy, early release,
+  retry or changed algorithm is introduced to make it run.
+- The recorded evaluation-view-then-input sequence prepares and executes under
+  both CPU emission configurations, with the same accepted root and observations
+  as direct execution. Its finished view call is not held across the later join.
+- Two-/three-scope cycles and a cycle combining a retained model, an owned-state
+  lock and a producer input are rejected. Compatible readers, one-way conflicts,
+  release-before-request, real isolated copies and ordered non-simultaneous
+  phases remain executable. A prefix join under a sequence is distinguished
+  from an ordinary block prefix rather than assumed lease-free everywhere.
+
+`test_access.py` adds 19 cases; the two former limitation probes in
+`test_worker_lifetimes.py` are now rejection/execution regression tests. No
+`Engine`, accepted IR, worker-drain protocol, numerical formulas, derivative or
+optimizer ownership, live Trainer, governing spec or G5 checkbox changes.
+
+This does not prove general liveness. Producer-internal acquisition/queue
+protocols, selected Python's hidden waits, backpressure while privately holding
+access, worker-capacity dependencies inside private protocols, dynamic backend
+completion and arbitrary resource scheduling are not inferred. Producer source
+uses are a conservative declared envelope, not an inspection of its algorithm.
+The pre-existing contract's other probe-target restrictions are unchanged; this
+pass replaces the worker preparation recheck, not the eventual full contract.
+For example, the contract still rejects a sequence join after any retention,
+even after release; the derived access model does not broaden that support.
+There is no new universal scheduling policy, GIL-disabled execution, GPU safety,
+recovery or performance claim.
+
+Verification refreshed on 2026-10-23: **269 tests pass** (257 candidate cases and
+12 unchanged execution tests); all eight examples, scoped Ruff lint/format,
+strict `ty` with the documented extra search path, and diff whitespace checks
+pass. The 59 focused access/lifetime cases pass in three separate processes.

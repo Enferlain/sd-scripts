@@ -20,6 +20,7 @@ from typing import Any, Literal, NoReturn, cast
 
 import torch
 
+from .access import check_waits, mode_uses, retained_exclusions, sequence_uses
 from .graph import (
     Accepted,
     Advance,
@@ -44,7 +45,6 @@ from .graph import (
     Use,
     Work,
     block_uses,
-    check_target,
     inputs,
     ordered,
     outputs,
@@ -364,27 +364,30 @@ def prepare(
     return Preparation(state, expected, image, root, MappingProxyType(lowerer.source))
 
 
-def _mode_reservations(work: tuple[Work, ...], accepted: Accepted) -> tuple[Use, ...]:
-    # Temporary eval modes are a physical exclusivity requirement, not an
-    # additional numerical-write grant or a reason to advance numerical epochs.
-    return tuple(
-        Use(use.participant, "write")
-        for item in work
-        if isinstance(item, Call)
-        for use in item.uses
-        if use.view is not None and accepted.views[use.view].evaluation
-    )
-
-
 def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
-    scopes: dict[str, Scope] = {}
     found: set[str] = set()
 
     def visit(scope: Scope):
-        scopes[scope.name] = scope
         if isinstance(scope, Sequence):
-            raise NotReady("Worker target has not established cross-block retained lifetimes")
-        if isinstance(scope, Together):
+            work = tuple(item for _, group in sequence_order(scope) for item in group)
+            exclusions = retained_exclusions(work, accepted)
+            live: dict[str, Retain] = {}
+            for item in work:
+                covered = {name for source in live.values() for name in source.participants}
+                exclusive = {name for key in live for name in exclusions.get(key, ())}
+                if isinstance(item, Retain):
+                    if set(item.participants) & exclusive or set(exclusions.get(item.output, ())) & covered:
+                        raise NotReady("Worker target cannot nest conflicting live retained reservations")
+                    if not item.isolated:
+                        live[item.output] = item
+                elif isinstance(item, Release):
+                    live.pop(item.retained, None)
+                elif isinstance(item, Call) and item.retained is None:
+                    if {use.participant for use in mode_uses((item,), accepted)} & covered:
+                        raise NotReady("Worker target cannot upgrade its own retained state for a mutable view")
+            for block in scope.blocks:
+                visit(block)
+        elif isinstance(scope, Together):
             for child in scope.children:
                 visit(child)
         elif isinstance(scope, Repeat):
@@ -396,8 +399,8 @@ def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
             for item in scope.work:
                 if item.name not in names:
                     continue
-                if not isinstance(item, Call) or item.retained is not None:
-                    raise NotReady("Worker placement is established only for ordinary synchronous calls")
+                if not isinstance(item, Call):
+                    raise NotReady("Worker placement is established only for synchronous calls")
                 function = item.implementation
                 implementation_call = type(function).__call__
                 if any(
@@ -405,22 +408,11 @@ def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
                 ):
                     raise NotReady("Worker placement requires a synchronous implementation")
                 found.add(item.name)
-            # Recheck this target's physical lease/source cycles after adding
-            # eval-view exclusion; do not silently introduce a new deadlock.
-            reservations = _mode_reservations(scope.work, accepted)
-            if reservations:
-                scopes[scope.name] = replace(
-                    scope,
-                    work=tuple(
-                        replace(item, uses=(*item.uses, *_mode_reservations((item,), accepted))) if isinstance(item, Call) else item
-                        for item in scope.work
-                    ),
-                )
 
     visit(accepted.root)
     if names - found:
         raise NotReady(f"Unknown/ inactive worker call: {sorted(names - found)}")
-    check_target(scopes, accepted.units, set(scopes))
+    check_waits(accepted)
 
 
 class Lowering:
@@ -462,7 +454,7 @@ class Lowering:
         work = ordered(block)
         uses = block_uses(block, self.accepted.units)
         if self.workers is not None:
-            uses += _mode_reservations(block.work, self.accepted)
+            uses += mode_uses(block.work, self.accepted)
         states = tuple(dict.fromkeys(name for item in work if isinstance(item, Call) for name in item.states))
         prefix: list[Join] = []
         for item in work:
@@ -534,7 +526,7 @@ class Lowering:
 
         return invoke
 
-    def bind_parts(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False):
+    def bind_parts(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False, retained_exclusive: tuple[str, ...] = ()):
         """One set of runtime rules used by both CPU emission paths."""
         declared = outputs(work)
 
@@ -675,7 +667,7 @@ class Lowering:
             async def invoke(frame):
                 if frame.region is None:
                     raise NotReady("No accepted cross-block lifetime")
-                return await self.state.retain(work, frame.region)
+                return await self.state.retain(work, frame.region, exclusive=retained_exclusive)
         elif isinstance(work, Release):
 
             async def invoke(frame, retained):
@@ -728,8 +720,10 @@ class Lowering:
 
         return invoke, None if isinstance(work, Call) else check_output, failed
 
-    def bind(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False):
-        invoke, check_output, failed = self.bind_parts(work, wait_input=wait_input, keep_graph=keep_graph)
+    def bind(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False, retained_exclusive: tuple[str, ...] = ()):
+        invoke, check_output, failed = self.bind_parts(
+            work, wait_input=wait_input, keep_graph=keep_graph, retained_exclusive=retained_exclusive
+        )
 
         async def checked(frame: Frame, *args):
             self.state.trace.append(("entered", (work.name, frame.invocation)))
@@ -753,6 +747,7 @@ class Lowering:
         """
         groups = sequence_order(scope)
         work_items = tuple(item for _, work in groups for item in work)
+        exclusions = retained_exclusions(work_items, self.accepted) if self.workers is not None else {}
         bound = []
         for index, work in enumerate(work_items):
             keep_graph = (
@@ -760,32 +755,34 @@ class Lowering:
                 and work.retained is not None
                 and any(isinstance(later, Differentiate) and later.retained == work.retained for later in work_items[index + 1 :])
             )
-            function = self.bind(work, keep_graph=keep_graph)
+            exclusive = exclusions.get(work.output, ()) if isinstance(work, Retain) else ()
+            function = self.bind(work, keep_graph=keep_graph, retained_exclusive=exclusive)
 
             def protect(item, selected):
-                uses = getattr(item, "uses", ())
-                if isinstance(item, Call) and item.retained is not None:
-                    uses = ()  # The retained source already owns its protected/copy lifetime.
-                if isinstance(item, (Differentiate, Advance)):
-                    access = "write" if isinstance(item, Advance) else "read"
-                    uses = tuple(Use(member[0], access) for unit in item.units for member in self.accepted.units[unit].members)
-                if isinstance(item, TwoPass):
-                    uses = (*uses, *(Use(member[0], "write") for member in self.accepted.units[item.unit].members))
-                if isinstance(item, Call) and item.evaluation:
-                    uses = (*uses, *(Use(use.participant, "write") for use in item.uses))
+                uses = sequence_uses(item, self.accepted, physical_modes=self.workers is not None)
                 states = item.states if isinstance(item, Call) else ()
 
                 async def protected(frame, *args):
                     writes = {use.participant for use in uses if use.access == "write"}
                     own_live = {
-                        name
+                        name: (model, retained.projection.stamps[name])
                         for retained in self.state.active_retentions.values()
                         if retained.region is frame.region and not retained.isolated
-                        for name in retained.projection.models
+                        for name, model in retained.projection.models.items()
                     }
-                    if writes & own_live or (isinstance(item, Replace) and own_live):
+                    if writes & own_live.keys() or (isinstance(item, Replace) and own_live):
                         raise NotReady("A sequence cannot wait on its own protected old-state last use")
-                    async with self.state.acquire(uses, states) as projection:
+                    # A live source already protects these reads (possibly
+                    # exclusively for mutable modes). Reacquiring would wait
+                    # on ourselves; preserve the source projection instead.
+                    covered = {use.participant: own_live[use.participant] for use in uses if use.participant in own_live}
+                    remaining = tuple(use for use in uses if use.participant not in covered)
+                    async with self.state.acquire(remaining, states) as projection:
+                        if covered:
+                            projection = Projection(
+                                MappingProxyType({**{name: value[0] for name, value in covered.items()}, **projection.models}),
+                                MappingProxyType({**{name: value[1] for name, value in covered.items()}, **projection.stamps}),
+                            )
                         return await selected(replace(frame, projection=projection), *args)
 
                 return protected

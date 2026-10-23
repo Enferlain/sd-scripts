@@ -27,11 +27,9 @@ from .graph import (
     OwnedState,
     Participant,
     Producer,
-    Rejected,
     Repeat,
     Requested,
     Run,
-    Sequence,
     Together,
     Unit,
     Use,
@@ -492,10 +490,6 @@ def test_worker_placement_rejects_unestablished_targets_before_loading():
     with pytest.raises(ValueError):
         prepare(accepted, worker_calls=("async",), worker_limit=0)
     assert not loads
-    sequential = Contract().accept(Run(Sequence("sequence", (Block("work", (Call("call", lambda _: None),)),)), (participant,)))
-    with pytest.raises(NotReady, match="retained lifetimes"):
-        prepare(sequential, worker_calls=("call",))
-    assert not loads
 
 
 @pytest.mark.parametrize("lowering", ("calls", "inline"))
@@ -611,7 +605,7 @@ def test_mode_exclusion_cannot_silently_introduce_source_wait_cycle():
     # Threaded mode exclusion under this target's whole-block lease would
     # prevent the producer supplying its later input. Reject that realization.
     prepare(accepted)
-    with pytest.raises(Rejected, match="lease/source wait cycle"):
+    with pytest.raises(NotReady, match="reservation wait cycle"):
         prepare(accepted, worker_calls=("evaluate",))
 
 

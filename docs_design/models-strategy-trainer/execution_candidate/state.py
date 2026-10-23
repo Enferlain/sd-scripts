@@ -18,6 +18,7 @@ from types import MappingProxyType
 import torch
 from torch import nn
 
+from .access import retained_uses
 from .graph import Accepted, NotReady, OutOfBounds, Retain, Unit, Use, View
 
 
@@ -547,9 +548,9 @@ class RunState:
         for name in {use.participant for use in uses if use.access == "write"}:
             self.numerical_epochs[name] += 1
 
-    async def retain(self, declaration: Retain, region: object) -> RetainedState:
+    async def retain(self, declaration: Retain, region: object, *, exclusive: tuple[str, ...] = ()) -> RetainedState:
         """The copy policy is explicit; revision labels alone never isolate storage."""
-        lease = self.acquire(tuple(Use(name) for name in declaration.participants))
+        lease = self.acquire(retained_uses(declaration, exclusive))
         projection = await lease.__aenter__()
         keep_lease = False
         try:
