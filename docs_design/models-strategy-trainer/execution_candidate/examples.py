@@ -73,6 +73,13 @@ class LearningState:
 
 
 @dataclass
+class AccumulationState:
+    next_count: int = 2
+    decisions: list[int] = field(default_factory=list)
+    observations: list[float] = field(default_factory=list)
+
+
+@dataclass
 class SourceState:
     started: bool = False
     produced: list[int] = field(default_factory=list)
@@ -535,6 +542,99 @@ def routed_views(*, isolated: bool = False, recompute: bool = False) -> Run:
     )
 
 
+def accumulation() -> Run:
+    """A live policy repeats whole two-/three-contribution regions.
+
+    These loops construct accepted work, not hidden runtime optimizer loops.
+    Loss normalization is selected mathematics; the engine only sums the
+    explicitly chained contributions and advances once at the declared end.
+    """
+
+    async def produce(context: ProviderContext):
+        for key in (0, 1):
+            for slot in (2, 1, 0):
+                await context.publish(f"micro-{slot}", Product(key, torch.tensor(float(1 + 3 * key + slot))))
+                await asyncio.sleep(0)
+
+    def choose(counts, state):
+        assert isinstance(state, AccumulationState)
+        key = sum(counts.values())
+        if key == 2:
+            return None
+        count = state.next_count
+        state.decisions.append(count)
+        return Choice(f"window-{count}", key, 1.0 / count)
+
+    def objective(context: Context, value: torch.Tensor):
+        assert isinstance(context.choice.payload, float)
+        return context.models["model"](value).square() * context.choice.payload
+
+    def feedback(context: Context, loss: torch.Tensor):
+        state = context.states["policy"]
+        assert isinstance(state, AccumulationState)
+        state.observations.append(float(loss.detach()))
+        state.next_count = 3 if float(loss.detach()) > 1 else 2
+
+    def window(count: int) -> Sequence:
+        blocks = []
+        previous = None
+        for slot in range(count):
+            prefix = f"w{count}-{slot}"
+            blocks.append(
+                Block(
+                    prefix,
+                    (
+                        Join(f"input-{prefix}", (f"micro-{slot}",), (Output(f"x-{prefix}", torch.Tensor),), correlated),
+                        Retain(f"hold-{prefix}", ("model",), ("weights",), f"old-{prefix}", after=(f"input-{prefix}",)),
+                        Call(
+                            f"objective-{prefix}",
+                            objective,
+                            (f"x-{prefix}",),
+                            (Output(f"loss-{prefix}", torch.Tensor),),
+                            (Use("model"),),
+                            retained=f"old-{prefix}",
+                        ),
+                        Differentiate(
+                            f"backward-{prefix}",
+                            f"loss-{prefix}",
+                            ("weights",),
+                            f"gradient-{prefix}",
+                            retained=f"old-{prefix}",
+                            accumulate=previous,
+                        ),
+                        *(
+                            (Call(f"feedback-{prefix}", feedback, (f"loss-{prefix}",), states=("policy",), after=(f"backward-{prefix}",)),)
+                            if slot == count - 1
+                            else ()
+                        ),
+                        Release(
+                            f"release-{prefix}",
+                            f"old-{prefix}",
+                            after=(f"feedback-{prefix}" if slot == count - 1 else f"backward-{prefix}",),
+                        ),
+                    ),
+                )
+            )
+            previous = f"gradient-{prefix}"
+        assert previous is not None
+        blocks.append(Block(f"finish-{count}", (Advance(f"advance-{count}", previous, ("weights",)),)))
+        return Sequence(f"window-{count}", tuple(blocks))
+
+    return Run(
+        Together(
+            "run",
+            (
+                Producer("source", ("micro-0", "micro-1", "micro-2"), produce, stop_when="learning", remaining="discard"),
+                Repeat("learning", (window(2), window(3)), choose, "policy"),
+            ),
+        ),
+        (scale("model", 2.0),),
+        (Unit("weights", (("model", "weight"),), learning_rate=0.1),),
+        (OwnedState("policy", AccumulationState),),
+        tuple(Channel(f"micro-{slot}", 2) for slot in range(3)),
+    )
+
+
 async def execute(filing: Run, *, contract: Contract | None = None) -> Ready:
     accepted = (contract or Contract()).accept(filing)
     ready = prepare(accepted).publish()
@@ -552,6 +652,7 @@ async def main() -> None:
         ("governed producer shutdown", producer_continuity, Contract()),
         ("routed gradients / protected old state", routed_views, Contract()),
         ("routed gradients / isolated old state", lambda: routed_views(isolated=True, recompute=True), Contract()),
+        ("repeated multi-block accumulation", accumulation, Contract()),
     ):
         ready = await execute(build(), contract=contract)
         assert ready.state.image is not None

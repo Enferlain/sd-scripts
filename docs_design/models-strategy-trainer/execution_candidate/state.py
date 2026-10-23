@@ -49,6 +49,8 @@ class Contribution:
     units: tuple[str, ...]
     prepared_keys: tuple[object, ...]
     region: object | None = field(default=None, repr=False)
+    origins: tuple[int, ...] = ()
+    destination_stamps: tuple[tuple[str, Stamp], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -80,8 +82,12 @@ class UnitRuntime:
     steps: int = 0
     outcomes: deque[UnitOutcome] = field(default_factory=lambda: deque(maxlen=32))
     prepared_key: object = field(default_factory=object, repr=False)
+    window: Contribution | None = field(default=None, repr=False)
+    active_outcomes: dict[int, UnitOutcome] = field(default_factory=dict, repr=False)
 
     def outcome(self, invocation: int) -> UnitOutcome:
+        if invocation in self.active_outcomes:
+            return self.active_outcomes[invocation]
         for record in reversed(self.outcomes):
             if record.invocation == invocation:
                 return record
@@ -492,7 +498,9 @@ class RunState:
             raise NotReady("Stale preparation attempt")
         if self.readers or self.writers or self.state_locks:
             raise NotReady("Publication conflicts with protected current use")
-        if self.active_retentions or (self.image is not None and any(unit.pending is not None for unit in self.image.units.values())):
+        if self.active_retentions or (
+            self.image is not None and any(unit.pending is not None or unit.active_outcomes for unit in self.image.units.values())
+        ):
             raise NotReady("Publication needs a quiescent retained/contribution boundary in this target")
         # Validation is over. No external callbacks or owner initialization here.
         self.image = candidate
@@ -556,8 +564,13 @@ class RunState:
         try:
             assert self.image is not None
             runtimes = {name: self.image.units[name] for name in declaration.units}
-            if any(runtime.pending is not None for runtime in runtimes.values()):
-                raise NotReady("Retention starts from quiescent selected contribution windows")
+            for runtime in runtimes.values():
+                if runtime.pending is not None:
+                    if runtime.window is None:
+                        raise NotReady("Retention needs a verified contribution window")
+                    # A later microbatch may retain current numerical state
+                    # while its region owns an unchanged accumulated window.
+                    self.check_contribution(runtime.window, runtime.window.units, region)
             if declaration.isolated:
                 models = {name: copy.deepcopy(model) for name, model in projection.models.items()}
                 current_keys = set().union(*(_footprint(binding.model) for binding in self.image.bindings.values()))
@@ -657,11 +670,22 @@ class RunState:
         retained: RetainedState | None = None,
         region: object | None = None,
         keep_graph: bool = False,
+        previous: Contribution | None = None,
     ) -> Contribution:
         assert self.image is not None
         runtimes = tuple(self.image.units[name] for name in names)
-        if any(runtime.pending is not None for runtime in runtimes):
-            raise NotReady("This probe profile requires a quiescent contribution window")
+        if previous is None:
+            if any(runtime.pending is not None or runtime.active_outcomes for runtime in runtimes):
+                raise NotReady("An existing contribution window needs an explicit continuation")
+            origins = (invocation,)
+            stamps = tuple(
+                (name, self.stamp(name)) for name in dict.fromkeys(member[0] for unit in runtimes for member in unit.definition.members)
+            )
+        else:
+            self.check_contribution(previous, names, region)
+            if region is None or invocation in previous.origins:
+                raise NotReady("Accumulation requires a new block in the same execution region")
+            origins, stamps = (*previous.origins, invocation), previous.destination_stamps
         if retained is not None:
             self.check_retained(retained, region)
             if set(names) - retained.parameters.keys():
@@ -671,50 +695,87 @@ class RunState:
             for name, runtime in zip(names, runtimes, strict=True)
             for parameter in (retained.parameters[name] if retained is not None else runtime.parameters)
         )
+        for runtime in runtimes:
+            record = runtime.outcome(invocation)
+            runtime.active_outcomes[invocation] = record
+            record.contribution = "uncertain"
+            record.region = region
+            record.source_stamps = tuple(retained.projection.stamps.values()) if retained is not None else ()
         gradients = torch.autograd.grad(loss, parameters, retain_graph=keep_graph)
+        accumulated = []
+        for parameter, gradient in zip((parameter for runtime in runtimes for parameter in runtime.parameters), gradients, strict=True):
+            value = gradient.detach().clone()
+            if previous is not None:
+                if parameter.grad is None:
+                    raise NotReady("An accumulated gradient is missing")
+                value = parameter.grad.detach() + value
+            accumulated.append(value)
+        contribution = Contribution(invocation, names, tuple(unit.prepared_key for unit in runtimes), region, origins, stamps)
         offset = 0
         for runtime in runtimes:
             record = runtime.outcome(invocation)
             record.region = region
-            record.source_stamps = tuple(retained.projection.stamps.values()) if retained is not None else ()
             for parameter in runtime.parameters:
                 # A custom autograd backward can return an alias of source
                 # state. A cross-block gradient needs its own storage.
-                parameter.grad = gradients[offset].detach().clone()
+                parameter.grad = accumulated[offset]
                 offset += 1
             runtime.pending = invocation
+            runtime.window = contribution
             record.contribution = "ready"
-        return Contribution(invocation, names, tuple(unit.prepared_key for unit in runtimes), region)
+        return contribution
+
+    def check_contribution(self, contribution: Contribution, names: tuple[str, ...], region: object | None) -> None:
+        assert self.image is not None
+        runtimes = tuple(self.image.units[name] for name in names)
+        if (
+            not isinstance(contribution, Contribution)
+            or not contribution.origins
+            or contribution.region is not region
+            or contribution.units != names
+            or len(contribution.prepared_keys) != len(runtimes)
+            or any(key is not unit.prepared_key for key, unit in zip(contribution.prepared_keys, runtimes, strict=True))
+            or any(unit.window is not contribution or unit.pending != contribution.invocation for unit in runtimes)
+            or any(tuple(unit.active_outcomes) != contribution.origins for unit in runtimes)
+            or any(parameter.grad is None for unit in runtimes for parameter in unit.parameters)
+            or any(self.stamp(name) != stamp for name, stamp in contribution.destination_stamps)
+        ):
+            raise NotReady("Stale, misaddressed or unverified gradient handback")
 
     def advance(self, contribution: Contribution, names: tuple[str, ...], invocation: int, *, region: object | None = None) -> None:
         assert self.image is not None
         runtimes = tuple(self.image.units[name] for name in names)
-        if (
-            (contribution.region is not region or (region is None and contribution.invocation != invocation))
-            or contribution.units != names
-            or len(contribution.prepared_keys) != len(runtimes)
-            or any(key is not runtime.prepared_key for key, runtime in zip(contribution.prepared_keys, runtimes, strict=True))
-            or any(unit.pending != contribution.invocation for unit in runtimes)
-        ):
+        self.check_contribution(contribution, names, region)
+        if region is None and contribution.invocation != invocation:
             raise NotReady("Stale, misaddressed or unverified gradient handback")
         subjects = {member[0] for runtime in runtimes for member in runtime.definition.members}
         if any(not retained.isolated and subjects & retained.projection.models.keys() for retained in self.active_retentions.values()):
             raise NotReady("Ready gradients do not permit an update before protected old-state last use")
         for runtime in runtimes:
-            record = runtime.outcome(contribution.invocation)
-            record.advancement_invocation = invocation
+            records = tuple(runtime.active_outcomes[origin] for origin in contribution.origins)
+            for record in records:
+                record.advancement_invocation = invocation
             if runtime.definition.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(runtime.parameters, runtime.definition.clip_norm)
-            record.optimizer = "uncertain"  # entering backend, not proof of a change
+            for record in records:
+                record.optimizer = "uncertain"  # entering backend, not proof of a change
             runtime.optimizer.step()
-            record.optimizer = "returned"
+            for record in records:
+                record.optimizer = "returned"
             runtime.steps += 1
             for participant in {member[0] for member in runtime.definition.members}:
                 self.numerical_epochs[participant] += 1  # conservative source-state epoch
-            record.reset = "uncertain"
+            for record in records:
+                record.reset = "uncertain"
             runtime.optimizer.zero_grad(set_to_none=True)
-            record.reset = "returned"
+            for record in records:
+                record.reset = "returned"
             runtime.pending = None
+            runtime.window = None
+        # Keep the full pending-window evidence through partial joint failure;
+        # the bounded completed-history deque must not evict live origins.
+        for runtime in runtimes:
+            runtime.active_outcomes.clear()
 
     async def replace(self, proposal: Replacement, participant: str) -> None:
         """Replacement-only path; other structural changes are not implemented."""
@@ -725,7 +786,7 @@ class RunState:
                 raise NotReady("Stale or misaddressed replacement proposal")
             if proposal.model is self.image.bindings[participant].model:
                 raise NotReady("In-place preparation requires an unimplemented destructive protocol")
-            if any(unit.pending is not None for unit in self.image.units.values()):
+            if any(unit.pending is not None or unit.active_outcomes for unit in self.image.units.values()):
                 raise NotReady("Replacement with unfinished gradients is unsupported")
             if self.active_retentions:
                 raise NotReady("Replacement with unfinished retained derivative work is unsupported")
@@ -762,7 +823,7 @@ class RunState:
             or self.unusable_states
         ):
             raise NotReady("Capture needs a finished, usable, quiescent run")
-        if self.image is None or any(unit.pending is not None for unit in self.image.units.values()):
+        if self.image is None or any(unit.pending is not None or unit.active_outcomes for unit in self.image.units.values()):
             raise NotReady("Capture cannot omit an unfinished contribution")
         if any(not feed.closed or feed.ready or feed.failure for feed in self.feeds.values()):
             raise NotReady("Capture cannot reconstruct unfinished provider/handoff work")

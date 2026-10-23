@@ -784,7 +784,7 @@ def test_insufficient_reorder_capacity_fails_explicitly_without_eviction_or_hang
 def test_acceptance_rejects_malformed_kinds_before_loading_or_lowering():
     wrong = cast(Block, Together("not-a-block", ()))
     filing = Run(Repeat("loop", (wrong,), lambda *args: None, "policy"), states=(OwnedState("policy", lambda: None),))
-    with pytest.raises(Rejected, match="Block alternatives"):
+    with pytest.raises(Rejected, match="Block or Sequence alternatives"):
         Contract().accept(filing)
     filing = replace(
         filing,

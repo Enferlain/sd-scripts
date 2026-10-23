@@ -141,7 +141,7 @@ def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
     def quiescence() -> Access:
         return _access(tuple(Use(name, "write") for name in accepted.participants), tuple(accepted.states))
 
-    def sequence(scope: Sequence):
+    def sequence(scope: Sequence, activity: str):
         work = tuple(item for _, group in sequence_order(scope) for item in group)
         exclusions = retained_exclusions(work, accepted)
         live: dict[str, Access] = {}
@@ -150,7 +150,7 @@ def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
             where = f"{scope.name}/{item.name}"
             if isinstance(item, Retain):
                 requested = _access(retained_uses(item, exclusions.get(item.output, ())))
-                add(scope.name, where, held, requested)
+                add(activity, where, held, requested)
                 if not item.isolated:
                     live[item.output] = requested
             elif isinstance(item, Release):
@@ -161,24 +161,27 @@ def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
                 requested = {key: mode for key, mode in requested.items() if key not in held}
                 if isinstance(item, Replace):
                     requested = quiescence()
-                add(scope.name, where, held, requested)
+                add(activity, where, held, requested)
                 if isinstance(item, Join):
                     # Sequence Join acquires its own uses BEFORE input waiting,
                     # unlike the ordinary block's prefix-readiness path.
-                    add(scope.name, where, _merge(held, requested), {}, item.channels)
+                    add(activity, where, _merge(held, requested), {}, item.channels)
 
     def visit(scope: Scope):
         if isinstance(scope, Together):
             for child in scope.children:
                 visit(child)
         elif isinstance(scope, Sequence):
-            sequence(scope)
+            sequence(scope, scope.name)
         elif isinstance(scope, Block):
             block(scope, scope.name)
         elif isinstance(scope, Repeat):
             add(scope.name, f"{scope.name}/policy", {}, _access((), (scope.state,)))
             for child in scope.blocks:
-                block(child, scope.name)  # Alternatives do not run concurrently.
+                if isinstance(child, Sequence):
+                    sequence(child, scope.name)
+                else:
+                    block(child, scope.name)  # Alternatives do not run concurrently.
         elif isinstance(scope, Requested) and scope.enabled:
             block(scope.block, scope.name)
         elif isinstance(scope, Producer):

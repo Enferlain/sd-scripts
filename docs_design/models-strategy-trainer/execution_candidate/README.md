@@ -1244,8 +1244,9 @@ completion and arbitrary resource scheduling are not inferred. Producer source
 uses are a conservative declared envelope, not an inspection of its algorithm.
 The pre-existing contract's other probe-target restrictions are unchanged; this
 pass replaces the worker preparation recheck, not the eventual full contract.
-For example, the contract still rejects a sequence join after any retention,
-even after release; the derived access model does not broaden that support.
+At this checkpoint, the contract still rejected a sequence join after any
+retention, even after release. The repeated-region extension below admits
+joins after release; its access analysis retains the actual lease boundaries.
 There is no new universal scheduling policy, GIL-disabled execution, GPU safety,
 recovery or performance claim.
 
@@ -1253,3 +1254,93 @@ Verification refreshed on 2026-10-23: **269 tests pass** (257 candidate cases an
 12 unchanged execution tests); all eight examples, scoped Ruff lint/format,
 strict `ty` with the documented extra search path, and diff whitespace checks
 pass. The 59 focused access/lifetime cases pass in three separate processes.
+
+## Repeated multi-block regions and accumulation (2026-10-23)
+
+`accumulation()` in `examples.py` connects an independent input producer with
+a live repeat policy whose alternatives are complete multi-block sequences:
+
+```text
+Together
+|-- input producer: bounded, addressed microbatch channels
+`-- learning: accepted live policy
+    |-- two-contribution sequence
+    |   |-- input -> retain -> objective -> contribute -> release
+    |   |-- input -> retain -> objective -> extend contribution -> release
+    |   `-- clip/advance/reset the completed window
+    `-- three-contribution sequence: one additional contribution block
+```
+
+The alternatives are prepared once, not concurrent siblings. Feedback from
+selected computation changes the next policy choice: the example selects a
+two-contribution window then a three-contribution window; zero-loss feedback
+instead selects the two-contribution alternative again. The normal engine is
+unchanged. No algorithm-specific loop is hidden inside an ordinary operation.
+
+### What the composition required
+
+- `Repeat` can select a prepared `Sequence` as well as a `Block`. Each sequence
+  invocation has fresh locals and a distinct execution-region correspondence.
+  The selected work key and payload reach all of its blocks. Per-block progress
+  remains separate from successful whole-region completion, which can trigger
+  capability work. Capability invocations may interleave; their association is
+  not inferred from a guessed global invocation order.
+- `Differentiate.accumulate` explicitly links the preceding contribution into
+  the next one. Acceptance checks one unbranched chain per unit, matching
+  destinations, and final advancement from the latest contribution. This target
+  still permits one contribution per unit per block and one final advancement
+  per unit per sequence. It does not implicitly sum unrelated losses.
+- The optimization owner accumulates independently stored gradients and checks
+  the current window, originating invocations, prepared members, execution
+  region and destination-state stamps. An old or copied token, foreign region,
+  missing gradient or intervening destination write cannot authorize a later
+  contribution/update. Normalization remains selected mathematics; the engine
+  does not guess averaging from a microbatch count. Clipping is applied once
+  at the declared completed window, before its optimizer call.
+- A later microbatch may retain numerical state while its region owns a verified,
+  unchanged pending window. Its preceding source lease must be released before
+  another input wait; a join with a live retention still rejects. Releasing a
+  source does not erase pending gradients or permit replacement/publication.
+- The preparation access analysis attributes the sequence's phases to its repeat
+  activity, not to independently progressing microblocks. Existing cross-activity
+  cycle rejection therefore still applies without treating ordered alternatives
+  as simultaneous owners.
+
+Pending-window outcome records are retained independently of the bounded
+completed-history deque. A 36-contribution failure test verifies that diagnostic
+history eviction cannot discard live origins. When a joint advancement returns
+for A but fails inside B, all contributing origins retain A's returned/reset
+outcome and B's uncertain/unattempted outcome separately. There is no atomic
+update, rollback, parameter-change detection or safe automatic retry.
+
+### Evidence and limits
+
+`test_repeated_regions.py` adds 37 cases. Direct PyTorch gradients/weights agree
+with the connected example under both CPU emissions, with and without selected
+worker calls. Other cases cover genuinely different feedback choices, mixed
+state-only sequence/block alternatives without input or optimizer placeholders,
+independent production between contributions, complete-window clipping,
+capability request identity, malformed/incomplete chains, missing later input,
+intervening writes, repeated worker cancellation/drain, partial advancement,
+long-window outcome retention and preparation-time wait-cycle rejection.
+Missing gradient storage and failed pre-window evidence also prevent extension,
+advancement, replacement/publication or capture. Sequence bodies currently share
+one emission path under both lowering flags; these runs qualify compatibility
+with both configurations, not independent sequence-specialization performance.
+Static discovery helpers are disabled after preparation in the numerical test;
+changing policy choices do not reconstruct or rediscover either alternative.
+
+This extends the existing hierarchy; it is not arbitrary recursive composition.
+The repeated alternatives are finite, predeclared blocks or sequences of blocks.
+It does not add nested repeats inside a sequence, dynamically grow an open
+window, carry a window between repeat iterations, or generalize unit routing
+mid-window. Destination freshness uses conservative participant-level numerical
+epochs rather than fine-grained parameter versions. Backward/advancement remain
+coordinator-owned CPU work; GPU/distributed synchronization, native free-thread
+safety, higher-order gradients and durable continuation are not established.
+The earlier private-provider/backpressure and backend limits remain.
+
+Verification: **306 tests pass** (294 candidate cases plus 12 unchanged execution
+tests), and all nine examples execute. Scoped lint, formatting, strict types
+and whitespace checks pass. This remains isolated candidate evidence; no live
+Trainer, governing requirements or G5 task status changes.

@@ -128,7 +128,7 @@ class WorkFailed(RuntimeError):
         self.unit_outcomes: tuple[UnitOutcome, ...] = tuple(
             copy.copy(outcome)
             for runtime in frame.state.image.units.values()
-            for outcome in runtime.outcomes
+            for outcome in {record.invocation: record for record in (*runtime.outcomes, *runtime.active_outcomes.values())}.values()
             if outcome.invocation == frame.invocation or (frame.region is not None and outcome.region is frame.region)
         )
 
@@ -176,14 +176,16 @@ class GrantedAccess:
     def __init__(self, state: RunState, unit: str, invocation: int):
         assert state.image is not None
         self._runtime = state.image.units[unit]
-        if self._runtime.pending is not None:
+        if self._runtime.pending is not None or self._runtime.active_outcomes:
             raise NotReady("Two-pass entry requires a quiescent window")
         self.invocation = invocation
         self.parameters = self._runtime.parameters
         self.original = tuple(parameter.detach().clone() for parameter in self.parameters)
         self.phases: list[str] = []
         self.restored = False
-        self._runtime.outcome(invocation).contribution = "unverified_grant"
+        record = self._runtime.outcome(invocation)
+        record.contribution = "unverified_grant"
+        self._runtime.active_outcomes[invocation] = record
 
     def backward(self, loss: torch.Tensor) -> None:
         if self.phases not in ([], ["backward", "temporary_edit", "intermediate_reset"]):
@@ -230,7 +232,9 @@ class GrantedAccess:
             raise NotReady("No final gradient to hand back")
         self._runtime.pending = self.invocation
         self._runtime.outcome(self.invocation).contribution = "granted_ready"
-        return Contribution(self.invocation, (unit,), (self._runtime.prepared_key,))
+        contribution = Contribution(self.invocation, (unit,), (self._runtime.prepared_key,), origins=(self.invocation,))
+        self._runtime.window = contribution
+        return contribution
 
 
 class ProviderContext:
@@ -440,7 +444,7 @@ class Lowering:
         if isinstance(scope, Together):
             for child in scope.children:
                 self._connect(child)
-        elif isinstance(scope, Sequence):
+        elif isinstance(scope, (Sequence, Repeat)):
             for block in scope.blocks:
                 self._connect(block)
         elif isinstance(scope, Requested) and scope.enabled:
@@ -649,7 +653,9 @@ class Lowering:
                 return values[0] if len(values) == 1 else values
         elif isinstance(work, Differentiate):
 
-            async def invoke(frame, loss, retained=None):
+            async def invoke(frame, loss, *links):
+                retained = links[0] if work.retained is not None else None
+                previous = links[-1] if work.accumulate is not None else None
                 return self.state.contribute(
                     loss,
                     work.units,
@@ -657,6 +663,7 @@ class Lowering:
                     retained=retained,
                     region=frame.region,
                     keep_graph=keep_graph,
+                    previous=previous,
                 )
         elif isinstance(work, Advance):
 
@@ -739,7 +746,7 @@ class Lowering:
 
         return checked
 
-    def sequence(self, scope: Sequence) -> Callable[[], Coroutine[Any, Any, None]]:
+    def sequence(self, scope: Sequence) -> Callable[[Choice | None, str], Awaitable[int]]:
         """Lower cross-block links to locals, with work-sized current-use protection.
 
         Retained sources have their OWN lifetime. Acquiring a whole block's
@@ -789,10 +796,14 @@ class Lowering:
 
             bound.append(protect(work, function))
 
-        async def enter(name: str, region: object):
+        async def enter(name: str, region: object, selected: Choice | None):
+            # The immediate owner is this Sequence. Its Repeat, when present,
+            # receives a separate whole-region Completion using the last
+            # invocation, not a fabricated flat dispatch-scope identity.
             self.state.invocation += 1
-            frame = Frame(self.state, scope.name, Choice(name), Projection({}, {}), self.state.invocation, region=region)
-            self.state.trace.append(("invocation", (scope.name, name, "", frame.invocation)))
+            choice = selected if selected is not None else Choice(name)
+            frame = Frame(self.state, scope.name, choice, Projection({}, {}), self.state.invocation, region=region)
+            self.state.trace.append(("invocation", (scope.name, name, choice.key, frame.invocation)))
             return frame
 
         def completed(name: str):
@@ -800,11 +811,11 @@ class Lowering:
             counts[name] = counts.get(name, 0) + 1
 
         namespace: dict[str, object] = {"enter": enter, "completed": completed}
-        lines = ["async def body(region):", "    choice = None"]
+        lines = ["async def body(region, selected):", "    choice = selected.payload if selected is not None else None"]
         variables = {"choice": "choice"}
         index = 0
         for block, work in groups:
-            lines.append(f"    frame = await enter({block.name!r}, region)")
+            lines.append(f"    frame = await enter({block.name!r}, region, selected)")
             for item in work:
                 namespace[f"work_{index}"] = bound[index]
                 args = ", ".join(["frame", *(variables[value] for value in inputs(item))])
@@ -816,20 +827,22 @@ class Lowering:
                 variables.update({output.name: name for output, name in zip(produced, names, strict=True)})
                 index += 1
             lines.append(f"    completed({block.name!r})")
+        lines.append("    return frame.invocation")
         source = "\n".join(lines) + "\n"
         self.source[scope.name] = source
         exec(compile(source, f"<candidate:{scope.name}>", "exec"), namespace)
-        body = cast(Callable[[object], Awaitable[None]], namespace["body"])
+        body = cast(Callable[[object, Choice | None], Awaitable[int]], namespace["body"])
         participants = {use.participant for item in work_items for use in getattr(item, "uses", ())} | {
             name for item in work_items if isinstance(item, Retain) for name in item.participants
         }
         owner_states = {name for item in work_items if isinstance(item, Call) for name in item.states}
 
-        async def sequence():
+        async def sequence(choice: Choice | None, parent: str) -> int:
             region = object()  # Execution correspondence, not a semantic identity.
             primary = None
+            invocation = 0
             try:
-                await body(region)
+                invocation = await body(region, choice)
             except BaseException as error:
                 primary = error
                 self.state.unusable.update(participants)
@@ -861,6 +874,7 @@ class Lowering:
                 raise primary
             if cleanup_failure is not None:
                 raise cleanup_failure
+            return invocation
 
         return sequence
 
@@ -879,7 +893,12 @@ class Lowering:
 
     def _scope(self, scope: Scope) -> Callable[[], Coroutine[Any, Any, None]]:
         if isinstance(scope, Sequence):
-            return self.sequence(scope)
+            sequence = self.sequence(scope)
+
+            async def once():
+                await sequence(None, scope.name)
+
+            return once
         if isinstance(scope, Block):
             body = self.block(scope)
 
@@ -900,7 +919,7 @@ class Lowering:
             return together
 
         if isinstance(scope, Repeat):
-            blocks = {block.name: self.block(block) for block in scope.blocks}
+            blocks = {block.name: self.sequence(block) if isinstance(block, Sequence) else self.block(block) for block in scope.blocks}
             subscribers = tuple(self.requests.get(scope.name, ()))
             counts = self.state.coordinates.setdefault(scope.name, {})
             self.source[scope.name] = f"selected policy -> bounded alternatives {tuple(blocks)}; {len(subscribers)} request connections"

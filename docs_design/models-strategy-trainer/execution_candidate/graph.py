@@ -105,6 +105,7 @@ class Differentiate:
     output: str
     after: tuple[str, ...] = ()
     retained: str | None = None
+    accumulate: str | None = None
 
 
 @dataclass(frozen=True)
@@ -181,7 +182,7 @@ class Completion:
 @dataclass(frozen=True)
 class Repeat:
     name: str
-    blocks: tuple[Block, ...]
+    blocks: tuple[Block | Sequence, ...]
     policy: Callable[[Mapping[str, int], object], Choice | None]
     state: str
 
@@ -217,7 +218,7 @@ class Together:
 class Sequence:
     """Ordered blocks with explicit value links crossing their boundaries.
 
-    This target supports one first-order window per unit in the sequence.
+    This target supports one chained first-order window per unit in the sequence.
     It does not prescribe a universal training action or optimizer cadence.
     """
 
@@ -264,7 +265,7 @@ def inputs(work: Work) -> tuple[str, ...]:
     if isinstance(work, (Call, TwoPass)):
         return (*work.inputs, work.retained) if isinstance(work, Call) and work.retained is not None else work.inputs
     if isinstance(work, Differentiate):
-        return (work.loss, work.retained) if work.retained is not None else (work.loss,)
+        return (work.loss, *(value for value in (work.retained, work.accumulate) if value is not None))
     if isinstance(work, Advance):
         return (work.contribution,)
     if isinstance(work, Replace):
@@ -474,7 +475,9 @@ class Contract:
             groups = sequence_order(block) if spanning else ((block, ordered(block)),)
             work_items = tuple(work for _, group in groups for work in group)
             contributions: dict[str, tuple[str, ...]] = {}
-            phase_owners: dict[str, str] = {}
+            window_tails: dict[str, str] = {}
+            contribution_blocks: dict[str, str] = {}
+            work_blocks = {id(work): child.name for child, group in groups for work in group}
             advancements: set[str] = set()
             retentions: dict[str, Retain] = {}
             released: set[str] = set()
@@ -544,7 +547,7 @@ class Contract:
                 if isinstance(work, Call) and set(work.states) - states.keys():
                     raise Rejected(f"{work.name}: unknown owned state")
                 if isinstance(work, Join):
-                    if spanning and retentions:
+                    if spanning and retentions.keys() - released:
                         raise Rejected("This target does not wait for producer inputs inside a retained sequence")
                     joins.update(work.channels)
                     if not work.channels or len(work.channels) != len(work.outputs) or len(set(work.channels)) != len(work.channels):
@@ -563,18 +566,31 @@ class Contract:
                     raise Rejected(f"{work.name}: unknown granted unit")
                 destinations = work.units if isinstance(work, Differentiate) else (work.unit,) if isinstance(work, TwoPass) else ()
                 for destination in destinations:
-                    if destination in phase_owners:
+                    assert isinstance(work, (Differentiate, TwoPass))
+                    previous = work.accumulate if isinstance(work, Differentiate) else None
+                    if previous is not None and (
+                        not spanning
+                        or contributions.get(previous) != destinations
+                        or window_tails.get(destination) != previous
+                        or contribution_blocks.get(destination) == work_blocks[id(work)]
+                        or destination in advancements
+                    ):
+                        raise Rejected(f"{work.name}: accumulation needs the current cross-block contribution")
+                    if destination in window_tails and previous is None:
                         raise Rejected(f"{work.name}: competing backward ownership for {destination}")
-                    phase_owners[destination] = work.name
+                    window_tails[destination] = work.output
+                    contribution_blocks[destination] = work_blocks[id(work)]
                 if isinstance(work, Advance) and contributions.get(work.contribution) != work.units:
                     raise Rejected(f"{work.name}: unmatched contribution/handback")
                 if isinstance(work, Advance):
+                    if any(window_tails.get(name) != work.contribution for name in work.units):
+                        raise Rejected(f"{work.name}: advancement must use the complete contribution chain")
                     if set(work.units) & advancements:
                         raise Rejected(f"{work.name}: repeated final advancement")
                     advancements.update(work.units)
                 if isinstance(work, Replace) and work.participant not in participants:
                     raise Rejected(f"{work.name}: undeclared replacement")
-            if phase_owners.keys() != advancements:
+            if window_tails.keys() != advancements:
                 raise Rejected(f"{block.name}: this target requires each local window to reach one final advancement")
             if retentions.keys() != released:
                 raise Rejected(f"{block.name}: retained state needs one explicit last-use release")
@@ -605,8 +621,8 @@ class Contract:
             elif isinstance(scope, Repeat):
                 if scope.state not in states or not scope.blocks:
                     raise Rejected(f"{scope.name}: missing policy state or alternatives")
-                if any(not isinstance(block, Block) for block in scope.blocks):
-                    raise Rejected(f"{scope.name}: this candidate requires Block alternatives")
+                if any(not isinstance(block, (Block, Sequence)) for block in scope.blocks):
+                    raise Rejected(f"{scope.name}: this candidate requires Block or Sequence alternatives")
                 for block in scope.blocks:
                     visit(block, paths[scope.name], invoked=True, enabled=enabled)
             elif isinstance(scope, Requested):
