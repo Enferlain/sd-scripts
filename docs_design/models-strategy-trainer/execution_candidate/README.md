@@ -1344,3 +1344,58 @@ Verification: **306 tests pass** (294 candidate cases plus 12 unchanged executio
 tests), and all nine examples execute. Scoped lint, formatting, strict types
 and whitespace checks pass. This remains isolated candidate evidence; no live
 Trainer, governing requirements or G5 task status changes.
+
+## Integrated pending-work ownership (2026-10-24)
+
+The accumulation investigation exposed parallel bookkeeping: a pending
+invocation, a current contribution and live outcome records were independently
+updated by ordinary backward and by the two-pass grant. These now belong to
+one private pending-work lifetime per optimization unit:
+
+```text
+idle -> entered/unverified -> verified handback -> advancement claimed
+                                                   |
+                                  reached mechanics recorded per unit
+                                                   |
+                                  all retained mechanics returned -> idle
+```
+
+An explicit further contribution extends an unchanged verified window before
+advancement. Any incomplete/failed entry or advancement stays unfinished;
+there is no automatic reset, reopening or retry. In a partial joint failure,
+even a unit whose optimizer and reset returned retains its live evidence until
+the whole selected advancement completes or an unimplemented recovery policy
+resolves it. Claiming work is not evidence that a backend call was attempted.
+
+Both ordinary backward and the granted executor register entry through the
+same optimization-owner operation before doing work. The grant still owns
+only its accepted two-pass phases and proves restoration before the owner
+accepts its handback; it no longer writes runtime readiness or outcome fields.
+Both paths publish their verified contribution through the same owner. Final
+clipping, optimizer advancement and reset remain retained mechanics.
+
+The old `pending`, `window` and `active_outcomes` attributes are derived
+diagnostic projections, not three writable sources of truth. Live records
+remain separate from bounded historical diagnostics; reports copy owner facts
+rather than changing them. Retention asks whether an unfinished window has a
+valid same-region continuation. Publication, replacement and capture use the
+same owner-held unfinished-work condition, including failed work that never
+produced a ready gradient. Final advancement claims every selected unit before
+clipping/backend callbacks, so re-entry or an early failure cannot reuse the
+old readiness. The reached optimizer/reset outcomes remain independently
+reportable, without numerical-change detection or atomicity claims.
+
+`test_optimization_ownership.py` adds 26 cases covering both entry paths and CPU emissions,
+unverified entry, duplicate handback, failed extension, read-only diagnostics,
+clipping/optimizer/reset failure, backend re-entry and partial joint evidence
+after history eviction. A grant can progress while an independent unit has
+pending gradients; wrong-invocation handback and repeated failed-grant entry
+reject without erasing that work. Existing connected cases still supply the numerical,
+worker cancellation/drain, independent-production and dynamic-policy evidence.
+This is an internal lifecycle integration, not a new graph construct, public
+authoring API, numerical algorithm, scheduler or production backend. All earlier
+composition, recovery, GPU/distributed and performance limits remain.
+
+Verification: **332 tests pass** (320 candidate cases and 12 unchanged execution
+tests), all nine examples execute, and scoped lint, formatting, strict types
+and whitespace checks pass.

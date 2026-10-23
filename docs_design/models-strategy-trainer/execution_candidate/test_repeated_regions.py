@@ -664,11 +664,8 @@ def test_empty_origin_correspondence_rejects_explicitly_instead_of_using_a_fallb
     assert state.image is not None
     unit = state.image.units["weights"]
     contribution = state.contribute(unit.parameters[0].square(), ("weights",), 1)
-    # Fault injection into the private runtime: no legitimate creation path
-    # produces an empty origin set, but inconsistent evidence must fail closed.
+    # Invalid handback cannot replace the owner's current correspondence.
     empty = replace(contribution, origins=())
-    unit.window = empty
-    unit.active_outcomes.clear()
     with pytest.raises(NotReady, match="gradient handback"):
         state.advance(empty, ("weights",), 1)
-    assert unit.steps == 0 and unit.pending == 1
+    assert unit.steps == 0 and unit.pending == 1 and unit.window is contribution

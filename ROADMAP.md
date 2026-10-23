@@ -1,5 +1,16 @@
 # Project Roadmap & Future Ideas
 
+## Training Architecture Research
+
+The `rework-model-strategy-trainer` OpenSpec governs the target architecture;
+the active production stack described below has not yet been migrated. The
+isolated [execution candidate](docs_design/models-strategy-trainer/execution_candidate/README.md)
+now exercises repeated multi-block accumulation and shared pending-work
+ownership across ordinary/granted execution and state-lifecycle consumers
+(`sd-scripts-syv.14`, `sd-scripts-syv.15`). These are candidate findings, not
+completion of G5 production implementation, GPU/distributed preparation or
+durable continuation.
+
 ## Architecture Overview
 
 The active training stack follows a `train.py` + `Trainer` + `TrainingMode` + `TrainingStrategy` pattern:

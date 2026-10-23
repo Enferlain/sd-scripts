@@ -73,27 +73,130 @@ class UnitOutcome:
 
 
 @dataclass
+class _PendingWork:
+    """Live owner evidence, independent of bounded diagnostic history.
+
+    Entry exists before numerical or granted work starts. A verified handback
+    makes it ready; advancement consumes that readiness before any fallible
+    mechanics. Partial joint completion retains every unit's evidence until
+    the complete selected advancement has returned.
+    """
+
+    units: tuple[str, ...]
+    prepared_keys: tuple[object, ...]
+    region: object | None
+    destination_stamps: tuple[tuple[str, Stamp], ...]
+    records: dict[int, UnitOutcome] = field(default_factory=dict)
+    ready: Contribution | None = None
+    advancing: bool = False
+
+
+@dataclass
 class UnitRuntime:
     definition: Unit
     ref: str
     parameters: tuple[nn.Parameter, ...]
     optimizer: torch.optim.Optimizer
-    pending: int | None = None
     steps: int = 0
     outcomes: deque[UnitOutcome] = field(default_factory=lambda: deque(maxlen=32))
     prepared_key: object = field(default_factory=object, repr=False)
-    window: Contribution | None = field(default=None, repr=False)
-    active_outcomes: dict[int, UnitOutcome] = field(default_factory=dict, repr=False)
+    _work: _PendingWork | None = field(default=None, repr=False)
 
-    def outcome(self, invocation: int) -> UnitOutcome:
-        if invocation in self.active_outcomes:
-            return self.active_outcomes[invocation]
-        for record in reversed(self.outcomes):
-            if record.invocation == invocation:
-                return record
-        record = UnitOutcome(self.ref, invocation)
+    @property
+    def unfinished(self) -> bool:
+        return self._work is not None
+
+    @property
+    def window(self) -> Contribution | None:
+        """Read-only diagnostic projection, not independent readiness state."""
+        return self._work.ready if self._work is not None else None
+
+    @property
+    def pending(self) -> int | None:
+        return self.window.invocation if self.window is not None else None
+
+    @property
+    def active_outcomes(self) -> Mapping[int, UnitOutcome]:
+        """Diagnostic snapshot; editing a report cannot change live evidence."""
+        return MappingProxyType({key: copy.copy(record) for key, record in self._work.records.items()} if self._work is not None else {})
+
+    def check_entry(self, previous: Contribution | None) -> None:
+        if self._work is None:
+            if previous is None:
+                return
+        elif previous is not None and self.accepts(previous):
+            return
+        raise NotReady("An existing contribution window needs an explicit verified continuation")
+
+    def begin(
+        self,
+        invocation: int,
+        units: tuple[str, ...],
+        prepared_keys: tuple[object, ...],
+        region: object | None,
+        destination_stamps: tuple[tuple[str, Stamp], ...],
+        source_stamps: tuple[Stamp, ...],
+        *,
+        previous: Contribution | None = None,
+        granted: bool = False,
+    ) -> None:
+        self.check_entry(previous)
+        if self._work is None:
+            self._work = _PendingWork(units, prepared_keys, region, destination_stamps)
+        if invocation in self._work.records:
+            raise NotReady("Contribution invocation is already active")
+        record = UnitOutcome(
+            self.ref,
+            invocation,
+            contribution="unverified_grant" if granted else "uncertain",
+            region=region,
+            source_stamps=source_stamps,
+        )
+        self._work.records[invocation] = record
         self.outcomes.append(record)
-        return record
+
+    def accepts(self, contribution: Contribution) -> bool:
+        return (
+            self._work is not None
+            and not self._work.advancing
+            and self._work.ready is contribution
+            and tuple(self._work.records) == contribution.origins
+            and all(parameter.grad is not None for parameter in self.parameters)
+        )
+
+    def handback(self, contribution: Contribution, *, granted: bool) -> None:
+        assert self._work is not None
+        self._work.records[contribution.invocation].contribution = "granted_ready" if granted else "ready"
+        self._work.ready = contribution
+
+    def claim_advancement(self) -> None:
+        assert self._work is not None and self._work.ready is not None and not self._work.advancing
+        self._work.advancing = True
+
+    def start_advancement(self, invocation: int) -> tuple[UnitOutcome, ...]:
+        assert self._work is not None and self._work.advancing
+        records = tuple(self._work.records.values())
+        for record in records:
+            record.advancement_invocation = invocation
+        return records
+
+    def advancement_returned(self) -> None:
+        assert self._work is not None and self._work.advancing
+        self._work.ready = None
+
+    def finish(self) -> None:
+        assert self._work is not None and self._work.advancing and self._work.ready is None
+        assert all(record.optimizer == record.reset == "returned" for record in self._work.records.values())
+        self._work = None
+
+    def evidence(self, invocation: int, region: object | None) -> tuple[UnitOutcome, ...]:
+        active = self._work.records.values() if self._work is not None else ()
+        records = {record.invocation: record for record in (*self.outcomes, *active)}
+        return tuple(
+            copy.copy(record)
+            for record in records.values()
+            if record.invocation == invocation or (region is not None and record.region is region)
+        )
 
 
 @dataclass(frozen=True)
@@ -498,12 +601,15 @@ class RunState:
             raise NotReady("Stale preparation attempt")
         if self.readers or self.writers or self.state_locks:
             raise NotReady("Publication conflicts with protected current use")
-        if self.active_retentions or (
-            self.image is not None and any(unit.pending is not None or unit.active_outcomes for unit in self.image.units.values())
-        ):
-            raise NotReady("Publication needs a quiescent retained/contribution boundary in this target")
+        if self.active_retentions:
+            raise NotReady("Publication needs a quiescent retained/contribution boundary: retained state is still live")
+        self.require_optimization_idle("Publication needs a quiescent retained/contribution boundary: optimization work is unfinished")
         # Validation is over. No external callbacks or owner initialization here.
         self.image = candidate
+
+    def require_optimization_idle(self, message: str) -> None:
+        if self.image is not None and any(unit.unfinished for unit in self.image.units.values()):
+            raise NotReady(message)
 
     @asynccontextmanager
     async def acquire(self, uses: tuple[Use, ...], states: tuple[str, ...] = ()) -> AsyncGenerator[Projection]:
@@ -565,11 +671,13 @@ class RunState:
             assert self.image is not None
             runtimes = {name: self.image.units[name] for name in declaration.units}
             for runtime in runtimes.values():
-                if runtime.pending is not None:
+                if runtime.unfinished:
                     if runtime.window is None:
                         raise NotReady("Retention needs a verified contribution window")
                     # A later microbatch may retain current numerical state
                     # while its region owns an unchanged accumulated window.
+                    # A diagnostic token can also survive claimed advancement;
+                    # the owner check, not token presence, decides readiness.
                     self.check_contribution(runtime.window, runtime.window.units, region)
             if declaration.isolated:
                 models = {name: copy.deepcopy(model) for name, model in projection.models.items()}
@@ -674,18 +782,6 @@ class RunState:
     ) -> Contribution:
         assert self.image is not None
         runtimes = tuple(self.image.units[name] for name in names)
-        if previous is None:
-            if any(runtime.pending is not None or runtime.active_outcomes for runtime in runtimes):
-                raise NotReady("An existing contribution window needs an explicit continuation")
-            origins = (invocation,)
-            stamps = tuple(
-                (name, self.stamp(name)) for name in dict.fromkeys(member[0] for unit in runtimes for member in unit.definition.members)
-            )
-        else:
-            self.check_contribution(previous, names, region)
-            if region is None or invocation in previous.origins:
-                raise NotReady("Accumulation requires a new block in the same execution region")
-            origins, stamps = (*previous.origins, invocation), previous.destination_stamps
         if retained is not None:
             self.check_retained(retained, region)
             if set(names) - retained.parameters.keys():
@@ -695,12 +791,13 @@ class RunState:
             for name, runtime in zip(names, runtimes, strict=True)
             for parameter in (retained.parameters[name] if retained is not None else runtime.parameters)
         )
-        for runtime in runtimes:
-            record = runtime.outcome(invocation)
-            runtime.active_outcomes[invocation] = record
-            record.contribution = "uncertain"
-            record.region = region
-            record.source_stamps = tuple(retained.projection.stamps.values()) if retained is not None else ()
+        self.begin_contribution(
+            names,
+            invocation,
+            region=region,
+            previous=previous,
+            source_stamps=tuple(retained.projection.stamps.values()) if retained is not None else (),
+        )
         gradients = torch.autograd.grad(loss, parameters, retain_graph=keep_graph)
         accumulated = []
         for parameter, gradient in zip((parameter for runtime in runtimes for parameter in runtime.parameters), gradients, strict=True):
@@ -710,19 +807,80 @@ class RunState:
                     raise NotReady("An accumulated gradient is missing")
                 value = parameter.grad.detach() + value
             accumulated.append(value)
-        contribution = Contribution(invocation, names, tuple(unit.prepared_key for unit in runtimes), region, origins, stamps)
         offset = 0
         for runtime in runtimes:
-            record = runtime.outcome(invocation)
-            record.region = region
             for parameter in runtime.parameters:
                 # A custom autograd backward can return an alias of source
                 # state. A cross-block gradient needs its own storage.
                 parameter.grad = accumulated[offset]
                 offset += 1
-            runtime.pending = invocation
-            runtime.window = contribution
-            record.contribution = "ready"
+        return self.complete_contribution(names, invocation, region=region)
+
+    def begin_contribution(
+        self,
+        names: tuple[str, ...],
+        invocation: int,
+        *,
+        region: object | None = None,
+        previous: Contribution | None = None,
+        source_stamps: tuple[Stamp, ...] = (),
+        granted: bool = False,
+    ) -> None:
+        """Register ownership before either ordinary or granted numerical work."""
+        assert self.image is not None
+        runtimes = tuple(self.image.units[name] for name in names)
+        if previous is not None:
+            if granted:
+                raise NotReady("This target's granted work cannot extend an existing contribution window")
+            self.check_contribution(previous, names, region)
+            if region is None or invocation in previous.origins:
+                raise NotReady("Accumulation requires a new block in the same execution region")
+            stamps = previous.destination_stamps
+        else:
+            stamps = tuple(
+                (name, self.stamp(name)) for name in dict.fromkeys(member[0] for unit in runtimes for member in unit.definition.members)
+            )
+        # Reject conflicts for the entire selected group before registering any
+        # of it. Once entry succeeds, uncertain evidence survives failed work.
+        # All entry paths keep the group's origins/regions in lockstep; handback
+        # checks that correspondence against the exact entered destination group.
+        for runtime in runtimes:
+            runtime.check_entry(previous)
+        prepared_keys = tuple(runtime.prepared_key for runtime in runtimes)
+        for runtime in runtimes:
+            runtime.begin(invocation, names, prepared_keys, region, stamps, source_stamps, previous=previous, granted=granted)
+
+    def complete_contribution(
+        self, names: tuple[str, ...], invocation: int, *, region: object | None = None, granted: bool = False
+    ) -> Contribution:
+        """Verify one handback and publish its token to every destination owner."""
+        assert self.image is not None
+        runtimes = tuple(self.image.units[name] for name in names)
+        work = runtimes[0]._work
+        if work is None or not work.records:
+            raise NotReady("No entered contribution to hand back")
+        origins = tuple(work.records)
+        status = "unverified_grant" if granted else "uncertain"
+        if origins[-1] != invocation or any(
+            runtime._work is None
+            or runtime._work.units != names
+            or runtime._work.prepared_keys != tuple(unit.prepared_key for unit in runtimes)
+            or runtime._work.region is not region
+            or runtime._work.advancing
+            or tuple(runtime._work.records) != origins
+            or runtime._work.records[invocation].region is not region
+            or runtime._work.records[invocation].contribution != status
+            or any(parameter.grad is None for parameter in runtime.parameters)
+            for runtime in runtimes
+        ):
+            raise NotReady("Incomplete or duplicate contribution handback")
+        # A granted executor must have restored its temporary edits before this
+        # call. Its accepted returned writes have already advanced conservative
+        # epochs; ordinary backward retains the pre-execution dependency stamps.
+        stamps = tuple((name, self.stamp(name)) for name, _ in work.destination_stamps) if granted else work.destination_stamps
+        contribution = Contribution(invocation, names, work.prepared_keys, region, origins, stamps)
+        for runtime in runtimes:
+            runtime.handback(contribution, granted=granted)
         return contribution
 
     def check_contribution(self, contribution: Contribution, names: tuple[str, ...], region: object | None) -> None:
@@ -735,9 +893,7 @@ class RunState:
             or contribution.units != names
             or len(contribution.prepared_keys) != len(runtimes)
             or any(key is not unit.prepared_key for key, unit in zip(contribution.prepared_keys, runtimes, strict=True))
-            or any(unit.window is not contribution or unit.pending != contribution.invocation for unit in runtimes)
-            or any(tuple(unit.active_outcomes) != contribution.origins for unit in runtimes)
-            or any(parameter.grad is None for unit in runtimes for parameter in unit.parameters)
+            or any(not unit.accepts(contribution) for unit in runtimes)
             or any(self.stamp(name) != stamp for name, stamp in contribution.destination_stamps)
         ):
             raise NotReady("Stale, misaddressed or unverified gradient handback")
@@ -751,10 +907,12 @@ class RunState:
         subjects = {member[0] for runtime in runtimes for member in runtime.definition.members}
         if any(not retained.isolated and subjects & retained.projection.models.keys() for retained in self.active_retentions.values()):
             raise NotReady("Ready gradients do not permit an update before protected old-state last use")
+        # Claim the entire addressed advancement before callbacks/backend work.
+        # Neither a reentrant call nor an exception can reuse the old readiness.
         for runtime in runtimes:
-            records = tuple(runtime.active_outcomes[origin] for origin in contribution.origins)
-            for record in records:
-                record.advancement_invocation = invocation
+            runtime.claim_advancement()
+        for runtime in runtimes:
+            records = runtime.start_advancement(invocation)
             if runtime.definition.clip_norm is not None:
                 torch.nn.utils.clip_grad_norm_(runtime.parameters, runtime.definition.clip_norm)
             for record in records:
@@ -770,12 +928,11 @@ class RunState:
             runtime.optimizer.zero_grad(set_to_none=True)
             for record in records:
                 record.reset = "returned"
-            runtime.pending = None
-            runtime.window = None
+            runtime.advancement_returned()
         # Keep the full pending-window evidence through partial joint failure;
         # the bounded completed-history deque must not evict live origins.
         for runtime in runtimes:
-            runtime.active_outcomes.clear()
+            runtime.finish()
 
     async def replace(self, proposal: Replacement, participant: str) -> None:
         """Replacement-only path; other structural changes are not implemented."""
@@ -786,8 +943,7 @@ class RunState:
                 raise NotReady("Stale or misaddressed replacement proposal")
             if proposal.model is self.image.bindings[participant].model:
                 raise NotReady("In-place preparation requires an unimplemented destructive protocol")
-            if any(unit.pending is not None or unit.active_outcomes for unit in self.image.units.values()):
-                raise NotReady("Replacement with unfinished gradients is unsupported")
+            self.require_optimization_idle("Replacement with unfinished gradients is unsupported")
             if self.active_retentions:
                 raise NotReady("Replacement with unfinished retained derivative work is unsupported")
             affected_states = {name: spec for name, spec in self.accepted.states.items() if participant in spec.dependencies}
@@ -823,8 +979,9 @@ class RunState:
             or self.unusable_states
         ):
             raise NotReady("Capture needs a finished, usable, quiescent run")
-        if self.image is None or any(unit.pending is not None or unit.active_outcomes for unit in self.image.units.values()):
+        if self.image is None:
             raise NotReady("Capture cannot omit an unfinished contribution")
+        self.require_optimization_idle("Capture cannot omit an unfinished contribution")
         if any(not feed.closed or feed.ready or feed.failure for feed in self.feeds.values()):
             raise NotReady("Capture cannot reconstruct unfinished provider/handoff work")
         return Capture(

@@ -9,7 +9,6 @@ connections are resolved once. This is one concrete CPU/asyncio target.
 from __future__ import annotations
 
 import asyncio
-import copy
 import inspect
 import threading
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
@@ -51,7 +50,6 @@ from .graph import (
     sequence_order,
 )
 from .state import (
-    Contribution,
     Image,
     PreparedView,
     Product,
@@ -126,10 +124,7 @@ class WorkFailed(RuntimeError):
         self.implementation_returned = frame.implementation_returned
         assert frame.state.image is not None
         self.unit_outcomes: tuple[UnitOutcome, ...] = tuple(
-            copy.copy(outcome)
-            for runtime in frame.state.image.units.values()
-            for outcome in {record.invocation: record for record in (*runtime.outcomes, *runtime.active_outcomes.values())}.values()
-            if outcome.invocation == frame.invocation or (frame.region is not None and outcome.region is frame.region)
+            outcome for runtime in frame.state.image.units.values() for outcome in runtime.evidence(frame.invocation, frame.region)
         )
 
 
@@ -175,17 +170,12 @@ class GrantedAccess:
 
     def __init__(self, state: RunState, unit: str, invocation: int):
         assert state.image is not None
-        self._runtime = state.image.units[unit]
-        if self._runtime.pending is not None or self._runtime.active_outcomes:
-            raise NotReady("Two-pass entry requires a quiescent window")
+        state.begin_contribution((unit,), invocation, granted=True)
         self.invocation = invocation
-        self.parameters = self._runtime.parameters
+        self.parameters = state.image.units[unit].parameters
         self.original = tuple(parameter.detach().clone() for parameter in self.parameters)
         self.phases: list[str] = []
         self.restored = False
-        record = self._runtime.outcome(invocation)
-        record.contribution = "unverified_grant"
-        self._runtime.active_outcomes[invocation] = record
 
     def backward(self, loss: torch.Tensor) -> None:
         if self.phases not in ([], ["backward", "temporary_edit", "intermediate_reset"]):
@@ -221,7 +211,7 @@ class GrantedAccess:
         self.restored = True
         self.phases.append("restore")
 
-    def _handback(self, unit: str) -> Contribution:
+    def _check_handback(self) -> None:
         if self.phases != ["backward", "temporary_edit", "intermediate_reset", "backward", "restore"]:
             raise NotReady("Incomplete two-pass handback")
         if not self.restored or any(
@@ -230,11 +220,6 @@ class GrantedAccess:
             raise NotReady("Current view was not restored")
         if any(parameter.grad is None for parameter in self.parameters):
             raise NotReady("No final gradient to hand back")
-        self._runtime.pending = self.invocation
-        self._runtime.outcome(self.invocation).contribution = "granted_ready"
-        contribution = Contribution(self.invocation, (unit,), (self._runtime.prepared_key,), origins=(self.invocation,))
-        self._runtime.window = contribution
-        return contribution
 
 
 class ProviderContext:
@@ -689,9 +674,9 @@ class Lowering:
                     await result
                 frame.implementation_returned = True
                 self.state.trace.append(("implementation_returned", (work.name, frame.invocation)))
-                contribution = access._handback(work.unit)
+                access._check_handback()
                 self.state.returned_writes(work.uses)
-                return contribution
+                return self.state.complete_contribution((work.unit,), frame.invocation, granted=True)
         elif isinstance(work, Replace):
 
             async def invoke(frame, proposal):

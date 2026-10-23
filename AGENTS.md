@@ -221,6 +221,15 @@ When completing refactoring work:
 - `tools/` contains standalone utilities that still use `argparse` (external compatibility)
 - `train.py` is the active launcher for PEFT and fine-tune flows; textual inversion still uses its dedicated script for now
 
+<!-- codebase-memory-mcp:start -->
+## Codebase Memory
+
+This repository uses Codebase Memory for structural code exploration.
+Use the installed `codebase-memory` skill for architecture, symbol discovery,
+call/dependency tracing, impact analysis, and related structural queries.
+Prefer its graph workflow before broad grep/glob/file exploration.
+<!-- codebase-memory-mcp:end -->
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:ca08a54f -->
 ## Beads Issue Tracker
 

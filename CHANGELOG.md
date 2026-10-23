@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-24]
+
+### Changed
+
+- **Isolated training-execution research now shares pending optimization ownership** — ordinary backward and granted two-pass work use one entry/handback lifecycle; retention, publication, replacement and capture consult the same unfinished-work evidence. Advancement consumes readiness before fallible mechanics and preserves per-unit partial outcomes. This does not change the live Trainer or select production APIs.
+
 ## [2026-10-11]
 
 ### Changed
