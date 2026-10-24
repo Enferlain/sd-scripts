@@ -7,7 +7,7 @@ import contextvars
 import inspect
 import queue
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import cast
 
 import pytest
@@ -573,7 +573,11 @@ def test_non_cpu_rebinding_is_rejected_before_worker_entry():
     run(scenario())
 
 
-def test_mode_exclusion_cannot_silently_introduce_source_wait_cycle():
+@pytest.mark.parametrize("worker", (False, True))
+@pytest.mark.parametrize("lowering", ("calls", "inline"))
+def test_mode_exclusion_cannot_silently_introduce_source_wait_cycle(worker, lowering: LoweringKind):
+    loaded = []
+
     async def source(context: ProviderContext):
         async with context.use_source():
             await context.publish("input", Product("", torch.tensor(1.0)))
@@ -596,17 +600,17 @@ def test_mode_exclusion_cannot_silently_introduce_source_wait_cycle():
                     ),
                 ),
             ),
-            (scale("model", 1.0),),
+            (replace(scale("model", 1.0), load=lambda: loaded.append(True) or Scale(1.0)),),
             channels=(Channel("input", 1),),
             views=(View("evaluation", "model", evaluation=True),),
         )
     )
-    # Cooperative synchronous evaluation fits the existing read reservation.
-    # Threaded mode exclusion under this target's whole-block lease would
-    # prevent the producer supplying its later input. Reject that realization.
-    prepare(accepted)
+    # An opaque provider may own native workers regardless of selected-call
+    # placement. Both targets therefore need the same source mode protection;
+    # their whole-block lease would prevent production of this later input.
     with pytest.raises(NotReady, match="reservation wait cycle"):
-        prepare(accepted, worker_calls=("evaluate",))
+        prepare(accepted, lowering=lowering, worker_calls=("evaluate",) if worker else ())
+    assert not loaded
 
 
 @pytest.mark.parametrize("lowering", ("calls", "inline"))

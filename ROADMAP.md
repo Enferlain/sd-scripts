@@ -10,8 +10,9 @@ ownership across ordinary/granted execution and state-lifecycle consumers
 (`sd-scripts-syv.14`, `sd-scripts-syv.15`). Current-use borrowing, provider access
 and region cleanup now share state ownership, with preparation checks derived
 from the selected target's actual access boundaries (`sd-scripts-syv.16`).
-Physical access with provider-owned native workers remains a separate
-qualification (`sd-scripts-syv.17`). These are candidate findings, not completion
+Physical mode protection now also covers declared source participants of
+provider-owned native workers, with bounded overlap/stop/failure qualification
+(`sd-scripts-syv.17`). These are candidate findings, not completion
 of G5 production implementation, GPU/distributed preparation or durable continuation.
 
 ## Architecture Overview

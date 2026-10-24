@@ -19,7 +19,7 @@ from typing import Any, Literal, NoReturn, cast
 
 import torch
 
-from .access import block_access, check_waits, prefix_joins, retained_exclusions, sequence_uses
+from .access import block_access, check_waits, mode_participants, prefix_joins, retained_exclusions, sequence_uses
 from .graph import (
     Accepted,
     Advance,
@@ -313,7 +313,8 @@ def prepare(
         workers = None
     if workers is not None:
         _check_workers(accepted, frozenset(worker_calls))
-    check_waits(accepted, physical_modes=workers is not None)
+    physical_modes = mode_participants(accepted, selected_workers=workers is not None)
+    check_waits(accepted, physical_modes=physical_modes)
     state = state or RunState(accepted)
     if state.accepted is not accepted:
         raise NotReady("Preparation belongs to another accepted authority")
@@ -322,7 +323,14 @@ def prepare(
     expected = state.generation
     models = {name: declaration.load() for name, declaration in accepted.participants.items()}
     image = state.candidate(models)
-    lowerer = Lowering(accepted, state, inline_blocks=lowering == "inline", workers=workers, worker_calls=frozenset(worker_calls))
+    lowerer = Lowering(
+        accepted,
+        state,
+        inline_blocks=lowering == "inline",
+        workers=workers,
+        worker_calls=frozenset(worker_calls),
+        physical_modes=physical_modes,
+    )
     root = lowerer.scope(accepted.root)
     if workers is not None:
         body = root
@@ -380,10 +388,14 @@ class Lowering:
         inline_blocks: bool = False,
         workers: Workers | None = None,
         worker_calls: frozenset[str] = frozenset(),
+        physical_modes: frozenset[str] | None = None,
     ):
         self.accepted, self.state = accepted, state
         self.inline_blocks = inline_blocks
         self.workers, self.worker_calls = workers, worker_calls
+        self.physical_modes = (
+            mode_participants(accepted, selected_workers=workers is not None) if physical_modes is None else physical_modes
+        )
         self.source: dict[str, str] = {}
         self.requests: dict[str, list[asyncio.Queue]] = {}
         self.request_queues: dict[str, asyncio.Queue] = {}
@@ -406,7 +418,7 @@ class Lowering:
 
     def block(self, block: Block) -> Callable[[Choice, str], Awaitable[int]]:
         work = ordered(block)
-        uses, states = block_access(block, self.accepted, physical_modes=self.workers is not None)
+        uses, states = block_access(block, self.accepted, physical_modes=self.physical_modes)
         prefix = prefix_joins(work)
         first_joins = {item.name for item in prefix}
         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)
@@ -697,7 +709,7 @@ class Lowering:
         """
         groups = sequence_order(scope)
         work_items = tuple(item for _, work in groups for item in work)
-        exclusions = retained_exclusions(work_items, self.accepted) if self.workers is not None else {}
+        exclusions = retained_exclusions(work_items, self.accepted, physical_modes=self.physical_modes)
         bound = []
         for index, work in enumerate(work_items):
             keep_graph = (
@@ -709,7 +721,7 @@ class Lowering:
             function = self.bind(work, keep_graph=keep_graph, retained_exclusive=exclusive)
 
             def protect(item, selected):
-                uses = sequence_uses(item, self.accepted, physical_modes=self.workers is not None)
+                uses = sequence_uses(item, self.accepted, physical_modes=self.physical_modes)
                 states = item.states if isinstance(item, Call) else ()
 
                 async def protected(frame, *args):

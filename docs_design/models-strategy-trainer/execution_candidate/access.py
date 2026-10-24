@@ -37,18 +37,50 @@ from .graph import (
 )
 
 
-def mode_uses(work: tuple[Work, ...], accepted: Accepted) -> tuple[Use, ...]:
-    """Physical exclusivity, never a numerical-write grant or epoch change."""
+def mode_participants(accepted: Accepted, *, selected_workers: bool) -> frozenset[str]:
+    """Bind physical mode protection from every source of native overlap.
+
+    Selected-call workers retain this target's existing conservative policy.
+    A provider may also own native workers, independently of that pool. Its
+    declared source participants therefore need mode protection even when all
+    selected calls execute cooperatively. No private worker schedule is inferred.
+    """
+    if selected_workers:
+        return frozenset(accepted.participants)
+    result: set[str] = set()
+
+    def visit(scope: Scope):
+        if isinstance(scope, Together):
+            for child in scope.children:
+                visit(child)
+        elif isinstance(scope, (Repeat, Sequence)):
+            for child in scope.blocks:
+                visit(child)
+        elif isinstance(scope, Requested) and scope.enabled:
+            visit(scope.block)
+        elif isinstance(scope, Producer):
+            result.update(use.participant for use in scope.uses)
+
+    visit(accepted.root)
+    return frozenset(result)
+
+
+def mode_uses(work: tuple[Work, ...], accepted: Accepted, *, physical_modes: frozenset[str]) -> tuple[Use, ...]:
+    """Physical exclusivity, never a numerical-write grant or epoch change.
+
+    Whole-call evaluation may span an await, so always needs exclusion. A
+    synchronous named view additionally needs it on native-overlap participants.
+    """
     return tuple(
         Use(use.participant, "write")
         for item in work
         if isinstance(item, Call)
         for use in item.uses
-        if item.evaluation or (use.view is not None and accepted.views[use.view].evaluation)
+        if item.evaluation or (use.participant in physical_modes and use.view is not None and accepted.views[use.view].evaluation)
     )
 
 
-def retained_exclusions(work: tuple[Work, ...], accepted: Accepted) -> dict[str, tuple[str, ...]]:
+def retained_exclusions(work: tuple[Work, ...], accepted: Accepted, *, physical_modes: frozenset[str]) -> dict[str, tuple[str, ...]]:
     """Live sources acquire mode exclusion up front; copies own separate views."""
     return {
         item.output: tuple(
@@ -56,7 +88,7 @@ def retained_exclusions(work: tuple[Work, ...], accepted: Accepted) -> dict[str,
                 use.participant
                 for call in work
                 if isinstance(call, Call) and call.retained == item.output
-                for use in mode_uses((call,), accepted)
+                for use in mode_uses((call,), accepted, physical_modes=physical_modes)
             )
         )
         for item in work
@@ -68,7 +100,7 @@ def retained_uses(source: Retain, exclusive: tuple[str, ...]) -> tuple[Use, ...]
     return tuple(Use(name, "write" if name in exclusive else "read") for name in source.participants)
 
 
-def sequence_uses(item: Work, accepted: Accepted, *, physical_modes: bool) -> tuple[Use, ...]:
+def sequence_uses(item: Work, accepted: Accepted, *, physical_modes: frozenset[str]) -> tuple[Use, ...]:
     """The per-item reservation acquired by sequence execution, before reuse."""
     uses = getattr(item, "uses", ())
     if isinstance(item, Call) and item.retained is not None:
@@ -79,18 +111,14 @@ def sequence_uses(item: Work, accepted: Accepted, *, physical_modes: bool) -> tu
     if isinstance(item, TwoPass):
         uses = (*uses, *(Use(member[0], "write") for member in accepted.units[item.unit].members))
     if isinstance(item, Call):
-        if physical_modes:
-            uses = (*uses, *mode_uses((item,), accepted))
-        elif item.evaluation:
-            uses = (*uses, *(Use(use.participant, "write") for use in item.uses))
+        uses = (*uses, *mode_uses((item,), accepted, physical_modes=physical_modes))
     return uses
 
 
-def block_access(block: Block, accepted: Accepted, *, physical_modes: bool) -> tuple[tuple[Use, ...], tuple[str, ...]]:
+def block_access(block: Block, accepted: Accepted, *, physical_modes: frozenset[str]) -> tuple[tuple[Use, ...], tuple[str, ...]]:
     """The ordinary block's one reservation, shared by lowering and analysis."""
     uses = block_uses(block, accepted.units)
-    if physical_modes:
-        uses += mode_uses(block.work, accepted)
+    uses += mode_uses(block.work, accepted, physical_modes=physical_modes)
     states = tuple(dict.fromkeys(name for item in block.work if isinstance(item, Call) for name in item.states))
     return uses, states
 
@@ -153,7 +181,7 @@ class _Wait:
     sources: tuple[str, ...] = ()
 
 
-def _waits(accepted: Accepted, *, physical_modes: bool) -> tuple[_Wait, ...]:
+def _waits(accepted: Accepted, *, physical_modes: frozenset[str]) -> tuple[_Wait, ...]:
     points: list[_Wait] = []
 
     def add(activity, where, held, requested, sources=()):
@@ -178,7 +206,7 @@ def _waits(accepted: Accepted, *, physical_modes: bool) -> tuple[_Wait, ...]:
 
     def sequence(scope: Sequence, activity: str):
         work = tuple(item for _, group in sequence_order(scope) for item in group)
-        exclusions = retained_exclusions(work, accepted) if physical_modes else {}
+        exclusions = retained_exclusions(work, accepted, physical_modes=physical_modes)
         live: dict[str, Access] = {}
         retained: set[str] = set()
         for item in work:
@@ -235,7 +263,7 @@ def _waits(accepted: Accepted, *, physical_modes: bool) -> tuple[_Wait, ...]:
     return tuple(points)
 
 
-def check_waits(accepted: Accepted, *, physical_modes: bool) -> None:
+def check_waits(accepted: Accepted, *, physical_modes: frozenset[str]) -> None:
     """Reject potential declared wait cycles in this realization before loading.
 
     Different activities here are leaves of Together; ordered sequence blocks

@@ -24,6 +24,8 @@ destination-specific derivatives. Its blocks share an explicit old-state
 lifetime, not an implicit global training step; see the walkthrough below.
 The [same-graph lowering comparison](#same-graph-block-lowering-comparison)
 below now contrasts two CPU emission paths without changing those meanings.
+Provider-owned native workers also share the state owner's protection with
+selected calls; see [shared physical mode policy](#shared-physical-mode-policy-2026-10-24).
 
 ```python
 contract = Contract()  # CPU target's offer/rules already exist
@@ -1473,11 +1475,77 @@ users. GPU/device completion, distributed coordination, native free-thread safet
 restoration and hot-path performance remain unqualified. No live Trainer,
 governing requirement or G5 task changes are made.
 
-In particular, this pass does not qualify mutable-model-mode protection when a
-provider owns native workers while selected calls use cooperative placement.
-That needs a separate test of the physical access policy across both owners;
-the selected-call worker tests do not establish it.
+The provider-native-worker/mutable-mode bound at this checkpoint is addressed
+by the shared-mode-policy qualification below. General private-worker
+conformance and native-stack safety remain separate claims.
 
 Verification: **374 tests pass** (362 candidate cases and 12 unchanged execution
 tests), including 42 current-use cases. All nine examples execute; scoped lint,
 formatting, strict types and whitespace checks pass.
+
+## Shared physical mode policy (2026-10-24)
+
+A deterministic private-thread probe reproduced the missing case: with selected
+calls placed cooperatively, a provider read another activity's temporary eval
+mode on the same model. The equivalent selected-call-worker realization already
+serialized those uses. Pool selection alone was therefore not sufficient
+evidence for choosing physical protection.
+
+Preparation now derives one immutable participant set from the accepted run:
+
+- Selected-call workers keep the target's existing conservative mode protection.
+- Independently progressing providers contribute their declared source
+  participants, whether their selected calls use the pool or not. A provider
+  implementation may own native workers; the target does not infer that its
+  opaque implementation is cooperative-only.
+- Named synchronous view changes on other participants keep the cooperative
+  path. Whole-call evaluation still needs exclusion because it can span awaits.
+
+That one prepared set drives cold wait analysis, ordinary block reservations,
+per-work sequence reservations and retained-source exclusion. The existing
+state owner supplies the protection through `use()` / `use_source()`; there is
+no provider-specific lock, second authority, new graph construct, thread-pool
+takeover or author-supplied concurrency switch. Physical exclusion is still
+distinct from numerical-write authority and does not advance numerical epochs.
+
+The policy is deliberately conservative about opaque providers. A whole-block
+mode-changing use followed by input waiting now rejects before loading in both
+placements when its lease would prevent the source supplying that input. That
+cooperative case previously relied on an assumption which private workers do
+not satisfy. This is CPU target readiness, not a new semantic graph restriction;
+the target does not reorder work or release protection early to make it run.
+The prepared set is timing-blind: it does not specialize away an exclusion after
+a provider happens to finish, so it can remain more conservative than necessary.
+Cooperative arrangements without external source access retain their previous
+behavior, including the mutually retaining case which only rejects under the
+worker realization.
+
+`test_provider_workers.py` checks conflicting and compatible uses under both
+CPU emissions, whole-block/per-work boundaries and selected-call placements.
+Compatible reads on one model and uses of different models overlap. Live
+retentions acquire the same exclusion; real isolated copies remain independent
+and can overlap current-source work. Accepted producer stop, a physical worker
+failure during stop and repeated parent cancellation keep the source lease and
+continuation registration until the thread returns. Replacement cannot publish
+early; failed work cannot supply usable current state. Existing whole-call
+evaluation remains protected without any external workers.
+
+The tested provider owns its executor and drains the physical future inside its
+source lease, even on failure/cancellation. This establishes one conforming
+private-worker implementation, not enforcement against arbitrary Python which
+starts detached work, mutates undeclared state, or releases its lease early.
+Queues, admission policy, backpressure and private scheduling remain provider
+responsibilities; the earlier global-liveness and recovery limits remain.
+In particular, this is not a deadlock proof for source-access scopes spanning
+bounded publication or private queue waits. Model exclusion, feed backpressure
+and input-key admission can interact; their joint progress needs separate
+coordination evidence.
+These are bounded CPU/thread correctness cases, not numerical-backend,
+distributed, Windows, GIL-disabled-stack safety or performance qualification.
+No unsafe GIL override is used, and no live Trainer or governing spec/task changes
+are made.
+
+Verification: **417 tests pass** (405 candidate cases and 12 unchanged execution
+tests), including 40 new provider/concurrency cases. The focused cases pass in
+another process, all nine examples execute, and scoped lint, formatting, strict
+types and whitespace checks pass.
