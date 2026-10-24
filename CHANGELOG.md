@@ -15,6 +15,7 @@ Rules:
 ### Changed
 
 - **Isolated training-execution research now shares pending optimization ownership** — ordinary backward and granted two-pass work use one entry/handback lifecycle; retention, publication, replacement and capture consult the same unfinished-work evidence. Advancement consumes readiness before fallible mechanics and preserves per-unit partial outcomes. This does not change the live Trainer or select production APIs.
+- **Candidate state access and lifetimes now share one owner protocol** — retained-read borrowing, provider source authority/effects and region cleanup move out of lowering; preparation uses the same acquisition/reuse rules for cooperative and worker targets, replacing the older coarse contract check. Closing ends token borrowing before physical release; failed release preserves unfinished evidence and withholds affected current state. Regression cases distinguish released sequence access from aggregate block leases without changing production training.
 
 ## [2026-10-11]
 

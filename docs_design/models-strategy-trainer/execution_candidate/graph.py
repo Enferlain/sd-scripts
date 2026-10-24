@@ -343,40 +343,12 @@ def block_uses(block: Block, units: Mapping[str, Unit]) -> tuple[Use, ...]:
     return tuple(uses)
 
 
-def check_target(scopes: Mapping[str, Scope], units: Mapping[str, Unit], active: set[str]) -> None:
-    """Known CPU/asyncio target limits, NOT universal language constraints.
+def check_completion(scopes: Mapping[str, Scope], active: set[str]) -> None:
+    """Check explicit lifetime relationships, independent of target reservations.
 
-    Prefix readiness holds no lease. Later joins do, so conservatively reject
-    direct/indirect declared lease/source cycles. Private Python scheduling is
-    not analyzed and a clean result is not a global liveness guarantee.
+    Target-specific access and source waits are evaluated by preparation using
+    the same acquisition/reuse boundaries as its selected execution mechanism.
     """
-    producers = {channel: scope for scope in scopes.values() if isinstance(scope, Producer) for channel in scope.channels}
-    accesses: dict[str, dict[str, str]] = {}
-    edges: dict[str, set[str]] = {}
-    across = {block.name: work for scope in scopes.values() if isinstance(scope, Sequence) for block, work in sequence_order(scope)}
-    for block in scopes.values():
-        if not isinstance(block, Block) or block.name not in active:
-            continue
-        uses = block_uses(block, units)
-        states = {name for item in block.work if isinstance(item, Call) for name in item.states}
-        if any(isinstance(item, Replace) for item in block.work) and (uses or states):
-            raise Rejected("This target publishes replacement only outside protected numerical/state work")
-        access = dict.fromkeys((use.participant for use in uses), "read")
-        access.update(dict.fromkeys((use.participant for use in uses if use.access == "write"), "write"))
-        accesses[block.name] = access
-        edges[block.name] = set()
-        prefix = True
-        for item in across.get(block.name, ()) or ordered(block):
-            if not isinstance(item, Join):
-                prefix = False
-            elif not prefix:
-                edges[block.name].update(producers[channel].name for channel in item.channels)
-    for producer in producers.values():
-        edges[producer.name] = {
-            block
-            for block, access in accesses.items()
-            if any(use.participant in access and (use.access == "write" or access[use.participant] == "write") for use in producer.uses)
-        }
 
     def acyclic(dependencies: Mapping[str, set[str]], description: str) -> None:
         visiting: set[str] = set()
@@ -396,7 +368,6 @@ def check_target(scopes: Mapping[str, Scope], units: Mapping[str, Unit], active:
         for node in dependencies:
             visit(node)
 
-    acyclic(edges, "lease/source wait cycle")
     # Full lifetime completion is NOT input readiness: mixing these with the
     # lease edges would falsely reject ordinary producer/consumer relationships.
     completion = {name: set() for name in active}
@@ -680,7 +651,7 @@ class Contract:
         } | {scope.state for scope in scopes.values() if isinstance(scope, Repeat)}
         if len(set(provider_states)) != len(provider_states) or set(provider_states) & other_states:
             raise Rejected("This target requires separately owned provider continuation state")
-        check_target(scopes, units, active)
+        check_completion(scopes, active)
         authority = uuid4().hex
         return Accepted(
             authority,

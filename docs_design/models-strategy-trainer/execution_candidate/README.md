@@ -1399,3 +1399,85 @@ composition, recovery, GPU/distributed and performance limits remain.
 Verification: **332 tests pass** (320 candidate cases and 12 unchanged execution
 tests), all nine examples execute, and scoped lint, formatting, strict types
 and whitespace checks pass.
+
+## Integrated current-use ownership (2026-10-24)
+
+Lowering now binds access requirements and calls the state owner's `use()`
+boundary. It no longer scans active retentions, decides which leases cover a
+read, merges borrowed projections, or enumerates remaining source lifetimes
+during cleanup. The owner validates and supplies those projections, reserves
+only uncovered participants/state, and drains the region's remaining sources.
+
+Borrowing a protected current read does not acquire another lease or release
+the original one. New retentions have independent lifetimes; nested read/read
+reservations remain possible, while self-upgrades or nesting under an own
+writer reject before waiting. Real isolated copies cover no current-source
+access after copying. Borrowing checks source freshness/usability before and
+after any wait for uncovered members, so it cannot supply a source released or
+withheld during that wait. A different region cannot borrow another region's
+exclusive source. Physical mutable-mode exclusion remains distinct from the
+selected operation's numerical-write authority and numerical epochs.
+
+Provider source access is owned by the same state protocol: runtime requests
+can select an allowed read-only subset, but cannot expand participant, write
+or view authority. Successful returned-write evidence is filed before its
+protection ends; failed writes remain unavailable without a false returned
+epoch. The provider still owns its queue, private workers and continuation.
+
+Preparation and execution share ordinary-block reservation/prefix derivation,
+participant access merging, per-work sequence uses, and own-region reuse/
+conflict rules. The coarse lease/source check formerly in `Contract` is gone.
+One preparation check runs before participant loading and owner initialization
+for both cooperative and worker targets, using their actual mode-exclusion
+policy. Target conflicts now raise `NotReady` there; explicit scope-completion
+relationships are still checked during acceptance. No chosen order is changed
+and no runtime scheduler is added.
+
+Two concrete consequences are executable: a sequence can finish a declared
+write before waiting on a producer that needs the model, and it can finish a
+model use before publishing replacement later in the same block. The ordinary
+aggregate-block versions still reject where their own lease would prevent
+completion. The same accepted mutually retaining graph can execute with
+cooperative views yet reject a conflicting worker realization before loading.
+These are target/lifetime differences, not changed training algorithms.
+
+Region cleanup attempts all of its own sources even if one release fails,
+preserves primary and cleanup failures separately, and leaves other owners'
+lifetimes alone. Failed releases remain tracked rather than pretending their
+protection ended. Closing claims the token before the first release await, so
+neither an in-flight close nor a failed close can lend protection to later work.
+A failed or cancelled physical release leaves the token closing and withholds
+its current-source participants, whether physical release happened or not.
+Waiters reject that unavailable state even if its physical lease remains held;
+replacement also rejects a closing retained lifetime rather than waiting forever
+on its uncertain physical protection. Unrelated participants stay usable. No retry or recovery of an uncertain close
+is implemented. Existing worker tests retain the physical-future drain before
+release, including repeated cancellation. Worker capacity ordering is unchanged.
+
+The cold check is not a promise of runtime publication readiness. Replacement
+still requires a globally finished retained/contribution boundary. In
+particular, a foreign isolated retention holds no current-source lease, but
+replacement rejects while that derivative lifetime remains live; this target
+does not wait for or migrate its continuation. A sequence-Replace regression
+checks that rejection in both lowerings without changing the installed image.
+Owner-state continuity and unfinished optimization remain runtime guards too.
+
+`test_current_use.py` exercises these positive and negative boundaries alongside
+the existing numerical, producer, accumulation and worker cases. This pass does
+not prove global liveness: hidden Python waits, private producer queue/worker
+protocols and worker-capacity dependencies remain outside the declared analysis.
+Borrowed calls rely on the accepted region's awaited, sequential lifetime;
+concurrent direct retain/use/release calls for the same region are unsupported.
+This is not an arbitrary-Python sandbox or support for unjoined background
+users. GPU/device completion, distributed coordination, native free-thread safety, durable
+restoration and hot-path performance remain unqualified. No live Trainer,
+governing requirement or G5 task changes are made.
+
+In particular, this pass does not qualify mutable-model-mode protection when a
+provider owns native workers while selected calls use cooperative placement.
+That needs a separate test of the physical access policy across both owners;
+the selected-call worker tests do not establish it.
+
+Verification: **374 tests pass** (362 candidate cases and 12 unchanged execution
+tests), including 42 current-use cases. All nine examples execute; scoped lint,
+formatting, strict types and whitespace checks pass.

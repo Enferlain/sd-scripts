@@ -19,7 +19,7 @@ from typing import Any, Literal, NoReturn, cast
 
 import torch
 
-from .access import check_waits, mode_uses, retained_exclusions, sequence_uses
+from .access import block_access, check_waits, prefix_joins, retained_exclusions, sequence_uses
 from .graph import (
     Accepted,
     Advance,
@@ -43,7 +43,6 @@ from .graph import (
     TwoPass,
     Use,
     Work,
-    block_uses,
     inputs,
     ordered,
     outputs,
@@ -233,26 +232,8 @@ class ProviderContext:
 
     @asynccontextmanager
     async def use_source(self, uses: tuple[Use, ...] | None = None):
-        uses = self.source.uses if uses is None else uses
-        allowed = {use.participant: "read" for use in self.source.uses}
-        allowed.update({use.participant: "write" for use in self.source.uses if use.access == "write"})
-        if any(
-            use.participant not in allowed
-            or use.access not in ("read", "write")
-            or (use.access == "write" and allowed[use.participant] != "write")
-            for use in uses
-        ):
-            raise OutOfBounds("Provider source access exceeds accepted authority")
-        async with self._state.acquire(uses) as projection:
-            try:
-                yield projection
-            except BaseException:
-                self._state.unusable.update(use.participant for use in uses if use.access == "write")
-                raise
-            else:
-                # Complete the write fact before releasing protection. Entry
-                # stamps do NOT describe intermediate/final writes inside it.
-                self._state.returned_writes(uses)
+        async with self._state.use_source(self.source.uses, uses) as projection:
+            yield projection
 
     async def publish(self, channel: str, product: Product) -> None:
         if channel not in self.ports:
@@ -332,6 +313,7 @@ def prepare(
         workers = None
     if workers is not None:
         _check_workers(accepted, frozenset(worker_calls))
+    check_waits(accepted, physical_modes=workers is not None)
     state = state or RunState(accepted)
     if state.accepted is not accepted:
         raise NotReady("Preparation belongs to another accepted authority")
@@ -358,22 +340,6 @@ def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
 
     def visit(scope: Scope):
         if isinstance(scope, Sequence):
-            work = tuple(item for _, group in sequence_order(scope) for item in group)
-            exclusions = retained_exclusions(work, accepted)
-            live: dict[str, Retain] = {}
-            for item in work:
-                covered = {name for source in live.values() for name in source.participants}
-                exclusive = {name for key in live for name in exclusions.get(key, ())}
-                if isinstance(item, Retain):
-                    if set(item.participants) & exclusive or set(exclusions.get(item.output, ())) & covered:
-                        raise NotReady("Worker target cannot nest conflicting live retained reservations")
-                    if not item.isolated:
-                        live[item.output] = item
-                elif isinstance(item, Release):
-                    live.pop(item.retained, None)
-                elif isinstance(item, Call) and item.retained is None:
-                    if {use.participant for use in mode_uses((item,), accepted)} & covered:
-                        raise NotReady("Worker target cannot upgrade its own retained state for a mutable view")
             for block in scope.blocks:
                 visit(block)
         elif isinstance(scope, Together):
@@ -401,7 +367,6 @@ def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
     visit(accepted.root)
     if names - found:
         raise NotReady(f"Unknown/ inactive worker call: {sorted(names - found)}")
-    check_waits(accepted)
 
 
 class Lowering:
@@ -441,15 +406,8 @@ class Lowering:
 
     def block(self, block: Block) -> Callable[[Choice, str], Awaitable[int]]:
         work = ordered(block)
-        uses = block_uses(block, self.accepted.units)
-        if self.workers is not None:
-            uses += mode_uses(block.work, self.accepted)
-        states = tuple(dict.fromkeys(name for item in work if isinstance(item, Call) for name in item.states))
-        prefix: list[Join] = []
-        for item in work:
-            if not isinstance(item, Join):
-                break
-            prefix.append(item)
+        uses, states = block_access(block, self.accepted, physical_modes=self.workers is not None)
+        prefix = prefix_joins(work)
         first_joins = {item.name for item in prefix}
         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)
         lines = ["async def body(frame):", "    choice = frame.choice.payload"]
@@ -506,7 +464,7 @@ class Lowering:
         async def invoke(choice: Choice, parent: str) -> int:
             for feeds in waits:
                 await wait_for_products(feeds, choice.key)
-            async with self.state.acquire(uses, states) as projection:
+            async with self.state.use(uses, states) as projection:
                 self.state.invocation += 1
                 frame = Frame(self.state, parent, choice, projection, self.state.invocation)
                 self.state.trace.append(("invocation", (parent, block.name, choice.key, frame.invocation)))
@@ -755,26 +713,7 @@ class Lowering:
                 states = item.states if isinstance(item, Call) else ()
 
                 async def protected(frame, *args):
-                    writes = {use.participant for use in uses if use.access == "write"}
-                    own_live = {
-                        name: (model, retained.projection.stamps[name])
-                        for retained in self.state.active_retentions.values()
-                        if retained.region is frame.region and not retained.isolated
-                        for name, model in retained.projection.models.items()
-                    }
-                    if writes & own_live.keys() or (isinstance(item, Replace) and own_live):
-                        raise NotReady("A sequence cannot wait on its own protected old-state last use")
-                    # A live source already protects these reads (possibly
-                    # exclusively for mutable modes). Reacquiring would wait
-                    # on ourselves; preserve the source projection instead.
-                    covered = {use.participant: own_live[use.participant] for use in uses if use.participant in own_live}
-                    remaining = tuple(use for use in uses if use.participant not in covered)
-                    async with self.state.acquire(remaining, states) as projection:
-                        if covered:
-                            projection = Projection(
-                                MappingProxyType({**{name: value[0] for name, value in covered.items()}, **projection.models}),
-                                MappingProxyType({**{name: value[1] for name, value in covered.items()}, **projection.stamps}),
-                            )
+                    async with self.state.use(uses, states, region=frame.region, publication=isinstance(item, Replace)) as projection:
                         return await selected(replace(frame, projection=projection), *args)
 
                 return protected
@@ -836,12 +775,7 @@ class Lowering:
             # Drain only this region's remaining lifetimes, even on repeated
             # cancellation. This releases protection, NOT failed gradients or
             # evidence of uncertainty; it does not make replay safe.
-            async def cleanup():
-                for retained in tuple(self.state.active_retentions.values()):
-                    if retained.region is region:
-                        await self.state.release(retained, region, aborted=True)
-
-            task = asyncio.create_task(cleanup())
+            task = asyncio.create_task(self.state.release_region(region))
             while not task.done():
                 try:
                     await asyncio.shield(task)

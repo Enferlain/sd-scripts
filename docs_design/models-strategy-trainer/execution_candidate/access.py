@@ -1,4 +1,4 @@
-"""Preparation-only access analysis for the candidate's CPU worker target.
+"""Shared access boundaries and cold wait analysis for the candidate CPU target.
 
 This is derived evidence, not another authored run or a runtime scheduler.
 Shared use helpers keep the analysis aligned with actual acquisition boundaries.
@@ -7,6 +7,7 @@ Private Python waits, queue protocols and backend internals are not inferred.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Literal
 
@@ -85,15 +86,52 @@ def sequence_uses(item: Work, accepted: Accepted, *, physical_modes: bool) -> tu
     return uses
 
 
+def block_access(block: Block, accepted: Accepted, *, physical_modes: bool) -> tuple[tuple[Use, ...], tuple[str, ...]]:
+    """The ordinary block's one reservation, shared by lowering and analysis."""
+    uses = block_uses(block, accepted.units)
+    if physical_modes:
+        uses += mode_uses(block.work, accepted)
+    states = tuple(dict.fromkeys(name for item in block.work if isinstance(item, Call) for name in item.states))
+    return uses, states
+
+
+def prefix_joins(work: tuple[Work, ...]) -> tuple[Join, ...]:
+    result = []
+    for item in work:
+        if not isinstance(item, Join):
+            break
+        result.append(item)
+    return tuple(result)
+
+
+def participant_access(uses: tuple[Use, ...]) -> dict[str, Literal["read", "write"]]:
+    result: dict[str, Literal["read", "write"]] = {}
+    for use in uses:
+        if result.get(use.participant) != "write":
+            result[use.participant] = use.access
+    return result
+
+
+def remaining_uses(uses: tuple[Use, ...], held: Mapping[str, str], *, reuse: bool) -> tuple[Use, ...]:
+    """Resolve own-region access without changing another owner's lifetime.
+
+    A work-sized read may borrow existing protection. New retentions instead
+    acquire independent lifetimes, so even a read conflicts with an own writer.
+    Writes never upgrade/reuse retained state. This rule is also used before
+    execution when deriving waits; it neither copies nor reschedules work.
+    """
+    for name, mode in participant_access(uses).items():
+        if name in held and (mode == "write" or (not reuse and held[name] == "write")):
+            raise NotReady("Current use cannot upgrade or nest conflicting own retained reservations")
+    return tuple(use for use in uses if not reuse or use.participant not in held)
+
+
 type Access = dict[tuple[str, str], Literal["read", "write"]]
 
 
 def _access(uses: tuple[Use, ...], states: tuple[str, ...] = ()) -> Access:
     result: Access = {("state", name): "write" for name in states}
-    for use in uses:
-        key = ("participant", use.participant)
-        if result.get(key) != "write":
-            result[key] = use.access
+    result.update({("participant", name): mode for name, mode in participant_access(uses).items()})
     return result
 
 
@@ -115,7 +153,7 @@ class _Wait:
     sources: tuple[str, ...] = ()
 
 
-def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
+def _waits(accepted: Accepted, *, physical_modes: bool) -> tuple[_Wait, ...]:
     points: list[_Wait] = []
 
     def add(activity, where, held, requested, sources=()):
@@ -123,18 +161,15 @@ def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
 
     def block(scope: Block, activity: str):
         work = ordered(scope)
-        held = _access(
-            (*block_uses(scope, accepted.units), *mode_uses(scope.work, accepted)),
-            tuple(name for item in work if isinstance(item, Call) for name in item.states),
-        )
-        prefix = True
+        held = _access(*block_access(scope, accepted, physical_modes=physical_modes))
+        prefix = {item.name for item in prefix_joins(work)}
         for item in work:
             if isinstance(item, Join):
                 # Ordinary block prefix readiness precedes its single lease.
-                add(activity, f"{scope.name}/{item.name}", {} if prefix else held, {}, item.channels)
-            else:
-                prefix = False
+                add(activity, f"{scope.name}/{item.name}", {} if item.name in prefix else held, {}, item.channels)
             if isinstance(item, Replace):
+                if held:
+                    raise NotReady("This target publishes replacement only outside protected numerical/state work")
                 add(activity, f"{scope.name}/{item.name}", held, quiescence())
         add(activity, scope.name, {}, held)
 
@@ -143,23 +178,30 @@ def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
 
     def sequence(scope: Sequence, activity: str):
         work = tuple(item for _, group in sequence_order(scope) for item in group)
-        exclusions = retained_exclusions(work, accepted)
+        exclusions = retained_exclusions(work, accepted) if physical_modes else {}
         live: dict[str, Access] = {}
+        retained: set[str] = set()
         for item in work:
             held = _merge(*live.values())
+            participants = {name: mode for (kind, name), mode in held.items() if kind == "participant"}
             where = f"{scope.name}/{item.name}"
             if isinstance(item, Retain):
-                requested = _access(retained_uses(item, exclusions.get(item.output, ())))
+                uses = retained_uses(item, exclusions.get(item.output, ()))
+                remaining_uses(uses, participants, reuse=False)
+                requested = _access(uses)
                 add(activity, where, held, requested)
                 if not item.isolated:
                     live[item.output] = requested
+                retained.add(item.output)
             elif isinstance(item, Release):
                 live.pop(item.retained, None)
+                retained.remove(item.retained)
             else:
-                requested = _access(sequence_uses(item, accepted, physical_modes=True), item.states if isinstance(item, Call) else ())
-                # Runtime reuses covered reads; it cannot reacquire its own writer.
-                requested = {key: mode for key, mode in requested.items() if key not in held}
+                uses = remaining_uses(sequence_uses(item, accepted, physical_modes=physical_modes), participants, reuse=True)
+                requested = _access(uses, item.states if isinstance(item, Call) else ())
                 if isinstance(item, Replace):
+                    if retained:
+                        raise NotReady("A sequence cannot wait on its own protected old-state last use")
                     requested = quiescence()
                 add(activity, where, held, requested)
                 if isinstance(item, Join):
@@ -193,7 +235,7 @@ def _waits(accepted: Accepted) -> tuple[_Wait, ...]:
     return tuple(points)
 
 
-def check_waits(accepted: Accepted) -> None:
+def check_waits(accepted: Accepted, *, physical_modes: bool) -> None:
     """Reject potential declared wait cycles in this realization before loading.
 
     Different activities here are leaves of Together; ordered sequence blocks
@@ -201,7 +243,7 @@ def check_waits(accepted: Accepted) -> None:
     have at most one simultaneous wait point from each activity. No execution
     order is changed, no selected policy is evaluated, and no check runs per step.
     """
-    points = _waits(accepted)
+    points = _waits(accepted, physical_modes=physical_modes)
     producers: dict[str, str] = {}
 
     def sources(scope: Scope):
@@ -245,7 +287,7 @@ def check_waits(accepted: Accepted) -> None:
                 continue
             if following == path[0]:
                 chain = " -> ".join(points[node].where for node in (*path, following))
-                raise NotReady(f"Potential reservation wait cycle in CPU worker target: {chain}")
+                raise NotReady(f"Potential reservation wait cycle in CPU target: {chain}")
             owner = points[following].activity
             if owner not in activities:
                 visit(following, (*path, following), activities | {owner})

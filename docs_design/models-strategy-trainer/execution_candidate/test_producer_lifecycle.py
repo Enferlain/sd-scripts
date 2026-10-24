@@ -347,8 +347,9 @@ def test_known_mixed_replacement_target_limit_rejects_before_loading(monkeypatch
         ),
         (scale("model", 1.0),),
     )
-    with pytest.raises(Rejected, match="outside protected"):
-        Contract().accept(filing)
+    accepted = Contract().accept(filing)
+    with pytest.raises(NotReady, match="outside protected"):
+        prepare(accepted)
 
 
 @pytest.mark.parametrize("target,remaining", [("missing", "discard"), ("run", "discard"), ("source", "discard"), ("demand", None)])
@@ -724,8 +725,9 @@ def test_inactive_body_does_not_request_unoffered_runtime_target_protection():
     assert ready.state.completed and not ready.state.unusable
     assert isinstance(filing.root, Together) and isinstance(filing.root.children[1], Requested)
     active = replace(filing.root.children[1], enabled=True)
-    with pytest.raises(Rejected, match="outside protected"):
-        Contract().accept(replace(filing, root=Together("run", (loop, active))))
+    accepted = Contract().accept(replace(filing, root=Together("run", (loop, active))))
+    with pytest.raises(NotReady, match="outside protected"):
+        prepare(accepted)
 
 
 def test_granted_return_is_not_verified_handback_or_returned_effect_evidence():

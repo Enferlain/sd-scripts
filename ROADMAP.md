@@ -7,9 +7,12 @@ the active production stack described below has not yet been migrated. The
 isolated [execution candidate](docs_design/models-strategy-trainer/execution_candidate/README.md)
 now exercises repeated multi-block accumulation and shared pending-work
 ownership across ordinary/granted execution and state-lifecycle consumers
-(`sd-scripts-syv.14`, `sd-scripts-syv.15`). These are candidate findings, not
-completion of G5 production implementation, GPU/distributed preparation or
-durable continuation.
+(`sd-scripts-syv.14`, `sd-scripts-syv.15`). Current-use borrowing, provider access
+and region cleanup now share state ownership, with preparation checks derived
+from the selected target's actual access boundaries (`sd-scripts-syv.16`).
+Physical access with provider-owned native workers remains a separate
+qualification (`sd-scripts-syv.17`). These are candidate findings, not completion
+of G5 production implementation, GPU/distributed preparation or durable continuation.
 
 ## Architecture Overview
 

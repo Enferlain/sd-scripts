@@ -718,8 +718,9 @@ def test_later_source_wait_with_conflicting_lease_rejects_before_loading(monkeyp
         channels=(Channel("input", 1),),
     )
     monkeypatch.setattr(Scale, "__init__", lambda *args: pytest.fail("loaded before known target rejection"))
-    with pytest.raises(Rejected, match="lease/source wait cycle"):
-        Contract().accept(filing)
+    accepted = Contract().accept(filing)
+    with pytest.raises(NotReady, match="reservation wait cycle"):
+        prepare(accepted)
 
 
 def test_readiness_race_does_not_wait_again_under_protected_admission():
@@ -909,8 +910,9 @@ def test_indirect_lease_source_wait_cycle_rejects_before_loading(monkeypatch):
         channels=(Channel("F1", 1), Channel("F2", 1)),
     )
     monkeypatch.setattr(Scale, "__init__", lambda *args: pytest.fail("loaded before known target rejection"))
-    with pytest.raises(Rejected, match="lease/source wait cycle"):
-        Contract().accept(filing)
+    accepted = Contract().accept(filing)
+    with pytest.raises(NotReady, match="reservation wait cycle"):
+        prepare(accepted)
 
 
 def test_acyclic_later_source_wait_still_executes():

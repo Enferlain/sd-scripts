@@ -18,7 +18,7 @@ from types import MappingProxyType
 import torch
 from torch import nn
 
-from .access import retained_uses
+from .access import participant_access, remaining_uses, retained_uses
 from .graph import Accepted, NotReady, OutOfBounds, Retain, Unit, Use, View
 
 
@@ -282,8 +282,10 @@ class RetainedState:
     isolated: bool
     region: object
     lease: AbstractAsyncContextManager[Projection] | None
+    uses: tuple[Use, ...]
     token: object = field(default_factory=object, repr=False)
     released: bool = False
+    closing: bool = False
 
 
 def _footprint(model: nn.Module) -> set[tuple[str, int]]:
@@ -613,20 +615,23 @@ class RunState:
 
     @asynccontextmanager
     async def acquire(self, uses: tuple[Use, ...], states: tuple[str, ...] = ()) -> AsyncGenerator[Projection]:
-        access: dict[str, str] = {}
-        for use in uses:
-            if access.get(use.participant) != "write":
-                access[use.participant] = use.access
+        access = participant_access(uses)
         async with self.condition:
+
+            def unavailable():
+                return self.image is None or bool(set(access) & self.unusable or set(states) & self.unusable_states)
 
             def free():
                 return not (set(states) & self.state_locks) and all(
                     name not in self.writers and (mode == "read" or not self.readers.get(name)) for name, mode in access.items()
                 )
 
-            await self.condition.wait_for(free)
-            if self.image is None or set(access) & self.unusable or set(states) & self.unusable_states:
+            # A failed close may still hold physical protection. Such state is
+            # not something a waiter can make usable by waiting for that lease.
+            await self.condition.wait_for(lambda: unavailable() or free())
+            if unavailable():
                 raise NotReady("Required current state is unavailable")
+            assert self.image is not None
             self.state_locks.update(states)
             for name, mode in access.items():
                 if mode == "write":
@@ -651,6 +656,76 @@ class RunState:
                 self.state_locks.difference_update(states)
                 self.condition.notify_all()
 
+    def _region_sources(self, region: object | None) -> tuple[RetainedState, ...]:
+        if region is None:
+            return ()
+        return tuple(retained for retained in self.active_retentions.values() if retained.region is region)
+
+    @asynccontextmanager
+    async def use(
+        self,
+        uses: tuple[Use, ...],
+        states: tuple[str, ...] = (),
+        *,
+        region: object | None = None,
+        publication: bool = False,
+    ) -> AsyncGenerator[Projection]:
+        """Supply current state, borrowing only this region's protected reads.
+
+        The caller keeps this scope open through selected execution and physical
+        completion. Borrowing never releases or extends the retained lifetime;
+        only its owner can end that lifetime. Isolated copies cover no current use.
+        """
+        sources = self._region_sources(region)
+        if publication and sources:
+            raise NotReady("A sequence cannot wait on its own protected old-state last use")
+        live = tuple(retained for retained in sources if not retained.isolated)
+        held = participant_access(tuple(use for retained in live for use in retained.uses))
+        remaining = remaining_uses(uses, held, reuse=True)
+        names = {use.participant for use in uses}
+        covered = {}
+        for retained in live:
+            selected = names & retained.projection.models.keys()
+            if selected:
+                self.check_retained(retained, region)
+                covered.update({name: (retained.projection.models[name], retained.projection.stamps[name]) for name in selected})
+        async with self.acquire(remaining, states) as projection:
+            # The acquisition may have waited. Recheck borrowed state before
+            # supplying it, just as acquire checks its newly reserved members.
+            for retained in live:
+                if names & retained.projection.models.keys():
+                    self.check_retained(retained, region)
+            yield (
+                Projection(
+                    MappingProxyType({**{name: value[0] for name, value in covered.items()}, **projection.models}),
+                    MappingProxyType({**{name: value[1] for name, value in covered.items()}, **projection.stamps}),
+                )
+                if covered
+                else projection
+            )
+
+    @asynccontextmanager
+    async def use_source(self, allowed: tuple[Use, ...], uses: tuple[Use, ...] | None = None) -> AsyncGenerator[Projection]:
+        """A provider's bounded authority and returned effects share its lease."""
+        uses = allowed if uses is None else uses
+        authority = participant_access(allowed)
+        if any(
+            use.participant not in authority
+            or use.view is not None
+            or use.access not in ("read", "write")
+            or (use.access == "write" and authority[use.participant] != "write")
+            for use in uses
+        ):
+            raise OutOfBounds("Provider source access exceeds accepted authority")
+        async with self.use(uses) as projection:
+            try:
+                yield projection
+            except BaseException:
+                self.unusable.update(use.participant for use in uses if use.access == "write")
+                raise
+            else:
+                self.returned_writes(uses)
+
     def stamp(self, participant: str) -> Stamp:
         if self.image is None:
             raise NotReady("No current preparation")
@@ -663,8 +738,15 @@ class RunState:
             self.numerical_epochs[name] += 1
 
     async def retain(self, declaration: Retain, region: object, *, exclusive: tuple[str, ...] = ()) -> RetainedState:
-        """The copy policy is explicit; revision labels alone never isolate storage."""
-        lease = self.acquire(retained_uses(declaration, exclusive))
+        """Explicit copy policy within one awaited, sequential region lifetime.
+
+        Concurrent direct retain/use/release calls for the same region are not
+        supported; lowering never overlaps those ownership transitions.
+        """
+        uses = retained_uses(declaration, exclusive)
+        held = participant_access(tuple(use for retained in self._region_sources(region) if not retained.isolated for use in retained.uses))
+        remaining_uses(uses, held, reuse=False)
+        lease = self.acquire(uses)
         projection = await lease.__aenter__()
         keep_lease = False
         try:
@@ -719,6 +801,7 @@ class RunState:
                 declaration.isolated,
                 region,
                 None if declaration.isolated else lease,
+                uses,
             )
             self.active_retentions[retained.token] = retained
             keep_lease = not declaration.isolated
@@ -729,24 +812,55 @@ class RunState:
                 await lease.__aexit__(None, None, None)
 
     def check_retained(self, retained: RetainedState, region: object | None) -> None:
-        if retained.released or self.active_retentions.get(retained.token) is not retained or retained.region is not region:
-            raise NotReady("Retained state is released, foreign or outside its accepted lifetime")
+        if (
+            retained.released
+            or retained.closing
+            or self.active_retentions.get(retained.token) is not retained
+            or retained.region is not region
+        ):
+            raise NotReady("Retained state is closing, released, foreign or outside its accepted lifetime")
         assert self.image is not None
         if any(self.image.units[name].prepared_key is not key for name, key in retained.prepared_keys.items()):
             raise NotReady("Retained derivative member correspondence is stale")
+        if not retained.isolated and self.unusable & retained.projection.models.keys():
+            raise NotReady("Required current state is unavailable")
         if not retained.isolated and any(self.stamp(name) != stamp for name, stamp in retained.projection.stamps.items()):
             raise NotReady("Protected old state changed before last use")
 
     async def release(self, retained: RetainedState, region: object, *, aborted: bool = False) -> None:
         if retained.region is not region or self.active_retentions.get(retained.token) is not retained:
             raise NotReady("Cannot release a foreign retained lifetime")
+        if retained.closing:
+            raise NotReady("Retained lifetime is already closing; an uncertain release cannot be retried")
         if not aborted:
             self.check_retained(retained, region)
-        if retained.lease is not None:
-            await retained.lease.__aexit__(None, None, None)
+        # End admission before any fallible/awaited physical release. Failure
+        # cannot leave a registered token lending protection that may be gone.
+        retained.closing = True
+        try:
+            if retained.lease is not None:
+                await retained.lease.__aexit__(None, None, None)
+        except BaseException:
+            if not retained.isolated:
+                self.unusable.update(retained.projection.models)
+            async with self.condition:
+                self.condition.notify_all()
+            raise
         retained.released = True
+        retained.closing = False
         del self.active_retentions[retained.token]
         self.trace.append(("released", (retained.isolated, tuple(retained.projection.stamps.values()))))
+
+    async def release_region(self, region: object) -> None:
+        """Drain this region's lifetimes without erasing failed-work evidence."""
+        failures = []
+        for retained in self._region_sources(region):
+            try:
+                await self.release(retained, region, aborted=True)
+            except BaseException as error:
+                failures.append(error)
+        if failures:
+            raise BaseExceptionGroup("Retained lifetime cleanup failed", failures)
 
     @asynccontextmanager
     async def producer_owner(self, name: str, states: tuple[str, ...]) -> AsyncGenerator[Mapping[str, object]]:
@@ -937,7 +1051,13 @@ class RunState:
     async def replace(self, proposal: Replacement, participant: str) -> None:
         """Replacement-only path; other structural changes are not implemented."""
         async with self.condition:
-            await self.condition.wait_for(lambda: not self.readers and not self.writers and not self.state_locks)
+
+            def closing():
+                return any(retained.closing for retained in self.active_retentions.values())
+
+            await self.condition.wait_for(lambda: closing() or (not self.readers and not self.writers and not self.state_locks))
+            if closing():
+                raise NotReady("Replacement with closing retained work is unsupported")
             assert self.image is not None
             if proposal.participant != participant or proposal.expected_binding != self.image.bindings[participant].revision:
                 raise NotReady("Stale or misaddressed replacement proposal")
