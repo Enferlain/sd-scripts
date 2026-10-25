@@ -12,6 +12,11 @@ loop and make its helpers configurable.
 
 ## Start here
 
+For the current connected-system judgment, ownership map and reproduced
+remaining progress gap, see the dated [whole-candidate assessment](system_assessment.md).
+It evaluates this candidate without changing the governing design or selecting
+production APIs.
+
 Read [examples.py](examples.py), particularly `diffusion()` and `adversarial()`.
 They use the same language constructs and engine but different computation,
 input relationships, policy and optimization membership. The numerical models
@@ -26,6 +31,8 @@ The [same-graph lowering comparison](#same-graph-block-lowering-comparison)
 below now contrasts two CPU emission paths without changing those meanings.
 Provider-owned native workers also share the state owner's protection with
 selected calls; see [shared physical mode policy](#shared-physical-mode-policy-2026-10-24).
+The subsequently reproduced publication/access cycle now has a shared
+[runtime progress check](#shared-runtime-progress-2026-10-25).
 
 ```python
 contract = Contract()  # CPU target's offer/rules already exist
@@ -81,6 +88,11 @@ build and a workload that actually keeps the GIL disabled are separate checks;
 Forcing `PYTHON_GIL=0` overrides extension declarations and does not demonstrate
 safe free-threaded execution; the checkpoint below does not force it.
 
+The current candidate's [eager optimizer binding](optimizer.py) avoids the
+optimizer-wrapper import described in the historical checkpoints. The dated
+qualification below distinguishes candidate execution from independent tests
+which deliberately construct standard PyTorch optimizers.
+
 Initial final-stack environment check, 2026-10-11: uv **0.12.22** reports the lock and
 installed environment synchronized with no changes needed. Python **3.14.5t**,
 Torch **2.14.1+cu130**, torchvision **0.29.1+cu130**, NumPy **2.5.3** and pytest
@@ -101,8 +113,8 @@ compilation/backward. This is compatibility evidence, not concurrent execution
 or performance evidence. Earlier checkpoints below used Python 3.13.13 and
 Torch 2.11.0+cu130 on CPU and remain historical records.
 
-To run the tests with separate GIL checks in the same process (this intentionally
-fails if a dependency enables the GIL):
+To audit the full regression suite's GIL state (this intentionally fails when
+the independent standard-optimizer oracles enable it):
 
 ```bash
 uv run --locked python - <<'PY'
@@ -121,6 +133,68 @@ assert not sys._is_gil_enabled()
 raise SystemExit(result)
 PY
 ```
+
+### Eager optimizer and GIL-disabled execution (2026-10-25)
+
+Creating `torch.optim.SGD` in the installed Torch 2.14.1 stack calls a shared
+optimizer-base wrapper which imports Dynamo and then Triton. Fresh-process
+checks confirm Adam and AdamW take the same path. No Triton kernel or
+`torch.compile` call is needed to enable the GIL.
+
+The CPU candidate now uses `EagerSGD`, a small physical runtime adapter around
+PyTorch's existing `torch.optim._functional.sgd` implementation with explicit
+`foreach=False`, `fused=False`, no momentum and no weight decay. The selected
+mathematics, semantic units, pending-work ownership and advancement protocol
+are unchanged. The adapter does not inherit the compiler-importing optimizer
+base class, modify installed Torch, hide Triton from imports or override the GIL.
+Its private functional-API dependency is limited to this tested candidate and
+must be requalified with Torch upgrades; it is not a production integration
+decision. Its `state_dict()` captures plain SGD configuration and parameter
+indices for the existing finished-cut probe. Optimizer hooks, schedulers,
+loading optimizer state and the full PyTorch optimizer API are not implemented.
+
+Fresh Python **3.14.5t** processes establish:
+
+- All nine examples and actual selected worker calls in both CPU emissions
+  finish with the GIL disabled and neither Triton nor Dynamo imported. This is
+  a subprocess regression case in [test_eager_optimizer.py](test_eager_optimizer.py).
+- **374** existing candidate cases, including worker/provider concurrency,
+  physical completion, failure, cancellation and the recorded progress
+  limitation, finish under the same default GIL-disabled conditions. This is
+  bounded evidence for those paths, not general native-stack safety or speedup.
+- Eight numerical cases match standard SGD exactly for float32/bfloat16,
+  zero/nonzero learning rate, missing gradients and both reset modes. Those
+  independent oracle calls intentionally retain the ordinary PyTorch wrapper.
+
+The GIL-disabled test command excludes only the files with numerical oracles
+which instantiate standard PyTorch optimizers. The full regression command
+above still runs those files and the unchanged older execution tests; it must
+not be presented as an entirely GIL-disabled process.
+
+```bash
+uv run --locked python - <<'PY'
+import sys
+import sysconfig
+assert sysconfig.get_config_var("Py_GIL_DISABLED") == 1
+assert not sys._is_gil_enabled()
+import pytest
+assert not sys._is_gil_enabled()
+root = "docs_design/models-strategy-trainer/execution_candidate"
+result = pytest.main([
+    "--noconftest", root,
+    "--ignore=" + root + "/test_repeated_regions.py",
+    "--ignore=" + root + "/test_eager_optimizer.py",
+    "-q", "--tb=short",
+])
+assert result == 0
+assert not sys._is_gil_enabled()
+assert "triton" not in sys.modules and "torch._dynamo" not in sys.modules
+PY
+```
+
+This removes one incidental import barrier. The pending source-access versus
+bounded-publication gap (`sd-scripts-syv.19`), production backend support,
+restoration and performance qualification are unchanged.
 
 ## How the whole thing connects
 
@@ -1549,3 +1623,176 @@ Verification: **417 tests pass** (405 candidate cases and 12 unchanged execution
 tests), including 40 new provider/concurrency cases. The focused cases pass in
 another process, all nine examples execute, and scoped lint, formatting, strict
 types and whitespace checks pass.
+
+## Shared runtime progress (2026-10-25)
+
+The [whole-system assessment](system_assessment.md) reproduced a real cycle:
+a provider kept a source read while a full feed blocked its next publication;
+the consumer needed an incompatible model view before claiming the demanded
+product already in that feed. Cold preparation cannot infer a private provider's
+publication scope. Increasing capacity or splitting the accepted source interval
+would not establish a shared solution.
+
+The candidate now connects these boundaries through private [progress](progress.py)
+evidence owned by the coordinator:
+
+- Protection has one task-attributed lease table. `RunState.readers`, `writers`
+  and `state_locks` are derived projections, not independent mutable holders.
+  A retention released by cleanup keeps its original token until physical release.
+- Preparation derives which activity can consume each port. Current work
+  registers its selected input demand before acquiring protected state. This
+  declaration is not a product claim or proof of admission.
+- A blocked acquisition requires **all** conflicting holders to finish. A
+  blocked publication can use **any** possible claimant to free capacity.
+- Entering a shared wait checks the live relationships. Publication and normal
+  activity end recheck when new input identity or an ended future consumer
+  changes those relationships. Available/failed conditions are read afresh;
+  a task merely awaiting its scheduled wakeup is not falsely counted as blocked.
+
+The check removes actors which may make progress until only a closed set of
+observed waits remains. Such a set raises `NotReady` with resource/port evidence.
+An unknown or not-yet-entered consumer stays a possible wake path; one visible
+cycle is insufficient if another claimant may break it. Existing primary
+failures are preserved during activity cleanup. The mechanism does not choose
+work, reinterpret policies, release protection early, evict products or claim
+input before admission. A publication that already made a product ready retains
+that actual evidence if a subsequent progress check fails.
+
+The original cycle now rejects at runtime before selected consumer computation
+or handoff, rather than hanging. Compatible source reads genuinely overlap;
+larger bounded capacity and release-before-publication still run. Per-work
+Sequence acquisition allows its existing Join to claim before a later protected
+view. A separate independent consumer can drain the source while conflicting
+work waits. These outcomes follow their actual access/order, without a
+model-family or algorithm switch.
+
+[test_system_progress.py](test_system_progress.py) covers both emissions,
+aggregate/per-work access, source lifetime, mode compatibility and capacity,
+plus the independent-consumer case. [test_progress.py](test_progress.py)
+exercises indirect cycles, all-holder versus any-claimant semantics, a future
+claimant ending, unknown wake paths and cancellation with another owner's
+lease preserved. The former two limitation probes are now rejection regressions.
+
+This is bounded runtime oversight of shared protocols, not a general scheduler
+or proof of liveness. Private queue/worker joins, worker-slot waits, unentered
+policy choices, communication/device completion and arbitrary external waits
+are not inferred. With unknown wake paths a real stall can remain undiagnosed;
+the mechanism does not label it safe. Preparation's conservative access check
+and this runtime check have different evidence: neither is a second semantic
+authority, and neither substitutes for backend or restoration qualification.
+The selected provider still owns its private workers and must join actual use.
+
+The GIL-disabled command above now also exercises these runtime boundaries.
+The matched parallel-Python experiment is separately tracked in `sd-scripts-syv.21`;
+passing these correctness checks does not establish a free-threading speedup.
+
+Verification at this checkpoint: **471 tests pass** (459 candidate plus 12
+unchanged execution cases), including the expanded 36 system-progress cases
+and nine shared-wait cases. The separate **413-case** candidate qualification
+keeps the GIL disabled with neither Dynamo nor Triton imported. All nine
+examples execute in the existing fresh-process integration check; scoped lint,
+formatting, strict typing and whitespace gates pass.
+
+## Useful parallel Python input work (2026-10-25)
+
+`sd-scripts-syv.21` examines actual use of free-threading rather than only the
+interpreter flag. [parallel_work_probe.py](parallel_work_probe.py) runs a
+deterministic text preprocessing/packing provider alongside learning through
+the unchanged generic candidate engine. Workers normalize/tokenize records,
+compute stable token IDs, and pack tokens while preserving sample/segment
+boundaries. The consumer admits the actual payloads and trains a tiny model
+using their token counts/checksums. The work is Python-side processing, not
+an artificial delay or a heavier native matrix multiplication.
+
+The provider owns a private instance of the existing `Workers` mechanism.
+At most four jobs are submitted/retained privately and the ready port has two
+slots. Computation may finish out of order; this provider publishes in its
+selected input order. Worker count changes its physical realization, not
+data order, loss, optimization cadence or the accepted hierarchy. One and two
+workers run with the GIL explicitly enabled or normally disabled on the same
+free-threaded build. The off case removes any `PYTHON_GIL` environment override;
+it never forces unsafe extensions to run. Every child checks actual GIL state
+and the absence of Dynamo/Triton after execution.
+If physical processing returns after cancellation was requested, the provider
+propagates the worker's cancellation evidence before recording or publishing
+that value. Its TaskGroup drains remaining work; physical return alone is not
+permission to continue the input stream.
+The same bridge propagates not-entered cancellation and the input operation's
+explicit cooperative stop, while retaining a genuine physical failure and
+its interruption evidence. It does not turn an arbitrary worker error into
+a clean cancellation.
+
+### Matched measurements
+
+[parallel_work_results.json](parallel_work_results.json) retains all twelve
+samples: three independent processes per configuration, forward/reverse order,
+16 jobs of 512 records (8,192 records total), packing budget 128, calls emission.
+Python 3.14.5t / Torch 2.14.1+cu130 on Linux/WSL, 32 available CPUs and no CPU
+quota were observed. Torch intra-op/inter-op threads were set to one. Data
+fixture generation, imports, preparation and a separate warmup are excluded;
+the timed engine run includes worker startup/drain, publication, admission,
+observation and all sixteen real backward/advancement operations.
+
+| GIL | Workers | Median elapsed (range), seconds | Median records/second | Worker CPU / worker wall span |
+| --- | --- | --- | --- | --- |
+| on | 1 | 0.899 (0.886–0.916) | 9,114 | 0.95 |
+| off | 1 | 0.860 (0.856–0.910) | 9,522 | 0.98 |
+| on | 2 | 0.899 (0.898–0.918) | 9,115 | 0.96 |
+| off | 2 | 0.439 (0.434–0.468) | 18,649 | 1.96 |
+
+The last column sums each text worker's measured thread CPU time and divides
+by elapsed time from the first processing start to the last processing finish.
+It excludes Torch work in the coordinator. Two live threads alone do not prove
+parallel execution; CPU consumption near **1.96 cores** does in this bounded
+Python-only worker body. GIL-on two-worker runs stayed near one core. Compared
+with the same two-worker configuration, GIL-off throughput improved about
+**2.05×**; compared with one GIL-off worker, two gave about **1.96×**.
+
+All twelve runs preserve exactly the admitted key/token-count/checksum sequence,
+sixteen unit steps and final model weights. Ready occupancy never exceeds two
+and private pending work never exceeds four. A five-millisecond coordinator
+wakeup observer remains active: the two-worker GIL-off runs' maximum sampled
+late wakeups were 1.15–4.39 ms, versus 108.99–112.22 ms with GIL on. These short
+run samples include OS/event-loop and selected work effects; their percentile
+summaries are coarse diagnostics, not an isolated coordination cost or SLA.
+
+The table uses the completed worker-result bridge. All
+[earlier samples](parallel_work_initial_results.json) are retained with their
+original probe source snapshots; repeated qualification did not discard or
+select timings for a more favorable result. Both sets preserve the same inputs
+and final numerical outcomes. The spread is reported rather than hidden.
+
+```bash
+uv run --locked python -m docs_design.models-strategy-trainer.execution_candidate.parallel_work_probe --runs 3 --jobs 16 --records 512 --budget 128 --output docs_design/models-strategy-trainer/execution_candidate/parallel_work_results.json
+```
+
+The artifact records full per-job CPU/wall intervals, source hashes, arguments,
+environment, per-run wake-delay summaries, bounds and actual numerical/input
+outcomes. Recheck hashes before comparing later code. The source and all
+samples are retained; no timing threshold is asserted in unit tests.
+[test_parallel_work.py](test_parallel_work.py) verifies normalization/packing
+boundaries, stop/invalid-budget behavior, identical outcomes and bounds across
+worker counts/emissions, safe GIL-on/off child execution, and tail-barrier
+cancellation cases requiring no publication, complete private-worker drain
+and preservation of a real processing failure.
+
+### What this establishes
+
+The candidate can exploit parallel Python processing while its coordinator
+retains input and optimization ownership. Free-threading has a useful measured
+effect for this workload, not only compatibility evidence. The run uses the
+same shared protections, demands and handoff mechanism as the correctness
+tests; the benchmark adds no scheduler or special engine branch.
+
+The corpus and training model are synthetic. This does not predict real model
+step speed, GPU utilization, a production tokenizer's behavior, distributed or
+storage throughput, or every workload's best worker count. Full input datasets
+are already resident outside the timed run; the queue bounds describe in-flight
+work, not a measured total-memory budget. Native-stack safety and production
+G3.7 gates remain separate. Actual deployment integrations must locate their
+Python-side bottlenecks and choose placement from matched measurements.
+
+Final scoped gates: **480 tests pass** (468 candidate plus 12 unchanged execution
+cases); a separate **422-case** run keeps the GIL disabled without Dynamo/Triton.
+All nine existing examples remain in the fresh-process check. Scoped lint, format, strict typing and
+whitespace checks pass. No performance threshold is embedded in those tests.

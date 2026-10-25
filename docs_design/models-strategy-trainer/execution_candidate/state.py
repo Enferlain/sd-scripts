@@ -20,6 +20,8 @@ from torch import nn
 
 from .access import participant_access, remaining_uses, retained_uses
 from .graph import Accepted, NotReady, OutOfBounds, Retain, Unit, Use, View
+from .optimizer import EagerSGD
+from .progress import Progress
 
 
 @dataclass(frozen=True)
@@ -96,7 +98,7 @@ class UnitRuntime:
     definition: Unit
     ref: str
     parameters: tuple[nn.Parameter, ...]
-    optimizer: torch.optim.Optimizer
+    optimizer: EagerSGD
     steps: int = 0
     outcomes: deque[UnitOutcome] = field(default_factory=lambda: deque(maxlen=32))
     prepared_key: object = field(default_factory=object, repr=False)
@@ -381,9 +383,10 @@ class Feed:
     epoch or global-step fields are built into the mechanism.
     """
 
-    def __init__(self, capacity: int, changed: asyncio.Condition):
+    def __init__(self, capacity: int, changed: asyncio.Condition, *, progress: Progress | None = None, name: str = ""):
         self.capacity = capacity
         self.changed = changed
+        self.progress, self.name = progress, name
         self.ready: dict[Hashable, Product] = {}
         self.closed = False
         self.failure: BaseException | None = None
@@ -395,7 +398,18 @@ class Feed:
         async with self.changed:
             if product.key in self.ready:
                 raise OutOfBounds(f"Duplicate ready work {product.key!r}")
-            await self.changed.wait_for(lambda: len(self.ready) < self.capacity or self.closed)
+
+            def available():
+                return len(self.ready) < self.capacity or self.closed
+
+            progress = self.progress
+            if not available() and progress is not None:
+                with progress.waiting(
+                    "publication:" + self.name, "any", lambda: None if available() else progress.claimants(self.name, self.ready)
+                ):
+                    await self.changed.wait_for(available)
+            else:
+                await self.changed.wait_for(available)
             if self.closed:
                 raise NotReady("Publication after producer shutdown")
             # Recheck after waiting: another worker may publish the same key.
@@ -404,6 +418,10 @@ class Feed:
             self.ready[product.key] = product
             self.high_water = max(self.high_water, len(self.ready))
             self.changed.notify_all()
+            if self.progress is not None:
+                # Publication can make an earlier unknown demand concrete.
+                # Ready contents remain actual evidence if this check fails.
+                self.progress.check()
 
     async def close(self, failure: BaseException | None = None) -> None:
         async with self.changed:
@@ -505,9 +523,7 @@ class RunState:
         self.unusable: set[str] = set()
         self.unusable_states: set[str] = set()
         self.condition = asyncio.Condition()
-        self.readers: dict[str, int] = {}
-        self.writers: set[str] = set()
-        self.state_locks: set[str] = set()
+        self.progress = Progress()
         self.active_producers: dict[str, tuple[str, ...]] = {}
         self.active_retentions: dict[object, RetainedState] = {}
         self.running = False
@@ -515,7 +531,31 @@ class RunState:
         self.invocation = 0
         self.trace: deque[tuple[str, object]] = deque(maxlen=256)
         self.handoffs = asyncio.Condition()
-        self.feeds = {name: Feed(spec.capacity, self.handoffs) for name, spec in accepted.channels.items()}
+        self.feeds = {
+            name: Feed(spec.capacity, self.handoffs, progress=self.progress, name=name) for name, spec in accepted.channels.items()
+        }
+
+    @property
+    def readers(self) -> dict[str, int]:
+        result: dict[str, int] = {}
+        for lease in self.progress.leases.values():
+            for (kind, name), mode in lease.access.items():
+                if kind == "participant" and mode == "read":
+                    result[name] = result.get(name, 0) + 1
+        return result
+
+    @property
+    def writers(self) -> set[str]:
+        return {
+            name
+            for lease in self.progress.leases.values()
+            for (kind, name), mode in lease.access.items()
+            if kind == "participant" and mode == "write"
+        }
+
+    @property
+    def state_locks(self) -> set[str]:
+        return {name for lease in self.progress.leases.values() for kind, name in lease.access if kind == "state"}
 
     @property
     def generation(self) -> int:
@@ -570,7 +610,7 @@ class RunState:
             old_unit = self.image.units[name] if self.image is not None else None
             affected = old_unit is None or any(participant == replacing for participant, _ in definition.members)
             if affected:
-                optimizer = torch.optim.SGD(parameters.values(), lr=definition.learning_rate)
+                optimizer = EagerSGD(parameters.values(), lr=definition.learning_rate)
                 # Resetting a physical optimizer is not resetting the stable
                 # unit's progress or erasing previously observed outcomes.
                 units[name] = UnitRuntime(
@@ -616,28 +656,25 @@ class RunState:
     @asynccontextmanager
     async def acquire(self, uses: tuple[Use, ...], states: tuple[str, ...] = ()) -> AsyncGenerator[Projection]:
         access = participant_access(uses)
+        requested = {("participant", name): mode for name, mode in access.items()} | {("state", name): "write" for name in states}
         async with self.condition:
 
             def unavailable():
                 return self.image is None or bool(set(access) & self.unusable or set(states) & self.unusable_states)
 
             def free():
-                return not (set(states) & self.state_locks) and all(
-                    name not in self.writers and (mode == "read" or not self.readers.get(name)) for name, mode in access.items()
-                )
+                return not self.progress.blockers(requested)
 
             # A failed close may still hold physical protection. Such state is
             # not something a waiter can make usable by waiting for that lease.
-            await self.condition.wait_for(lambda: unavailable() or free())
+            if not unavailable() and not free():
+                description = "access:" + ",".join(f"{kind}/{name}:{mode}" for (kind, name), mode in requested.items())
+                with self.progress.waiting(description, "all", lambda: None if unavailable() else self.progress.blockers(requested)):
+                    await self.condition.wait_for(lambda: unavailable() or free())
             if unavailable():
                 raise NotReady("Required current state is unavailable")
             assert self.image is not None
-            self.state_locks.update(states)
-            for name, mode in access.items():
-                if mode == "write":
-                    self.writers.add(name)
-                else:
-                    self.readers[name] = self.readers.get(name, 0) + 1
+            token = self.progress.claim(requested)
             projection = Projection(
                 MappingProxyType({name: self.image.bindings[name].model for name in access}),
                 MappingProxyType({name: self.stamp(name) for name in access}),
@@ -646,14 +683,7 @@ class RunState:
             yield projection
         finally:
             async with self.condition:
-                for name, mode in access.items():
-                    if mode == "write":
-                        self.writers.remove(name)
-                    else:
-                        self.readers[name] -= 1
-                        if not self.readers[name]:
-                            del self.readers[name]
-                self.state_locks.difference_update(states)
+                del self.progress.leases[token]
                 self.condition.notify_all()
 
     def _region_sources(self, region: object | None) -> tuple[RetainedState, ...]:

@@ -10,6 +10,18 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-25]
+
+### Added
+
+- **A repository-local free-threading skill** — a pinned Tiran workflow includes its supporting references, license and CPython contributor guidance, with standalone links and repository-specific scope notes.
+
+### Changed
+
+- **The isolated execution candidate now uses eager functional SGD** — a small adapter reuses PyTorch's update implementation without the optimizer-base Dynamo/Triton import. Fresh-process checks keep the GIL disabled through the nine examples and bounded worker/provider cases; standard-optimizer numerical oracles remain independent. This changes neither production training nor the selected optimization semantics.
+- **Candidate input capacity and protected access now share runtime progress evidence** — task-attributed leases, prepared consumer relationships and live demands detect observed cross-owner wait cycles without changing work order or input admission. Compatible reads and alternative consumers remain useful; unknown private waits remain unqualified.
+- **A matched candidate probe now measures useful parallel Python work** — bounded text preprocessing/packing runs through the real provider, handoff and optimization machinery under GIL-on/off and one/two-worker configurations. Retained samples show about twice the throughput for this synthetic workload with two GIL-disabled workers; this is not a production training speedup claim.
+
 ## [2026-10-24]
 
 ### Changed

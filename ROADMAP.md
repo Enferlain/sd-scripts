@@ -12,7 +12,16 @@ and region cleanup now share state ownership, with preparation checks derived
 from the selected target's actual access boundaries (`sd-scripts-syv.16`).
 Physical mode protection now also covers declared source participants of
 provider-owned native workers, with bounded overlap/stop/failure qualification
-(`sd-scripts-syv.17`). These are candidate findings, not completion
+(`sd-scripts-syv.17`). An eager functional SGD binding now keeps the candidate
+examples and bounded coordination/thread qualification GIL-disabled without
+the incidental optimizer-base Triton import (`sd-scripts-syv.20`).
+Shared runtime wait evidence now connects protected access and bounded
+publication, rejecting the reproduced cycle while preserving compatible
+progress (`sd-scripts-syv.19`).
+The matched text-processing probe demonstrates useful two-worker Python
+parallelism under the disabled GIL with identical input/numerical outcomes;
+source-stamped samples and workload limits are retained (`sd-scripts-syv.21`).
+These are candidate findings, not completion
 of G5 production implementation, GPU/distributed preparation or durable continuation.
 
 ## Architecture Overview

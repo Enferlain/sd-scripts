@@ -402,17 +402,23 @@ class Lowering:
         self.finished: dict[str, asyncio.Event] = {}
         self._connect(accepted.root)
 
-    def _connect(self, scope: Scope) -> None:
+    def _connect(self, scope: Scope, activity: str | None = None) -> None:
         if isinstance(scope, Together):
             for child in scope.children:
                 self._connect(child)
         elif isinstance(scope, (Sequence, Repeat)):
             for block in scope.blocks:
-                self._connect(block)
+                self._connect(block, activity or scope.name)
+        elif isinstance(scope, Block):
+            for work in scope.work:
+                if isinstance(work, Join):
+                    for channel in work.channels:
+                        self.state.progress.consumers.setdefault(channel, set()).add(activity or scope.name)
         elif isinstance(scope, Requested) and scope.enabled:
             queue = asyncio.Queue(maxsize=1)
             self.request_queues[scope.name] = queue
             self.requests.setdefault(scope.source, []).append(queue)
+            self._connect(scope.block, scope.name)
         elif isinstance(scope, Producer) and scope.stop_when is not None:
             self.finished.setdefault(scope.stop_when, asyncio.Event())
 
@@ -422,6 +428,7 @@ class Lowering:
         prefix = prefix_joins(work)
         first_joins = {item.name for item in prefix}
         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)
+        channels = frozenset(channel for item in work if isinstance(item, Join) for channel in item.channels)
         lines = ["async def body(frame):", "    choice = frame.choice.payload"]
         variables = {"choice": "choice"}
         namespace: dict[str, object] = {}
@@ -474,14 +481,15 @@ class Lowering:
         body = cast(Callable[[Frame], Awaitable[None]], namespace["body"])
 
         async def invoke(choice: Choice, parent: str) -> int:
-            for feeds in waits:
-                await wait_for_products(feeds, choice.key)
-            async with self.state.use(uses, states) as projection:
-                self.state.invocation += 1
-                frame = Frame(self.state, parent, choice, projection, self.state.invocation)
-                self.state.trace.append(("invocation", (parent, block.name, choice.key, frame.invocation)))
-                await body(frame)
-                return frame.invocation
+            with self.state.progress.demand(parent, channels, choice.key):
+                for feeds in waits:
+                    await wait_for_products(feeds, choice.key)
+                async with self.state.use(uses, states) as projection:
+                    self.state.invocation += 1
+                    frame = Frame(self.state, parent, choice, projection, self.state.invocation)
+                    self.state.trace.append(("invocation", (parent, block.name, choice.key, frame.invocation)))
+                    await body(frame)
+                    return frame.invocation
 
         return invoke
 
@@ -709,6 +717,7 @@ class Lowering:
         """
         groups = sequence_order(scope)
         work_items = tuple(item for _, work in groups for item in work)
+        channels = frozenset(channel for item in work_items if isinstance(item, Join) for channel in item.channels)
         exclusions = retained_exclusions(work_items, self.accepted, physical_modes=self.physical_modes)
         bound = []
         for index, work in enumerate(work_items):
@@ -778,7 +787,8 @@ class Lowering:
             primary = None
             invocation = 0
             try:
-                invocation = await body(region, choice)
+                with self.state.progress.demand(parent, channels, choice.key if choice is not None else ""):
+                    invocation = await body(region, choice)
             except BaseException as error:
                 primary = error
                 self.state.unusable.update(participants)
@@ -812,13 +822,13 @@ class Lowering:
     def scope(self, scope: Scope) -> Callable[[], Coroutine[Any, Any, None]]:
         body = self._scope(scope)
         finished = self.finished.get(scope.name)
-        if finished is None:
-            return body
 
         async def tracked():
-            await body()
-            finished.set()  # Whole lifetime normal completion, not one block invocation.
-            self.state.trace.append(("demand_ended", scope.name))
+            with self.state.progress.activity(scope.name):
+                await body()
+                if finished is not None:
+                    finished.set()  # Whole lifetime normal completion, not one block invocation.
+                    self.state.trace.append(("demand_ended", scope.name))
 
         return tracked
 
