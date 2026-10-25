@@ -1,0 +1,2260 @@
+{
+  "observed_at_utc": "2026-10-25T06:08:36.509361+00:00",
+  "cpu_model": "AMD Ryzen 9 3950X 16-Core Processor",
+  "timing_scope": "One host CPU thread per region; unchanged weights, eager functional Linear forward plus gradient; process affinity and host load not controlled. Not a production gate.",
+  "included_processes": [1, 4, 5],
+  "summary": [
+    {
+      "source": "fp32_trainable",
+      "width": 512,
+      "weight_uses_per_region": 1,
+      "median_of_process_medians_us": {
+        "cached": 1163.0056000000002,
+        "uncached": 1174.3638,
+        "explicit": 1209.9632
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [0.9958964369731585, 1.0097662470412867, 0.9963879202632188],
+          "median": 0.9963879202632188
+        },
+        "explicit": {
+          "per_process": [1.0116872222095399, 1.040376073855534, 1.002244200143741],
+          "median": 1.0116872222095399
+        }
+      }
+    },
+    {
+      "source": "fp32_trainable",
+      "width": 512,
+      "weight_uses_per_region": 8,
+      "median_of_process_medians_us": {
+        "cached": 8366.1254,
+        "uncached": 9455.8182,
+        "explicit": 8467.049
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [1.1680516176084201, 1.2086963775791983, 1.0579218188625286],
+          "median": 1.1680516176084201
+        },
+        "explicit": {
+          "per_process": [0.9855816721074262, 1.0342209569076772, 1.0120633620911301],
+          "median": 1.0120633620911301
+        }
+      }
+    },
+    {
+      "source": "fp32_trainable",
+      "width": 1024,
+      "weight_uses_per_region": 1,
+      "median_of_process_medians_us": {
+        "cached": 4847.327200000001,
+        "uncached": 4832.569,
+        "explicit": 4744.5132
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [1.0162088944902772, 0.9851156190731184, 0.973372459775358],
+          "median": 0.9851156190731184
+        },
+        "explicit": {
+          "per_process": [0.9976922241289318, 1.0129856742524905, 0.9603707379192392],
+          "median": 0.9976922241289318
+        }
+      }
+    },
+    {
+      "source": "fp32_trainable",
+      "width": 1024,
+      "weight_uses_per_region": 8,
+      "median_of_process_medians_us": {
+        "cached": 32728.6198,
+        "uncached": 45511.3352,
+        "explicit": 33906.573200000006
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [1.424829001589802, 1.527387511004177, 1.3905668946051921],
+          "median": 1.424829001589802
+        },
+        "explicit": {
+          "per_process": [1.0654625381710445, 1.0475171929842682, 0.9940373959796496],
+          "median": 1.0475171929842682
+        }
+      }
+    },
+    {
+      "source": "fp32_frozen",
+      "width": 512,
+      "weight_uses_per_region": 1,
+      "median_of_process_medians_us": {
+        "cached": 3559.3568,
+        "uncached": 3479.2418,
+        "explicit": 3572.9596
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [0.9774917198523059, 1.018424902338748, 0.9944147921844112],
+          "median": 0.9944147921844112
+        },
+        "explicit": {
+          "per_process": [1.0038217017186926, 1.0069863867647921, 1.0082762901025446],
+          "median": 1.0069863867647921
+        }
+      }
+    },
+    {
+      "source": "fp32_frozen",
+      "width": 512,
+      "weight_uses_per_region": 8,
+      "median_of_process_medians_us": {
+        "cached": 27573.54,
+        "uncached": 28105.709199999998,
+        "explicit": 27085.1336
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [0.9791800230737575, 1.0192999955754682, 1.0101764750542845],
+          "median": 1.0101764750542845
+        },
+        "explicit": {
+          "per_process": [0.960813700707489, 0.9822871346950737, 0.9579350891297987],
+          "median": 0.960813700707489
+        }
+      }
+    },
+    {
+      "source": "bf16_trainable",
+      "width": 512,
+      "weight_uses_per_region": 1,
+      "median_of_process_medians_us": {
+        "cached": 1053.193,
+        "uncached": 1055.1512,
+        "explicit": 1181.4526
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [1.001985371993303, 1.0018592983432286, 1.014061331369776],
+          "median": 1.001985371993303
+        },
+        "explicit": {
+          "per_process": [0.9821718882232743, 1.1311810845685455, 1.0083904416472858],
+          "median": 1.0083904416472858
+        }
+      }
+    },
+    {
+      "source": "bf16_trainable",
+      "width": 512,
+      "weight_uses_per_region": 8,
+      "median_of_process_medians_us": {
+        "cached": 8223.6144,
+        "uncached": 8362.3574,
+        "explicit": 8254.4904
+      },
+      "relative_to_cached": {
+        "uncached": {
+          "per_process": [1.0066049055295945, 0.9607617600210642, 1.0168712920197231],
+          "median": 1.0066049055295945
+        },
+        "explicit": {
+          "per_process": [1.001754065291989, 0.9461641778678395, 1.0037545534722543],
+          "median": 1.001754065291989
+        }
+      }
+    }
+  ],
+  "runs": [
+    {
+      "environment": {
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "cpu_capability": "AVX2",
+        "torch_threads": 1,
+        "interop_threads": 1,
+        "gil_enabled": false,
+        "probe_sha256": "d6cce01e5795fe284d928bb2b352f5aa03b3fedac938d912f73845fec6952fa8",
+        "gil_enabled_at_end": false
+      },
+      "warmup_regions_per_policy": 3,
+      "samples": 9,
+      "regions_per_sample": 5,
+      "overlap": [
+        {
+          "policies": [
+            "cached",
+            "cached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "error": "expected m1 and m2 to have the same dtype, but got: c10::Half != c10::BFloat16"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "cached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "error": "expected m1 and m2 to have the same dtype, but got: c10::BFloat16 != c10::Half"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "uncached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "uncached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "uncached",
+            "cached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 3,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "uncached",
+            "cached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 3,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "explicit",
+            "explicit"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "explicit",
+            "explicit"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        }
+      ],
+      "cost": [
+        {
+          "source": "fp32_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [1075.4112, 1042.5574, 1077.7754, 1016.0316, 1054.506, 1030.9046, 1017.4618, 1054.084, 1039.713],
+            "uncached": [1051.098, 1043.1391999999998, 1017.5338, 1038.2792, 1023.238, 1060.5143999999998, 1020.2058000000001, 1089.6722, 1014.6596],
+            "explicit": [1054.742, 1014.9036, 1071.465, 1058.9722, 1041.4614, 1012.3494000000001, 1060.9406000000001, 1051.5738000000001, 1112.5138]
+          },
+          "median_us": {
+            "cached": 1042.5574,
+            "uncached": 1038.2792,
+            "explicit": 1054.742
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 8,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [8209.7522, 8075.0418, 8211.1402, 8147.3562, 7946.6576, 8102.7396, 8095.377, 7770.138599999999, 8026.1962],
+            "uncached": [9539.5224, 9053.539, 9891.1716, 9455.8182, 9405.983, 9965.840400000001, 9827.831400000001, 9016.104599999999, 8904.2358],
+            "explicit": [7978.6552, 7948.6138, 8081.4762, 8226.0552, 8197.4914, 7813.9152, 8133.575400000001, 7872.6748, 7899.7208]
+          },
+          "median_us": {
+            "cached": 8095.377,
+            "uncached": 9455.8182,
+            "explicit": 7978.6552
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 1024,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [4578.9187999999995, 4884.38, 4755.4878, 5199.5376, 5246.375, 5053.715, 4648.1068, 4515.9846, 4430.3914],
+            "uncached": [4832.569, 4621.5514, 4954.9484, 4999.1432, 5164.0194, 4839.167, 4729.3082, 4495.8516, 4617.7452],
+            "explicit": [4744.5132, 4724.223599999999, 4643.907, 5151.8985999999995, 5296.888599999999, 4912.133599999999, 4840.107, 4555.2572, 4597.9958]
+          },
+          "median_us": {
+            "cached": 4755.4878,
+            "uncached": 4832.569,
+            "explicit": 4744.5132
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 1024,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 8,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [31059.089600000003, 30118.5636, 31983.8856, 31676.7064, 32367.2278, 34137.6056, 34045.724799999996, 31823.3368, 31012.023],
+            "uncached": [43980.7356, 43575.4674, 43033.9574, 45342.813200000004, 53353.4046, 48914.697, 47341.8514, 48785.775799999996, 44402.289],
+            "explicit": [30948.5102, 31056.5628, 30788.7162, 38257.89, 33906.573200000006, 33532.1016, 35557.739799999996, 34799.448200000006, 34100.121]
+          },
+          "median_us": {
+            "cached": 31823.3368,
+            "uncached": 45342.813200000004,
+            "explicit": 33906.573200000006
+          }
+        },
+        {
+          "source": "fp32_frozen",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [3607.1677999999997, 3489.4522, 3471.1032, 3625.8636, 3489.2202, 3484.53, 3559.3568, 3586.6004, 3563.241],
+            "uncached": [3507.9616, 3613.2722000000003, 3434.051, 3470.9272, 3456.1664, 3449.3558, 3504.2974, 3627.4744, 3479.2418],
+            "explicit": [3755.3892, 3553.7844, 3648.4902, 3504.1632, 3551.9342, 3548.962, 3572.9596, 3716.9046000000003, 3598.8092]
+          },
+          "median_us": {
+            "cached": 3559.3568,
+            "uncached": 3479.2418,
+            "explicit": 3572.9596
+          }
+        },
+        {
+          "source": "fp32_frozen",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [28380.148, 29541.7614, 28520.8802, 27749.7062, 27581.7132, 28925.013, 28786.122199999998, 30998.122199999998, 30270.7402],
+            "uncached": [28114.207, 28076.5612, 28186.7958, 27999.522, 27039.8236, 29010.730399999997, 28993.607399999997, 28877.404, 28646.695399999997],
+            "explicit": [27872.122, 27658.1006, 26741.3252, 26697.5216, 26399.788800000002, 27463.932, 28088.4702, 27735.034, 28629.1162]
+          },
+          "median_us": {
+            "cached": 28786.122199999998,
+            "uncached": 28186.7958,
+            "explicit": 27658.1006
+          }
+        },
+        {
+          "source": "bf16_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [1550.214, 1309.2466000000002, 1293.2398, 1234.92, 1132.9196000000002, 1119.6168, 1150.4448, 1175.0664, 1202.898],
+            "uncached": [1352.3176, 1112.1462, 1219.531, 1323.9938, 1163.2114, 1286.6291999999999, 1205.2862, 1134.7798, 1100.3376],
+            "explicit": [1241.7623999999998, 1286.3393999999998, 1427.2984, 1181.4526, 1169.0438000000001, 1182.1188, 1179.8086, 1162.1016000000002, 1162.6396000000002]
+          },
+          "median_us": {
+            "cached": 1202.898,
+            "uncached": 1205.2862,
+            "explicit": 1181.4526
+          }
+        },
+        {
+          "source": "bf16_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [9463.9424, 8034.858, 8979.9658, 8071.4224, 8076.690799999999, 8142.9208, 8423.2966, 8098.1022, 8015.2748],
+            "uncached": [9698.0972, 9385.0934, 8750.493400000001, 8062.7267999999995, 8023.3414, 8026.7294, 8151.589400000001, 7968.534, 8269.787],
+            "explicit": [9689.856800000001, 8158.5, 8112.306799999999, 8097.8512, 8059.0376, 8004.442400000001, 8066.9662, 8152.0154, 8117.6792000000005]
+          },
+          "median_us": {
+            "cached": 8098.1022,
+            "uncached": 8151.589400000001,
+            "explicit": 8112.306799999999
+          }
+        }
+      ]
+    },
+    {
+      "environment": {
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "cpu_capability": "AVX2",
+        "torch_threads": 1,
+        "interop_threads": 1,
+        "gil_enabled": false,
+        "probe_sha256": "d6cce01e5795fe284d928bb2b352f5aa03b3fedac938d912f73845fec6952fa8",
+        "gil_enabled_at_end": false
+      },
+      "warmup_regions_per_policy": 3,
+      "samples": 9,
+      "regions_per_sample": 5,
+      "overlap": [
+        {
+          "policies": [
+            "cached",
+            "cached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "error": "expected m1 and m2 to have the same dtype, but got: c10::Half != c10::BFloat16"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "cached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "error": "expected m1 and m2 to have the same dtype, but got: c10::BFloat16 != c10::Half"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "uncached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "uncached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "uncached",
+            "cached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 3,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "uncached",
+            "cached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 3,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "explicit",
+            "explicit"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "explicit",
+            "explicit"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        }
+      ],
+      "cost": [
+        {
+          "source": "fp32_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [1318.1453999999999, 1356.208, 1198.9338, 1306.3776, 1161.2253999999998, 1117.5123999999998, 1101.6456, 1125.401, 1163.0056000000002],
+            "uncached": [1389.1722, 1170.8902, 1226.0254, 1146.1288, 1174.3638, 1099.0352, 1317.702, 1293.1863999999998, 1125.639],
+            "explicit": [1366.9868000000001, 1098.2151999999999, 1280.649, 1069.5156000000002, 1620.5626000000002, 1106.8518000000001, 1209.9632, 1213.2074, 1098.6534]
+          },
+          "median_us": {
+            "cached": 1163.0056000000002,
+            "uncached": 1174.3638,
+            "explicit": 1209.9632
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 8,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [8308.6898, 8219.0514, 9411.2428, 8892.681, 8624.1336, 8829.846599999999, 8765.361, 9071.958, 9013.764],
+            "uncached": [10724.269400000001, 9218.5342, 10786.4996, 10554.1374, 10511.6216, 10672.6036, 10261.939199999999, 11006.7898, 10707.007599999999],
+            "explicit": [9854.787400000001, 8005.883599999999, 8865.002, 9376.364599999999, 8917.4554, 8678.831400000001, 9229.998599999999, 9132.0124, 9146.5728]
+          },
+          "median_us": {
+            "cached": 8829.846599999999,
+            "uncached": 10672.6036,
+            "explicit": 9132.0124
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 1024,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [6005.356, 5497.082, 5017.9752, 5090.9362, 5131.809, 5591.641, 5947.6, 4699.092799999999, 4650.053400000001],
+            "uncached": [5734.1452, 5036.9328, 5196.015, 4854.7428, 5026.55, 5957.078, 5429.3528, 5055.425200000001, 4662.482400000001],
+            "explicit": [5483.5104, 5554.562400000001, 4938.9184000000005, 5309.1104000000005, 4646.3252, 5124.7564, 6430.364799999999, 5198.449, 4665.9486]
+          },
+          "median_us": {
+            "cached": 5131.809,
+            "uncached": 5055.425200000001,
+            "explicit": 5198.449
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 1024,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 8,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [34313.8876, 36856.037, 36732.7374, 37524.7486, 37176.792, 40156.650799999996, 39237.1144, 40093.5378, 35388.1254],
+            "uncached": [56597.016200000005, 53694.807799999995, 56783.3678, 65699.1692, 63030.8482, 56172.864799999996, 61043.1916, 62662.9868, 49988.822],
+            "explicit": [35308.066399999996, 38943.328799999996, 37948.3198, 39877.5908, 36933.198, 39015.0774, 42116.5106, 42764.3286, 33757.133799999996]
+          },
+          "median_us": {
+            "cached": 37176.792,
+            "uncached": 56783.3678,
+            "explicit": 38943.328799999996
+          }
+        },
+        {
+          "source": "fp32_frozen",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [4372.2114, 4002.355, 4051.2142000000003, 4037.9054, 3946.1043999999997, 4007.3666000000003, 3952.079, 3950.1367999999998, 3921.5488],
+            "uncached": [4704.369, 4209.0206, 4056.1207999999997, 4076.098, 4139.1762, 3935.302, 3935.1218, 4242.938, 3827.9707999999996],
+            "explicit": [4263.300200000001, 4172.9664, 4073.4498, 4030.317, 4111.3462, 3851.8284, 4001.1762000000003, 4027.08, 4023.2796000000003]
+          },
+          "median_us": {
+            "cached": 4002.355,
+            "uncached": 4076.098,
+            "explicit": 4030.317
+          }
+        },
+        {
+          "source": "fp32_frozen",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [29917.6726, 32388.4764, 30404.4202, 31489.658, 27256.164800000002, 26575.9196, 27009.072600000003, 27573.54, 27150.608399999997],
+            "uncached": [30408.001, 28390.428399999997, 32140.4912, 31335.6102, 27693.6374, 26984.1044, 28105.709199999998, 27131.2006, 27059.952],
+            "explicit": [28980.5926, 28451.034600000003, 28817.282600000002, 26678.079, 27085.1336, 26106.1302, 25759.6844, 27651.9028, 26012.233600000003]
+          },
+          "median_us": {
+            "cached": 27573.54,
+            "uncached": 28105.709199999998,
+            "explicit": 27085.1336
+          }
+        },
+        {
+          "source": "bf16_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [1280.928, 1245.0056000000002, 1040.7624, 1053.193, 983.8266, 1238.8732, 1026.7051999999999, 1089.4083999999998, 968.0576],
+            "uncached": [1235.775, 1054.6432, 1064.9338, 1064.6438, 1055.1512, 1087.8413999999998, 974.644, 993.085, 960.4908],
+            "explicit": [1055.065, 1191.352, 1052.1908, 1035.5298, 1193.8742, 1750.9268, 1737.3378, 2624.3022, 985.2406]
+          },
+          "median_us": {
+            "cached": 1053.193,
+            "uncached": 1055.1512,
+            "explicit": 1191.352
+          }
+        },
+        {
+          "source": "bf16_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [8164.6652, 9125.2526, 7933.656, 8989.1032, 10108.83, 8861.2894, 8009.385, 9306.3686, 8621.502],
+            "uncached": [9143.0662, 8595.7834, 8258.3662, 9420.4074, 8266.7544, 8120.825599999999, 9453.2262, 8117.32, 8513.588],
+            "explicit": [8533.6554, 9743.147, 8138.3134, 8206.816, 10058.413199999999, 8266.407799999999, 8634.7144, 8384.2346, 8380.8276]
+          },
+          "median_us": {
+            "cached": 8861.2894,
+            "uncached": 8513.588,
+            "explicit": 8384.2346
+          }
+        }
+      ]
+    },
+    {
+      "environment": {
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "cpu_capability": "AVX2",
+        "torch_threads": 1,
+        "interop_threads": 1,
+        "gil_enabled": false,
+        "probe_sha256": "d6cce01e5795fe284d928bb2b352f5aa03b3fedac938d912f73845fec6952fa8",
+        "gil_enabled_at_end": false
+      },
+      "warmup_regions_per_policy": 3,
+      "samples": 9,
+      "regions_per_sample": 5,
+      "overlap": [
+        {
+          "policies": [
+            "cached",
+            "cached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "error": "expected m1 and m2 to have the same dtype, but got: c10::Half != c10::BFloat16"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "cached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "error": "expected m1 and m2 to have the same dtype, but got: c10::BFloat16 != c10::Half"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "uncached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "cached",
+            "uncached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 2,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "uncached",
+            "cached"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 3,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "uncached",
+            "cached"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 3,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "explicit",
+            "explicit"
+          ],
+          "first_dtype": "torch.bfloat16",
+          "regions": {
+            "first": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        },
+        {
+          "policies": [
+            "explicit",
+            "explicit"
+          ],
+          "first_dtype": "torch.float16",
+          "regions": {
+            "first": {
+              "dtype": "torch.float16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "second": {
+              "dtype": "torch.bfloat16",
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          }
+        }
+      ],
+      "cost": [
+        {
+          "source": "fp32_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [1331.793, 1318.156, 1277.4753999999998, 1342.4776000000002, 1197.8283999999999, 1146.9551999999999, 1153.1796000000002, 1239.729, 1221.3658],
+            "uncached": [1214.3216, 1333.621, 1198.6624, 1328.4226, 1580.0213999999999, 1212.8393999999998, 1093.7238, 1235.251, 1269.923],
+            "explicit": [1279.5696, 1242.5112, 1318.6562, 1211.3372, 1432.2604, 1187.2718, 1127.0, 1254.434, 1219.1836]
+          },
+          "median_us": {
+            "cached": 1239.729,
+            "uncached": 1235.251,
+            "explicit": 1242.5112
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 8,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [8572.725199999999, 8272.4238, 8366.1254, 8254.636400000001, 9070.002400000001, 8385.424, 8993.5394, 8233.4812, 8274.6458],
+            "uncached": [8850.7066, 8418.663, 8513.393199999999, 9972.537, 9050.088, 8387.297, 9349.1484, 9192.7024, 8478.041],
+            "explicit": [8467.049, 8389.237, 8345.2264, 8250.7004, 8837.8802, 9067.7304, 8647.9936, 8877.7376, 8176.7616]
+          },
+          "median_us": {
+            "cached": 8366.1254,
+            "uncached": 8850.7066,
+            "explicit": 8467.049
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 1024,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [4847.327200000001, 4652.4565999999995, 4957.6942, 5255.6184, 4820.1816, 4951.8117999999995, 4939.087, 4682.4586, 4775.5725999999995],
+            "uncached": [4597.8674, 4615.9844, 4816.7232, 4798.1456, 4658.1232, 4750.767, 5107.0938, 4718.2548, 4631.2392],
+            "explicit": [4634.9936, 4557.7807999999995, 4487.014, 4706.9002, 4690.1972000000005, 4844.1408, 5000.7028, 4655.2312, 4535.401400000001]
+          },
+          "median_us": {
+            "cached": 4847.327200000001,
+            "uncached": 4718.2548,
+            "explicit": 4655.2312
+          }
+        },
+        {
+          "source": "fp32_trainable",
+          "width": 1024,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 8,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 1,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [36965.683, 31853.9278, 31208.8328, 32854.2656, 36721.6046, 31917.656, 32166.4538, 32728.6198, 33728.0262],
+            "uncached": [50836.045600000005, 45511.3352, 45262.88, 44162.051, 51574.599799999996, 44258.765, 45779.400200000004, 46763.116799999996, 45241.763],
+            "explicit": [31899.7768, 32107.6, 30658.715600000003, 35115.8348, 33248.3906, 34912.481799999994, 32238.306399999998, 33094.9668, 32533.472]
+          },
+          "median_us": {
+            "cached": 32728.6198,
+            "uncached": 45511.3352,
+            "explicit": 32533.472
+          }
+        },
+        {
+          "source": "fp32_frozen",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [3425.3662000000004, 4022.1152, 3555.4548, 3394.0404, 3475.0116000000003, 3569.6216, 3489.897, 3543.208, 3439.4152000000004],
+            "uncached": [3477.2418, 3500.5452, 3470.9672, 3512.558, 3470.4052, 3447.7338, 3444.5874, 3463.4366, 3452.4082000000003],
+            "explicit": [3603.7952, 3654.0714, 3707.6967999999997, 3450.4377999999997, 3389.9238, 3425.5804, 3409.9874, 3518.7804, 3632.9192000000003]
+          },
+          "median_us": {
+            "cached": 3489.897,
+            "uncached": 3470.4052,
+            "explicit": 3518.7804
+          }
+        },
+        {
+          "source": "fp32_frozen",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": null,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [27494.65, 26588.626800000002, 28303.073, 26723.8456, 27209.2054, 27707.309, 27548.4574, 26743.2066, 26960.8412],
+            "uncached": [27634.9942, 26124.873600000003, 27486.0992, 26911.5118, 29124.5708, 27386.305800000002, 28750.4522, 27759.8416, 26243.3982],
+            "explicit": [25131.2974, 25744.089399999997, 25856.1028, 26825.3724, 26064.6526, 26667.638199999998, 26407.297, 26871.5836, 25946.7588]
+          },
+          "median_us": {
+            "cached": 27209.2054,
+            "uncached": 27486.0992,
+            "explicit": 26064.6526
+          }
+        },
+        {
+          "source": "bf16_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 1,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [917.388, 961.057, 1040.1201999999998, 981.8001999999999, 985.6764000000001, 937.2634, 943.1498, 1023.225, 966.4091999999999],
+            "uncached": [987.9326, 1022.847, 981.2002, 946.108, 883.9358000000001, 979.9982, 907.8254000000001, 931.0768, 1061.5796],
+            "explicit": [948.32, 1023.779, 949.5862, 992.505, 948.6482, 947.398, 1043.8542, 974.5178000000001, 1000.5735999999999]
+          },
+          "median_us": {
+            "cached": 966.4091999999999,
+            "uncached": 979.9982,
+            "explicit": 974.5178000000001
+          }
+        },
+        {
+          "source": "bf16_trainable",
+          "width": 512,
+          "batch": 8,
+          "input_dtype": "torch.bfloat16",
+          "weight_uses_per_region": 8,
+          "correctness": {
+            "cached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "uncached": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            },
+            "explicit": {
+              "weight_cast_nodes": 0,
+              "values_and_gradient": "exact"
+            }
+          },
+          "region_us": {
+            "cached": [8321.773, 8095.284, 8632.483400000001, 9037.9936, 8223.6144, 8009.9004, 8985.9094, 8066.454, 8073.1884],
+            "uncached": [8140.545, 8036.576, 8582.967, 9020.9054, 8015.4748, 8091.0398, 8362.3574, 8521.8936, 8443.149],
+            "explicit": [8397.2378, 8254.4904, 8088.6776, 8140.2168, 7787.855799999999, 8168.6146, 8536.36, 8416.5072, 8263.473]
+          },
+          "median_us": {
+            "cached": 8223.6144,
+            "uncached": 8362.3574,
+            "explicit": 8254.4904
+          }
+        }
+      ]
+    }
+  ],
+  "excluded_timing_runs": {
+    "reason": "Processes 2 and 3 were accidentally launched with overlapping lifetimes. Retained as evidence; excluded from the serial-process comparison.",
+    "runs": [
+      {
+        "environment": {
+          "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+          "torch": "2.14.1+cu130",
+          "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+          "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+          "cpu_capability": "AVX2",
+          "torch_threads": 1,
+          "interop_threads": 1,
+          "gil_enabled": false,
+          "probe_sha256": "d6cce01e5795fe284d928bb2b352f5aa03b3fedac938d912f73845fec6952fa8",
+          "gil_enabled_at_end": false
+        },
+        "warmup_regions_per_policy": 3,
+        "samples": 9,
+        "regions_per_sample": 5,
+        "overlap": [
+          {
+            "policies": [
+              "cached",
+              "cached"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "error": "expected m1 and m2 to have the same dtype, but got: c10::Half != c10::BFloat16"
+              }
+            }
+          },
+          {
+            "policies": [
+              "cached",
+              "cached"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "error": "expected m1 and m2 to have the same dtype, but got: c10::BFloat16 != c10::Half"
+              }
+            }
+          },
+          {
+            "policies": [
+              "cached",
+              "uncached"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "cached",
+              "uncached"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "uncached",
+              "cached"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 3,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "uncached",
+              "cached"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 3,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "explicit",
+              "explicit"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "explicit",
+              "explicit"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          }
+        ],
+        "cost": [
+          {
+            "source": "fp32_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [1133.6953999999998, 1117.4684, 1047.82, 1348.1863999999998, 1143.774, 1175.012, 1124.5066000000002, 1108.6018000000001, 1214.6802],
+              "uncached": [1125.9088000000002, 1123.5028, 1120.5364, 1056.4706, 1136.2733999999998, 1160.145, 1193.725, 1124.7028, 1121.9366],
+              "explicit": [1074.87, 1108.2558000000001, 1078.482, 1084.3121999999998, 1173.7458000000001, 1111.174, 1113.262, 1132.7612, 1233.5674]
+            },
+            "median_us": {
+              "cached": 1133.6953999999998,
+              "uncached": 1124.7028,
+              "explicit": 1111.174
+            }
+          },
+          {
+            "source": "fp32_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 8,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [9789.720599999999, 8212.163, 8515.8146, 8425.770400000001, 8565.3792, 8096.8517999999995, 8005.6957999999995, 8685.7542, 8105.4962000000005],
+              "uncached": [11862.9314, 11094.427599999999, 16930.602600000002, 11493.385199999999, 12340.510199999999, 9583.507800000001, 11266.0386, 11643.3036, 9986.3634],
+              "explicit": [8392.3344, 8634.1642, 8459.886, 8367.7986, 9803.0522, 7968.433400000001, 8205.9946, 9733.2382, 8221.1514]
+            },
+            "median_us": {
+              "cached": 8425.770400000001,
+              "uncached": 11493.385199999999,
+              "explicit": 8392.3344
+            }
+          },
+          {
+            "source": "fp32_trainable",
+            "width": 1024,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [4577.1184, 4334.5386, 4467.883400000001, 4185.2834, 4273.4312, 4317.9418, 4254.9378, 4698.465, 4473.9178],
+              "uncached": [4469.209599999999, 4907.949, 4301.4186, 4137.1124, 4045.0366, 4284.317599999999, 4285.8578, 4315.575599999999, 4210.8392],
+              "explicit": [4424.8866, 4352.9142, 4415.546, 4134.6982, 4191.159799999999, 4312.1318, 4218.379400000001, 4285.602, 4286.277599999999]
+            },
+            "median_us": {
+              "cached": 4334.5386,
+              "uncached": 4285.8578,
+              "explicit": 4286.277599999999
+            }
+          },
+          {
+            "source": "fp32_trainable",
+            "width": 1024,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 8,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [30584.1694, 30399.597, 30449.619, 32168.7372, 31443.3822, 30147.066, 32845.1546, 31369.8626, 31606.3804],
+              "uncached": [49774.913799999995, 49703.3452, 45430.971399999995, 44688.035200000006, 47318.892, 42127.3954, 43983.2676, 44988.529, 43057.8728],
+              "explicit": [32021.1578, 30692.7046, 30067.555800000002, 33120.117600000005, 33867.424, 30611.249399999997, 32490.016600000003, 32014.4818, 30742.6758]
+            },
+            "median_us": {
+              "cached": 31369.8626,
+              "uncached": 44988.529,
+              "explicit": 32014.4818
+            }
+          },
+          {
+            "source": "fp32_frozen",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [3522.2354, 3574.3326, 3740.6582000000003, 3457.0472, 3314.6362000000004, 3346.2382000000002, 3379.7383999999997, 3391.351, 3768.815],
+              "uncached": [3439.3742, 3680.7814, 3482.1296, 3345.462, 3349.5124, 3287.6926000000003, 3351.7846, 3480.9208, 3462.9416],
+              "explicit": [3452.497, 3554.6414, 3773.4874, 3372.314, 3306.3216, 3334.0856, 3345.9642000000003, 3432.1618, 3738.2032000000004]
+            },
+            "median_us": {
+              "cached": 3457.0472,
+              "uncached": 3439.3742,
+              "explicit": 3432.1618
+            }
+          },
+          {
+            "source": "fp32_frozen",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [26283.074399999998, 29509.2508, 27411.3572, 26039.2558, 26250.2802, 26235.789399999998, 25692.016600000003, 47288.0746, 38841.4778],
+              "uncached": [26304.766, 28128.012600000002, 26635.966800000002, 25738.8516, 27139.8656, 26096.8644, 26559.0638, 38880.9396, 38722.850399999996],
+              "explicit": [27252.101, 27491.19, 27965.657199999998, 26274.5296, 26857.5108, 25821.3168, 26880.3942, 40952.6026, 42071.163]
+            },
+            "median_us": {
+              "cached": 26283.074399999998,
+              "uncached": 26635.966800000002,
+              "explicit": 27252.101
+            }
+          },
+          {
+            "source": "bf16_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [1925.8246000000001, 1514.1761999999999, 1601.4076, 1381.1938, 2067.9613999999997, 1482.2562, 1642.0623999999998, 2324.1344, 2636.383],
+              "uncached": [2479.8216, 1872.0803999999998, 1822.0022, 3610.6944, 1598.2476000000001, 2242.3806, 1794.685, 1881.926, 1362.7046],
+              "explicit": [2535.9022, 1459.0618, 2960.5982000000004, 2096.2212, 1829.8802, 3191.571, 1711.0808, 1311.8491999999999, 1814.7172]
+            },
+            "median_us": {
+              "cached": 1642.0623999999998,
+              "uncached": 1872.0803999999998,
+              "explicit": 1829.8802
+            }
+          },
+          {
+            "source": "bf16_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [14416.7404, 15379.207400000001, 14718.146, 14042.212599999999, 9401.715199999999, 8718.31, 8929.8858, 9346.542, 9694.2776],
+              "uncached": [14537.3712, 14396.483, 13554.8924, 13539.0704, 11235.44, 8848.3022, 8812.907, 9347.232, 9408.888],
+              "explicit": [17168.9478, 13064.8564, 13344.9164, 12844.312199999998, 11230.159, 8848.418800000001, 9029.9714, 9256.2724, 8953.2108]
+            },
+            "median_us": {
+              "cached": 9694.2776,
+              "uncached": 11235.44,
+              "explicit": 11230.159
+            }
+          }
+        ]
+      },
+      {
+        "environment": {
+          "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+          "torch": "2.14.1+cu130",
+          "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+          "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+          "cpu_capability": "AVX2",
+          "torch_threads": 1,
+          "interop_threads": 1,
+          "gil_enabled": false,
+          "probe_sha256": "d6cce01e5795fe284d928bb2b352f5aa03b3fedac938d912f73845fec6952fa8",
+          "gil_enabled_at_end": false
+        },
+        "warmup_regions_per_policy": 3,
+        "samples": 9,
+        "regions_per_sample": 5,
+        "overlap": [
+          {
+            "policies": [
+              "cached",
+              "cached"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "error": "expected m1 and m2 to have the same dtype, but got: c10::Half != c10::BFloat16"
+              }
+            }
+          },
+          {
+            "policies": [
+              "cached",
+              "cached"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "error": "expected m1 and m2 to have the same dtype, but got: c10::BFloat16 != c10::Half"
+              }
+            }
+          },
+          {
+            "policies": [
+              "cached",
+              "uncached"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "cached",
+              "uncached"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 2,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "uncached",
+              "cached"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 3,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "uncached",
+              "cached"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 3,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "explicit",
+              "explicit"
+            ],
+            "first_dtype": "torch.bfloat16",
+            "regions": {
+              "first": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          },
+          {
+            "policies": [
+              "explicit",
+              "explicit"
+            ],
+            "first_dtype": "torch.float16",
+            "regions": {
+              "first": {
+                "dtype": "torch.float16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "second": {
+                "dtype": "torch.bfloat16",
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            }
+          }
+        ],
+        "cost": [
+          {
+            "source": "fp32_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [1505.4376000000002, 1389.9816, 1622.4738, 1867.9396000000002, 1333.41, 1365.4804, 1691.5402, 1673.4108, 1684.8438],
+              "uncached": [1183.4228, 1527.9171999999999, 1731.3244, 1516.8973999999998, 1438.5221999999999, 1654.054, 1661.1826, 1393.7792, 1438.9366],
+              "explicit": [1168.362, 1333.539, 1638.5206, 1373.8166, 1497.1768, 1180.1206000000002, 1414.4518, 1546.742, 2107.0236]
+            },
+            "median_us": {
+              "cached": 1622.4738,
+              "uncached": 1516.8973999999998,
+              "explicit": 1414.4518
+            }
+          },
+          {
+            "source": "fp32_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 8,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [8133.2098, 10744.1752, 8548.768, 8385.5668, 8431.508800000001, 8303.5664, 8226.5022, 8167.0106, 8402.767],
+              "uncached": [10672.8156, 13023.3604, 11687.6478, 10083.578599999999, 11492.5556, 12108.319, 9783.024, 12639.087800000001, 10449.2198],
+              "explicit": [10027.1724, 8531.0476, 9335.7728, 9116.9684, 8675.443800000001, 9169.189199999999, 8367.949, 8233.2248, 8329.1784]
+            },
+            "median_us": {
+              "cached": 8385.5668,
+              "uncached": 11492.5556,
+              "explicit": 8675.443800000001
+            }
+          },
+          {
+            "source": "fp32_trainable",
+            "width": 1024,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [4449.3018, 4518.11, 4482.1938, 4408.2312, 4463.1548, 4359.5284, 4471.3932, 5116.689, 4680.3697999999995],
+              "uncached": [4653.5684, 4777.6218, 4483.9938, 4313.893599999999, 4330.7426, 4498.6048, 4331.6986, 4646.438, 5402.374400000001],
+              "explicit": [5019.9968, 4831.7194, 4475.4654, 4312.8154, 4343.9752, 4413.263599999999, 4425.366400000001, 4691.3625999999995, 4838.984]
+            },
+            "median_us": {
+              "cached": 4471.3932,
+              "uncached": 4498.6048,
+              "explicit": 4475.4654
+            }
+          },
+          {
+            "source": "fp32_trainable",
+            "width": 1024,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 8,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 1,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [33888.221399999995, 33946.0306, 33422.290199999996, 32569.979600000002, 32897.1282, 31806.9604, 33053.004, 35080.9092, 33026.240600000005],
+              "uncached": [51082.557, 45973.4278, 51538.5296, 62570.3004, 50603.882, 53492.4766, 54212.5702, 59073.5234, 83949.59879999999],
+              "explicit": [33295.5274, 33907.2762, 33960.2032, 40505.3906, 35411.2592, 32132.2052, 37821.884, 33624.8534, 35886.0092]
+            },
+            "median_us": {
+              "cached": 33053.004,
+              "uncached": 53492.4766,
+              "explicit": 33960.2032
+            }
+          },
+          {
+            "source": "fp32_frozen",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [3746.8134, 3595.241, 3929.6612, 3554.9548, 3570.1784, 3606.158, 3551.4332000000004, 3527.5216, 3676.191],
+              "uncached": [3582.7958, 3584.2162000000003, 3752.0352000000003, 3715.8433999999997, 3608.4886, 3496.7158, 3713.1392, 3538.8984, 3537.6603999999998],
+              "explicit": [3672.936, 3617.6452000000004, 3766.6132000000002, 3631.9362, 3737.7774, 3664.2272000000003, 3502.7762000000002, 3451.903, 3569.7763999999997]
+            },
+            "median_us": {
+              "cached": 3595.241,
+              "uncached": 3584.2162000000003,
+              "explicit": 3631.9362
+            }
+          },
+          {
+            "source": "fp32_frozen",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": null,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [27159.5814, 26794.212600000003, 26565.3124, 26817.236, 28096.5476, 26623.598, 27378.3296, 29999.0422, 28621.6526],
+              "uncached": [26907.459600000002, 27254.9892, 26612.9272, 26582.003399999998, 26285.849, 26499.304399999997, 28650.200399999998, 27332.7776, 26894.9452],
+              "explicit": [25928.397800000002, 25529.3448, 26075.414800000002, 25223.086600000002, 25423.819199999998, 26076.2954, 27021.0068, 26623.938, 30498.448800000002]
+            },
+            "median_us": {
+              "cached": 27159.5814,
+              "uncached": 26894.9452,
+              "explicit": 26075.414800000002
+            }
+          },
+          {
+            "source": "bf16_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 1,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [951.4712, 976.473, 1001.0741999999999, 974.6326, 1015.6954000000001, 1016.1292, 977.5908000000001, 1013.705, 996.2502],
+              "uncached": [1055.9368, 956.1014, 1041.8508, 1006.7328, 1006.3448000000001, 975.7588000000001, 1051.3134, 1008.375, 939.7126],
+              "explicit": [995.9961999999999, 1021.2076, 1021.0896, 990.7736, 1007.5468000000001, 979.0448, 1145.4032, 981.329, 1005.8486]
+            },
+            "median_us": {
+              "cached": 996.2502,
+              "uncached": 1006.7328,
+              "explicit": 1005.8486
+            }
+          },
+          {
+            "source": "bf16_trainable",
+            "width": 512,
+            "batch": 8,
+            "input_dtype": "torch.bfloat16",
+            "weight_uses_per_region": 8,
+            "correctness": {
+              "cached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "uncached": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              },
+              "explicit": {
+                "weight_cast_nodes": 0,
+                "values_and_gradient": "exact"
+              }
+            },
+            "region_us": {
+              "cached": [8545.2286, 9622.8804, 9411.3704, 8233.9486, 9247.3976, 9129.485, 8246.3716, 9354.5946, 8424.399],
+              "uncached": [10357.8048, 9029.509, 8629.1128, 8274.5152, 9022.394199999999, 8636.896, 8326.1524, 9015.7174, 8636.9048],
+              "explicit": [9902.4346, 9420.684, 9204.292800000001, 8837.0744, 9192.0214, 8830.6, 8282.2676, 8609.8982, 8575.694]
+            },
+            "median_us": {
+              "cached": 9129.485,
+              "uncached": 8636.9048,
+              "explicit": 8837.0744
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

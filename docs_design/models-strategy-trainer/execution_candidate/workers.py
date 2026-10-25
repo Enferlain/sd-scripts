@@ -43,13 +43,16 @@ class Finished[T]:
 
 @dataclass(frozen=True)
 class CpuContext:
-    """The supported numerical TLS subset; contextvars alone is insufficient."""
+    """Supported numerical TLS plus this target's uncached autocast policy.
+
+    Torch's weight cache is shared across threads and keyed by source tensor,
+    not the requested dtype. Separate worker contexts must not reuse it.
+    """
 
     gradients: bool
     inference: bool
     autocast: bool
     dtype: torch.dtype
-    cache: bool
 
     @classmethod
     def capture(cls) -> CpuContext:
@@ -58,14 +61,13 @@ class CpuContext:
             torch.is_inference_mode_enabled(),
             torch.is_autocast_enabled("cpu"),
             torch.get_autocast_dtype("cpu"),
-            torch.is_autocast_cache_enabled(),
         )
 
     def invoke[T](self, call: Callable[[], T]) -> T:
         with (
             torch.inference_mode(self.inference),
             torch.set_grad_enabled(self.gradients),
-            torch.autocast("cpu", enabled=self.autocast, dtype=self.dtype, cache_enabled=self.cache),
+            torch.autocast("cpu", enabled=self.autocast, dtype=self.dtype, cache_enabled=False),
         ):
             return call()
 

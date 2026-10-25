@@ -21,6 +21,12 @@ Rules:
 - **The isolated execution candidate now uses eager functional SGD** — a small adapter reuses PyTorch's update implementation without the optimizer-base Dynamo/Triton import. Fresh-process checks keep the GIL disabled through the nine examples and bounded worker/provider cases; standard-optimizer numerical oracles remain independent. This changes neither production training nor the selected optimization semantics.
 - **Candidate input capacity and protected access now share runtime progress evidence** — task-attributed leases, prepared consumer relationships and live demands detect observed cross-owner wait cycles without changing work order or input admission. Compatible reads and alternative consumers remain useful; unknown private waits remain unqualified.
 - **A matched candidate probe now measures useful parallel Python work** — bounded text preprocessing/packing runs through the real provider, handoff and optimization machinery under GIL-on/off and one/two-worker configurations. Retained samples show about twice the throughput for this synthetic workload with two GIL-disabled workers; this is not a production training speedup claim.
+- **CPU autocast research now distinguishes cache safety from useful reuse** — mixed-precision overlap tests and matched forward/gradient timings expose the cost of blanket uncaching, verify region-local differentiable cast reuse, and retain the limits of selective native caching. The conservative worker default and production interfaces remain unchanged.
+- **Module-level precision-view research now exercises unchanged forward code** — private structures preserve source parameter identity and gradients in a qualified subset; negative cases expose shared functional-call mutation, precision-policy changes, shared buffers and submodule-alias restoration. No production view or cache API is selected.
+
+### Fixed
+
+- **CPU candidate workers no longer inherit Torch's shared autocast weight cache** — overlapping bf16/fp16 reads reproduced a dtype mismatch despite correct thread-local settings. The worker realization now disables that cache while preserving grad/inference/autocast modes and dtype; focused overlap, state-ownership and RNG cases qualify the supported GIL-disabled boundary.
 
 ## [2026-10-24]
 

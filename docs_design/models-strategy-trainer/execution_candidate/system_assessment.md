@@ -1,5 +1,13 @@
 # Whole-candidate assessment — 2026-10-24
 
+> **Status note, 2026-10-25:** this preserves the assessment at its stated date.
+> The publication/access cycle below was subsequently addressed by
+> `sd-scripts-syv.19`; see the [runtime progress findings](README.md#shared-runtime-progress-2026-10-25).
+> Later GIL-disabled, useful-parallel-work and numerical-view investigations
+> are recorded in the README (`.20`–`.24`). `sd-scripts-syv.25` will refresh the
+> connected-system assessment; do not reopen the historical cycle or treat the
+> later CPU evidence as general backend/production qualification.
+
 This is a source-backed assessment of candidate commit `21e356e9`, plus the
 six assessment cases in [test_system_progress.py](test_system_progress.py).
 It is a checkpoint, not another governing design or an adoption of these Python

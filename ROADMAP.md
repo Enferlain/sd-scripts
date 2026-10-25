@@ -21,6 +21,19 @@ progress (`sd-scripts-syv.19`).
 The matched text-processing probe demonstrates useful two-worker Python
 parallelism under the disabled GIL with identical input/numerical outcomes;
 source-stamped samples and workload limits are retained (`sd-scripts-syv.21`).
+A free-threaded boundary audit now qualifies explicit state/RNG ownership and
+changes this CPU worker target to uncached autocast: inherited thread-local
+settings alone did not prevent Torch's shared weight cache from confusing
+overlapping bf16/fp16 reads (`sd-scripts-syv.22`). Cross-loop control access and
+arbitrary native/module state remain outside the qualified target.
+Matched CPU cache-cost evidence now distinguishes one-use/ineligible weights
+from repeated trainable-fp32 use, and tests precision-specific local cast reuse
+without changing the conservative worker policy (`sd-scripts-syv.23`).
+An isolated module-view experiment now distinguishes private structure from
+tensor/state isolation and preserves unchanged forward behavior in a qualified
+subset, with explicit AMP/alias/buffer limitations (`sd-scripts-syv.24`).
+Next, refresh the connected candidate assessment with these completed findings
+and identify the remaining production-design decisions (`sd-scripts-syv.25`).
 These are candidate findings, not completion
 of G5 production implementation, GPU/distributed preparation or durable continuation.
 

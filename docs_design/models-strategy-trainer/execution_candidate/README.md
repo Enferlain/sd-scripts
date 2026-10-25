@@ -1049,9 +1049,11 @@ alongside an invalid-lifetime error; it is a guard on the generated target, not
 a new general-purpose recovery mechanism.
 
 Python context variables and the supported CPU numerical context—grad mode,
-inference mode and CPU autocast enablement/dtype/cache—are captured for each
+inference mode and CPU autocast enablement/dtype—are captured for each
 submission and restored around execution. They are checked against direct calls
-and across reused workers. PyTorch documents
+and across reused workers. The later free-threaded boundary audit below
+supersedes the original inherited-cache behavior: this CPU worker target now
+disables the shared autocast weight cache. PyTorch documents
 [grad mode](https://docs.pytorch.org/docs/2.14/generated/torch.no_grad.html) and
 [autocast](https://docs.pytorch.org/docs/2.14/amp.html) as thread-local;
 copying Python context variables alone would not preserve them.
@@ -1796,3 +1798,395 @@ Final scoped gates: **480 tests pass** (468 candidate plus 12 unchanged executio
 cases); a separate **422-case** run keeps the GIL disabled without Dynamo/Triton.
 All nine existing examples remain in the fresh-process check. Scoped lint, format, strict typing and
 whitespace checks pass. No performance threshold is embedded in those tests.
+
+## Free-threaded mechanics and backend state (2026-10-25)
+
+`sd-scripts-syv.22` audits the connected candidate from `9de52580` using the
+repository's free-threading skill. The question is whether its actual ownership,
+handoff and context boundaries support parallel work, rather than whether a
+Python version or import advertises support. This is a bounded CPU target audit;
+it does not adopt the candidate's classes as production interfaces.
+
+### Ownership at the thread boundary
+
+| State | Protocol and evidence |
+| --- | --- |
+| Bindings, revisions, unit runtime, input admission, progress and cleanup | Coordinator/event-loop state. The framework does not pass `RunState` to ordinary workers; scoped maps are constructed before dispatch and returned effects are recorded after physical completion. The new owner-state cases observe acquisition/accounting on the coordinator. This target assumes one coordinator; it does not offer arbitrary cross-thread calls into `Ready.state`, `Feed`, or other control objects. |
+| Selected mutable owner objects | Ordinary calls hold a declared state lease through worker execution and cleanup. Deterministic cases show two users of one counter cannot overlap, while two distinct owners can progress together. Provider continuation state instead has one activity owner, enforced by contract checking, with its identity pinned through cleanup. Distinct owner names do not prove that an initializer or a private captured object created disjoint mutable storage. |
+| Models and prepared views | Current-use leases, mode exclusion and retained lifetimes cover the declared users. Registered shared modules/tensors/storage across distinct participants reject during preparation; arbitrary private attributes and undeclared forward-side mutations are not certified by that check. Existing provider/worker lifetime tests exercise these protections under the disabled GIL. |
+| Worker inputs and results | Read-only maps protect membership, not the transitive contents of a value. The selected provider/operation must preserve payload lifetime or use a deliberately thread-safe interaction endpoint. `Product`/`Context` do not deep-freeze buffers, context-variable values or captured Python objects. |
+| Completion and stop | Thread-safe stop events and physical Future observation establish worker completion. Only then does the coordinator inspect return/failure evidence and release access. Existing repeated-cancellation, late-failure and provider-drain cases remain applicable; a non-cooperating worker can still prevent shutdown. |
+| Randomness | Two explicitly owned CPU generators, used by overlapping workers through ordinary state leases, reproduce their separate serial streams without advancing the global Torch RNG. This does not isolate global RNG calls, make save/restore of a global RNG safe across unrelated work, or establish all-module reproducibility. |
+
+Python context-variable bindings are copied per submission. Mutable values inside
+them remain shared unless their own protocol prevents conflicting access.
+Numerical TLS is also restored explicitly; Python context copying alone is not
+sufficient. The audit's independent-context test checks a worker's binding while
+another worker changes its own binding, and confirms the caller stays unchanged.
+
+### Reproduced shared-autocast-cache failure
+
+Two accepted, simultaneous read uses of the same trainable float32 `Linear`
+were enough to expose a native-cache interaction. The first worker computes
+under bf16 autocast and remains inside that context. The second then computes
+under fp16 autocast. On Python 3.14.5t / Torch 2.14.1+cu130 with the GIL actually
+disabled, the original target fails with a Half/BFloat16 matrix dtype mismatch.
+The new regression fails on the original worker implementation before the fix;
+its ordering uses events, not a hoped-for race.
+
+The installed Torch revision's
+[autocast implementation](https://github.com/pytorch/pytorch/blob/5c4886908584029761b579af026dcfb627c84070/aten/src/ATen/autocast_mode.cpp#L41)
+has a process-shared weight-cast map keyed by source `TensorImpl`, while dtype
+and the cache-enabled flag are thread-local. A mutex protects map access, but
+does not make a cached value appropriate for a different requesting dtype.
+Copying numerical TLS therefore did not establish compatible concurrent use.
+This backend interaction can also matter with the GIL enabled; it is not claimed
+to be a CPython-only defect.
+
+The supported CPU worker realization now enters with `cache_enabled=False`.
+Nested autocast scopes that use their inherited default keep that policy.
+Grad mode, inference mode, autocast enablement and dtype remain propagated.
+Both bf16/fp16 orderings succeed in both emissions, retain real overlap and
+produce the expected values and gradients. Reused-worker and failure cases
+check that the policy is re-established at each invocation. Caller-flag checks
+are sanity guards; its structural isolation follows from Torch's thread-local
+flag and the worker-only context entry.
+
+This is an explicit worker-target policy, rather than preservation of the
+caller's cache-enabled flag. Selected Python that explicitly re-enables the
+shared cache is outside this qualification; ordinary calls remain trusted.
+Other targets may provide compatible caching, but must establish its ownership,
+context compatibility and lifetime. No graph construct, model-specific engine
+branch, broad read serialization or native dependency patch was added.
+
+The policy applies whenever execution enters `Workers`, including a provider
+that selects that helper as in the text-processing probe. Raw provider-owned
+executors, such as the `PrivateEncoder` test fixture, bypass `CpuContext`; they
+must establish their own numerical/cache context safety. A source lease alone
+does not supply that policy. Disabling the cache also gives up weight-cast reuse,
+including for a single stable-dtype reader; its AMP throughput cost has not been
+measured in this pass. The follow-up below measures that narrower cost and
+investigates ways to preserve reuse.
+
+### Evidence and remaining scope
+
+[test_free_threading.py](test_free_threading.py) adds fourteen cases for mixed
+autocast contexts, caller/worker reuse after success or failure, exclusive and
+independent owner state, and owned RNG streams. The existing threaded source,
+retained-use, input-admission and cancellation tests supply the other evidence;
+they are not replaced by running nominally single-threaded tests in many threads.
+
+This pass does not establish thread safety of arbitrary model internals,
+third-party native extensions, all Torch contexts/hooks, asynchronous device
+completion, cross-loop control APIs, distributed execution or native Windows.
+No forced-GIL-off environment variable, dependency replacement, native build or
+ThreadSanitizer run was used. The earlier throughput artifacts retain their
+original source hashes; this audit changes `workers.py` and does not renew those
+timings or the production G3.7 performance qualification.
+
+Verification: **494 tests pass** (482 candidate and 12 unchanged execution
+cases). The separate **436-case** process keeps the GIL disabled without Dynamo
+or Triton, excluding only the two files with independent standard-optimizer
+oracles. Scoped lint, formatting, strict typing and whitespace checks pass.
+
+## Autocast cache ownership and useful reuse (2026-10-25)
+
+`sd-scripts-syv.23` follows the audit's performance question. The CPU worker
+default remains uncached. This investigation tests alternatives at the numerical
+implementation boundary; it does not change production code, graph vocabulary,
+preparation interfaces or governing requirements.
+
+### What PyTorch already does, and where it breaks
+
+In the installed [native implementation](https://github.com/pytorch/pytorch/blob/5c4886908584029761b579af026dcfb627c84070/aten/src/ATen/autocast_mode.cpp#L122),
+the weight cache applies to eligible **trainable float32 leaf weights** cast to
+the lower-precision dtype. It does not cache frozen `requires_grad=False`
+weights, already-bf16 weights or inference-mode casts. A whole bf16 training run
+therefore does not automatically lose useful weight caching by disabling this
+feature. Mixed runs may still contain eligible float32 parameters. Conversely,
+frozen float32 weights can incur repeated conversions even with the flag on.
+
+The [AMP guidance](https://docs.pytorch.org/docs/2.14/amp.html) uses autocast
+around forward/loss work, with backward and updates outside that scope.
+Exiting the outer scope clears the cache. Repeated calls *within* one compatible,
+unchanged-weight scope can reuse a cast; merely having one use per scope cannot
+save an initial conversion. Keeping a cache across weight updates is not a
+valid shortcut.
+
+The mixed-dtype collision was also identified in the CPU fp16
+[upstream RFC](https://github.com/pytorch/pytorch/issues/96093). Its discussion
+does not establish a cache that isolates our two concurrent precisions. Simply
+making the map thread-local is not an established fix either: PyTorch deliberately
+[made it global](https://github.com/pytorch/pytorch/pull/86492) so cache entries
+created on autograd threads could be cleared rather than leaked. Any upstream
+cache redesign needs both compatibility and lifecycle correctness.
+
+### Two executable alternatives to blanket disabling
+
+[autocast_cache_probe.py](autocast_cache_probe.py) holds the first region open
+while the second enters **and exits**. Both access the same source weight.
+All successful cases check exact outputs, gradients to that original weight,
+distinct host threads and both bf16/fp16 orderings.
+The overlapping work is forward execution; gradients are evaluated after worker
+completion. This does not test concurrent backward or `.grad` accumulation.
+
+| Realization | Observed behavior |
+| --- | --- |
+| Both readers use the native cache | Reproduces the dtype error. This is retained as a negative, never a timing baseline for concurrent mixed-precision execution. |
+| One cached reader; conflicting reader bypasses the cache | Both succeed. However, the bypassing reader's autocast exit still clears the global map. The first reader needs a second weight cast on its next use, despite its own scope remaining open. This is a qualified workaround, not independent ownership of cache lifetime. |
+| Both readers reuse their own local casts | Both succeed, each using one differentiable weight conversion despite the other reader's scope exit. A fresh cast is created for each region and precision. |
+
+The last realization is deliberately small:
+
+```text
+same source parameter, protected for its actual uses
+    ├── bf16 region: weight.to(bf16) → repeated functional Linear calls
+    └── fp16 region: weight.to(fp16) → repeated functional Linear calls
+```
+
+`.to(dtype)` retains the gradient connection to the original parameter; this is
+not a detached model replica or a second optimization owner. The probe uses
+functional `Linear` directly, and does not mutate a shared module's parameter
+table or call `functional_call` concurrently on that module. Its explicit case
+disables autocast while using already-correctly-typed inputs/weights. This is a
+selected implementation technique, **not** a general replacement for autocast's
+per-operation precision rules in arbitrary models.
+
+The cast lives for one differentiated region, with weights unchanged and a new
+autograd graph on the next invocation. Tests perform an intervening source-weight
+update and verify that the next region sees it; randomized bf16/fp16 cases match
+the ordinary cached realization's outputs and gradients exactly. The experiment
+does not qualify persistent trainable cast graphs, arbitrary hidden parameter
+updates, checkpoint recomputation, distributed wrappers or asynchronous device
+lifetimes.
+
+### Measured cost, with the boundary kept honest
+
+[autocast_cache_results.json](autocast_cache_results.json) retains three serially
+launched fresh processes, nine rotated-order samples per case and five regions
+per sample after warmup. Each times eager CPU forward **and gradient** work with
+batch eight, bf16 inputs, one Torch intra/inter-op thread, GIL disabled and no
+Dynamo/Triton import. The host is an AVX2 Ryzen 9 3950X under WSL. CPU affinity
+and unrelated host load are not controlled; these are diagnostic timings, not a
+production performance gate. Two accidentally overlapping timing processes are
+also retained, explicitly excluded from the serial-process comparison.
+Process independence/order was observed by the launcher; these captures do not
+record individual PIDs or start/end timestamps, so the artifact alone cannot
+independently verify that ordering. Future captures should include those fields.
+
+The table reports the median of each process's ratio against its own safe,
+single-region cached baseline. Positive means slower. It does not divide
+separately aggregated absolute medians.
+
+| Weight source | Width | Uses in one region | Cache disabled | Local cast reuse |
+| --- | ---: | ---: | ---: | ---: |
+| Trainable fp32 | 512 | 1 | -0.4% | +1.2% |
+| Trainable fp32 | 512 | 8 | +16.8% | +1.2% |
+| Trainable fp32 | 1024 | 1 | -1.5% | -0.2% |
+| Trainable fp32 | 1024 | 8 | +42.5% | +4.8% |
+| Frozen fp32 | 512 | 1 | -0.6% | +0.7% |
+| Frozen fp32 | 512 | 8 | +1.0% | -3.9% |
+| Trainable bf16 | 512 | 1 | +0.2% | +0.8% |
+| Trainable bf16 | 512 | 8 | +0.7% | +0.2% |
+
+Repeated eligible weight use really can suffer from blanket disabling. Local
+reuse preserves most of the measured benefit; it is **not demonstrated to have
+zero cost**. For width 1024/eight uses, its per-process difference ranges from
+-0.6% to +6.5%, while disabling is +39.1% to +52.7%. In the one-use and ineligible
+cases there is no lost native reuse to explain a systematic regression. These
+small numerical fixtures are not an SDXL workload, GPU benchmark or whole-run
+concurrency speedup claim.
+
+All timed comparisons have bit-identical outputs and gradients for the exact,
+nonzero fixture values. Distinct differentiable cast nodes provide separate
+reuse evidence: one versus eight for cached/uncached trainable fp32, one for
+explicit local reuse, and zero for already-bf16 weights. This counts neither
+allocations nor all hidden conversions. No dispatch/profiler instrumentation is
+inside the timed paths. In this environment an exploratory `TorchDispatchMode`
+counter imported Dynamo/Triton and re-enabled the GIL, so it was not used for
+qualification or timing.
+
+Reproduce one process with:
+
+```bash
+uv run --locked python -m docs_design.models-strategy-trainer.execution_candidate.autocast_cache_probe --output /tmp/autocast-cache.json
+```
+
+Run with assertions enabled: neither `python -O` nor `PYTHONOPTIMIZE` is a
+supported capture mode. This research probe uses assertions for its correctness
+and environment gates. Its error text/cast-node checks intentionally pin the
+recorded Torch version and should be reassessed if a dependency upgrade changes
+them.
+
+The aggregate JSON was assembled once from the individual probe outputs. Its
+`runs` and excluded runs retain those outputs; the extra metadata records the
+capture circumstances. To reconstruct each summary, group the same configuration
+across included runs, calculate `median_us[policy] / median_us["cached"]` within
+each run, then take the median of those ratios. Absolute columns separately take
+the median of process medians. Before handoff, the retained sample medians,
+summary calculations and every probe hash were rechecked against the final
+measured source (`d6cce01e5795fe284d928bb2b352f5aa03b3fedac938d912f73845fec6952fa8`).
+
+### Consequence for the candidate
+
+There is no need to choose between universal uncaching and serializing model
+reads. A supported numerical realization can retain compatible native caching,
+or own appropriately typed derived weights within a valid region. Preparation
+selects that mechanism; ordinary authors need not manage a global AMP cache.
+For trainable weights, preparation can select the conversion/reuse procedure,
+but cannot create one permanent cast and ignore later updates or autograd
+lifetimes. Frozen derived representations have different reuse opportunities,
+still subject to their source dependencies.
+
+A backend-level cache fix could also distinguish target precision and valid
+source/autograd lifetime. Adding the missing dtype key would address the exact
+collision, but is not by itself evidence for every broader reuse guarantee.
+No Torch fork or cache monkeypatch is required or attempted here.
+
+The smallest supported recommendation is to keep the audit's uncached CPU
+fallback, and qualify reuse in selected numerical realizations where it has a
+measured benefit. The functional example establishes that route without adding
+an IR construct. It has not implemented an automatic arbitrary-module cache
+policy in `Workers`, nor qualified GPU/compiled/distributed/Windows targets.
+
+Verification adds sixteen focused cases. The combined candidate/execution suite
+passes **510 cases**; the separate **452-case** process retains the disabled GIL
+without Dynamo or Triton. Scoped lint, formatting and strict typing pass.
+
+## Ordinary module forward through private precision views (2026-10-25)
+
+`sd-scripts-syv.24` investigates the gap left by the functional `Linear` probe:
+whether an unchanged `nn.Module.forward()` can consume independent converted
+parameter views without changing the source module's parameter table.
+[test_module_cast_views.py](test_module_cast_views.py) is an isolated feasibility
+experiment; its helper is not installed as a candidate backend or production API.
+The accepted graph's `View`, existing prepared-view implementation, worker policy and governing
+requirements remain unchanged. In particular, existing `View` does not gain a
+`precision` field merely because that notation illustrated the question.
+
+### The tested mechanism
+
+Preparation in this experiment copies the module's Python structure once, using
+a deepcopy memo to retain the original registered parameter/buffer objects
+rather than duplicate their storage. Independent uses have separate structures.
+Each synchronous region then creates selected differentiable casts from the
+current source parameters, deduplicating tied references, and passes them to
+`torch.func.functional_call` **on its private structure**. Several forward calls
+within that region reuse those casts. Source parameters remain the gradient
+targets. A nonblocking guard rejects overlapping users of one private structure;
+it does not serialize the two independent structures.
+
+```text
+source module + original parameters
+       ├── private structure A → BF16 casts for this region → forward calls
+       └── private structure B → FP16 casts for this region → forward calls
+                         gradients → original parameters
+```
+
+The supported numerical settings keep Torch autocast enabled with its shared
+weight cache disabled. Thus Torch still supplies per-operation precision rules
+for the selected computation; explicitly converted parameters bypass repeated
+weight conversion. The experiment's `cast_names` is selected implementation
+knowledge, not a proposed declaration that ordinary strategy authors must write.
+
+The positive case uses two distinct Linear submodules with tied parameters,
+another Linear, a read-only buffer, ordinary Python repetition/branching, and
+different private train/eval flags. The source forward code is unchanged. Both
+bf16/fp16 orderings reach a barrier inside forward on distinct host threads,
+while assertions verify the source module still has its original float32
+parameters. Each region makes two forwards with different runtime arguments,
+uses one cast per distinct selected source parameter, and matches native cached
+AMP outputs and gradients exactly. Backward is checked after worker completion;
+concurrent `.grad` accumulation is not tested.
+
+An in-place source-weight update between regions is visible to the next region
+and its fresh autograd graph. Registered parameter/buffer identity changes
+reject reuse of this structure. These checks do not provide source protection
+during a region: the surrounding accepted current-use/retained lifetime must do
+that. This helper is not wired into that protocol, revision publication or
+physical worker-drain machinery, so this pass is not an integrated readiness or
+cancellation qualification.
+
+### Negative cases determine the limits
+
+| Case | Finding |
+| --- | --- |
+| `functional_call` directly on the shared source module | The installed implementation temporarily swaps parameter/buffer table entries. Ordered overlapping calls produce wrong-dtype reads and leave an incorrectly restored parameter. A disposable fixture pins this failure; source sharing is not isolated by the API's name. |
+| `deepcopy(module).to(dtype)` | Makes independent parameter leaves. Gradients to the original parameters are absent. A full copied model is not automatically the required execution view. |
+| Cast every parameter of Linear → RMSNorm → Linear | Changes the output. Retaining the norm's original parameter precision matches native AMP in this fixture. |
+| One weight used in both a Linear and an explicit float32 penalty | The prediction matches but the penalty and its gradient change after replacing the weight with its lower-precision view. Even an explicit `.float()` cannot restore precision already lost. A per-parameter dtype choice is not a universal substitute for per-operation conversion. |
+| Private module with shared BatchNorm buffers | Forward updates the original running state. Separate module dictionaries do not isolate tensor storage or establish authority for those effects. Cloning buffers instead would require an explicit state/merge meaning, not a silent fix. |
+| Two paths to the exact same submodule object | With the installed functional-call binding machinery, a temporary cast can remain on the private structure after return because the same physical attribute is swapped/restored through both paths. The experiment rejects this shape, retains a raw negative reproducer and leaves the original source untouched. This does not reject ordinary tied parameters in distinct submodules. |
+
+The last rejection is a limit of this experimental realization, not of the
+language, participant model or future supported backends. Canonical physical
+binding or another realization could address it, but is not selected here.
+Failure/re-entry, tied-reference precision conflicts, expired bindings and calls
+on the wrong host thread also have explicit checks. The alias/error-text/cast-node
+expectations are pinned to Python 3.14.5t / Torch 2.14.1+cu130 revision
+`5c4886908584029761b579af026dcfb627c84070`; dependency changes require reassessment.
+
+Arbitrary copy hooks, captured references, hooks/native private state,
+parametrizations, tensor subclasses, recomputation, distributed wrappers and GPU
+lifetimes are not certified. A source's unregistered/private mutation can remain
+shared or acquire a different meaning after a copy. A private Python structure
+therefore does not by itself establish general module isolation.
+
+### What this means for preparation and the language
+
+The existing participant/view/current-use distinction is the right place to
+express and protect a supported realization. Preparation may establish the
+module structure and binding procedure; the runtime region creates casts when
+the actual source weights and gradient lifetime are known. It cannot prepare
+one permanent trainable cast and assume that remains valid for the entire run.
+
+The semantic obligation is that reuse preserves the required precision,
+source state, derivative routes, effects and actual use lifetime. **A separate
+cache owned by every prepared use is not a new architectural requirement.** A
+correctly compatible shared cache could also satisfy those obligations. This
+investigation neither mandates per-use duplication nor promotes a cache into
+the IR vocabulary.
+
+There is concrete evidence for independently typed unchanged forward behavior
+in a qualified module subset. There is not yet a transparent arbitrary-module
+AMP adapter. In particular, the mixed-use parameter case favors preserving
+conversion at operation boundaries: an existing AMP cache correction, a
+supported captured/lowered region, or a maintained numerical realization could
+do that. No mechanism is selected as the generic production solution. Public
+functional-call behavior and its pinned implementation are documented in
+[the API](https://docs.pytorch.org/docs/2.14/generated/torch.func.functional_call.html)
+and [the parameter-swap context](https://github.com/pytorch/pytorch/blob/5c4886908584029761b579af026dcfb627c84070/torch/nn/utils/stateless.py#L98).
+
+This pass does not measure private-structure preparation, table-swap overhead or
+module-level throughput. The previous functional-Linear cost percentages do not
+apply to this different implementation. Compilation and a general production
+cache policy remain unqualified.
+
+Thirteen new cases pass. The combined candidate/execution suite passes **523
+cases**; a separate **465-case** process preserves the disabled GIL without
+Dynamo/Triton. The RMSNorm fixture emits Torch's mixed-input/weight-dtype fused
+implementation warning in the native AMP comparison. Scoped lint, formatting,
+strict typing and whitespace checks pass.
+
+### FSDP2 context and checkpoint handoff
+
+Subsequent documentation/source inspection identifies FSDP2 as built-in prior
+art for module-level precision: its
+[MixedPrecisionPolicy](https://docs.pytorch.org/docs/2.14/distributed.fsdp.fully_shard.html#torch.distributed.fsdp.MixedPrecisionPolicy)
+controls unsharded compute parameters and reduction dtype, while optimizer
+updates use sharded parameters in their original dtype (FP32 only when that was
+the original dtype). Its
+[parameter lifecycle](https://github.com/pytorch/pytorch/blob/5c4886908584029761b579af026dcfb627c84070/torch/distributed/fsdp/_fully_shard/_fsdp_param.py#L921)
+rebinds modules between sharded and unsharded parameters. This supports the
+general family of backend-managed execution representations, but does not
+establish simultaneous independent precision views, free-threading safety or a
+drop-in op-level AMP replacement. No FSDP execution experiment was run here and
+no global module-casting default was selected.
+
+The cache/module-view investigation is a completed research checkpoint
+(`sd-scripts-syv.22`–`.24`). The next bounded task is **`sd-scripts-syv.25`**:
+refresh the connected candidate's whole-system assessment using the existing
+mechanism and these findings, distinguish actual architecture decisions from
+later backend qualification, and identify the next production-design step.
+The dated [system assessment](system_assessment.md) preserves its historical
+body until that task; its source/publication cycle was already addressed by `.19`.
