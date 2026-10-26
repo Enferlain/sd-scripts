@@ -2190,3 +2190,121 @@ mechanism and these findings, distinguish actual architecture decisions from
 later backend qualification, and identify the next production-design step.
 The dated [system assessment](system_assessment.md) preserves its historical
 body until that task; its source/publication cycle was already addressed by `.19`.
+
+## Cost of unused access machinery (2026-10-26)
+
+`sd-scripts-syv.26` separates the cost of **supporting** live sharing from the
+contention and backend work incurred when a run actually uses it. The governing
+execution contract permits protected current state, snapshots and supported
+isolation; it does not require producers to read trained weights concurrently.
+The existing rollout research describes published policy versions. No
+snapshot-versus-live default or performance superiority was established by the
+earlier candidate work, and this experiment does not choose one.
+
+### What can and cannot disappear
+
+| Concern | Current finding |
+| --- | --- |
+| Producer `use_source()` | Runs only when selected producer behavior invokes it. Merely offering that API does not copy models or add producer source reservations to unrelated work. |
+| Shared current-use leases | Also protect ordinary computation, owned state, replacement/publication, mode changes and derivatives. Absence of a sharing producer does not prove that these protections can disappear: the candidate still permits other current-state callers and replacement. |
+| Retained-source borrowing | An ordinary `Block` has no region and cannot borrow a `Sequence` lifetime. Its general `state.use()` path nevertheless reconstructed empty borrowing state on every invocation. |
+| Empty input demand | A block with no `Join` registered an empty-channel demand. It cannot make that task a claimant for any input port. |
+| Source revisions, current bindings, failure withholding and physical completion | Still required at their existing boundaries; none is removed by this specialization. |
+| Uncached CPU worker autocast | Remains the known conservative numerical realization from `.22`–`.24`. Its measured reuse cost is separate; it is neither newly discovered nor fixed by this experiment. |
+
+`prepare(accepted, access="prepared")` is an experimental preparation-target
+selection. It makes ordinary blocks call the **same** `RunState.acquire()`
+protocol directly and omits empty input-demand registration. Blocks with input
+channels still register their exact demand; `Sequence`, retained-source uses,
+provider access, mode exclusion, runtime wait detection, publication and Engine
+are unchanged. `access="general"` remains the default comparison path. Both
+work with the existing `calls` and `inline` emissions, from one accepted graph.
+The choice is not an author-supplied safety exemption or a production API.
+`Preparation.access` and `Ready.access` record the selected realization for
+inspection; they do not add semantic state to the accepted graph.
+
+This is a smaller result than proving exclusive ownership of a whole run. No
+lease is hoisted across an input wait or additional work, and no assumption
+that a participant has no external users replaces conflict checking.
+
+### Executable comparison and challenges
+
+`test_access_lowering.py` compares observable values, source stamps, owned
+state, unit outcomes, progress and handoffs for adaptive, alternating, joint,
+two-pass and replacement arrangements. Live and isolated retained-state
+sequences keep their existing execution, including different legal update
+positions. A separate producer fixture checks source provenance and demand-end
+cleanup. Its private staging Events must be freshly constructed for each run:
+sharing the same captured Events across independent preparations contaminated
+the initial comparison's scheduling/high-water observation.
+
+Negative and overlapping cases establish that:
+
+- a producer read still delays a conflicting training block;
+- even an unshared block prevents conflicting installation/replacement and
+  capture while its use is outstanding;
+- later execution resolves the replacement binding, and unavailable state
+  rejects before selected work;
+- repeated cancellation keeps participant/owner protection until a native CPU
+  worker physically finishes; effects survive and uncertain state is withheld;
+- joint partial failure preserves the returned unit and the uncertain unit;
+- both access realizations preserve bounded publication/source-access cycle
+  rejection and compatible progress in the existing `test_system_progress.py`
+  matrix, including aggregate and per-work access.
+
+### Matched local cost
+
+[access_cost_probe.py](access_cost_probe.py) uses the same accepted cheap
+four-operation block and the same tiny two-unit numerical arrangement for both
+realizations. It fixes `lowering="inline"`, retaining scope tracking, live
+contexts, output/failure rules, shared leases and bounded history. Acceptance,
+preparation and Engine entry/exit are outside timing. Neither case has a
+producer reading trained weights; there is no snapshot implementation or
+live-versus-snapshot throughput comparison hidden in these numbers.
+
+[access_cost_results.json](access_cost_results.json) retains the current
+three-process capture. The [initial capture](access_cost_initial_results.json)
+is retained separately, before diagnostic fields and timing-helper reuse;
+its recorded base commit and patch reconstruct every measured source hash.
+Neither capture is filtered or pooled into the other. Each launches its fresh
+processes serially, with PIDs, start/end times, source hashes and environment
+information. Each has nine alternating-order pairs after warmup;
+the cheap block uses 3,000 invocations per sample and the numerical block 300.
+All runs preserve equal numerical/owner results and progress. Python is
+3.14.5t, Torch is 2.14.1+cu130, actual GIL state remains disabled, and Dynamo and
+Triton remain absent, with explicit before/after import fields in the current
+capture and checked absence in both. Torch intra/inter-op threads are one; host load and CPU
+affinity are uncontrolled. No samples are excluded or filtered.
+
+| Case/capture | General median | Prepared median | Median paired saving | Interpretation |
+| --- | ---: | ---: | ---: | --- |
+| Four cheap operations, initial | 44.25 μs | 36.74 μs | 7.13 μs / 16.3% | Paired percentage savings range from 15.8% to 20.4%. |
+| Four cheap operations, current | 43.81 μs | 38.99 μs | 6.06 μs / 14.0% | Paired percentage savings range from 13.2% to 14.1%; every process in both captures favors the specialization. |
+| Tiny joint numerical work, initial | 284.51 μs | 280.96 μs | 10.56 μs / 3.7% | Paired percentage savings range from 0.2% to 5.2%. |
+| Tiny joint numerical work, current | 316.53 μs | 301.17 μs | 12.52 μs / 4.0% | Paired percentage savings range from 0.3% to 5.8%; neither capture establishes a stable numerical-work speedup. |
+
+Absolute columns are medians of process medians. Savings are medians of each
+process's paired differences/ratios, not subtraction/division of the absolute
+columns. Separate `tracemalloc` diagnostics show a lower cheap-case peak
+(13,520 to 12,080 bytes above start); they are outside timing and do not count
+cumulative allocations or establish a total memory budget. Raw samples remain
+the evidence; these are not G3.7 migration gates or real-model/GPU timings.
+
+### Conclusion and limits
+
+Some machinery for cases a block does not use can leave its repeated path
+without removing shared protection. That supports specializing coordination
+alongside work during preparation. The retained generic acquisition cost is
+not solely attributable to producer live sharing: other accepted interactions
+still need it. This experiment does **not** quantify the full incremental
+maintenance/runtime cost of offering live sharing, prove zero dormant cost,
+or establish which producer realization is preferable for a real workload.
+It does not qualify GPU events, distributed collective ordering, autonomous
+snapshot publication, restoration or arbitrary undeclared Python access.
+
+The combined candidate/execution suite passes **597 cases**. A separate
+**539-case** process remains GIL-disabled without Dynamo/Triton, excluding only
+the existing standard-optimizer oracle files. Scoped lint, formatting, strict
+typing and whitespace checks pass. The next connected-system assessment
+(`.25`) can use this evidence without reopening the completed cache probes or
+changing the governing design, specs, G5 task status or live Trainer.

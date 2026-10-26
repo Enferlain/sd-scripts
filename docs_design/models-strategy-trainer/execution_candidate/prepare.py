@@ -12,7 +12,7 @@ import asyncio
 import inspect
 import threading
 from collections.abc import Awaitable, Callable, Coroutine, Mapping
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, nullcontext
 from dataclasses import dataclass, field, replace
 from types import MappingProxyType
 from typing import Any, Literal, NoReturn, cast
@@ -247,6 +247,7 @@ class Ready:
     state: RunState
     root: Callable[[], Awaitable[None]]
     source: Mapping[str, str]
+    access: Literal["general", "prepared"] = "general"
 
 
 @dataclass(frozen=True)
@@ -256,10 +257,11 @@ class Preparation:
     image: Image
     root: Callable[[], Awaitable[None]]
     source: Mapping[str, str]
+    access: Literal["general", "prepared"] = "general"
 
     def publish(self) -> Ready:
         self.state.install(self.image, self.expected)
-        return Ready(self.state, self.root, self.source)
+        return Ready(self.state, self.root, self.source, access=self.access)
 
 
 class Engine:
@@ -302,12 +304,15 @@ def prepare(
     state: RunState | None = None,
     *,
     lowering: Literal["calls", "inline"] = "calls",
+    access: Literal["general", "prepared"] = "general",
     worker_calls: tuple[str, ...] = (),
     worker_limit: int = 1,
 ) -> Preparation:
     """One unpublished attempt: load, verify, prepare units, lower whole run."""
     if lowering not in ("calls", "inline"):
         raise NotReady("Unknown candidate CPU lowering")
+    if access not in ("general", "prepared"):
+        raise NotReady("Unknown candidate access realization")
     workers: Workers | None = Workers(worker_limit)
     if not worker_calls:
         workers = None
@@ -327,6 +332,7 @@ def prepare(
         accepted,
         state,
         inline_blocks=lowering == "inline",
+        prepared_access=access == "prepared",
         workers=workers,
         worker_calls=frozenset(worker_calls),
         physical_modes=physical_modes,
@@ -340,7 +346,7 @@ def prepare(
                 await body()
 
         root = placed
-    return Preparation(state, expected, image, root, MappingProxyType(lowerer.source))
+    return Preparation(state, expected, image, root, MappingProxyType(lowerer.source), access=access)
 
 
 def _check_workers(accepted: Accepted, names: frozenset[str]) -> None:
@@ -386,12 +392,14 @@ class Lowering:
         state: RunState,
         *,
         inline_blocks: bool = False,
+        prepared_access: bool = False,
         workers: Workers | None = None,
         worker_calls: frozenset[str] = frozenset(),
         physical_modes: frozenset[str] | None = None,
     ):
         self.accepted, self.state = accepted, state
         self.inline_blocks = inline_blocks
+        self.prepared_access = prepared_access
         self.workers, self.worker_calls = workers, worker_calls
         self.physical_modes = (
             mode_participants(accepted, selected_workers=workers is not None) if physical_modes is None else physical_modes
@@ -429,6 +437,9 @@ class Lowering:
         first_joins = {item.name for item in prefix}
         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)
         channels = frozenset(channel for item in work if isinstance(item, Join) for channel in item.channels)
+        # Ordinary blocks have no retained region. Both paths use the same lease.
+        direct_access = self.prepared_access
+        track_demand = bool(channels) or not self.prepared_access
         lines = ["async def body(frame):", "    choice = frame.choice.payload"]
         variables = {"choice": "choice"}
         namespace: dict[str, object] = {}
@@ -481,10 +492,10 @@ class Lowering:
         body = cast(Callable[[Frame], Awaitable[None]], namespace["body"])
 
         async def invoke(choice: Choice, parent: str) -> int:
-            with self.state.progress.demand(parent, channels, choice.key):
+            with self.state.progress.demand(parent, channels, choice.key) if track_demand else nullcontext():
                 for feeds in waits:
                     await wait_for_products(feeds, choice.key)
-                async with self.state.use(uses, states) as projection:
+                async with self.state.acquire(uses, states) if direct_access else self.state.use(uses, states) as projection:
                     self.state.invocation += 1
                     frame = Frame(self.state, parent, choice, projection, self.state.invocation)
                     self.state.trace.append(("invocation", (parent, block.name, choice.key, frame.invocation)))

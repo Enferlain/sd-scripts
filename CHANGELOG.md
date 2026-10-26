@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-26]
+
+### Added
+
+- **Candidate access-cost research now compares preparation-selected coordination** — ordinary blocks can omit unused retained-source borrowing and empty input-demand bookkeeping while keeping the same lease protocol. Conformance cases cover producer conflicts, publication, replacement, retained derivatives, cancellation and partial failure; matched GIL-disabled CPU measurements retain raw samples and limits. Production training and producer defaults remain unchanged.
+
 ## [2026-10-25]
 
 ### Added

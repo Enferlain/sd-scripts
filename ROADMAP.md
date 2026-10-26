@@ -32,6 +32,11 @@ without changing the conservative worker policy (`sd-scripts-syv.23`).
 An isolated module-view experiment now distinguishes private structure from
 tensor/state isolation and preserves unchanged forward behavior in a qualified
 subset, with explicit AMP/alias/buffer limitations (`sd-scripts-syv.24`).
+An access-cost experiment now omits unused region-borrowing and empty-demand
+bookkeeping from ordinary blocks while preserving shared protection. Matched
+CPU evidence shows a repeatable cheap-work benefit; numerical timings remain
+noisy, and this does not choose a live-versus-snapshot producer default
+(`sd-scripts-syv.26`).
 Next, refresh the connected candidate assessment with these completed findings
 and identify the remaining production-design decisions (`sd-scripts-syv.25`).
 These are candidate findings, not completion

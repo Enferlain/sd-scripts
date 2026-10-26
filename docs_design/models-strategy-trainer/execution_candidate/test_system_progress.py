@@ -34,11 +34,12 @@ from .test_candidate import leaves, run
 
 
 @pytest.mark.parametrize("lowering", ("calls", "inline"))
+@pytest.mark.parametrize("access", ("general", "prepared"))
 @pytest.mark.parametrize("batch_source", (False, True))
 @pytest.mark.parametrize("evaluation", (False, True))
 @pytest.mark.parametrize("capacity", (1, 2))
 @pytest.mark.parametrize("per_work", (False, True))
-def test_bounded_publication_and_source_access_share_progress(lowering, batch_source, evaluation, capacity, per_work, monkeypatch):
+def test_bounded_publication_and_source_access_share_progress(lowering, access, batch_source, evaluation, capacity, per_work, monkeypatch):
     async def scenario():
         second_publication = asyncio.Event()
         consumer_access = asyncio.Event()
@@ -99,7 +100,7 @@ def test_bounded_publication_and_source_access_share_progress(lowering, batch_so
             channels=(Channel("input", capacity),),
             views=(View("evaluation", "model", evaluation=evaluation),),
         )
-        ready = prepare(Contract().accept(filing), lowering=lowering).publish()
+        ready = prepare(Contract().accept(filing), lowering=lowering, access=access).publish()
         state = ready.state
         acquire = state.acquire
 
@@ -141,7 +142,8 @@ def test_bounded_publication_and_source_access_share_progress(lowering, batch_so
 
 
 @pytest.mark.parametrize("lowering", ("calls", "inline"))
-def test_producer_example_does_not_require_its_cross_owner_staging_events(lowering):
+@pytest.mark.parametrize("access", ("general", "prepared"))
+def test_producer_example_does_not_require_its_cross_owner_staging_events(lowering, access):
     async def scenario():
         filing = producer_continuity()
         assert isinstance(filing.root, Together)
@@ -157,7 +159,7 @@ def test_producer_example_does_not_require_its_cross_owner_staging_events(loweri
                 )
             children.append(child)
         filing = replace(filing, root=replace(filing.root, children=tuple(children)))
-        ready = prepare(Contract().accept(filing), lowering=lowering).publish()
+        ready = prepare(Contract().accept(filing), lowering=lowering, access=access).publish()
         await Engine(ready).run()
         state = ready.state
         assert state.image is not None and state.completed
@@ -170,7 +172,8 @@ def test_producer_example_does_not_require_its_cross_owner_staging_events(loweri
 
 
 @pytest.mark.parametrize("lowering", ("calls", "inline"))
-def test_another_consumer_can_free_capacity_before_conflicting_work(lowering):
+@pytest.mark.parametrize("access", ("general", "prepared"))
+def test_another_consumer_can_free_capacity_before_conflicting_work(lowering, access):
     async def scenario():
         observed = []
 
@@ -220,7 +223,7 @@ def test_another_consumer_can_free_capacity_before_conflicting_work(lowering):
             channels=(Channel("input", 1),),
             views=(View("evaluation", "model", evaluation=True),),
         )
-        ready = prepare(Contract().accept(filing), lowering=lowering).publish()
+        ready = prepare(Contract().accept(filing), lowering=lowering, access=access).publish()
         await Engine(ready).run()
         assert observed == ["one", "two"]
         assert ready.state.completed and ready.state.feeds["input"].high_water == 1

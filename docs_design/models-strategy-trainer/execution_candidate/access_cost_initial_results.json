@@ -1,0 +1,685 @@
+{
+  "scope": "matched inline CPU root/block execution including shared protection, scopes, effects and bounded diagnostic history",
+  "difference": "prepared ordinary blocks omit retained-region borrowing and empty input demands; protection is unchanged",
+  "claims": "no live-trained producer or snapshot comparison; not G3.7, production, GPU or whole-training performance evidence",
+  "runs_launched_serially": true,
+  "runs": [
+    {
+      "run_index": 0,
+      "started_utc": "2026-10-26T09:33:36.133778+00:00",
+      "finished_utc": "2026-10-26T09:33:41.697795+00:00",
+      "environment": {
+        "pid": 813141,
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "free_threaded_build": true,
+        "gil_enabled": false,
+        "torch_threads": 1,
+        "torch_interop_threads": 1,
+        "source_sha256": {
+          "access_cost_probe.py": "8e8f1cff7f6472a09bcd961f26ef1ab3fbac2a3a4970d3af443785c6c048dc8b",
+          "lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+          "prepare.py": "b881477f05b329a794029c0f602c989984f6e25b94e50fff8bcfaa4cb3bfbb8e",
+          "state.py": "97906e97d12d24fc0e26401b46698c8c0534d2fe2afde4816e091c3d4db73a08",
+          "access.py": "10b69d35320057afdef50eefc9703fe14a23a1513a3609663defbb559bafd05d",
+          "progress.py": "67d704c807042478785b8ff35d22033071972c3a9c022cf015e01c766be416c4",
+          "graph.py": "99cab5a8de576e025e63988af5bf3da374357c43521f230b39fe3701ddf864c6"
+        },
+        "gc_during_timing": false,
+        "host_load_and_cpu_affinity_controlled": false
+      },
+      "gil_enabled_after": false,
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 3000,
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              43533.07666666667,
+              55382.924666666666,
+              47759.79633333333,
+              44829.20966666667,
+              43533.535,
+              44249.43866666667,
+              44072.43,
+              42871.132,
+              44745.308
+            ],
+            "prepared": [
+              37534.983,
+              46646.99866666667,
+              41281.28533333333,
+              36711.70333333333,
+              40394.850666666665,
+              36212.198,
+              36731.132666666665,
+              35881.76266666667,
+              37738.572
+            ]
+          },
+          "median_ns": {
+            "general": 44249.43866666667,
+            "prepared": 37534.983
+          },
+          "paired_saving_ns": [
+            5998.093666666668,
+            8735.926,
+            6478.510999999999,
+            8117.506333333338,
+            3138.684333333338,
+            8037.240666666672,
+            7341.297333333336,
+            6989.3693333333285,
+            7006.735999999997
+          ],
+          "median_saving_ns": 7006.735999999997,
+          "paired_saving_mad_ns": 1008.6423333333296,
+          "median_paired_prepared_over_general": 0.8422631875694732,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 13520,
+              "retained_after_gc_bytes": 592
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 12080,
+              "retained_after_gc_bytes": 432
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        },
+        "joint": {
+          "iterations_per_sample": 300,
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              280592.86666666664,
+              276637.8566666667,
+              277574.11,
+              279271.30666666664,
+              277268.1766666667,
+              307556.80333333334,
+              283730.93666666665,
+              283279.04,
+              280047.98
+            ],
+            "prepared": [
+              267735.7133333333,
+              269030.12333333335,
+              276605.7133333333,
+              280956.7033333333,
+              281336.5333333333,
+              270863.56,
+              283249.37,
+              284219.74333333335,
+              281982.73
+            ]
+          },
+          "median_ns": {
+            "general": 280047.98,
+            "prepared": 280956.7033333333
+          },
+          "paired_saving_ns": [
+            12857.153333333321,
+            7607.733333333337,
+            968.3966666666674,
+            -1685.3966666666674,
+            -4068.35666666663,
+            36693.24333333335,
+            481.56666666665114,
+            -940.7033333333675,
+            -1934.75
+          ],
+          "median_saving_ns": 481.56666666665114,
+          "paired_saving_mad_ns": 2416.316666666651,
+          "median_paired_prepared_over_general": 0.9983027347235229,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 36124,
+              "retained_after_gc_bytes": 10909
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 34588,
+              "retained_after_gc_bytes": 10749
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "started_utc": "2026-10-26T09:33:43.767053+00:00",
+      "finished_utc": "2026-10-26T09:33:49.433197+00:00",
+      "environment": {
+        "pid": 813214,
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "free_threaded_build": true,
+        "gil_enabled": false,
+        "torch_threads": 1,
+        "torch_interop_threads": 1,
+        "source_sha256": {
+          "access_cost_probe.py": "8e8f1cff7f6472a09bcd961f26ef1ab3fbac2a3a4970d3af443785c6c048dc8b",
+          "lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+          "prepare.py": "b881477f05b329a794029c0f602c989984f6e25b94e50fff8bcfaa4cb3bfbb8e",
+          "state.py": "97906e97d12d24fc0e26401b46698c8c0534d2fe2afde4816e091c3d4db73a08",
+          "access.py": "10b69d35320057afdef50eefc9703fe14a23a1513a3609663defbb559bafd05d",
+          "progress.py": "67d704c807042478785b8ff35d22033071972c3a9c022cf015e01c766be416c4",
+          "graph.py": "99cab5a8de576e025e63988af5bf3da374357c43521f230b39fe3701ddf864c6"
+        },
+        "gc_during_timing": false,
+        "host_load_and_cpu_affinity_controlled": false
+      },
+      "gil_enabled_after": false,
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 3000,
+          "warmup_each": 100,
+          "order": [
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              43770.454333333335,
+              44545.655,
+              43806.28333333333,
+              44924.742,
+              44235.55266666667,
+              43822.129,
+              43202.733,
+              46347.781,
+              43395.156
+            ],
+            "prepared": [
+              36737.25866666667,
+              38790.851,
+              37546.772,
+              37611.736,
+              36393.628666666664,
+              36933.728,
+              36074.119333333336,
+              36303.95,
+              35989.604
+            ]
+          },
+          "median_ns": {
+            "general": 43822.129,
+            "prepared": 36737.25866666667
+          },
+          "paired_saving_ns": [
+            7033.1956666666665,
+            5754.803999999996,
+            6259.511333333336,
+            7313.006000000001,
+            7841.924000000006,
+            6888.400999999998,
+            7128.613666666664,
+            10043.831000000006,
+            7405.552000000003
+          ],
+          "median_saving_ns": 7128.613666666664,
+          "paired_saving_mad_ns": 276.93833333333896,
+          "median_paired_prepared_over_general": 0.8372165164576794,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 13520,
+              "retained_after_gc_bytes": 592
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 12080,
+              "retained_after_gc_bytes": 432
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        },
+        "joint": {
+          "iterations_per_sample": 300,
+          "warmup_each": 100,
+          "order": [
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              299898.7166666667,
+              281333.3566666667,
+              290821.9666666667,
+              278104.29333333333,
+              284506.38666666666,
+              292354.86333333334,
+              282677.38666666666,
+              283957.11333333334,
+              348052.69666666666
+            ],
+            "prepared": [
+              306332.8933333333,
+              278605.29,
+              286580.8466666667,
+              276531.9633333333,
+              272466.2833333333,
+              270524.39666666667,
+              272118.0733333333,
+              272164.28,
+              290173.3333333333
+            ]
+          },
+          "median_ns": {
+            "general": 284506.38666666666,
+            "prepared": 276531.9633333333
+          },
+          "paired_saving_ns": [
+            -6434.176666666637,
+            2728.0666666667094,
+            4241.119999999995,
+            1572.3300000000163,
+            12040.103333333333,
+            21830.466666666674,
+            10559.313333333354,
+            11792.833333333314,
+            57879.36333333334
+          ],
+          "median_saving_ns": 10559.313333333354,
+          "paired_saving_mad_ns": 7831.246666666644,
+          "median_paired_prepared_over_general": 0.962645355336524,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 35948,
+              "retained_after_gc_bytes": 10680
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 34412,
+              "retained_after_gc_bytes": 10520
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        }
+      }
+    },
+    {
+      "run_index": 2,
+      "started_utc": "2026-10-26T09:33:51.674651+00:00",
+      "finished_utc": "2026-10-26T09:33:57.356978+00:00",
+      "environment": {
+        "pid": 813300,
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "free_threaded_build": true,
+        "gil_enabled": false,
+        "torch_threads": 1,
+        "torch_interop_threads": 1,
+        "source_sha256": {
+          "access_cost_probe.py": "8e8f1cff7f6472a09bcd961f26ef1ab3fbac2a3a4970d3af443785c6c048dc8b",
+          "lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+          "prepare.py": "b881477f05b329a794029c0f602c989984f6e25b94e50fff8bcfaa4cb3bfbb8e",
+          "state.py": "97906e97d12d24fc0e26401b46698c8c0534d2fe2afde4816e091c3d4db73a08",
+          "access.py": "10b69d35320057afdef50eefc9703fe14a23a1513a3609663defbb559bafd05d",
+          "progress.py": "67d704c807042478785b8ff35d22033071972c3a9c022cf015e01c766be416c4",
+          "graph.py": "99cab5a8de576e025e63988af5bf3da374357c43521f230b39fe3701ddf864c6"
+        },
+        "gc_during_timing": false,
+        "host_load_and_cpu_affinity_controlled": false
+      },
+      "gil_enabled_after": false,
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 3000,
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              43434.48933333333,
+              60345.063,
+              46498.71366666667,
+              42753.92133333333,
+              43825.02166666667,
+              45433.621,
+              45861.084,
+              45847.72866666667,
+              45161.12466666667
+            ],
+            "prepared": [
+              38665.865666666665,
+              47884.810666666664,
+              36336.0,
+              36104.648,
+              35953.880333333334,
+              36026.04466666667,
+              36333.24,
+              36500.824,
+              37369.056666666664
+            ]
+          },
+          "median_ns": {
+            "general": 45433.621,
+            "prepared": 36336.0
+          },
+          "paired_saving_ns": [
+            4768.623666666666,
+            12460.252333333337,
+            10162.71366666667,
+            6649.273333333331,
+            7871.141333333333,
+            9407.57633333333,
+            9527.844000000005,
+            9346.904666666669,
+            7792.068000000007
+          ],
+          "median_saving_ns": 9346.904666666669,
+          "paired_saving_mad_ns": 1475.763333333336,
+          "median_paired_prepared_over_general": 0.7961315655433486,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 13520,
+              "retained_after_gc_bytes": 592
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 12080,
+              "retained_after_gc_bytes": 432
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        },
+        "joint": {
+          "iterations_per_sample": 300,
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              279288.8466666667,
+              281997.74666666664,
+              275943.61,
+              305752.01,
+              328660.59,
+              295000.97,
+              296149.67,
+              297943.87333333335,
+              288310.43333333335
+            ],
+            "prepared": [
+              306883.94666666666,
+              301843.28,
+              269232.67,
+              288167.49,
+              289891.95,
+              279806.91333333333,
+              287628.11333333334,
+              272473.65,
+              267335.99333333335
+            ]
+          },
+          "median_ns": {
+            "general": 295000.97,
+            "prepared": 287628.11333333334
+          },
+          "paired_saving_ns": [
+            -27595.099999999977,
+            -19845.533333333384,
+            6710.940000000002,
+            17584.52000000002,
+            38768.640000000014,
+            15194.056666666642,
+            8521.556666666642,
+            25470.223333333328,
+            20974.440000000002
+          ],
+          "median_saving_ns": 15194.056666666642,
+          "paired_saving_mad_ns": 8483.11666666664,
+          "median_paired_prepared_over_general": 0.948494892519619,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 36043,
+              "retained_after_gc_bytes": 10613
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 34507,
+              "retained_after_gc_bytes": 10520
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        }
+      }
+    }
+  ],
+  "capture_phase": "first qualified capture, before diagnostic fields and shared probe helper reuse",
+  "measurement_source": {
+    "base_commit": "ac669ca27826f4cf6a391e3c13c36d48a2d5e47c",
+    "patch_against_base": "diff --git a/docs_design/models-strategy-trainer/execution_candidate/access_cost_probe.py b/docs_design/models-strategy-trainer/execution_candidate/access_cost_probe.py\nnew file mode 100644\nindex 00000000..f9a8d85d\n--- /dev/null\n+++ b/docs_design/models-strategy-trainer/execution_candidate/access_cost_probe.py\n@@ -0,0 +1,209 @@\n+\"\"\"Measure two access realizations of the same prepared CPU blocks.\n+\n+Both keep the shared lease, freshness, effects and failure rules. The prepared\n+variant omits region borrowing and empty input demands in ordinary blocks.\n+These are local diagnostics, not production or whole-training performance gates.\n+\"\"\"\n+\n+from __future__ import annotations\n+\n+import argparse\n+import asyncio\n+import gc\n+import hashlib\n+import json\n+import os\n+import platform\n+import statistics\n+import subprocess\n+import sys\n+import sysconfig\n+import time\n+import tracemalloc\n+from datetime import UTC, datetime\n+from pathlib import Path\n+\n+import torch\n+\n+from .examples import joint\n+from .graph import Contract\n+from .lowering_cost_probe import cheap\n+from .prepare import Ready, prepare\n+\n+\n+async def invoke(ready: Ready, count: int) -> None:\n+    root = ready.root\n+    for _ in range(count):\n+        await root()\n+\n+\n+async def timed(ready: Ready, count: int) -> float:\n+    gc.collect()\n+    enabled = gc.isenabled()\n+    gc.disable()\n+    try:\n+        started = time.perf_counter_ns()\n+        await invoke(ready, count)\n+        return (time.perf_counter_ns() - started) / count\n+    finally:\n+        if enabled:\n+            gc.enable()\n+\n+\n+async def memory(ready: Ready, count: int = 200):\n+    tracemalloc.start()\n+    try:\n+        gc.collect()\n+        starting, _ = tracemalloc.get_traced_memory()\n+        tracemalloc.reset_peak()\n+        await invoke(ready, count)\n+        _, peak = tracemalloc.get_traced_memory()\n+        gc.collect()\n+        retained, _ = tracemalloc.get_traced_memory()\n+        return {\"iterations\": count, \"peak_above_start_bytes\": peak - starting, \"retained_after_gc_bytes\": retained - starting}\n+    finally:\n+        tracemalloc.stop()\n+\n+\n+def environment():\n+    folder = Path(__file__).resolve().parent\n+    files = (\"access_cost_probe.py\", \"lowering_cost_probe.py\", \"prepare.py\", \"state.py\", \"access.py\", \"progress.py\", \"graph.py\")\n+    return {\n+        \"pid\": os.getpid(),\n+        \"python\": sys.version,\n+        \"platform\": platform.platform(),\n+        \"torch\": str(torch.__version__),\n+        \"torch_git\": torch.version.git_version,\n+        \"free_threaded_build\": bool(sysconfig.get_config_var(\"Py_GIL_DISABLED\")),\n+        \"gil_enabled\": sys._is_gil_enabled(),\n+        \"torch_threads\": torch.get_num_threads(),\n+        \"torch_interop_threads\": torch.get_num_interop_threads(),\n+        \"source_sha256\": {name: hashlib.sha256((folder / name).read_bytes()).hexdigest() for name in files},\n+        \"gc_during_timing\": False,\n+        \"host_load_and_cpu_affinity_controlled\": False,\n+    }\n+\n+\n+def qualify_environment() -> None:\n+    if \"PYTHON_GIL\" in os.environ or sys._is_gil_enabled() or \"torch._dynamo\" in sys.modules or \"triton\" in sys.modules:\n+        raise RuntimeError(\"This probe requires ordinary GIL-disabled imports without Dynamo/Triton or a GIL override\")\n+\n+\n+async def worker(iterations: int, samples: int, warmup: int, run_index: int):\n+    if not __debug__:\n+        raise RuntimeError(\"Optimized Python would remove this diagnostic's numerical assertions\")\n+    qualify_environment()\n+    torch.set_num_threads(1)\n+    torch.set_num_interop_threads(1)\n+    started = datetime.now(UTC).isoformat()\n+    descriptions = {\"cheap\": Contract().accept(cheap()), \"joint\": Contract().accept(joint())}\n+    variants = {\n+        name: {kind: prepare(accepted, lowering=\"inline\", access=kind).publish() for kind in (\"general\", \"prepared\")}\n+        for name, accepted in descriptions.items()\n+    }\n+    qualify_environment()\n+    measured_environment = environment()\n+    cases = {}\n+    for name, preparations in variants.items():\n+        count = iterations if name == \"cheap\" else min(iterations, 300)\n+        for ready in preparations.values():\n+            await invoke(ready, warmup)\n+        values: dict[str, list[float]] = {\"general\": [], \"prepared\": []}\n+        orderings = []\n+        for sample in range(samples):\n+            order = (\"general\", \"prepared\") if (run_index + sample) % 2 == 0 else (\"prepared\", \"general\")\n+            orderings.append(order)\n+            for kind in order:\n+                values[kind].append(await timed(preparations[kind], count))\n+        total = warmup + samples * count\n+        general, specialized = preparations[\"general\"], preparations[\"prepared\"]\n+        assert general.state.invocation == specialized.state.invocation == total\n+        assert general.state.owners == specialized.state.owners\n+        if name == \"cheap\":\n+            assert general.state.owners[\"counter\"] == {\"calls\": 4 * total, \"last\": 4}\n+        else:\n+            left, right = general.state.image, specialized.state.image\n+            assert left is not None and right is not None\n+            assert all(runtime.steps == total for image in (left, right) for runtime in image.units.values())\n+            for participant in left.bindings:\n+                for path, tensor in left.bindings[participant].model.state_dict().items():\n+                    assert torch.equal(tensor, right.bindings[participant].model.state_dict()[path])\n+        assert all(not ready.state.progress.leases and not ready.state.progress.demands for ready in preparations.values())\n+        savings = [a - b for a, b in zip(values[\"general\"], values[\"prepared\"], strict=True)]\n+        ratios = [b / a for a, b in zip(values[\"general\"], values[\"prepared\"], strict=True)]\n+        median_saving = statistics.median(savings)\n+        cases[name] = {\n+            \"iterations_per_sample\": count,\n+            \"warmup_each\": warmup,\n+            \"order\": orderings,\n+            \"ns_per_invocation\": values,\n+            \"median_ns\": {kind: statistics.median(row) for kind, row in values.items()},\n+            \"paired_saving_ns\": savings,\n+            \"median_saving_ns\": median_saving,\n+            \"paired_saving_mad_ns\": statistics.median(abs(value - median_saving) for value in savings),\n+            \"median_paired_prepared_over_general\": statistics.median(ratios),\n+            \"memory\": {kind: await memory(ready) for kind, ready in preparations.items()},\n+            \"conformance\": \"equal numerical/owner results and invocation/unit progress; leases and demands drained\",\n+        }\n+    qualify_environment()\n+    return {\n+        \"run_index\": run_index,\n+        \"started_utc\": started,\n+        \"finished_utc\": datetime.now(UTC).isoformat(),\n+        \"environment\": measured_environment,\n+        \"gil_enabled_after\": sys._is_gil_enabled(),\n+        \"cases\": cases,\n+    }\n+\n+\n+def main() -> None:\n+    parser = argparse.ArgumentParser(description=__doc__)\n+    parser.add_argument(\"--worker\", action=\"store_true\")\n+    parser.add_argument(\"--run-index\", type=int, default=0)\n+    parser.add_argument(\"--runs\", type=int, default=3)\n+    parser.add_argument(\"--iterations\", type=int, default=3000)\n+    parser.add_argument(\"--samples\", type=int, default=9)\n+    parser.add_argument(\"--warmup\", type=int, default=100)\n+    args = parser.parse_args()\n+    if min(args.runs, args.iterations, args.samples, args.warmup) < 1:\n+        parser.error(\"counts must be positive\")\n+    if args.worker:\n+        result = asyncio.run(worker(args.iterations, args.samples, args.warmup, args.run_index))\n+    else:\n+        child_environment = dict(os.environ)\n+        child_environment.pop(\"PYTHON_GIL\", None)\n+        runs = []\n+        for index in range(args.runs):\n+            completed = subprocess.run(\n+                [\n+                    sys.executable,\n+                    \"-m\",\n+                    \"docs_design.models-strategy-trainer.execution_candidate.access_cost_probe\",\n+                    \"--worker\",\n+                    \"--run-index\",\n+                    str(index),\n+                    \"--iterations\",\n+                    str(args.iterations),\n+                    \"--samples\",\n+                    str(args.samples),\n+                    \"--warmup\",\n+                    str(args.warmup),\n+                ],\n+                check=True,\n+                capture_output=True,\n+                text=True,\n+                env=child_environment,\n+            )\n+            runs.append(json.loads(completed.stdout))\n+        result = {\n+            \"scope\": \"matched inline CPU root/block execution including shared protection, scopes, effects and bounded diagnostic history\",\n+            \"difference\": \"prepared ordinary blocks omit retained-region borrowing and empty input demands; protection is unchanged\",\n+            \"claims\": \"no live-trained producer or snapshot comparison; not G3.7, production, GPU or whole-training performance evidence\",\n+            \"runs_launched_serially\": True,\n+            \"runs\": runs,\n+        }\n+    print(json.dumps(result, indent=2))\n+\n+\n+if __name__ == \"__main__\":\n+    main()\ndiff --git a/docs_design/models-strategy-trainer/execution_candidate/prepare.py b/docs_design/models-strategy-trainer/execution_candidate/prepare.py\nindex 0cdcaf5c..4c90d5ca 100644\n--- a/docs_design/models-strategy-trainer/execution_candidate/prepare.py\n+++ b/docs_design/models-strategy-trainer/execution_candidate/prepare.py\n@@ -12,7 +12,7 @@ import asyncio\n import inspect\n import threading\n from collections.abc import Awaitable, Callable, Coroutine, Mapping\n-from contextlib import asynccontextmanager\n+from contextlib import asynccontextmanager, nullcontext\n from dataclasses import dataclass, field, replace\n from types import MappingProxyType\n from typing import Any, Literal, NoReturn, cast\n@@ -302,12 +302,15 @@ def prepare(\n     state: RunState | None = None,\n     *,\n     lowering: Literal[\"calls\", \"inline\"] = \"calls\",\n+    access: Literal[\"general\", \"prepared\"] = \"general\",\n     worker_calls: tuple[str, ...] = (),\n     worker_limit: int = 1,\n ) -> Preparation:\n     \"\"\"One unpublished attempt: load, verify, prepare units, lower whole run.\"\"\"\n     if lowering not in (\"calls\", \"inline\"):\n         raise NotReady(\"Unknown candidate CPU lowering\")\n+    if access not in (\"general\", \"prepared\"):\n+        raise NotReady(\"Unknown candidate access realization\")\n     workers: Workers | None = Workers(worker_limit)\n     if not worker_calls:\n         workers = None\n@@ -327,6 +330,7 @@ def prepare(\n         accepted,\n         state,\n         inline_blocks=lowering == \"inline\",\n+        prepared_access=access == \"prepared\",\n         workers=workers,\n         worker_calls=frozenset(worker_calls),\n         physical_modes=physical_modes,\n@@ -386,12 +390,14 @@ class Lowering:\n         state: RunState,\n         *,\n         inline_blocks: bool = False,\n+        prepared_access: bool = False,\n         workers: Workers | None = None,\n         worker_calls: frozenset[str] = frozenset(),\n         physical_modes: frozenset[str] | None = None,\n     ):\n         self.accepted, self.state = accepted, state\n         self.inline_blocks = inline_blocks\n+        self.prepared_access = prepared_access\n         self.workers, self.worker_calls = workers, worker_calls\n         self.physical_modes = (\n             mode_participants(accepted, selected_workers=workers is not None) if physical_modes is None else physical_modes\n@@ -429,6 +435,9 @@ class Lowering:\n         first_joins = {item.name for item in prefix}\n         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)\n         channels = frozenset(channel for item in work if isinstance(item, Join) for channel in item.channels)\n+        # Ordinary blocks have no retained region. Both paths use the same lease.\n+        direct_access = self.prepared_access\n+        track_demand = bool(channels) or not self.prepared_access\n         lines = [\"async def body(frame):\", \"    choice = frame.choice.payload\"]\n         variables = {\"choice\": \"choice\"}\n         namespace: dict[str, object] = {}\n@@ -481,10 +490,10 @@ class Lowering:\n         body = cast(Callable[[Frame], Awaitable[None]], namespace[\"body\"])\n \n         async def invoke(choice: Choice, parent: str) -> int:\n-            with self.state.progress.demand(parent, channels, choice.key):\n+            with self.state.progress.demand(parent, channels, choice.key) if track_demand else nullcontext():\n                 for feeds in waits:\n                     await wait_for_products(feeds, choice.key)\n-                async with self.state.use(uses, states) as projection:\n+                async with self.state.acquire(uses, states) if direct_access else self.state.use(uses, states) as projection:\n                     self.state.invocation += 1\n                     frame = Frame(self.state, parent, choice, projection, self.state.invocation)\n                     self.state.trace.append((\"invocation\", (parent, block.name, choice.key, frame.invocation)))\n"
+  }
+}

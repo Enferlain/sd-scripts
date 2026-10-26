@@ -1,0 +1,722 @@
+{
+  "scope": "matched inline CPU root/block execution including shared protection, scopes, effects and bounded diagnostic history",
+  "difference": "prepared ordinary blocks omit retained-region borrowing and empty input demands; protection is unchanged",
+  "claims": "no live-trained producer or snapshot comparison; not G3.7, production, GPU or whole-training performance evidence",
+  "runs_launched_serially": true,
+  "runs": [
+    {
+      "run_index": 0,
+      "started_utc": "2026-10-26T09:53:48.279496+00:00",
+      "finished_utc": "2026-10-26T09:53:54.783347+00:00",
+      "environment": {
+        "pid": 842106,
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "free_threaded_build": true,
+        "gil_enabled": false,
+        "dynamo_imported": false,
+        "triton_imported": false,
+        "torch_threads": 1,
+        "torch_interop_threads": 1,
+        "source_sha256": {
+          "access_cost_probe.py": "3b86f64f6cb2359b4d4e3759044e42617ab63709dce47e920efa8dfce8704d0e",
+          "lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+          "prepare.py": "bd44b531c9aa37318cc63f4b7ce5a74dd021d19001f918f3fea62d112dc8ce1a",
+          "state.py": "97906e97d12d24fc0e26401b46698c8c0534d2fe2afde4816e091c3d4db73a08",
+          "access.py": "10b69d35320057afdef50eefc9703fe14a23a1513a3609663defbb559bafd05d",
+          "progress.py": "67d704c807042478785b8ff35d22033071972c3a9c022cf015e01c766be416c4",
+          "graph.py": "99cab5a8de576e025e63988af5bf3da374357c43521f230b39fe3701ddf864c6"
+        },
+        "gc_during_timing": false,
+        "host_load_and_cpu_affinity_controlled": false
+      },
+      "gil_enabled_after": false,
+      "imports_after": {
+        "dynamo_imported": false,
+        "triton_imported": false
+      },
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 3000,
+          "access_realizations": {
+            "general": "general",
+            "prepared": "prepared"
+          },
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              45715.886333333336,
+              43143.727333333336,
+              43134.23,
+              43814.473,
+              42866.23366666667,
+              45943.130666666664,
+              56210.67,
+              44000.62966666667,
+              43151.496
+            ],
+            "prepared": [
+              43912.02966666667,
+              36549.61066666667,
+              37452.55566666667,
+              47781.755666666664,
+              36372.077333333335,
+              39259.193666666666,
+              42307.83466666667,
+              59952.648,
+              38362.399666666664
+            ]
+          },
+          "median_ns": {
+            "general": 43814.473,
+            "prepared": 39259.193666666666
+          },
+          "paired_saving_ns": [
+            1803.8566666666666,
+            6594.116666666669,
+            5681.674333333336,
+            -3967.282666666666,
+            6494.156333333332,
+            6683.936999999998,
+            13902.835333333329,
+            -15952.018333333333,
+            4789.096333333335
+          ],
+          "median_saving_ns": 5681.674333333336,
+          "paired_saving_mad_ns": 1002.262666666662,
+          "median_paired_prepared_over_general": 0.8682792220161729,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 13520,
+              "retained_after_gc_bytes": 592
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 12080,
+              "retained_after_gc_bytes": 432
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        },
+        "joint": {
+          "iterations_per_sample": 300,
+          "access_realizations": {
+            "general": "general",
+            "prepared": "prepared"
+          },
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              318842.19333333336,
+              301359.3933333333,
+              316529.2233333333,
+              309700.91333333333,
+              299412.20666666667,
+              357521.4766666667,
+              417409.2833333333,
+              352382.61,
+              309566.49
+            ],
+            "prepared": [
+              393622.0333333333,
+              318771.81333333335,
+              315542.64,
+              344666.92333333334,
+              297142.67,
+              294470.31,
+              297100.73333333334,
+              311570.69666666666,
+              404444.48
+            ]
+          },
+          "median_ns": {
+            "general": 316529.2233333333,
+            "prepared": 315542.64
+          },
+          "paired_saving_ns": [
+            -74779.83999999997,
+            -17412.420000000042,
+            986.5833333333139,
+            -34966.01000000001,
+            2269.5366666666814,
+            63051.166666666686,
+            120308.54999999999,
+            40811.91333333333,
+            -94877.98999999999
+          ],
+          "median_saving_ns": 986.5833333333139,
+          "paired_saving_mad_ns": 39825.330000000016,
+          "median_paired_prepared_over_general": 0.9968831208602361,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 36096,
+              "retained_after_gc_bytes": 10895
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 34560,
+              "retained_after_gc_bytes": 10735
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        }
+      }
+    },
+    {
+      "run_index": 1,
+      "started_utc": "2026-10-26T09:53:57.293363+00:00",
+      "finished_utc": "2026-10-26T09:54:03.722570+00:00",
+      "environment": {
+        "pid": 842713,
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "free_threaded_build": true,
+        "gil_enabled": false,
+        "dynamo_imported": false,
+        "triton_imported": false,
+        "torch_threads": 1,
+        "torch_interop_threads": 1,
+        "source_sha256": {
+          "access_cost_probe.py": "3b86f64f6cb2359b4d4e3759044e42617ab63709dce47e920efa8dfce8704d0e",
+          "lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+          "prepare.py": "bd44b531c9aa37318cc63f4b7ce5a74dd021d19001f918f3fea62d112dc8ce1a",
+          "state.py": "97906e97d12d24fc0e26401b46698c8c0534d2fe2afde4816e091c3d4db73a08",
+          "access.py": "10b69d35320057afdef50eefc9703fe14a23a1513a3609663defbb559bafd05d",
+          "progress.py": "67d704c807042478785b8ff35d22033071972c3a9c022cf015e01c766be416c4",
+          "graph.py": "99cab5a8de576e025e63988af5bf3da374357c43521f230b39fe3701ddf864c6"
+        },
+        "gc_during_timing": false,
+        "host_load_and_cpu_affinity_controlled": false
+      },
+      "gil_enabled_after": false,
+      "imports_after": {
+        "dynamo_imported": false,
+        "triton_imported": false
+      },
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 3000,
+          "access_realizations": {
+            "general": "general",
+            "prepared": "prepared"
+          },
+          "warmup_each": 100,
+          "order": [
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              43138.435333333335,
+              42922.560333333335,
+              42837.62433333333,
+              44081.86466666667,
+              43606.421,
+              44036.35366666667,
+              45674.04466666667,
+              43561.837666666666,
+              47859.85133333333
+            ],
+            "prepared": [
+              37279.19633333333,
+              36892.659,
+              36648.90433333333,
+              42403.17833333334,
+              37542.04433333333,
+              37637.357,
+              38095.518,
+              40127.803,
+              37475.492666666665
+            ]
+          },
+          "median_ns": {
+            "general": 43606.421,
+            "prepared": 37542.04433333333
+          },
+          "paired_saving_ns": [
+            5859.239000000001,
+            6029.901333333335,
+            6188.720000000001,
+            1678.6863333333313,
+            6064.376666666671,
+            6398.996666666666,
+            7578.526666666672,
+            3434.0346666666665,
+            10384.358666666667
+          ],
+          "median_saving_ns": 6064.376666666671,
+          "paired_saving_mad_ns": 334.61999999999534,
+          "median_paired_prepared_over_general": 0.8595167369675625,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 13520,
+              "retained_after_gc_bytes": 592
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 12080,
+              "retained_after_gc_bytes": 432
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        },
+        "joint": {
+          "iterations_per_sample": 300,
+          "access_realizations": {
+            "general": "general",
+            "prepared": "prepared"
+          },
+          "warmup_each": 100,
+          "order": [
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              366540.62333333335,
+              457166.1533333333,
+              369306.04,
+              301263.18666666665,
+              302766.35333333333,
+              304994.6433333333,
+              393028.9866666667,
+              308222.12333333335,
+              326546.2866666667
+            ],
+            "prepared": [
+              285706.0966666667,
+              350343.34,
+              400881.58666666667,
+              397023.5,
+              285264.43666666665,
+              292419.15,
+              343637.9033333333,
+              294736.7033333333,
+              297601.51
+            ]
+          },
+          "median_ns": {
+            "general": 326546.2866666667,
+            "prepared": 297601.51
+          },
+          "paired_saving_ns": [
+            80834.52666666667,
+            106822.8133333333,
+            -31575.54666666669,
+            -95760.31333333335,
+            17501.916666666686,
+            12575.493333333288,
+            49391.08333333337,
+            13485.420000000042,
+            28944.776666666672
+          ],
+          "median_saving_ns": 17501.916666666686,
+          "paired_saving_mad_ns": 31889.166666666686,
+          "median_paired_prepared_over_general": 0.9421933234192711,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 35948,
+              "retained_after_gc_bytes": 10652
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 34412,
+              "retained_after_gc_bytes": 10506
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        }
+      }
+    },
+    {
+      "run_index": 2,
+      "started_utc": "2026-10-26T09:54:06.139839+00:00",
+      "finished_utc": "2026-10-26T09:54:12.527128+00:00",
+      "environment": {
+        "pid": 843399,
+        "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+        "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+        "torch": "2.14.1+cu130",
+        "torch_git": "5c4886908584029761b579af026dcfb627c84070",
+        "free_threaded_build": true,
+        "gil_enabled": false,
+        "dynamo_imported": false,
+        "triton_imported": false,
+        "torch_threads": 1,
+        "torch_interop_threads": 1,
+        "source_sha256": {
+          "access_cost_probe.py": "3b86f64f6cb2359b4d4e3759044e42617ab63709dce47e920efa8dfce8704d0e",
+          "lowering_cost_probe.py": "cdb54c386bdca2ae9859fc5367a773204ff517d89a812286e6c2878d9ca19cd2",
+          "prepare.py": "bd44b531c9aa37318cc63f4b7ce5a74dd021d19001f918f3fea62d112dc8ce1a",
+          "state.py": "97906e97d12d24fc0e26401b46698c8c0534d2fe2afde4816e091c3d4db73a08",
+          "access.py": "10b69d35320057afdef50eefc9703fe14a23a1513a3609663defbb559bafd05d",
+          "progress.py": "67d704c807042478785b8ff35d22033071972c3a9c022cf015e01c766be416c4",
+          "graph.py": "99cab5a8de576e025e63988af5bf3da374357c43521f230b39fe3701ddf864c6"
+        },
+        "gc_during_timing": false,
+        "host_load_and_cpu_affinity_controlled": false
+      },
+      "gil_enabled_after": false,
+      "imports_after": {
+        "dynamo_imported": false,
+        "triton_imported": false
+      },
+      "cases": {
+        "cheap": {
+          "iterations_per_sample": 3000,
+          "access_realizations": {
+            "general": "general",
+            "prepared": "prepared"
+          },
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              44604.134333333335,
+              43499.217333333334,
+              43332.153333333335,
+              49570.866,
+              44050.157333333336,
+              52546.89633333333,
+              46065.954,
+              49314.395,
+              47296.795
+            ],
+            "prepared": [
+              38140.982,
+              36631.616,
+              42611.807,
+              47541.633,
+              37830.73533333333,
+              51293.51466666667,
+              49928.12733333333,
+              38989.66266666666,
+              36469.685666666664
+            ]
+          },
+          "median_ns": {
+            "general": 46065.954,
+            "prepared": 38989.66266666666
+          },
+          "paired_saving_ns": [
+            6463.152333333332,
+            6867.601333333332,
+            720.3463333333348,
+            2029.2330000000002,
+            6219.422000000006,
+            1253.3816666666607,
+            -3862.1733333333323,
+            10324.732333333333,
+            10827.109333333334
+          ],
+          "median_saving_ns": 6219.422000000006,
+          "paired_saving_mad_ns": 4190.189000000006,
+          "median_paired_prepared_over_general": 0.8588104475328698,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 13520,
+              "retained_after_gc_bytes": 592
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 12080,
+              "retained_after_gc_bytes": 432
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        },
+        "joint": {
+          "iterations_per_sample": 300,
+          "access_realizations": {
+            "general": "general",
+            "prepared": "prepared"
+          },
+          "warmup_each": 100,
+          "order": [
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ],
+            [
+              "prepared",
+              "general"
+            ],
+            [
+              "general",
+              "prepared"
+            ]
+          ],
+          "ns_per_invocation": {
+            "general": [
+              313688.92333333334,
+              355633.84,
+              332463.7966666667,
+              312860.8233333333,
+              303592.7766666667,
+              328166.13333333336,
+              301404.70666666667,
+              315352.42333333334,
+              338051.64
+            ],
+            "prepared": [
+              301171.91,
+              291041.4766666667,
+              318935.83,
+              289688.12666666665,
+              299330.61666666664,
+              298947.7166666667,
+              306988.18,
+              327873.23333333334,
+              378193.8466666667
+            ]
+          },
+          "median_ns": {
+            "general": 315352.42333333334,
+            "prepared": 301171.91
+          },
+          "paired_saving_ns": [
+            12517.013333333365,
+            64592.36333333334,
+            13527.966666666674,
+            23172.696666666656,
+            4262.160000000033,
+            29218.416666666686,
+            -5583.473333333328,
+            -12520.809999999998,
+            -40142.206666666665
+          ],
+          "median_saving_ns": 12517.013333333365,
+          "paired_saving_mad_ns": 16701.40333333332,
+          "median_paired_prepared_over_general": 0.9600973690740349,
+          "memory": {
+            "general": {
+              "iterations": 200,
+              "peak_above_start_bytes": 35881,
+              "retained_after_gc_bytes": 10666
+            },
+            "prepared": {
+              "iterations": 200,
+              "peak_above_start_bytes": 34331,
+              "retained_after_gc_bytes": 10372
+            }
+          },
+          "conformance": "equal numerical/owner results and invocation/unit progress; leases and demands drained"
+        }
+      }
+    }
+  ]
+}
