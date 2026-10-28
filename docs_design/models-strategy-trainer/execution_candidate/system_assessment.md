@@ -1,7 +1,7 @@
-# Whole-candidate assessment — 2026-10-27
+# Whole-candidate assessment — 2026-10-28
 
 This refreshes the October 24 assessment with the implemented `.19`–`.26`
-findings and the subsequent `.27` input-association fix. Bead
+findings, the subsequent `.27` input-association fix, and `.28` RNG evidence. Bead
 `sd-scripts-syv.25` tracks the assessment. The earlier
 source-access/publication cycle is resolved by `.19`; its reproducer is now a
 rejection regression, not a remaining defect. Historical measurements and
@@ -269,14 +269,28 @@ introduced. See the [implementation and bounds](README.md#input-associations-fol
 
 ### Reproducibility remains a separate qualification
 
-Owned RNG streams and matched synthetic worker runs have repeatability
-evidence. Whole-run reproducibility across arbitrary scheduling, live-source
-version choices and numerical backends is unproven. The same seed does not
-determine which changing source an asynchronous policy uses. Preserving actual
-provenance makes that decision inspectable; a supported reproducible policy
-must additionally control semantically relevant choices. No reproducibility
-waiver or universal snapshot/live default is inferred. Same-run restoration
-and its accepted replay/regeneration policy are separate and unimplemented.
+The `.28` [RNG investigation](README.md#rng-and-repeatability-under-changed-worker-timing-2026-10-28)
+demonstrates controlled repeatability through the existing mechanism. Explicit
+job randomness and publication/consumption by key preserve admitted inputs,
+unit associations and the final trained weight under opposite worker orders
+and one/two workers. A protected source boundary also preserves the chosen
+encoder state while an independently eligible update waits.
+
+The negative controls explain the limits. A shared stream can assign different
+draws to jobs while ending at the same generator state. Default-generator
+dropout is not isolated by worker context. Borrowing that default under shared
+state exclusion works only when every default-generator user participates;
+the explicit negative case shows another default user consuming the temporary
+stream and losing its advancement on restore. An independently owned stream
+can overlap that borrowing correctly. The probe does not automatically detect
+hidden default-generator effects or choose these policies for an author.
+
+These results resolve the suggestion that concurrency itself prevents
+repeatability. General guarantees still require the arrangement's applicable
+RNG, source-version, feedback/effect ordering and numerical policy to be
+qualified. No reproducibility waiver, production RNG API or universal
+snapshot/live default is inferred. Same-run restoration and its accepted
+replay/regeneration policy are separate and unimplemented.
 
 ## Production decisions versus later qualification
 
@@ -349,19 +363,20 @@ unchanged.
 
 Fresh checks in the existing uv-managed Python 3.14.5t environment:
 
-- **639 passed**, with no expected failures, across the candidate and unchanged
+- **665 passed**, with no expected failures, across the candidate and unchanged
   execution tests. Independent standard-optimizer oracle tests load Triton
   and enable the GIL in this full-suite process.
-- **580 passed** in a separate candidate process which excludes the two
-  standard-optimizer oracle files, plus both changed long-window cases from
-  one excluded file in another process. The GIL stays disabled after all
+- **606 passed** in a separate candidate process which excludes the two
+  standard-optimizer oracle files. The `.27` refresh separately qualified its
+  two changed long-window cases in one of those files; neither file changes
+  in `.28`. The GIL stays disabled after all
   included tests, with neither Dynamo nor Triton imported and no forced-off
-  override. Every new/changed `.27` case is covered.
+  override. All 26 new `.28` cases are covered.
 - Scoped Ruff lint/format, strict `ty`, new local links/source-line bounds,
   introduced whitespace and bounded changed-path checks pass. Performance
   probes were not rerun; earlier source-stamped costs do not qualify the
   added input coordination.
-- The installed OpenSpec validator reports **53 existing requirement-length
+- The preceding unchanged OpenSpec validation reports **53 existing requirement-length
   warnings and zero errors** for the unchanged change. `--strict` exits
   nonzero because those requirement texts exceed 500 characters. This is not
   recorded as a strict-validation pass; the assessment does not rewrite

@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-28]
+
+### Added
+
+- **Candidate RNG probes now vary worker timing explicitly** — job-owned randomness and ordered input handoff preserve training results across worker order/count changes. Global RNG, shared-stream and changing-source controls expose distinct limits; scoped dropout and protected source boundaries reuse the existing ownership mechanism. Production APIs and governing requirements remain unchanged.
+
 ## [2026-10-27]
 
 ### Fixed

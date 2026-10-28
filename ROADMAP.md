@@ -43,7 +43,12 @@ integrates these findings and recommends retaining the graph-derived foundation
 execution lifetimes through pending unit outcomes, capability requests and
 failure reporting, with prepared region bounds and bounded completed history
 (`sd-scripts-syv.27`). The four correlation counterexamples now pass alongside
-release, cancellation and cross-owner cases. Next, choose production structures
+release, cancellation and cross-owner cases. Controlled RNG probes now show
+repeatable training results under worker order/count changes when randomness
+follows jobs and handoff follows defined keys. Separate global/shared-stream
+and changing-source cases expose the policy limits; existing exclusion and
+source boundaries can satisfy the tested cases (`sd-scripts-syv.28`).
+Next, choose production structures
 from this connected mechanism, retaining its explicit backend and restoration
 limits and distinguishing recorded provenance from whole-run reproducibility.
 These are candidate findings, not completion

@@ -21,6 +21,11 @@ The subsequent `.27` input-association work reports **639 passing tests** and
 **580** in the GIL-disabled candidate run, plus two focused GIL-disabled
 long-window cases. The assessment's four expected failures are now positive
 conformance checks. Earlier dated counts below remain historical.
+The subsequent [RNG investigation](#rng-and-repeatability-under-changed-worker-timing-2026-10-28)
+tests explicit job randomness, ordinary dropout, and changing source versions
+through the existing mechanism. Its 26 new cases bring the full count to
+**665**, with **606** in the GIL-disabled candidate run. It does not add an
+implicit determinism policy.
 
 Read [examples.py](examples.py), particularly `diffusion()` and `adversarial()`.
 They use the same language constructs and engine but different computation,
@@ -2401,10 +2406,12 @@ guarantee changes.
 
 ### Reproducibility is a separate guarantee
 
-The owned-RNG tests reproduce separate serial streams, and the bounded
+The original owned-RNG tests reproduce separate serial streams, and the bounded
 parallel-processing comparison preserves the same input sequence and results
-across its worker configurations. Neither establishes whole-run repeatability
-for arbitrary asynchronous policies or numerical backends.
+across its worker configurations. Those results alone did not establish
+whole-run repeatability for arbitrary asynchronous policies or numerical
+backends. The investigation below adds controlled opposite worker orders and
+explicit positive and negative policies.
 
 If a producer may use changing live state, scheduling can affect which state
 it uses even with the same seed. Provenance records that choice; it does not
@@ -2415,3 +2422,102 @@ live/snapshot default and does not waive reproducibility as a design concern.
 Same-run restoration is separate again: the governing continuation policy may
 allow regeneration of disposable work without promising bit-identical replay.
 The candidate has not implemented that restoration protocol.
+
+## RNG and repeatability under changed worker timing (2026-10-28)
+
+`sd-scripts-syv.28` investigates the user's proposed remedy: identify the work,
+keep its source state stable, and use the results in a defined order. This is
+possible through the existing candidate. There is no inherent requirement for
+thread timing to determine training results.
+
+[test_rng.py](test_rng.py) uses barriers/events to impose opposite draw or
+source-access orders. The overlapping worker cases prove both workers have
+entered before either prescribed draw; they do not rely on sleeps to induce a
+race. A provider runs two jobs with one or two private workers, publishes by
+job key through a capacity-one Feed, and drives two real differentiation and
+advancement calls. A direct scalar-gradient oracle checks the final weight;
+the unit outcomes preserve the consumed input keys. These are tiny CPU
+arrangements, not performance measurements or a model/backend qualification.
+
+| Tested arrangement | Result when timing changes | Meaning |
+| --- | --- | --- |
+| Two selected calls using global Python or Torch randomness | The draw assignment to the calls changes, even though the final global generator state matches. | An intact global sequence and consistent individual draws do not determine which job receives them. |
+| Selected calls with separately owned Python/Torch generators | Each owner matches its serial oracle under both worker orders without changing the global generators. | This works when each owner's draw sequence is itself defined. |
+| One provider-owned Torch stream shared by private jobs under a mutex | There is no concurrent generator mutation, but reversing the jobs assigns different values and changes the final trained weight. | Ownership and mutual exclusion alone do not fix job-to-draw assignment. |
+| Explicitly assigned job seeds and generators, with publication/consumption by key | Inputs, per-unit associations and the final weight match across both completion orders and one/two workers. | Randomness can follow logical work instead of the physical worker that happens to run it. |
+| Ordinary Torch dropout in concurrent selected calls | Masks follow the global draw order rather than the call identity. | The worker context does not automatically isolate native default-generator users. |
+| Dropout borrowing the default CPU RNG under one shared declared state gate, with separate job RNG state | Each job matches its serial dropout oracle under reversed call order; the outer default state is restored. | Existing scoped state exclusion can support this limited realization when every default-generator user participates. |
+| An unrelated call while that default RNG is temporarily borrowed | An explicit-generator call still gets its own expected draws. An undeclared default-generator call instead consumes the borrower's stream, and its advancement is erased by the later restore. | Save/restore is not concurrent isolation. The scope must cover every relevant default-generator user or the overlap cannot claim this guarantee. |
+
+The source-version control deliberately keeps RNG and the job key fixed.
+An independently coordinated encoder update performs a real differentiation
+and optimizer advancement. Under the selected "use current state when reached"
+policy, the same job uses numerical epoch 0 or 1 under the two arrival orders;
+actual provenance and output both change. Under a boundary policy, the source
+acquires its initial view before releasing the update's permit. The existing
+lease protects it through actual worker completion, so an eligible update
+waits and both arrival patterns produce the same result. Requiring epoch 0 at
+admission rejects the epoch-1 product before handoff. No snapshot or new
+language construct is required for this example. Independent runs retain
+different participant incarnations; comparisons use logical work and numerical
+coordinates, not equality of new authority-established references.
+
+The boundaries of this evidence are explicit:
+
+- The operations/providers select these policies. The engine does not seed all
+  Python/Torch activity, infer hidden RNG effects, or add a universal job order.
+  The ordinary `OwnedState`, `Choice.key`, source-use, handoff and preparation
+  mechanisms are unchanged. The state token used to exclude default-RNG users
+  is test behavior, not a selected production RNG API. Routine RNG knowledge
+  belongs with maintained integrations; these fixtures do not require every
+  strategy author to wire individual seeds or gates manually.
+- Seeds 17/29 are explicit fixture assignments. This is not a production seed
+  derivation, statistical stream-independence claim, or permission to reseed
+  every repeated sample identically. A real allocation must distinguish the
+  accepted occurrences/purposes that need distinct or deliberately repeated
+  randomness. Physical thread identity, transient invocation counters, and a
+  process-randomized hash are not substitutes for that policy.
+- Per-job generators do not force every operator's internal randomness to use
+  them. PyTorch's public [dropout API](https://docs.pytorch.org/docs/2.14/generated/torch.nn.functional.dropout.html)
+  takes no generator, while [fork_rng](https://docs.pytorch.org/docs/2.14/random.html#torch.random.fork_rng)
+  saves/restores default state. The installed [thread_safe_generator](https://docs.pytorch.org/docs/2.14/random.html#torch.random.thread_safe_generator)
+  supplies a generator in managed DataLoader thread workers and otherwise
+  returns `None`; it is not an ambient default-RNG replacement for these workers.
+- A fixed source boundary may delay a conflicting update. A supported isolated
+  view could satisfy the same version obligation with different costs. No
+  universal live/snapshot default, throughput claim, or globally serialized
+  execution is selected here.
+- Adaptive feedback and other effects also need their accepted ordering.
+  Stochastic backward/checkpoint recomputation, granted multi-pass regions,
+  CUDA/distributed streams, continuation after interruption, and cross-version
+  numerical reproducibility remain separate qualifications. This is evidence
+  for controlled repeatability in the tested arrangements, not all possible
+  schedules or exact runtime restoration.
+
+The most useful next bounded test is a stochastic differentiated region with
+checkpoint recomputation alongside independent sampling. It should locate
+the required RNG ownership across forward, recomputation and backward, then
+exercise interruption without losing another owner's random progress. That
+is a qualification of the existing ownership requirements, not a decision to
+add a new RNG language or require global serialization.
+
+This follows the governing [capability RNG ownership/isolation rule](../../../openspec/changes/rework-model-strategy-trainer/design.md#g42-validation-and-sampling-exchanges)
+and accepted execution's required views, ordering, randomness and input
+associations. The rule already requires relevant activities/generators to be
+covered or unsupported overlap to reject. The probe's contract cannot prove
+that opaque Python does not touch a default generator; its negative cases
+must not be promoted as conformant production support. No governing artifacts
+or live Trainer code change.
+
+The external API checks use [Python 3.14 random](https://docs.python.org/3.14/library/random.html)
+and [PyTorch 2.14 reproducibility](https://docs.pytorch.org/docs/2.14/notes/randomness.html).
+Their thread-safety and numerical caveats do not replace the candidate's own
+worker-order tests or select the architecture.
+
+Verification: **26 focused cases**, **665 total**, and **606** in a separate
+process that keeps the GIL disabled without an override or Dynamo/Triton.
+The latter excludes the two existing standard-optimizer oracle files; all
+new RNG cases are included. Scoped Ruff lint/format and strict types pass.
+Environment: Python 3.14.5t, Torch 2.14.1+cu130, Torch commit
+`5c4886908584029761b579af026dcfb627c84070`. No RNG allocation/dispatch cost,
+GPU performance, statistical-quality or durable-continuation result is claimed.
