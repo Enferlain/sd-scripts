@@ -17,6 +17,10 @@ Rules:
 - **Candidate conformance now has reusable independent checks** — test-only adapters expose input/source associations, adaptive feedback order, numerical results and partial optimization outcomes. Independent arithmetic and deliberately corrupted reports detect shared mistakes across lowerings while permitting private scheduling differences; runtime and governing requirements are unchanged.
 - **Candidate RNG probes now vary worker timing explicitly** — job-owned randomness and ordered input handoff preserve training results across worker order/count changes. Global RNG, shared-stream and changing-source controls expose distinct limits; scoped dropout and protected source boundaries reuse the existing ownership mechanism. Production APIs and governing requirements remain unchanged.
 
+### Fixed
+
+- **Candidate worker submission now retains execution ownership through ambiguous errors** — a dispatch owns its entry gate and completion before executor handoff. Failed submission either prevents later selected entry or drains already-entered work while preserving effects, interruption and failure evidence; queued callbacks can no longer mutate state after its protection was released.
+
 ## [2026-10-27]
 
 ### Fixed

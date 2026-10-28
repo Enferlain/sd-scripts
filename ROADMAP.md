@@ -57,6 +57,11 @@ Togeari, then explore our own alternative IR-based candidate; adopting or
 porting Togeari is not the selected destination (`sd-scripts-syv.31`). Retain
 explicit backend and restoration limits and distinguish recorded provenance
 from whole-run reproducibility.
+A reproduced executor enqueue-then-error race now has owned dispatch entry
+and completion before handoff. Failed submissions cannot orphan selected work
+outside its protection; entered work drains with its actual return/failure
+evidence (`sd-scripts-syv.31.3`). Reservation/capacity ordering and placement of
+expensive numerical mechanics remain whole-candidate assessment concerns.
 These are candidate findings, not completion
 of G5 production implementation, GPU/distributed preparation or durable continuation.
 

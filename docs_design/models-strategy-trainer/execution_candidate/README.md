@@ -29,6 +29,8 @@ implicit determinism policy.
 The subsequent [independent conformance checks](#independent-semantic-conformance-checks-2026-10-28)
 add 310 cases covering semantic facts and deliberate corruption controls,
 bringing these counts to **975** and **916**, respectively.
+The subsequent [dispatch ownership correction](#dispatch-ownership-through-submission-failure-2026-10-28)
+adds 41 cases, bringing the full and GIL-disabled counts to **1,016** and **957**.
 
 Read [examples.py](examples.py), particularly `diffusion()` and `adversarial()`.
 They use the same language constructs and engine but different computation,
@@ -1038,7 +1040,7 @@ rejected for this worker realization rather than deadlocking silently.
 
 | Observed boundary | Meaning in this target |
 | --- | --- |
-| Waiting for capacity, or physical future successfully cancelled before start | Selected work did not enter; no effects or cleanup are invented for it |
+| Waiting for capacity, or owned entry gate successfully cancelled before start | Selected work cannot enter; no effects or cleanup are invented for it |
 | Entered work interrupted by coordinator cancellation | Signal a cooperative stop; retain reservation and drain physical execution, including repeated cancellation |
 | Implementation returns after cancellation | Preserve the returned fact/effects, withhold uncertain current use and do not certify run completion or advance downstream optimization |
 | Worker subsequently fails | Preserve its actual cause and the cancellation evidence; no rollback or automatic retry |
@@ -1049,10 +1051,10 @@ worker-placed work that can cooperate; it is `None` on the cooperative path.
 It cannot terminate an arbitrary native call or force
 an implementation to inspect its queue. A non-cooperating call must finish before
 its protection can be released; a call that never finishes can prevent shutdown.
-Host-thread completion is sufficient only for this synchronous CPU target, not
+Selected execution and numerical-context cleanup completion is sufficient only for this synchronous CPU target, not
 for asynchronously enqueued GPU/backend work. Python's
 [Future cancellation rules](https://docs.python.org/3.14/library/concurrent.futures.html#concurrent.futures.Future.cancel)
-are the physical distinction, not an atomic training-update guarantee.
+support the owned entry/completion gate, not an atomic training-update guarantee.
 The existing `entered` trace names dispatch entry, which can precede capacity
 waiting; it does not prove physical entry. `worker_not_started` disambiguates a
 dispatch that never invoked selected work. Surrounding physical-context failure
@@ -2574,3 +2576,55 @@ candidate standard-optimizer oracle files and the old execution tests outside
 this candidate, whose ordinary optimizer path enables the GIL. All new cases
 are included. Scoped Ruff lint/format and strict types pass. No performance or
 additional backend qualification is claimed.
+
+## Dispatch ownership through submission failure (2026-10-28)
+
+Bead `sd-scripts-syv.31.3` corrects a reproduced worker-boundary error.
+`ThreadPoolExecutor.submit()` queues a work item before attempting to start
+another thread. If thread startup raises, an existing thread can still execute
+the queued item. The previous target treated every submission exception as
+`NotEntered`, releasing participant protection despite possible later execution.
+The engine probe demonstrated a queued write changing weight 2 to 9 under an
+active reader, with unchanged numerical provenance and falsely usable state.
+
+`Workers.execute()` now owns a `Future` entry gate and completion observation
+before executor handoff. The queued callback must enter through that gate:
+
+- If cancellation wins before entry, selected work cannot run, even if the
+  executor later processes its orphaned callback. This establishes `NotEntered`.
+- If execution already entered or completed, a submission exception cannot
+  revoke that fact. The owner requests a stop, retains protection and capacity,
+  and observes the owned completion through numerical-context cleanup.
+- Physical and submission failures both survive; selected return, invalid
+  output, selected failure and coordinator interruption keep the existing
+  classification and withholding rules. No dependent work is authorized by a
+  failed submission, and no retry or rollback is inferred.
+
+The executor's returned future is no longer the source of selected-entry or
+completion truth. Its ordinary queue, thread limit and scheduling are otherwise
+unchanged. A rejected callback may still be dequeued, but cannot access selected
+models, owned state or numerical context. There is no private-queue draining,
+global submission lock, new IR construct or production executor API.
+
+[test_worker_submission.py](test_worker_submission.py) covers the real
+enqueue-then-thread-start-failure race with an executor barrier proving the
+queued callback was processed. It also exercises entry before an eventual
+submission error, already-completed work, a genuinely rejected submission,
+repeated cancellation, invalid output, selected failure and outer-context
+failure. Both emissions and access variants preserve exclusion, actual effects,
+return/revision evidence and blocked dependent readers. The existing unit and
+retained-state suites continue to supply the corresponding partial-outcome
+and cancellation coverage.
+
+This repairs the CPU realization's ownership guarantee. Conservative
+reservation-before-capacity ordering, synchronous coordinator-side backward
+and optimization, and unqualified GPU/distributed/remote completion remain
+explicit target limitations for the whole-candidate discussion.
+
+Verification: the enqueue-then-error regression failed on the original target
+by observing selected execution after its use was released. With the correction,
+**41 new cases**, **190 focused worker/ownership cases**, and **1,016 total**
+pass. **957 candidate cases** pass in a fresh process that keeps the GIL disabled
+without an override or Dynamo/Triton imports, using the same standard-optimizer
+oracle exclusions described above. Scoped Ruff lint/format and strict types
+pass. No worker-overhead, GPU completion or distributed qualification is claimed.

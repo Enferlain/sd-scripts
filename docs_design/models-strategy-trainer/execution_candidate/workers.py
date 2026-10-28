@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 import threading
+
 from collections.abc import Callable, Generator
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
@@ -96,7 +97,7 @@ class Workers:
                 primary = error
                 raise
             finally:
-                # Every execute() drains its physical future, even through
+                # Every execute() drains its owned completion, even through
                 # repeated cancellation. Root/TaskGroup exit joins those calls.
                 self.executor = None
                 self.slots = None
@@ -117,34 +118,68 @@ class Workers:
             raise NotEntered(error) from error
         self.active += 1
         try:
+            # Own entry and completion BEFORE handing anything to the executor.
+            # submit() may enqueue work and then raise while starting a thread;
+            # its exception does not tell us whether selected execution entered.
+            completion: Future[T] = Future()
+            pending = asyncio.wrap_future(completion)
+
+            def dispatch() -> None:
+                if not completion.set_running_or_notify_cancel():
+                    return
+                try:
+                    value = cast(T, python_context.run(numerical_context.invoke, call))
+                except BaseException as error:
+                    completion.set_exception(error)
+                else:
+                    completion.set_result(value)
+
+            submission_failure = None
             try:
-                physical = cast(Future[T], executor.submit(python_context.run, numerical_context.invoke, call))
+                executor.submit(dispatch)
             except BaseException as error:
-                raise NotEntered(error) from error
-            pending = asyncio.wrap_future(physical)
+                if completion.cancel():
+                    # An orphaned executor item may still run dispatch(), but
+                    # the entry gate prevents it from invoking selected work.
+                    raise NotEntered(error) from error
+                # It entered (or even finished) before submit failed. Keep the
+                # same ownership and observe the independently held completion.
+                submission_failure = error
+                stop.set()
             cancelled = None
+
+            def failed(error: BaseException) -> PhysicalFailed:
+                if submission_failure is not None and error is not submission_failure:
+                    error = BaseExceptionGroup("Worker execution and submission failed", (error, submission_failure))
+                return PhysicalFailed(error, cancelled)
+
             while True:
                 if cancelled is not None and pending.done():
                     # Also observe a physical exception (including one named
                     # CancelledError); it must not become an infinite drain.
                     try:
-                        return Finished(pending.result(), cancelled)
+                        value = pending.result()
                     except BaseException as error:
-                        raise PhysicalFailed(error, cancelled) from error
+                        raise failed(error) from error
+                    break
                 try:
                     value = await asyncio.shield(pending)
-                    return Finished(value, cancelled)
+                    break
                 except asyncio.CancelledError as error:
                     cancelled = cancelled or error
                     stop.set()
-                    if physical.cancel():
-                        # A successfully cancelled physical future never ran.
+                    if completion.cancel():
+                        # Cancellation won the entry gate; selected work cannot
+                        # run even if its executor item is already queued.
                         pending.cancel()
                         raise NotEntered(cancelled) from cancelled
                     # Running or already-completed work still needs observation.
                     # Do not cancel the asyncio wrapper or release the slot.
                 except BaseException as error:
-                    raise PhysicalFailed(error, cancelled) from error
+                    raise failed(error) from error
+            if submission_failure is not None:
+                raise PhysicalFailed(submission_failure, cancelled) from submission_failure
+            return Finished(value, cancelled)
         finally:
             self.active -= 1
             slots.release()
