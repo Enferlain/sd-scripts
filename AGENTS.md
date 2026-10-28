@@ -10,15 +10,6 @@ This document provides essential context for AI agents working on this repositor
 uv run python
 ```
 
-**WSL note:** when the repo lives on the Windows filesystem and tests are run from WSL, Python and `pytest` can look hung or stay silent for a long time even on small commands. Prefer bounded runs so a stalled command cleans itself up:
-
-```powershell
-timeout 180 ./.venv-wsl/bin/python -m pytest tests/unit/adapters/test_lora_module.py -q
-timeout 60 ./.venv-wsl/bin/python -c "from train import train; print('OK')"
-```
-
-If a command appears stuck, ask the user to run it locally and report the result rather than repeatedly polling a silent WSL process.
-
 ## Review Policy
 
 Significant code changes and every OpenSpec implementation milestone require `review-mcp` after the relevant quality gates and before handoff. Follow the global review workflow for invocation, waiting, findings, and follow-up review.
