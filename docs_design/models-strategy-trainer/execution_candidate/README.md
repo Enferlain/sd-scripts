@@ -26,6 +26,9 @@ tests explicit job randomness, ordinary dropout, and changing source versions
 through the existing mechanism. Its 26 new cases bring the full count to
 **665**, with **606** in the GIL-disabled candidate run. It does not add an
 implicit determinism policy.
+The subsequent [independent conformance checks](#independent-semantic-conformance-checks-2026-10-28)
+add 310 cases covering semantic facts and deliberate corruption controls,
+bringing these counts to **975** and **916**, respectively.
 
 Read [examples.py](examples.py), particularly `diffusion()` and `adversarial()`.
 They use the same language constructs and engine but different computation,
@@ -2521,3 +2524,53 @@ new RNG cases are included. Scoped Ruff lint/format and strict types pass.
 Environment: Python 3.14.5t, Torch 2.14.1+cu130, Torch commit
 `5c4886908584029761b579af026dcfb627c84070`. No RNG allocation/dispatch cost,
 GPU performance, statistical-quality or durable-continuation result is claimed.
+
+## Independent semantic conformance checks (2026-10-28)
+
+Bead `sd-scripts-syv.31.1` adds [conformance.py](conformance.py) and
+[test_conformance.py](test_conformance.py). Togeari's distinction between
+recorded-result replay and independent reexecution prompted this pass. The
+candidate already had direct numerical oracles and paired-lowering checks;
+the addition makes a small set of expectations independently reusable.
+
+The shared checker imports only the standard library. Its immutable records
+describe observations from two finite test cases, not a universal runtime
+result, authoring API, event log or reference interpreter. A later candidate
+can expose the same observations through another test adapter.
+
+The current adapters instrument the existing connected adaptive-input example
+and three-unit partial-failure fixture. They read actual operation handoffs,
+unit-outcome associations, gradients, update results and feedback boundaries.
+Authority-established references become the fixture's participant/unit names;
+source binding/numerical coordinates and originating consumer associations
+remain explicit. Expected arithmetic is separately calculated from the stated
+model, objective, adaptation and SGD rules, without calling candidate numerical
+helpers or replaying their recorded answers.
+
+Both `calls`/`inline` emissions and `general`/`prepared` access paths run the
+same checks. Two input publication orders preserve the selected consumption
+order. Required feedback edges must hold, while unrelated/private events and
+report enumeration may differ. This does not impose one scheduler trace.
+
+Negative controls change product keys, consumer associations, source identity,
+binding/state coordinates, numerical values and feedback timing. They also
+drop/duplicate facts or misreport returned, uncertain and unattempted unit
+outcomes. Identity/order/outcome controls preserve the numerical report, so
+equal weights cannot conceal those failures. A process-local no-op optimizer
+fault makes both lowerings agree on incorrect execution; the independent
+checker rejects both. The partial-failure check validates the known first
+update without pretending to know the second unit's uncertain numerical result.
+
+This is bounded CPU conformance evidence. It neither supplies general replay
+or recovery nor qualifies arbitrary backends, producer schedules or research
+profiles. No execution machinery, governing spec/task or production code is
+changed. The broader reference-learning chapter and later exploration of our
+own alternative IR implementation remain separate work.
+
+Verification: **310 focused cases** and **975 total** pass. **916 candidate
+cases** pass in a fresh process with the GIL remaining disabled, no forced
+override, and no Dynamo/Triton imports. The latter excludes the two existing
+candidate standard-optimizer oracle files and the old execution tests outside
+this candidate, whose ordinary optimizer path enables the GIL. All new cases
+are included. Scoped Ruff lint/format and strict types pass. No performance or
+additional backend qualification is claimed.

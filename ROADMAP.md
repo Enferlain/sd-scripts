@@ -48,9 +48,15 @@ repeatable training results under worker order/count changes when randomness
 follows jobs and handoff follows defined keys. Separate global/shared-stream
 and changing-source cases expose the policy limits; existing exclusion and
 source boundaries can satisfy the tested cases (`sd-scripts-syv.28`).
-Next, choose production structures
-from this connected mechanism, retaining its explicit backend and restoration
-limits and distinguishing recorded provenance from whole-run reproducibility.
+Independent conformance checks now extract input/source associations, adaptive
+feedback order, numerical results and partial outcomes through test-only
+adapters. Deliberate corruption controls make this evidence reusable across
+candidate implementations without requiring identical internal traces
+(`sd-scripts-syv.31.1`). Continue learning concrete execution techniques from
+Togeari, then explore our own alternative IR-based candidate; adopting or
+porting Togeari is not the selected destination (`sd-scripts-syv.31`). Retain
+explicit backend and restoration limits and distinguish recorded provenance
+from whole-run reproducibility.
 These are candidate findings, not completion
 of G5 production implementation, GPU/distributed preparation or durable continuation.
 

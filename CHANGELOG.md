@@ -14,6 +14,7 @@ Rules:
 
 ### Added
 
+- **Candidate conformance now has reusable independent checks** — test-only adapters expose input/source associations, adaptive feedback order, numerical results and partial optimization outcomes. Independent arithmetic and deliberately corrupted reports detect shared mistakes across lowerings while permitting private scheduling differences; runtime and governing requirements are unchanged.
 - **Candidate RNG probes now vary worker timing explicitly** — job-owned randomness and ordered input handoff preserve training results across worker order/count changes. Global RNG, shared-stream and changing-source controls expose distinct limits; scoped dropout and protected source boundaries reuse the existing ownership mechanism. Production APIs and governing requirements remain unchanged.
 
 ## [2026-10-27]
