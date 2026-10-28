@@ -95,6 +95,8 @@ def observable(ready: Ready):
                         outcome.reset,
                         outcome.advancement_invocation,
                         outcome.source_stamps,
+                        outcome.work,
+                        outcome.input_handoffs,
                     )
                     for outcome in unit.outcomes
                 ),

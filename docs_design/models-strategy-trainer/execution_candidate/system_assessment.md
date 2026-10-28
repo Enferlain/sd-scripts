@@ -1,282 +1,368 @@
-# Whole-candidate assessment — 2026-10-24
+# Whole-candidate assessment — 2026-10-27
 
-> **Status note, 2026-10-25:** this preserves the assessment at its stated date.
-> The publication/access cycle below was subsequently addressed by
-> `sd-scripts-syv.19`; see the [runtime progress findings](README.md#shared-runtime-progress-2026-10-25).
-> Later GIL-disabled, useful-parallel-work and numerical-view investigations
-> are recorded in the README (`.20`–`.24`). `sd-scripts-syv.25` will refresh the
-> connected-system assessment; do not reopen the historical cycle or treat the
-> later CPU evidence as general backend/production qualification.
+This refreshes the October 24 assessment with the implemented `.19`–`.26`
+findings and the subsequent `.27` input-association fix. Bead
+`sd-scripts-syv.25` tracks the assessment. The earlier
+source-access/publication cycle is resolved by `.19`; its reproducer is now a
+rejection regression, not a remaining defect. Historical measurements and
+their source/environment limits remain in the [research record](README.md).
 
-This is a source-backed assessment of candidate commit `21e356e9`, plus the
-six assessment cases in [test_system_progress.py](test_system_progress.py).
-It is a checkpoint, not another governing design or an adoption of these Python
-types. Bead `sd-scripts-syv.18` tracks this pass. Production code, normative
-requirements and G5 checkboxes are unchanged.
-
-Subsequent qualification: `sd-scripts-syv.19` connects runtime input-capacity
-and protection waits and converts the cycle below to explicit rejection
-regressions. See [shared runtime progress](README.md#shared-runtime-progress-2026-10-25)
-for that implementation and its limits. The assessment below records the
-original `21e356e9` finding; its other qualifications are not closed by this fix.
-
-The governing references are the OpenSpec [D10 and G2.6](../../../openspec/changes/rework-model-strategy-trainer/design.md#d10-accepted-execution-is-structured-and-authority-bounded)
-and [accepted execution requirements](../../../openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md).
-The earlier [direction](../strategy_system_direction.md#authoring-accepted-arrangement-and-runtime-state)
-establishes the authoring/runtime distinction; the later OpenSpec establishes
-the hierarchical whole-run meaning. Older README checkpoints are historical;
-their superseded limitations are not the current support list.
+The authority is the [governing design](../../../openspec/changes/rework-model-strategy-trainer/design.md),
+especially D4–D10, G2.6 and G3.6, and the delta requirements for
+[accepted execution](../../../openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md),
+[participant state](../../../openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md),
+[preparation](../../../openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md),
+[optimization](../../../openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md)
+and [capabilities](../../../openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md).
+This assessment recommends a foundation; it does not amend those requirements,
+adopt the experimental Python API, migrate production training or complete G5.
 
 ## Judgment
 
-The graph-derived execution approach is a credible foundation to develop
-further. It does real construction work: changing accepted relationships
-changes executable dependencies, lifetimes, request connections and access.
-It is not a drawing above a fixed training loop, and the examples do not each
-supply a separate engine.
+Retain the graph-derived execution mechanism as the working foundation. The
+hierarchy and relationships construct executable work **and its coordination**.
+Changing an arrangement changes the derived calls, input connections,
+lifetimes, access and completion routing; the engine is not a fixed training
+loop receiving a different objective callback.
 
-Recent consolidation is substantive. Ordinary and granted gradient work use
-one optimization lifecycle. Calls, providers and retained sources use one
-current-state access protocol. Preparation uses that protocol's access facts
-for its bounded readiness checks. There is no further demonstrated need to
-move an example's entire workflow into another general coordinator.
+The recent investigations strengthen that judgment. Optimization has one
+pending-work owner shared by ordinary and granted execution. Calls, providers
+and retained sources share current-use protection. Preparation derives access
+checks and can specialize unused bookkeeping. Worker placement permits useful
+parallel Python work while keeping control state with the coordinator. The
+precision findings expose backend obligations without requiring another
+training architecture.
 
-One concrete cross-owner progress gap remains: a producer can hold source
-access while blocked publishing into a bounded feed, while the consumer needs
-incompatible access before it can claim the product already in that feed.
-The assessment reproduces this below. Fixing that boundary is justified;
-designing a general scheduler or expanding the IR for every private wait is
-not established by this finding.
+The assessment reproduced one cross-owner gap: unfinished optimization kept
+its outcome but could lose its input association after diagnostic eviction.
+`sd-scripts-syv.27` now preserves those associations through immutable
+references held by the existing execution, unit, request and failure owners.
+The four counterexamples pass. This strengthens the shared mechanism without
+changing the accepted graph direction; the production qualifications below
+remain open.
 
-This supports continued development of the mechanism, not production readiness,
-approval of the raw authoring surface, or an unchanged promotion of these files.
+## How the system fits together
 
-## The actual connected system
+There is one accepted description. Its nesting gives activities their
+lifetimes, and its relationships connect work inside and across those
+lifetimes. Preparation derives the executable realization of that description.
 
-The accepted description has two kinds of structure. Nesting gives activities
-their lifetimes; value, order, input, completion and access relationships join
-work and owners within and across those lifetimes.
+The adaptive [diffusion-style example](examples.py#L188) has this shape:
 
 ```text
 accepted run: Together
-├── inputs: Together
-│   ├── pixels: Producer ─────────── image ──────────┐
-│   └── captions: Producer ─────── conditioning ─────┤
-│       └── private encoding workers               │
-├── learning: Repeat                               │
-│   ├── selected live policy                       │
-│   └── learn: Block ◄──── correlated Join ─────────┘
-│       objective → observation → derivative → advancement
-│           └──── updates adaptive state ───→ later policy/computation
-└── validation: Requested ◄──── learning completion
-    └── evaluate using protected current participant state
+|
++-- inputs: Together
+|   +-- pixel Producer ------------ image -----------+
+|   +-- caption Producer -------- conditioning ------+
+|       +-- provider-owned workers, when selected    |
+|                                                   v
++-- learning: Repeat <-- adaptive state <-- observation
+|   +-- selected bounded policy                     ^
+|   +-- learn: Block <-- correlated input Join       |
+|       objective ------+----------------------------+
+|                       +--> addressed differentiation --> advancement
+|                                  |
+|                           unit-owned window/outcomes
+|
++-- validation: Requested <-- learning Completion
+    +-- protected evaluation Block --> validation-owned results
 
-Shared owners and services across those scopes:
-  participant bindings / prepared views ← scoped access → calls and providers
-  handoff ports ← publication / admission / claim → producers and consumers
-  optimization units ← contribution / advancement → ordinary or granted work
-  owned policy/provider/capability state ← declared access → its accepted user
+Across these scopes:
+  current bindings/views <--> protected calls, providers and retained uses
+  input ports           <--> readiness, admission, handoff and capacity
+  owned state           <--> selected policy/computation and continuity
+  shared wait evidence  <--> protected access and bounded publication
 ```
 
-That is the actual shape of [diffusion()](examples.py#L188), using tiny CPU
-models. [adversarial()](examples.py#L270) instead gives the repeat policy two
-accepted D/G alternatives and distinct unit destinations. There is no universal
-input/objective/backward/optimizer sequence outside the work each arrangement
-selects. The producer can progress without any derivative or optimizer call.
+The objective, adaptive algorithm and encoders remain selected Python
+behavior. The run structure exposes the relationships that other owners need.
+Internal tensor operators and provider worker schedules do not become common
+graph nodes. The [adversarial example](examples.py#L270) instead selects D/G
+actions with different derivatives and unit destinations through the same
+construction and engine.
 
-### Construction and execution
+### From accepted meaning to execution
 
-| Stage | Actual mechanism | What it does not establish |
+| Stage | Current mechanism | What becomes concrete |
 | --- | --- | --- |
-| Target offer and checking | `Contract.accept()` checks known vocabulary, scope/value dependencies, ownership and offered two-pass authority; creates run-scoped participant/unit identities. | It is a small probe contract, not the finished readable/queryable strategy contract or full obligation system. |
-| Concrete preparation | `prepare()` runs target access readiness before loading; `RunState.candidate()` verifies loaded CPU objects, resolves parameters/aliases, checks ownership, constructs units and views. | It is not distributed joint preparation, destructive preparation, or proof of every private wait. |
-| Derive execution | `Lowering._connect()` binds request queues and demand-end events. Scope lowering recursively builds task lifetimes and selected-policy loops. Block/sequence lowering resolves value edges into generated direct local calls. | The derived machinery is not a second authored run. `Ready.source` is inspection output, not another executable authority. |
-| Publication | `Preparation.publish()` calls the state owner's checked `install()`, then returns the callable root with its state. | An unpublished attempt is not runnable. A generation number is not rollback or distributed commit. |
-| Run | `Engine.run()` enters that root. Derived scopes coordinate live decisions, inputs, protected calls, capabilities, outcomes and cleanup. | The twenty-line entrypoint alone is not all the engine's machinery. |
+| Checking | `Contract.accept()` in [graph.py](graph.py#L399) | Known scope/value dependencies, ownership, bounded alternatives, offered two-pass authority and run-scoped participant/unit references. This is a probe contract, not the finished authoring or obligation system. |
+| Realization | `prepare()` and `RunState.candidate()` in [prepare.py](prepare.py#L337) and [state.py](state.py#L649) | CPU-target access readiness, loaded/verified participants, resolved parameters and aliases, trainability, unit runtimes and views. Target checks precede loading; all candidates remain unpublished. |
+| Lowering | `Lowering._connect()`, `block()`, `sequence()` and `_scope()` in [prepare.py](prepare.py#L421) | Request queues, whole-lifetime stop events, consumer relationships, direct value wiring, selected-policy loops, activity tasks and scoped access/cleanup. |
+| Publication | `Preparation.publish()` and `RunState.install()` in [prepare.py](prepare.py#L287) and [state.py](state.py#L726) | One checked installed image after source-generation, current-use and unfinished-work guards. No external callbacks run in final installation. |
+| Execution | `Engine.run()` in [prepare.py](prepare.py#L300) | Entry into the derived root, session-active/completed state and failure propagation. The derived coordination and state owners are also engine machinery; the small entrypoint is not the entire mechanism. |
 
-Source: [checking](graph.py#L388), [preparation and publication](prepare.py#L246),
-[scope connections and block emission](prepare.py#L380),
-[scope execution](prepare.py#L825), [candidate/install](state.py#L524).
+The prepared callables are a realization of the accepted graph, not a second
+authored run. `Ready.source` is inspection output. Ordinary execution does not
+interpret those source strings or traverse the whole graph to find its work.
+Static ordering, selection and connection construction finish in preparation.
+Live policies, admission, current projections and relevant freshness checks
+remain runtime work.
 
-The accepted graph is retained as meaning and identity; the callables are its
-prepared execution. Static dependency sorting, implementation selection and
-scope construction do not run every iteration. A live policy lookup among its
-prebound alternatives, current-source projection and required freshness checks
-still run when that work needs them. Avoiding rediscovery does not mean avoiding
-all runtime checks.
+The `calls` and `inline` emissions share invocation, output-check and failure
+rules. The second specializes ordinary-block dispatch; it does not separately
+reimplement Sequence or run coordination. The `general` and `prepared` access
+variants likewise use the same acquisition protocol: the latter omits empty
+retention borrowing and empty input-demand registration for ordinary blocks.
+Neither comparison establishes a numerical compiler or a general lowering
+pipeline with multiple backend targets.
 
-Both `calls` and `inline` emissions use `bind_parts()` for invocation, output
-and failure rules. Only the ordinary block's dispatch shell differs; Sequence
-and run-level machinery do not become a separate implementation. This is
-concrete selective lowering, not numerical fusion or proof of all possible
-future transformations.
+### Owners and interactions
 
-### Runtime ownership and interaction
+| Concern | Owner and shared boundary |
+| --- | --- |
+| Participants and current representations | The binding section of `RunState` owns the installed image. Scoped projections supply selected models/views and actual stamps; participant identity is not a role, Python object or optimizer handle. |
+| Optimization | Each `UnitRuntime` owns entered work, verified handback, readiness and reached per-unit outcomes. `RunState` coordinates addressed contribution/advancement. Ordinary differentiation and the bounded grant enter and hand back through that same owner. |
+| Input delivery | `Feed`/`join()` own addressed readiness, protected admission and the local all-member claim. Coordination records immutable handoff facts; region, unit, request and failure owners retain the references they need. A provider owns traversal, private workers and continuation. |
+| Policy and operation state | Accepted owner objects supply initialization and selected updates. Declared users acquire state access; active producer state stays pinned through cleanup. Ordinary feedback does not require rebuilding the graph. |
+| Capabilities | Prepared completion/request connections and selected policies make evaluation due. Evaluation has its own protected invocation and result owner. Learning completion is not evaluation completion. |
+| Physical execution | `Workers` owns capacity and physical futures. The coordinator keeps reservations through actual CPU completion and cleanup; providers using private executors must uphold their own equivalent boundary. |
+| Progress | `Progress` relates task-attributed leases, prepared consumer relationships and live demands. It rejects closed sets of observed access/publication waits; it does not select an algorithm's next work or infer private waits. |
+| Failure | Reached work and its owners retain known outcomes and uncertainty; dependent state is withheld. Scope cleanup drains supported uses without turning release or parameter restoration into successful execution. |
 
-| Concern | Current owner/mechanism | Connection to other work |
-| --- | --- | --- |
-| Current participants, bindings, modes and last use | `RunState` access/retention methods and installed binding/view image. | Lowered calls and `ProviderContext.use_source()` borrow or acquire protected projections through the same protocol. Retentions release at actual supported last use. |
-| Optimization | Each `UnitRuntime` owns one unfinished-work lifecycle; `RunState` coordinates addressed contribution and advancement operations. | Ordinary differentiation and the granted two-pass path enter/hand back through that owner. A contribution is not an optimizer handle or proof that an update occurred. |
-| Input handoff | `Feed` plus readiness/admission/claim coordination. | Provider publishes addressed products; selected admission checks their actual provenance against current protected state; joined members are checked before all are claimed. |
-| Selected state | Declared owner objects, provider-lifetime registration and scoped state access. | Feedback can change later computation and bounded policy decisions; producer continuation is not a training-step counter. |
-| Capability scheduling | Prepared completion/request connections and selected request policy. | Learning completion can request protected evaluation work, with its own invocation and result state. The source completion is not the capability's completion. |
-| Execution placement | Prepared host-worker choice and `Workers` lifetime/drain protocol; provider-private workers remain provider-owned. | Coordinator protection lasts through physical completion. Queueing for a worker can conservatively retain model access. |
-| Failure and stop | Per-work checks, owner evidence, derived scope cleanup and TaskGroup failure propagation. | Returned, uncertain and unattempted unit outcomes survive; dependent state is withheld; physical users are drained before access is released. |
+Sources: [current use](state.py#L742), [provider access](state.py#L823),
+[retention](state.py#L855), [optimization](state.py#L1001),
+[input handoff](state.py#L442), [progress](progress.py#L36),
+[worker completion](workers.py#L75), [failure evidence](prepare.py#L130), and
+[the bounded grant](prepare.py#L187).
 
-Source: [shared access](state.py#L617), [retentions](state.py#L740),
-[provider owners and optimization](state.py#L866), [handoffs](state.py#L377),
-[granted authority](prepare.py#L162), [worker completion](workers.py#L73).
-
-`RunState` is currently a large internal holder with distinct ownership sections,
-not a polished production interface. `Lowering` likewise combines connection
-construction, emission, runtime wrappers and supported profile handling.
-These concentrations deserve attention when choosing production modules, but
-file length alone does not justify scattering their shared invariants again.
-Selected ordinary calls receive narrow `Context` projections; they do not
-receive `RunState`, optimizer services or the original authoring interface.
-Live Python objects are still trusted, not sandboxed.
+`RunState` and `Lowering` remain large internal holders with several distinct
+responsibilities. Production placement should make those owners and target
+construction stages readable without duplicating their invariants. Ordinary
+calls already receive a narrow `Context`, not the binding authority or
+optimizer services. Read-only maps do not freeze their tensor/object contents;
+selected Python remains trusted rather than sandboxed.
 
 ## Different arrangements through the same mechanism
 
-| Arrangement | What changes in accepted meaning | What remains shared |
-| --- | --- | --- |
-| Diffusion-style adaptive work | Two input producers, correlated admission, observation feedback, learning policy, requested validation. | Same scope lowering, access, derivative/advancement ownership and failure handling. |
-| Alternating adversarial work | D/G computations, destinations and selected alternation policy. | No GAN branch in the entrypoint or general loop; separate unit clocks and outcomes. |
-| Joint units | One loss/gradient request addresses A and B together. | Destination-specific preparation and outcomes; A can return before B fails without inventing an atomic update. Plain SGD realizes both in this target. |
-| Routed derivatives | One frozen participant supplies different views; cross-block values and explicit old-state lifetime connect two destinations. | Same identities, source-access protocol, prepared views and unit owners. A real isolated copy can satisfy old-state use; stamps alone cannot. |
-| Repeated accumulation regions | A live policy selects accepted two/three-contribution Sequences; feedback changes later selection; explicit links extend a window. | Same repeat and Sequence lowering; one pending-work owner, final advancement and distinct block/region progress. |
-| Granted two-pass work | An explicitly offered profile transfers two backwards, temporary edits and intermediate reset to selected execution. | Checked handback returns to shared contribution ownership; final advancement stays standard-owned. |
-| Compatible replacement | A typed proposal selects a fresh compatible physical realization. | Same authority/publication path; identity survives while dependent runtime is rebuilt and selected owner continuity is checked. |
+**Adaptive computation and requested validation.** Two producers can advance
+ahead and finish out of order. A selected key identifies the required members;
+`Join` checks every member against the protected current projection before
+claiming any. The objective produces a gradient source and a separate
+observation. Explicit ordering delivers the observation before its dependent
+backward/policy decisions. Standard mechanics then address the selected unit.
+Normal Repeat completion records action progress and routes a completion to
+the requested capability, whose own policy may request protected evaluation.
+There is no need for the authoring object during these decisions.
 
-The examples are inspectable in [examples.py](examples.py). Executable evidence
-also lives in [candidate tests](test_candidate.py),
+**Alternating and joint optimization.** D/G alternation selects distinct
+computations and destinations. The G computation differentiates through D
+without adding a D advancement. Joint work instead requests one shared source
+for two disjoint units. Both use the same unit-owner lifecycle. If A's optimizer
+and reset return before B's optimizer fails, A's known outcome and B's
+uncertainty remain separate and live; readiness cannot be reused. The fixed
+CPU optimizer is plain SGD, not Muon/AdamW or a distributed backend.
+
+**Multiple views and retained derivatives.** `routed_views()` preserves one
+frozen participant across distinct invocation roles and keeps its required
+gradient path to the selected subjects. A Sequence derives cross-block value
+links and per-work access. Live old-state retention prevents conflicting
+advancement until explicit last use; an actual isolated copy can permit an
+earlier update in the qualified fixture. A stamp is not the retained numerical
+state. Dynamic two/three-contribution windows use the same Sequence machinery,
+and state-only work needs no fabricated optimizer action.
+
+**Changed authority.** The offered two-pass profile owns its two backwards,
+temporary edits and intermediate reset. Its checked handback enters the same
+pending-work owner as ordinary differentiation. Standard infrastructure still
+owns final clipping, advancement and reset. Failed handback or restored
+parameters alone do not authorize advancement. This is one fixed grant, not
+evidence for arbitrary imperative ownership profiles.
+
+**Compatible replacement.** A typed proposal checks expected binding revision,
+fresh realization/storage, current use, retained/contribution completion and
+owner continuity. Candidate construction finishes before publication; affected
+unit runtimes are rebuilt while their semantic identity/progress survives.
+Other plain-CPU units can be reused with member correspondence evidence. This
+is a global quiescent replacement-only boundary, not general arrangement
+amendment, destructive preparation or migration of a live continuation.
+
+Evidence: [examples](examples.py), [candidate cases](test_candidate.py),
 [routed views](test_routed_views.py), [repeated regions](test_repeated_regions.py),
 [optimization ownership](test_optimization_ownership.py),
 [current use](test_current_use.py), [producer lifecycle](test_producer_lifecycle.py),
-[worker lifetimes](test_worker_lifetimes.py) and
-[provider workers](test_provider_workers.py).
+[physical lifetimes](test_worker_lifetimes.py), and
+[same-graph access comparison](test_access_lowering.py).
 
-These are materially different arrangements, but not representative production
-models or backend qualifications. `TwoPass`/`GrantedAccess` implement one offered
-profile with a fixed phase protocol, not arbitrary imperative authority. Repeat
-accepts Block/Sequence alternatives and Requested accepts a Block body; recursive
-general-purpose control regions are not demonstrated by this target grammar.
-Replacement is not a general topology amendment.
+## What the later investigations establish
 
-## What the examples still supply manually
-
-| Example code | Assessment |
+| Finding | Current consequence and limit |
 | --- | --- |
-| Objectives, model calls, adaptive rules, loss normalization and D/G selection | Selected algorithm/policy behavior; it should not move into the generic engine. Ordinary authoring should later select maintained integrations rather than reproduce all this low-level wiring. |
-| `correlated()` and `Conditioning` | Domain admission knowledge and payload. Required checks belong in maintained selected behavior, not universal caption/image fields or hand-written validators for every ordinary author. |
-| Provider workers, private work status and cleanup | Legitimate selected provider ownership. The framework supplies lifecycle, access and handoff seams, but the provider must actually join its workers. |
-| `stop_when` and remaining-work policy | Explicit accepted relationships, consumed by preparation; not an example-specific shutdown callback to Trainer. |
-| `ahead` / `staged` events and `wait-ahead` in `producer_continuity()` | Fixture staging to expose ahead-of-training and unfinished-work states deterministically. Two new cases remove the entire staging Block and still complete one admitted update and a quiescent capture through the ordinary Join/demand-end machinery. Exact private staging is not preserved or needed in those controls. |
-| Direct `Contract → prepare → publish → Engine` launcher in `execute()` | A common research entry boundary, not a family-specific coordinator or the final production launcher. |
+| Shared runtime progress (`.19`) | The former source-read/full-feed/conflicting-consumer cycle now rejects without changing accepted work or releasing state early. Compatible reads, per-work acquisition and an alternative claimant still progress. Private queues, worker-slot waits and device/collective completion are not inferred. |
+| Eager optimizer (`.20`) | The candidate can run without the incidental Dynamo/Triton import and keep the GIL disabled. `EagerSGD` is a bounded adapter to the installed Torch functional SGD API, not the production optimizer choice or a consequence of producer live sharing. |
+| Useful parallel work (`.21`) | Bounded Python text processing/packing used nearly two cores and about doubled throughput in the retained synthetic GIL-off comparison. This is actual useful parallel work, not a real-model training speedup. The source-stamped timings predate the subsequent worker policy and are not renewed here. |
+| Free-threaded boundaries (`.22`) | Control state stays on one coordinator. Worker-visible owner state, contexts, source access and physical drain have deterministic concurrent cases. This does not establish arbitrary cross-loop control access, transitive payload isolation or safety of arbitrary module/native internals. |
+| Precision/cache ownership (`.22`–`.24`) | Mixed bf16/fp16 readers exposed a shared Torch cache collision. The worker default disables that cache. Region-local casts and private module structures show qualified reuse, but mixed-use weights, normalization, buffers and module aliases expose real limits. Those helpers are not integrated execution views or an adopted AMP replacement. |
+| Prepared access (`.26`) | Some unused repeated bookkeeping can disappear while the same protections remain. Matched cheap-block savings were roughly 6–7 microseconds, 14–16%; numerical results were noisy. These numbers neither price live sharing as a whole nor qualify full-engine performance. |
 
-No additional general coordinator is justified by those fixture events. If a
-real algorithm requires another owner's milestone to gate execution, that
-required relationship must be represented or realized under its accepted
-contract; this fixture check does not prove arbitrary hidden event waits safe.
+The [README checkpoints](README.md#shared-runtime-progress-2026-10-25) retain
+the tests, samples, source hashes and counterexamples. This assessment does not
+rerun performance measurements or pool different measurement generations.
 
-## Concrete unresolved progress case
+### Live access and snapshots
 
-Both CPU emissions accept, prepare and publish this arrangement:
+The design requires actual production provenance, admission and protected use;
+it does not mandate concurrent producer access to trained weights. Live access,
+frozen sources, protected snapshots and supported isolation are realization
+options subject to those obligations. The candidate has not compared their
+target-workload throughput or selected a producer default.
+
+In `producer_continuity()`, the provider's encoder write deliberately creates
+old/new provenance cases; that encoder is not an optimization subject. This is
+not evidence that an ordinary encoder producer must write trained weights.
+Detached pre-encoding also cannot replace a required encoder derivative path.
+The common protection machinery additionally serves replacement, mode changes,
+owned state and retained derivatives, so its entire cost cannot be attributed
+to live-sharing producers. The correlation regression below uses no
+producer access to weights at all.
+
+## Input correlation: reproduced gap and implemented lifetime
+
+The governing execution spec requires input identities/dependencies,
+invocations and unit-local outcomes to remain correlatable after partial
+failure. At the `.25` checkpoint, the unit owner preserved live origins
+independently of its 32-entry completed history. Input handoffs existed only in
+`Feed.handed_off` (32 entries) and admission diagnostics in `RunState.trace`
+(256 entries). `WorkFailed` copied unit outcomes, not their input associations.
+
+The case in [test_system_progress.py](test_system_progress.py) executes this
+accepted arrangement through the ordinary engine:
 
 ```text
-Producer owns model READ throughout one source interval
-  publish demanded product 1 → feed(capacity=1) now contains 1
-  publish product 2          → waits for feed space, still owns READ
-
-Consumer asks for key 1
-  prefix readiness          → succeeds: key 1 exists
-  acquire model exclusion   → waits for producer READ before eval-view use
-  protected Join/claim      → cannot run, so cannot free the slot
+source Producer --> one bounded input port --> learning Repeat
+                                |               +-- Sequence
+                                |                   claim training input
+                                |                   create gradient contribution
+                                |                   release old-state read
+                                |                   await independent consumption
+                                |                   attempt advancement --> failure
+                                v
+                        independent Repeat
+                            claim 48 other inputs
 ```
 
-The consumer holds **no writer lease** during this cycle. The producer's read
-prevents acquisition. This is different from impossible simultaneous read/write
-ownership, and different from a full queue containing only the wrong key.
-The existing reorder-capacity rejection does not fire: the requested key exists.
+The independent consumer performs 48 real handoffs. Before `.27`, the injected
+optimizer failure preserved the pending contribution and its uncertain
+optimizer/unattempted reset outcome, but input/admission histories had evicted
+the original handoff. No owner retained the missing association. Physical
+access drained and capture rejected; correct withholding did not repair it.
 
-`check_waits()` describes declared source acquisition and consumer readiness/
-reservation points. It does not describe a provider's publication wait while
-holding a source interval. The missing edge is between two framework-visible
-protocols, even though the provider chooses where to use them. Cancellation
-successfully releases source access and closes the activity; that is cleanup
-evidence, not successful execution or safe retry.
+The original four strict expected failures have been replaced with positive
+checks under `calls`/`inline` and `general`/`prepared`. They still confirm
+diagnostic eviction, then check the live unit, `WorkFailed` and Engine facts.
+Additional cases cover cross-block inputs, actual source provenance after
+encoder changes, long windows, grants, independent capability requests,
+failure/cancellation and release. Run the original regression:
 
-[test_system_progress.py](test_system_progress.py) adds six cases:
+```bash
+UV_PROJECT_ENVIRONMENT=.venv-wsl uv run --locked --no-sync pytest --noconftest docs_design/models-strategy-trainer/execution_candidate/test_system_progress.py -k unfinished_input -q
+```
 
-- Two limitation cases expose both wait edges and verify that no consumer call
-  or handoff occurred, then cancel and drain. No elapsed-time guess is used to
-  infer the cycle; the harness deadline is only a leak guard.
-- Two positive controls release each product's source interval before its
-  publication wait. They complete with the existing mechanism. That is a
-  different source-use protocol, not a license to split another accepted
-  interval automatically.
-- Two controls remove the producer example's cross-owner fixture staging and
-  exercise ordinary input coordination and shutdown, as described above.
+Coordination now records metadata-only `InputHandoff` facts at protected
+admission. Immutable prefix references pass to the existing region, pending
+unit, capability-request and failure owners. Preparation bounds each region's
+admissions by its Join member slots; pending windows and bounded request
+queues govern in-flight retention. Completed unit history stays at 32, and
+reference release reclaims unused links. No larger diagnostic deque, new
+author declaration, producer-owned optimization or universal step packet was
+introduced. See the [implementation and bounds](README.md#input-associations-follow-execution-lifetimes-2026-10-27).
 
-The smallest justified follow-up is `sd-scripts-syv.19`: make the supported
-source-access/publication protocol handle or honestly reject this combination
-before indefinite waiting. Determine the required information at that shared
-boundary. Do not silently release source protection, claim unadmitted input,
-evict queued work, invent a protected snapshot, or make authors change the
-algorithm's placement. This finding does not require a universal scheduler or
-an IR construct for every queue operation.
+### Reproducibility remains a separate qualification
 
-## Remaining qualifications and decision boundary
+Owned RNG streams and matched synthetic worker runs have repeatability
+evidence. Whole-run reproducibility across arbitrary scheduling, live-source
+version choices and numerical backends is unproven. The same seed does not
+determine which changing source an asynchronous policy uses. Preserving actual
+provenance makes that decision inspectable; a supported reproducible policy
+must additionally control semantically relevant choices. No reproducibility
+waiver or universal snapshot/live default is inferred. Same-run restoration
+and its accepted replay/regeneration policy are separate and unimplemented.
 
-The following are deliberately not closed by this pass:
+## Production decisions versus later qualification
 
-- Finished ordinary strategy authoring and the full queryable contract. These
-  examples write intermediate records directly; they are not a usability proof.
-- General structural changes, relationship-aware shared storage, destructive
-  preparation, active continuation migration and nontrivial backend groups.
-- GPU/device completion, distributed coordination, compiled numerical regions,
-  Windows and genuinely GIL-disabled native-stack safety.
-- Durable snapshots, restoring a live run and recovery from uncertain outcomes.
-  `capture()` checks a finished quiescent in-memory cut; it is not restoration.
-- Full G3.7 conformance/performance qualification. Earlier local lowering cost
-  measurements predate the latest access/lifetime integrations. They cannot
-  establish the present whole-system overhead or production migration gates.
-- All possible scheduling relationships. TaskGroup sibling failure and the
-  offered completion/request/stop connections are the demonstrated policies;
-  configurable isolation, distributed failure agreement and general liveness
-  do not follow from them.
+The following are concrete production-shape work; the candidate's restrictions
+must not silently become architecture restrictions:
 
-Recommendation: retain this graph-derived mechanism as the working foundation,
-resolve the reproduced publication/access boundary, then use the connected
-mechanics to choose production structures and the author-facing surface.
-G5's list of types is not a substitute for this system-level construction and
-must not dictate isolated interfaces before their interactions make sense.
-Move toward production design without first implementing every future
-capability in this candidate.
+- **Region composition and extension.** The hierarchy supports recursive
+  `Together`, but Repeat alternatives are Block/Sequence, Requested bodies are
+  Block, and the two-pass grant is block-local. Work kinds and lowering rules
+  are a closed probe vocabulary. Choose how maintained/custom work, region
+  combinations and granted profiles are checked and lowered without separate
+  algorithm engines. General nested control is not demonstrated here.
+- **Authority and revision coverage.** The candidate has participant/unit
+  references, binding revisions, numerical epochs and prepared runtime keys.
+  It has no complete relationship lifecycle, obligation revision system,
+  unit-definition amendments, deferred materialization or destructive attempt
+  protocol. Operation state initializes before materialization; evidence-based
+  later initialization and general state migration remain to be constructed.
+  Global replacement quiescence is a target restriction, not a universal rule.
+- **Prepared target and owner boundaries.** Keep accepted meaning separate from
+  parameter/view realization, supported derivative/retention demands, actual
+  completion and granted handback. The current synchronous CPU `nn.Module`
+  and SGD choices are not sufficient production backend interfaces. Ordinary
+  authoring must eventually compose maintained integrations rather than make
+  authors repeat all intermediate declarations visible in these fixtures.
+
+The broader [research cases](../../../openspec/changes/rework-model-strategy-trainer/research/README.md)
+remain the coverage frame. Their relationship to this candidate is explicit:
+
+| Research concern | Evidence here | Still required beyond this candidate |
+| --- | --- | --- |
+| Different objectives/modalities, side networks, learned auxiliary state | Selected Python, arbitrary payload values, distinct uses and addressed units; no universal latent/timestep fields. | Real family/representation integrations, maintained compatibility knowledge and product semantics. |
+| Async conditioning, packed/streamed inputs, generated experience | Independent producers, correlated handoffs, selected adaptive state and bounded Python workers. | Real storage/cache protocols, snapshot/lag policies, mixed-state provenance, external failure and durable continuation. No required live-sharing default. |
+| Same participant in several roles, delayed derivatives, early updates | Distinct views and live/isolated retained-state fixtures. | General adapters, recomputation and pipeline/backward schedules with backend-supported state lifetime. |
+| Topology, trainability or stage changes | Fresh compatible replacement with simple owner reset/preserve/reject behavior. | Relationship/participant amendments, obligation/unit-definition changes and accepted continuation migration. |
+| FSDP/ZeRO, parallelism, quantization and compiled regions | Semantic identity is distinct from physical runtime, and one description has alternative CPU lowerings. | Real joint/inseparable backend preparation, rank agreement, collective ordering, stream/event completion and numerical conformance. Backend independence is a design obligation, not a qualified integration claim. |
+| Capabilities, products, metadata and exact restoration | Requested evaluation and a finished, quiescent in-memory `capture()` check. | Caching/sampling/product coordination, durable fact delivery, contributor-based snapshots and actual restoration. There is no active-run snapshot/recovery implementation. |
+
+Native Windows, real-model free-threaded safety, general failure isolation,
+non-cooperating worker shutdown and full G3.7 conformance/performance remain
+separate qualification. Arbitrary Python waits and undeclared mutations remain
+outside the trusted boundary. The supported fail-fast TaskGroup policy is not
+evidence for all accepted failure relationships.
+
+## Next construction step
+
+With `.27`'s bounded association gap addressed, use the connected mechanism to
+choose the production structure **as a
+whole**: the accepted region/relationship description, its prepared target,
+the state owners and their interactions. Show ordinary maintained authoring
+and the existing contrasting arrangements against that same structure before
+finalizing public types or module placement. That is a concrete production
+design step, not another survey or an assumption that the experimental files
+can simply be moved into `library/training`.
+
+G5's individual type lists can check the result after this system-level
+construction; they cannot determine it in isolation. Nothing in this pass
+selects Accelerate, a numerical compiler, snapshot/live sharing, FSDP2 or a
+module-casting policy as the mandatory foundation.
 
 ## Verification
 
-The six new assessment cases, spanning both lowering configurations, pass. Two
-cases deliberately preserve evidence of an unresolved limitation; they must
-not be counted as successful progress conformance. Runtime implementation and
-the nine existing examples are unchanged by this assessment.
+Graph discovery/traces and exact source reads were used together. Index coverage
+reported no recorded issue and matching source metadata for the existing
+evidence paths; this is best-effort coverage, not proof of completeness. The
+regression was read and executed directly. The assessment-only `.25` pass
+left runtime unchanged; `.27` subsequently updates only this isolated candidate
+and its tests. Governing design/spec/task files and production training remain
+unchanged.
 
-Fresh scoped verification: **423 tests pass** (411 candidate cases plus 12
-unchanged execution cases), all nine examples execute, and scoped Ruff lint,
-format and strict `ty` checks pass. The expected Triton GIL-enablement warning
-is present; these are CPU correctness checks, not free-threaded-stack or
-performance qualification.
+Fresh checks in the existing uv-managed Python 3.14.5t environment:
 
-```bash
-uv run --locked pytest --noconftest docs_design/models-strategy-trainer/execution_candidate tests/unit/training/test_execution.py -q --tb=short
-uv run --locked python -m docs_design.models-strategy-trainer.execution_candidate.examples
-uv run --locked ruff check docs_design/models-strategy-trainer/execution_candidate
-uv run --locked ruff format --check docs_design/models-strategy-trainer/execution_candidate
-uv run --locked ty check --python ./.venv-wsl/bin/python --extra-search-path docs_design/models-strategy-trainer docs_design/models-strategy-trainer/execution_candidate --error-on-warning
-```
-
-Code-graph generation `2026-10-24T09:01:16Z` supplied symbol discovery and traces;
-coverage checks reported matching source metadata for the six implementation/
-example files and ten existing test files used here. Exact source reads and
-the executable probes check material conclusions. Graph coverage is best-effort,
-not a completeness proof; the scoped excluded `__pycache__` is not code evidence.
+- **639 passed**, with no expected failures, across the candidate and unchanged
+  execution tests. Independent standard-optimizer oracle tests load Triton
+  and enable the GIL in this full-suite process.
+- **580 passed** in a separate candidate process which excludes the two
+  standard-optimizer oracle files, plus both changed long-window cases from
+  one excluded file in another process. The GIL stays disabled after all
+  included tests, with neither Dynamo nor Triton imported and no forced-off
+  override. Every new/changed `.27` case is covered.
+- Scoped Ruff lint/format, strict `ty`, new local links/source-line bounds,
+  introduced whitespace and bounded changed-path checks pass. Performance
+  probes were not rerun; earlier source-stamped costs do not qualify the
+  added input coordination.
+- The installed OpenSpec validator reports **53 existing requirement-length
+  warnings and zero errors** for the unchanged change. `--strict` exits
+  nonzero because those requirement texts exceed 500 characters. This is not
+  recorded as a strict-validation pass; the assessment does not rewrite
+  governing requirements to remove that advice.

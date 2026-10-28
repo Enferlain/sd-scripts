@@ -15,9 +15,11 @@ from .graph import (
     Advance,
     Block,
     Call,
+    Channel,
     Choice,
     Contract,
     Differentiate,
+    Join,
     NotReady,
     Output,
     OwnedState,
@@ -575,8 +577,9 @@ def test_policy_cannot_select_an_unaccepted_region_after_a_completed_window():
     assert "policy" in ready.state.unusable_states and not ready.state.completed
 
 
-def test_live_window_outcomes_are_not_evicted_by_the_bounded_completed_history(monkeypatch):
-    blocks = []
+@pytest.mark.parametrize("lowering", ("calls", "inline"))
+def test_live_window_outcomes_are_not_evicted_by_the_bounded_completed_history(lowering, monkeypatch):
+    blocks = [Block("input", (Join("input", ("input",), (Output("input-value", float),), lambda *args: True),))]
     previous = None
     for index in range(36):
         blocks.append(
@@ -586,7 +589,8 @@ def test_live_window_outcomes_are_not_evicted_by_the_bounded_completed_history(m
                     Retain(f"hold-{index}", ("model",), ("weights",), f"old-{index}"),
                     Call(
                         f"loss-{index}",
-                        lambda context: context.models["model"].weight.square(),
+                        lambda context, value: context.models["model"].weight.square() * value,
+                        inputs=("input-value",),
                         outputs=(Output(f"L{index}", torch.Tensor),),
                         uses=(Use("model"),),
                         retained=f"old-{index}",
@@ -601,8 +605,17 @@ def test_live_window_outcomes_are_not_evicted_by_the_bounded_completed_history(m
         previous = f"g{index}"
     assert previous is not None
     blocks.append(Block("finish", (Advance("step", previous, ("weights",)),)))
-    filing = Run(Sequence("window", tuple(blocks)), (scale("model", 2.0),), (Unit("weights", (("model", "weight"),)),))
-    ready = prepare(Contract().accept(filing)).publish()
+
+    async def produce(context):
+        await context.publish("input", Product("", 2.0))
+
+    filing = Run(
+        Together("run", (Producer("source", ("input",), produce), Sequence("window", tuple(blocks)))),
+        (scale("model", 2.0),),
+        (Unit("weights", (("model", "weight"),)),),
+        channels=(Channel("input", 1),),
+    )
+    ready = prepare(Contract().accept(filing), lowering=lowering).publish()
     assert ready.state.image is not None
     runtime = ready.state.image.units["weights"]
 
@@ -610,13 +623,19 @@ def test_live_window_outcomes_are_not_evicted_by_the_bounded_completed_history(m
         raise ValueError("uncertain optimizer")
 
     monkeypatch.setattr(runtime.optimizer, "step", fail)
-    with pytest.raises(WorkFailed) as error:
+    with pytest.raises(ExceptionGroup) as error:
         run(Engine(ready).run())
+    failure = next(item for item in leaves(error.value) if isinstance(item, WorkFailed))
     assert len(runtime.outcomes) == 32 and len(runtime.active_outcomes) == 36
-    assert runtime.window is not None and runtime.window.origins == tuple(range(1, 37))
-    assert len(error.value.unit_outcomes) == 36
-    assert all(record.contribution == "ready" and record.optimizer == "uncertain" for record in error.value.unit_outcomes)
-    assert runtime.steps == 0 and runtime.pending == 36
+    origins = tuple(runtime.active_outcomes)
+    assert runtime.window is not None and runtime.window.origins == origins
+    assert len(failure.unit_outcomes) == 36
+    assert all(record.contribution == "ready" and record.optimizer == "uncertain" for record in failure.unit_outcomes)
+    assert runtime.steps == 0 and runtime.pending == origins[-1]
+    assert all(record.input_handoffs == failure.input_handoffs for record in failure.unit_outcomes)
+    assert {record.work for record in failure.unit_outcomes} == {(f"micro-{index}", f"gradient-{index}") for index in range(36)}
+    assert len(failure.input_handoffs) == 1 and failure.input_handoffs[0].invocation < origins[0]
+    assert len({id(record._input_links) for record in failure.unit_outcomes}) == 1  # One shared prefix, not 36 copies.
 
 
 @pytest.mark.parametrize("advance", (False, True))

@@ -10,6 +10,16 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-27]
+
+### Fixed
+
+- **Candidate input associations now survive diagnostic-history eviction** — immutable identity/provenance references follow accepted regions, pending ordinary/granted contributions, capability requests and failure reporting. Prepared input-member bounds and existing owner lifetimes govern retention; the original four counterexamples now pass with cancellation, cross-block and release checks.
+
+### Added
+
+- **Connected candidate assessment now incorporates the completed concurrency and free-threading investigations** — traces graph-derived work, coordination and state ownership, distinguishes production decisions from backend qualification, and documents the four-variant input-association counterexample addressed by the lifetime fix. Governing requirements remain unchanged.
+
 ## [2026-10-26]
 
 ### Added

@@ -50,6 +50,8 @@ from .graph import (
 )
 from .state import (
     Image,
+    InputHandoff,
+    InputScope,
     PreparedView,
     Product,
     Projection,
@@ -58,6 +60,8 @@ from .state import (
     RunState,
     Stamp,
     UnitOutcome,
+    _InputLink,
+    handoff_facts,
     join,
     wait_for_products,
 )
@@ -75,6 +79,11 @@ class Context:
     stamps: Mapping[str, Stamp]
     views: Mapping[str, PreparedView] = field(default_factory=dict)
     stop_requested: Callable[[], bool] | None = None
+    _input_links: _InputLink | None = field(default=None, repr=False)
+
+    @property
+    def input_handoffs(self) -> tuple[InputHandoff, ...]:
+        return handoff_facts(self._input_links)
 
 
 @dataclass
@@ -86,6 +95,11 @@ class Frame:
     invocation: int
     implementation_returned: bool = False
     region: object | None = None
+    input_scope: InputScope | None = None
+
+    @property
+    def input_links(self) -> _InputLink | None:
+        return self.input_scope.head if self.input_scope is not None else None
 
     def current(self) -> Projection:
         # The lease keeps bindings stable, not numerical state frozen across
@@ -109,18 +123,29 @@ class Frame:
             self.invocation,
             MappingProxyType({use.participant: projection.stamps[use.participant] for use in call.uses}),
             MappingProxyType({use.view: views[use.view] for use in call.uses if use.view is not None}),
+            _input_links=self.input_links,
         )
 
 
 class WorkFailed(RuntimeError):
     """A reached invocation, including invalid output after possible effects."""
 
-    def __init__(self, source: str, frame: Frame, cause: BaseException, cleanup_failures: tuple[BaseException, ...] = ()):
+    def __init__(
+        self,
+        source: str,
+        frame: Frame,
+        cause: BaseException,
+        cleanup_failures: tuple[BaseException, ...] = (),
+        *,
+        work: tuple[str, str] | None = None,
+    ):
         super().__init__(f"{source}: post-invocation failure ({cause})")
         self.source, self.scope, self.invocation, self.cause = source, frame.scope, frame.invocation, cause
+        self.work = work
         self.cleanup_failures = cleanup_failures
         self.cancellation: asyncio.CancelledError | None = None
         self.implementation_returned = frame.implementation_returned
+        self.input_handoffs = handoff_facts(frame.input_links)
         assert frame.state.image is not None
         self.unit_outcomes: tuple[UnitOutcome, ...] = tuple(
             outcome for runtime in frame.state.image.units.values() for outcome in runtime.evidence(frame.invocation, frame.region)
@@ -167,9 +192,17 @@ class GrantedAccess:
     This interface limits available services; it is not a Python sandbox.
     """
 
-    def __init__(self, state: RunState, unit: str, invocation: int):
+    def __init__(
+        self,
+        state: RunState,
+        unit: str,
+        invocation: int,
+        *,
+        input_links: _InputLink | None = None,
+        work: tuple[str, str] | None = None,
+    ):
         assert state.image is not None
-        state.begin_contribution((unit,), invocation, granted=True)
+        state.begin_contribution((unit,), invocation, granted=True, input_links=input_links, work=work)
         self.invocation = invocation
         self.parameters = state.image.units[unit].parameters
         self.original = tuple(parameter.detach().clone() for parameter in self.parameters)
@@ -270,6 +303,7 @@ class Engine:
     def __init__(self, ready: Ready):
         self.ready = ready
         self.failure: BaseException | None = None
+        self.failure_input_handoffs: tuple[InputHandoff, ...] = ()
 
     async def run(self) -> None:
         state = self.ready.state
@@ -282,6 +316,7 @@ class Engine:
             state.completed = True
         except BaseException as error:
             self.failure = error
+            self.failure_input_handoffs = state.take_input_failures()
             raise
         finally:
             state.running = False
@@ -337,7 +372,7 @@ def prepare(
         worker_calls=frozenset(worker_calls),
         physical_modes=physical_modes,
     )
-    root = lowerer.scope(accepted.root)
+    root = lowerer.root()
     if workers is not None:
         body = root
 
@@ -430,13 +465,34 @@ class Lowering:
         elif isinstance(scope, Producer) and scope.stop_when is not None:
             self.finished.setdefault(scope.stop_when, asyncio.Event())
 
-    def block(self, block: Block) -> Callable[[Choice, str], Awaitable[int]]:
+    def root(self) -> Callable[[], Coroutine[Any, Any, None]]:
+        body = self.scope(self.accepted.root)
+        if not self.request_queues:
+            return body
+
+        async def connected():
+            try:
+                await body()
+            except BaseException:
+                # All derived activities have joined. Transfer unattempted
+                # requests' facts to failure reporting before releasing them.
+                for queue in self.request_queues.values():
+                    while not queue.empty():
+                        packet = queue.get_nowait()
+                        if packet is not None:
+                            self.state.input_failed(packet[1])
+                raise
+
+        return connected
+
+    def block(self, block: Block) -> Callable[..., Awaitable[tuple[int, _InputLink | None]]]:
         work = ordered(block)
         uses, states = block_access(block, self.accepted, physical_modes=self.physical_modes)
         prefix = prefix_joins(work)
         first_joins = {item.name for item in prefix}
         waits = tuple(tuple(self.state.feeds[channel] for channel in item.channels) for item in prefix)
         channels = frozenset(channel for item in work if isinstance(item, Join) for channel in item.channels)
+        input_capacity = sum(len(item.channels) for item in work if isinstance(item, Join))
         # Ordinary blocks have no retained region. Both paths use the same lease.
         direct_access = self.prepared_access
         track_demand = bool(channels) or not self.prepared_access
@@ -454,7 +510,7 @@ class Lowering:
                 # The raw invocation, output rule and failure rule are shared
                 # with bind(); Call's evaluation/cleanup still surrounds its
                 # output validation. There is no second authored description.
-                invoke, check_output, failed = self.bind_parts(item, wait_input=item.name not in first_joins)
+                invoke, check_output, failed = self.bind_parts(item, block=block.name, wait_input=item.name not in first_joins)
                 namespace[f"invoke_{index}"] = invoke
                 namespace[f"failed_{index}"] = failed
                 result = names[0] if len(names) == 1 else f"result_{index}"
@@ -481,7 +537,7 @@ class Lowering:
                         lines.append(f"    {assignment}{result}")
                     lines.append(f"    del {result}")
             else:
-                namespace[f"work_{index}"] = self.bind(item, wait_input=item.name not in first_joins)
+                namespace[f"work_{index}"] = self.bind(item, block=block.name, wait_input=item.name not in first_joins)
                 lines.append(f"    {assignment}await work_{index}({args})")
             variables.update({output.name: name for output, name in zip(produced, names, strict=True)})
         if not work:
@@ -491,22 +547,39 @@ class Lowering:
         exec(compile(source, f"<candidate:{block.name}>", "exec"), namespace)
         body = cast(Callable[[Frame], Awaitable[None]], namespace["body"])
 
-        async def invoke(choice: Choice, parent: str) -> int:
-            with self.state.progress.demand(parent, channels, choice.key) if track_demand else nullcontext():
-                for feeds in waits:
-                    await wait_for_products(feeds, choice.key)
-                async with self.state.acquire(uses, states) if direct_access else self.state.use(uses, states) as projection:
-                    self.state.invocation += 1
-                    frame = Frame(self.state, parent, choice, projection, self.state.invocation)
-                    self.state.trace.append(("invocation", (parent, block.name, choice.key, frame.invocation)))
-                    await body(frame)
-                    return frame.invocation
+        async def invoke(choice: Choice, parent: str, *, upstream_inputs: _InputLink | None = None) -> tuple[int, _InputLink | None]:
+            inputs = InputScope(block.name, input_capacity, upstream_inputs) if input_capacity or upstream_inputs is not None else None
+            try:
+                with self.state.progress.demand(parent, channels, choice.key) if track_demand else nullcontext():
+                    for feeds in waits:
+                        await wait_for_products(feeds, choice.key)
+                    async with self.state.acquire(uses, states) if direct_access else self.state.use(uses, states) as projection:
+                        self.state.invocation += 1
+                        frame = Frame(self.state, parent, choice, projection, self.state.invocation, input_scope=inputs)
+                        self.state.trace.append(("invocation", (parent, block.name, choice.key, frame.invocation)))
+                        await body(frame)
+                        return frame.invocation, frame.input_links
+            except BaseException:
+                self.state.input_failed(inputs.head if inputs is not None else None)
+                raise
+            finally:
+                if inputs is not None:
+                    inputs.closed = True
 
         return invoke
 
-    def bind_parts(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False, retained_exclusive: tuple[str, ...] = ()):
+    def bind_parts(
+        self,
+        work: Work,
+        *,
+        block: str,
+        wait_input: bool = True,
+        keep_graph: bool = False,
+        retained_exclusive: tuple[str, ...] = (),
+    ):
         """One set of runtime rules used by both CPU emission paths."""
         declared = outputs(work)
+        address = (block, work.name)
 
         def check_output(result):
             if not declared:
@@ -622,7 +695,18 @@ class Lowering:
             feeds = tuple(self.state.feeds[name] for name in work.channels)
 
             async def invoke(frame):
-                values = await join(feeds, frame.choice.key, frame.invocation, work.admit, frame.current(), wait=wait_input)
+                if frame.input_scope is None:
+                    raise NotReady("Prepared input association scope is missing")
+                values = await join(
+                    feeds,
+                    frame.choice.key,
+                    frame.invocation,
+                    work.admit,
+                    frame.current(),
+                    wait=wait_input,
+                    input_scope=frame.input_scope,
+                    work=address,
+                )
                 self.state.trace.append(("admitted", (frame.invocation, frame.choice.key, work.channels)))
                 return values[0] if len(values) == 1 else values
         elif isinstance(work, Differentiate):
@@ -638,6 +722,8 @@ class Lowering:
                     region=frame.region,
                     keep_graph=keep_graph,
                     previous=previous,
+                    input_links=frame.input_links,
+                    work=address,
                 )
         elif isinstance(work, Advance):
 
@@ -656,7 +742,7 @@ class Lowering:
         elif isinstance(work, TwoPass):
 
             async def invoke(frame, *args):
-                access = GrantedAccess(self.state, work.unit, frame.invocation)
+                access = GrantedAccess(self.state, work.unit, frame.invocation, input_links=frame.input_links, work=address)
                 models = MappingProxyType({use.participant: frame.projection.models[use.participant] for use in work.uses})
                 result = work.implementation(access, models, *args)
                 if inspect.isawaitable(result):
@@ -692,18 +778,26 @@ class Lowering:
                 if isinstance(primary, asyncio.CancelledError) and not error.cleanup:
                     raise primary from error
                 cause = primary if primary is not None else error.cleanup[0]
-                failure = WorkFailed(work.name, frame, cause, error.cleanup)
+                failure = WorkFailed(work.name, frame, cause, error.cleanup, work=address)
                 failure.cancellation = error.cancellation
                 raise failure from error
             if isinstance(error, asyncio.CancelledError):
                 raise error
-            raise WorkFailed(work.name, frame, error) from error
+            raise WorkFailed(work.name, frame, error, work=address) from error
 
         return invoke, None if isinstance(work, Call) else check_output, failed
 
-    def bind(self, work: Work, *, wait_input: bool = True, keep_graph: bool = False, retained_exclusive: tuple[str, ...] = ()):
+    def bind(
+        self,
+        work: Work,
+        *,
+        block: str,
+        wait_input: bool = True,
+        keep_graph: bool = False,
+        retained_exclusive: tuple[str, ...] = (),
+    ):
         invoke, check_output, failed = self.bind_parts(
-            work, wait_input=wait_input, keep_graph=keep_graph, retained_exclusive=retained_exclusive
+            work, block=block, wait_input=wait_input, keep_graph=keep_graph, retained_exclusive=retained_exclusive
         )
 
         async def checked(frame: Frame, *args):
@@ -720,7 +814,7 @@ class Lowering:
 
         return checked
 
-    def sequence(self, scope: Sequence) -> Callable[[Choice | None, str], Awaitable[int]]:
+    def sequence(self, scope: Sequence) -> Callable[..., Awaitable[tuple[int, _InputLink | None]]]:
         """Lower cross-block links to locals, with work-sized current-use protection.
 
         Retained sources have their OWN lifetime. Acquiring a whole block's
@@ -728,7 +822,9 @@ class Lowering:
         """
         groups = sequence_order(scope)
         work_items = tuple(item for _, work in groups for item in work)
+        work_blocks = {id(item): block.name for block, work in groups for item in work}
         channels = frozenset(channel for item in work_items if isinstance(item, Join) for channel in item.channels)
+        input_capacity = sum(len(item.channels) for item in work_items if isinstance(item, Join))
         exclusions = retained_exclusions(work_items, self.accepted, physical_modes=self.physical_modes)
         bound = []
         for index, work in enumerate(work_items):
@@ -738,7 +834,7 @@ class Lowering:
                 and any(isinstance(later, Differentiate) and later.retained == work.retained for later in work_items[index + 1 :])
             )
             exclusive = exclusions.get(work.output, ()) if isinstance(work, Retain) else ()
-            function = self.bind(work, keep_graph=keep_graph, retained_exclusive=exclusive)
+            function = self.bind(work, block=work_blocks[id(work)], keep_graph=keep_graph, retained_exclusive=exclusive)
 
             def protect(item, selected):
                 uses = sequence_uses(item, self.accepted, physical_modes=self.physical_modes)
@@ -752,13 +848,13 @@ class Lowering:
 
             bound.append(protect(work, function))
 
-        async def enter(name: str, region: object, selected: Choice | None):
+        async def enter(name: str, region: object, selected: Choice | None, input_scope: InputScope | None):
             # The immediate owner is this Sequence. Its Repeat, when present,
             # receives a separate whole-region Completion using the last
             # invocation, not a fabricated flat dispatch-scope identity.
             self.state.invocation += 1
             choice = selected if selected is not None else Choice(name)
-            frame = Frame(self.state, scope.name, choice, Projection({}, {}), self.state.invocation, region=region)
+            frame = Frame(self.state, scope.name, choice, Projection({}, {}), self.state.invocation, region=region, input_scope=input_scope)
             self.state.trace.append(("invocation", (scope.name, name, choice.key, frame.invocation)))
             return frame
 
@@ -767,11 +863,11 @@ class Lowering:
             counts[name] = counts.get(name, 0) + 1
 
         namespace: dict[str, object] = {"enter": enter, "completed": completed}
-        lines = ["async def body(region, selected):", "    choice = selected.payload if selected is not None else None"]
+        lines = ["async def body(region, selected, input_scope):", "    choice = selected.payload if selected is not None else None"]
         variables = {"choice": "choice"}
         index = 0
         for block, work in groups:
-            lines.append(f"    frame = await enter({block.name!r}, region, selected)")
+            lines.append(f"    frame = await enter({block.name!r}, region, selected, input_scope)")
             for item in work:
                 namespace[f"work_{index}"] = bound[index]
                 args = ", ".join(["frame", *(variables[value] for value in inputs(item))])
@@ -787,46 +883,55 @@ class Lowering:
         source = "\n".join(lines) + "\n"
         self.source[scope.name] = source
         exec(compile(source, f"<candidate:{scope.name}>", "exec"), namespace)
-        body = cast(Callable[[object, Choice | None], Awaitable[int]], namespace["body"])
+        body = cast(Callable[[object, Choice | None, InputScope | None], Awaitable[int]], namespace["body"])
         participants = {use.participant for item in work_items for use in getattr(item, "uses", ())} | {
             name for item in work_items if isinstance(item, Retain) for name in item.participants
         }
         owner_states = {name for item in work_items if isinstance(item, Call) for name in item.states}
 
-        async def sequence(choice: Choice | None, parent: str) -> int:
+        async def sequence(
+            choice: Choice | None, parent: str, *, upstream_inputs: _InputLink | None = None
+        ) -> tuple[int, _InputLink | None]:
             region = object()  # Execution correspondence, not a semantic identity.
-            primary = None
-            invocation = 0
+            inputs = InputScope(scope.name, input_capacity, upstream_inputs) if input_capacity or upstream_inputs is not None else None
             try:
-                with self.state.progress.demand(parent, channels, choice.key if choice is not None else ""):
-                    invocation = await body(region, choice)
-            except BaseException as error:
-                primary = error
-                self.state.unusable.update(participants)
-                self.state.unusable_states.update(owner_states)
-
-            # Drain only this region's remaining lifetimes, even on repeated
-            # cancellation. This releases protection, NOT failed gradients or
-            # evidence of uncertainty; it does not make replay safe.
-            task = asyncio.create_task(self.state.release_region(region))
-            while not task.done():
+                primary = None
+                invocation = 0
                 try:
-                    await asyncio.shield(task)
-                except asyncio.CancelledError as error:
-                    if primary is None:
-                        primary = error
+                    with self.state.progress.demand(parent, channels, choice.key if choice is not None else ""):
+                        invocation = await body(region, choice, inputs)
+                except BaseException as error:
+                    primary = error
                     self.state.unusable.update(participants)
                     self.state.unusable_states.update(owner_states)
-                except BaseException:
-                    break
-            cleanup_failure = task.exception()
-            if primary is not None and cleanup_failure is not None:
-                raise BaseExceptionGroup("Sequence execution and lifetime cleanup failed", (primary, cleanup_failure))
-            if primary is not None:
-                raise primary
-            if cleanup_failure is not None:
-                raise cleanup_failure
-            return invocation
+
+                # Drain only this region's remaining lifetimes, even on repeated
+                # cancellation. Release does not make failed gradients reusable.
+                task = asyncio.create_task(self.state.release_region(region))
+                while not task.done():
+                    try:
+                        await asyncio.shield(task)
+                    except asyncio.CancelledError as error:
+                        if primary is None:
+                            primary = error
+                        self.state.unusable.update(participants)
+                        self.state.unusable_states.update(owner_states)
+                    except BaseException:
+                        break
+                cleanup_failure = task.exception()
+                if primary is not None and cleanup_failure is not None:
+                    raise BaseExceptionGroup("Sequence execution and lifetime cleanup failed", (primary, cleanup_failure))
+                if primary is not None:
+                    raise primary
+                if cleanup_failure is not None:
+                    raise cleanup_failure
+                return invocation, inputs.head if inputs is not None else None
+            except BaseException:
+                self.state.input_failed(inputs.head if inputs is not None else None)
+                raise
+            finally:
+                if inputs is not None:
+                    inputs.closed = True
 
         return sequence
 
@@ -892,12 +997,16 @@ class Lowering:
                             raise
                     if choice is None:
                         break
-                    invocation = await blocks[choice.block](choice, scope.name)
+                    invocation, input_links = await blocks[choice.block](choice, scope.name)
                     counts[choice.block] = counts.get(choice.block, 0) + 1
                     position += 1
                     completion = Completion(scope.name, choice.block, choice.key, invocation, position)
-                    for queue in subscribers:
-                        await queue.put(completion)
+                    try:
+                        for queue in subscribers:
+                            await queue.put((completion, input_links))
+                    except BaseException:
+                        self.state.input_failed(input_links)
+                        raise
                 # Only normal completion closes streams. Failures propagate to
                 # the owning TaskGroup; they must not block while closing one.
                 for queue in subscribers:
@@ -920,10 +1029,17 @@ class Lowering:
             self.source[scope.name] = f"requests from {scope.source} -> accepted request policy -> protected {scope.block.name}"
 
             async def requested():
-                while (completion := await queue.get()) is not None:
-                    choice = _choice(scope.request(completion), (scope.block.name,), "Request selected an unprovided capability")
-                    if choice is not None:
-                        await body(choice, scope.name)
+                while (packet := await queue.get()) is not None:
+                    completion, input_links = packet
+                    try:
+                        choice = _choice(scope.request(completion), (scope.block.name,), "Request selected an unprovided capability")
+                        if choice is not None:
+                            await body(choice, scope.name, upstream_inputs=input_links)
+                        else:
+                            self.state.trace.append(("request_declined", (scope.name, completion)))
+                    except BaseException:
+                        self.state.input_failed(input_links)
+                        raise
 
             return requested
         raise NotReady(f"Unsupported scope {type(scope).__name__}")

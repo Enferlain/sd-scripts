@@ -12,10 +12,15 @@ loop and make its helpers configurable.
 
 ## Start here
 
-For the current connected-system judgment, ownership map and reproduced
-remaining progress gap, see the dated [whole-candidate assessment](system_assessment.md).
+For the current connected-system judgment, ownership map and qualification
+limits, see the [whole-candidate assessment](system_assessment.md).
 It evaluates this candidate without changing the governing design or selecting
 production APIs.
+
+The subsequent `.27` input-association work reports **639 passing tests** and
+**580** in the GIL-disabled candidate run, plus two focused GIL-disabled
+long-window cases. The assessment's four expected failures are now positive
+conformance checks. Earlier dated counts below remain historical.
 
 Read [examples.py](examples.py), particularly `diffusion()` and `adversarial()`.
 They use the same language constructs and engine but different computation,
@@ -2184,12 +2189,11 @@ drop-in op-level AMP replacement. No FSDP execution experiment was run here and
 no global module-casting default was selected.
 
 The cache/module-view investigation is a completed research checkpoint
-(`sd-scripts-syv.22`–`.24`). The next bounded task is **`sd-scripts-syv.25`**:
-refresh the connected candidate's whole-system assessment using the existing
-mechanism and these findings, distinguish actual architecture decisions from
-later backend qualification, and identify the next production-design step.
-The dated [system assessment](system_assessment.md) preserves its historical
-body until that task; its source/publication cycle was already addressed by `.19`.
+(`sd-scripts-syv.22`–`.24`). The subsequent [system assessment](system_assessment.md)
+(`.25`, 2026-10-27) integrates these findings with the connected mechanism,
+separates production-shape decisions from backend qualification, and records
+the input-association lifetime gap subsequently addressed by `.27`. The
+source/publication cycle addressed by `.19` remains resolved.
 
 ## Cost of unused access machinery (2026-10-26)
 
@@ -2305,6 +2309,109 @@ snapshot publication, restoration or arbitrary undeclared Python access.
 The combined candidate/execution suite passes **597 cases**. A separate
 **539-case** process remains GIL-disabled without Dynamo/Triton, excluding only
 the existing standard-optimizer oracle files. Scoped lint, formatting, strict
-typing and whitespace checks pass. The next connected-system assessment
-(`.25`) can use this evidence without reopening the completed cache probes or
+typing and whitespace checks pass. The subsequent connected-system assessment
+(`.25`) uses this evidence without reopening the completed cache probes or
 changing the governing design, specs, G5 task status or live Trainer.
+
+## Input associations follow execution lifetimes (2026-10-27)
+
+The `.25` assessment found that a pending gradient could survive after both
+bounded input/admission histories had evicted its input association. `.27`
+records the actual admitted handoff independently of those diagnostics and
+passes immutable references along the accepted execution relationships.
+
+Each `InputHandoff` contains its region/work address, invocation, channel,
+work key and actual production provenance. It does not retain `Product.value`
+or reserve source weights. Preparation derives a region's input-member bound
+from its Joins. The coordinator appends facts under the same condition as
+admission and all-member claim; rejected input creates no handoff fact.
+
+```text
+admission --> region's immutable input prefix
+                 +--> selected Context
+                 +--> entered UnitOutcome / pending window
+                 +--> completion request --> capability Context
+                 +--> WorkFailed / Engine failure facts
+```
+
+Prefixes share linked immutable nodes, so taking a contribution/request
+snapshot does not copy all earlier inputs. Later admissions create a new
+prefix and cannot change an earlier snapshot. A Sequence shares the append
+point across its blocks, preserving an input received before the block that
+offers a derivative. The facts identify actual handoffs and their accepted
+execution context; they do not themselves prove mathematical dependence.
+Gradient routing still comes from the accepted value/derivative relationships.
+Unit and failure records also retain their prepared work address, so resolving
+that relationship does not depend on an evictable invocation trace.
+
+Ordinary and granted entry give their existing unit owner a prefix reference.
+Live `_PendingWork.records` keep it through handback, partial advancement and
+failure even when diagnostic deques are cleared. Requested-work queues carry
+the same kind of reference separately from `Completion`; providers do not
+interpret optimization. A blocked completion sender, active capability and
+queued request retain their own references. Root failure transfers unattempted
+queued facts to reporting after the derived activities have joined.
+`WorkFailed.input_handoffs` and `Engine.failure_input_handoffs` preserve reached
+facts, including cancellation before any optimizer contribution exists.
+The Engine field combines failed or abandoned contexts; it does not claim
+that every reported input caused the failing computation. A request policy
+that declines a delivered completion records a bounded `request_declined`
+diagnostic and releases that request's input references.
+Physical worker cancellation still drains actual execution before reporting
+and releasing current-use protection.
+
+Bounds and release follow the existing owners:
+
+- A Block/Sequence admits at most its prepared number of Join member slots.
+  Closed scopes or an exceeded bound reject before claiming input. A fresh
+  Repeat invocation starts fresh; it does not extend a run-long input chain.
+- Pending windows keep their required facts; this target's windows fit inside
+  a finite accepted Sequence. Completed unit history remains bounded at 32.
+  Ordinary state-only work has no optimizer or completed-unit holder.
+- Requested work retains at most its bounded queue, active consumer and sender
+  contexts. Failure facts transfer to the Engine's report; there is no global
+  index retaining every past invocation. Reports retained by a caller own
+  their own lifetime. The temporary failure collection is bounded by this
+  fail-fast target's in-flight scopes and request contexts. A broader retry
+  or failure-isolation policy would need its own collection/drain bound.
+- Once the relevant owners release their references, the prefix nodes can be
+  reclaimed. A 100-invocation probe leaves zero link nodes for state-only work
+  and 32 for one unit's completed history, and retains no input tensors. These
+  are record/reference bounds, not a total byte budget for arbitrary keys,
+  provenance, exception tracebacks or user-retained reports.
+
+[test_input_associations.py](test_input_associations.py) checks actual source
+provenance across later encoder writes, earlier-block inputs, normal/failing/
+cancelled work, closed/over-capacity/rejected admission, active/queued/in-transit
+requests, worker drain, granted entry, partial joint outcomes and release.
+The original four [history-eviction cases](test_system_progress.py) now assert
+the live owner and failure facts while confirming that diagnostics were
+evicted. The 36-contribution case in [test_repeated_regions.py](test_repeated_regions.py)
+keeps one shared input prefix across all live origins after outcome-history
+eviction. Same-graph comparison includes the new unit input facts.
+
+Verification: **639 tests pass**. A separate **580-case** candidate process
+keeps the GIL disabled without Dynamo/Triton, excluding the two files with
+independent standard-optimizer oracles. The two changed long-window cases in
+one excluded file also pass in a focused GIL-disabled process. Scoped lint,
+formatting and strict types pass. Performance probes were not rerun; their
+earlier source hashes do not qualify the cost of this added coordination.
+No production Trainer, governing requirements, G5 completion or restoration
+guarantee changes.
+
+### Reproducibility is a separate guarantee
+
+The owned-RNG tests reproduce separate serial streams, and the bounded
+parallel-processing comparison preserves the same input sequence and results
+across its worker configurations. Neither establishes whole-run repeatability
+for arbitrary asynchronous policies or numerical backends.
+
+If a producer may use changing live state, scheduling can affect which state
+it uses even with the same seed. Provenance records that choice; it does not
+make the choice repeat. A reproducible arrangement needs a supported policy
+that controls semantically relevant input/state-version decisions, as well as
+the applicable RNG and numerical guarantees. This work selects no universal
+live/snapshot default and does not waive reproducibility as a design concern.
+Same-run restoration is separate again: the governing continuation policy may
+allow regeneration of disposable work without promising bit-identical replay.
+The candidate has not implemented that restoration protocol.

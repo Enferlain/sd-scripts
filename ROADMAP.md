@@ -37,8 +37,15 @@ bookkeeping from ordinary blocks while preserving shared protection. Matched
 CPU evidence shows a repeatable cheap-work benefit; numerical timings remain
 noisy, and this does not choose a live-versus-snapshot producer default
 (`sd-scripts-syv.26`).
-Next, refresh the connected candidate assessment with these completed findings
-and identify the remaining production-design decisions (`sd-scripts-syv.25`).
+The refreshed [connected assessment](docs_design/models-strategy-trainer/execution_candidate/system_assessment.md)
+integrates these findings and recommends retaining the graph-derived foundation
+(`sd-scripts-syv.25`). Immutable input-handoff references now follow accepted
+execution lifetimes through pending unit outcomes, capability requests and
+failure reporting, with prepared region bounds and bounded completed history
+(`sd-scripts-syv.27`). The four correlation counterexamples now pass alongside
+release, cancellation and cross-owner cases. Next, choose production structures
+from this connected mechanism, retaining its explicit backend and restoration
+limits and distinguishing recorded provenance from whole-run reproducibility.
 These are candidate findings, not completion
 of G5 production implementation, GPU/distributed preparation or durable continuation.
 

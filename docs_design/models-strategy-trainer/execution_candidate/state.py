@@ -46,6 +46,59 @@ class Product:
 
 
 @dataclass(frozen=True)
+class InputHandoff:
+    """Admitted identity/provenance, omitting payload and model fields.
+
+    Keys retain their selected representation and its storage/lifetime.
+    """
+
+    scope: str
+    work: tuple[str, str]
+    invocation: int
+    channel: str
+    key: Hashable
+    provenance: tuple[Stamp, ...]
+
+
+@dataclass(frozen=True, eq=False)
+class _InputLink:
+    handoff: InputHandoff
+    previous: _InputLink | None = field(default=None, repr=False)
+
+
+def handoff_facts(head: _InputLink | None) -> tuple[InputHandoff, ...]:
+    values = []
+    while head is not None:
+        values.append(head.handoff)
+        head = head.previous
+    return tuple(reversed(values))
+
+
+@dataclass
+class InputScope:
+    """Coordinator-owned append point with immutable, shared prefix snapshots.
+
+    Capacity is the prepared region's number of input-member slots. Earlier
+    snapshots stay unchanged when a later block admits more input.
+    """
+
+    name: str
+    capacity: int
+    head: _InputLink | None = None
+    closed: bool = False
+    _count: int = 0
+
+    def record(self, work: tuple[str, str], invocation: int, channels: tuple[str, ...], products: tuple[Product, ...]) -> None:
+        if self.closed or len(channels) != len(products) or self._count + len(products) > self.capacity:
+            raise NotReady("Input association scope is closed or exceeds its prepared member bound")
+        head = self.head
+        for channel, product in zip(channels, products, strict=True):
+            head = _InputLink(InputHandoff(self.name, work, invocation, channel, product.key, product.provenance), head)
+        self.head = head
+        self._count += len(products)
+
+
+@dataclass(frozen=True)
 class Contribution:
     invocation: int
     units: tuple[str, ...]
@@ -72,6 +125,12 @@ class UnitOutcome:
     advancement_invocation: int | None = None
     region: object | None = field(default=None, repr=False)
     source_stamps: tuple[Stamp, ...] = ()
+    work: tuple[str, str] | None = None
+    _input_links: _InputLink | None = field(default=None, repr=False, compare=False)
+
+    @property
+    def input_handoffs(self) -> tuple[InputHandoff, ...]:
+        return handoff_facts(self._input_links)
 
 
 @dataclass
@@ -141,6 +200,8 @@ class UnitRuntime:
         *,
         previous: Contribution | None = None,
         granted: bool = False,
+        input_links: _InputLink | None = None,
+        work: tuple[str, str] | None = None,
     ) -> None:
         self.check_entry(previous)
         if self._work is None:
@@ -153,6 +214,8 @@ class UnitRuntime:
             contribution="unverified_grant" if granted else "uncertain",
             region=region,
             source_stamps=source_stamps,
+            _input_links=input_links,
+            work=work,
         )
         self._work.records[invocation] = record
         self.outcomes.append(record)
@@ -485,6 +548,8 @@ async def join(
     projection: Projection,
     *,
     wait: bool = True,
+    input_scope: InputScope | None = None,
+    work: tuple[str, str] | None = None,
 ) -> tuple[object, ...]:
     """Check EVERY member, then claim all together without an intervening await.
 
@@ -504,6 +569,10 @@ async def join(
         for product in products:
             if product.key != key or not admit(product, projection):
                 raise NotReady(f"Inadmissible work {key!r}; actual provenance retained")
+        if input_scope is not None:
+            if work is None:
+                raise NotReady("Input association requires a prepared work address")
+            input_scope.record(work, invocation, tuple(feed.name for feed in feeds), products)
         for feed, product in zip(feeds, products, strict=True):
             del feed.ready[key]
             feed.handed_off.append((key, invocation, product.provenance))
@@ -530,6 +599,7 @@ class RunState:
         self.completed = False
         self.invocation = 0
         self.trace: deque[tuple[str, object]] = deque(maxlen=256)
+        self._input_failures: list[_InputLink] = []
         self.handoffs = asyncio.Condition()
         self.feeds = {
             name: Feed(spec.capacity, self.handoffs, progress=self.progress, name=name) for name, spec in accepted.channels.items()
@@ -560,6 +630,21 @@ class RunState:
     @property
     def generation(self) -> int:
         return self.image.generation if self.image is not None else 0
+
+    def input_failed(self, head: _InputLink | None) -> None:
+        if head is not None:
+            self._input_failures.append(head)
+
+    def take_input_failures(self) -> tuple[InputHandoff, ...]:
+        heads, self._input_failures = self._input_failures, []
+        seen: set[int] = set()
+        result = []
+        for head in heads:
+            for handoff in handoff_facts(head):
+                if id(handoff) not in seen:
+                    seen.add(id(handoff))
+                    result.append(handoff)
+        return tuple(result)
 
     def candidate(self, models: Mapping[str, nn.Module], *, replacing: str | None = None) -> Image:
         """Fallible CPU preparation, including final member correspondence.
@@ -923,6 +1008,8 @@ class RunState:
         region: object | None = None,
         keep_graph: bool = False,
         previous: Contribution | None = None,
+        input_links: _InputLink | None = None,
+        work: tuple[str, str] | None = None,
     ) -> Contribution:
         assert self.image is not None
         runtimes = tuple(self.image.units[name] for name in names)
@@ -941,6 +1028,8 @@ class RunState:
             region=region,
             previous=previous,
             source_stamps=tuple(retained.projection.stamps.values()) if retained is not None else (),
+            input_links=input_links,
+            work=work,
         )
         gradients = torch.autograd.grad(loss, parameters, retain_graph=keep_graph)
         accumulated = []
@@ -969,6 +1058,8 @@ class RunState:
         previous: Contribution | None = None,
         source_stamps: tuple[Stamp, ...] = (),
         granted: bool = False,
+        input_links: _InputLink | None = None,
+        work: tuple[str, str] | None = None,
     ) -> None:
         """Register ownership before either ordinary or granted numerical work."""
         assert self.image is not None
@@ -992,7 +1083,18 @@ class RunState:
             runtime.check_entry(previous)
         prepared_keys = tuple(runtime.prepared_key for runtime in runtimes)
         for runtime in runtimes:
-            runtime.begin(invocation, names, prepared_keys, region, stamps, source_stamps, previous=previous, granted=granted)
+            runtime.begin(
+                invocation,
+                names,
+                prepared_keys,
+                region,
+                stamps,
+                source_stamps,
+                previous=previous,
+                granted=granted,
+                input_links=input_links,
+                work=work,
+            )
 
     def complete_contribution(
         self, names: tuple[str, ...], invocation: int, *, region: object | None = None, granted: bool = False

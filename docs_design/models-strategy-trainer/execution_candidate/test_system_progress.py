@@ -1,4 +1,4 @@
-"""Whole-system progress: shared waits reject the former undetected cycle."""
+"""Shared progress and input correlation across independently progressing work."""
 
 from __future__ import annotations
 
@@ -11,26 +11,147 @@ import torch
 
 from .examples import producer_continuity, scale
 from .graph import (
+    Advance,
     Block,
     Call,
     Channel,
     Choice,
     Contract,
+    Differentiate,
     Join,
     NotReady,
     Output,
     OwnedState,
     Producer,
+    Release,
     Repeat,
+    Retain,
     Run,
     Sequence,
     Together,
+    Unit,
     Use,
     View,
 )
-from .prepare import Engine, prepare
+from .prepare import Engine, WorkFailed, prepare
 from .state import Product
 from .test_candidate import leaves, run
+
+
+@pytest.mark.parametrize("lowering", ("calls", "inline"))
+@pytest.mark.parametrize("access", ("general", "prepared"))
+def test_unfinished_input_association_survives_independent_handoff_history(lowering, access, monkeypatch):
+    """Live owner facts survive eviction from both diagnostic histories."""
+
+    async def scenario():
+        start, drained = asyncio.Event(), asyncio.Event()
+        origins = []
+
+        async def produce(context):
+            # No producer touches live weights. The learning policy selects
+            # a different key from the independent consumer's numbered work.
+            await context.publish("input", Product("training", 2.0))
+            for key in range(48):
+                await context.publish("input", Product(key, float(key)))
+
+        def loss(context, value):
+            origins.append(context.invocation)
+            return context.models["model"](torch.tensor(value)).square()
+
+        def start_other(context):
+            assert any(event[1] == origins[0] for event in state.feeds["input"].handed_off)
+            start.set()
+
+        async def wait_for_start(context):
+            await start.wait()
+
+        async def wait_for_drain(context):
+            await drained.wait()
+
+        def consume(context, value):
+            assert value == float(context.choice.key)
+            if context.choice.key == 47:
+                drained.set()
+
+        contribution = Block(
+            "contribute",
+            (
+                Join("training-input", ("input",), (Output("value", float),), lambda *args: True),
+                Retain("hold", ("model",), ("weights",), "source"),
+                Call("loss", loss, ("value",), (Output("loss", torch.Tensor),), (Use("model"),), retained="source"),
+                Differentiate("gradient", "loss", ("weights",), "gradient", retained="source"),
+                Release("release", "source", after=("gradient",)),
+            ),
+        )
+        waiting = Block("wait", (Call("start-other", start_other), Call("wait-for-drain", wait_for_drain, after=("start-other",))))
+        finish = Block("finish", (Advance("advance", "gradient", ("weights",)),))
+        window = Sequence("window", (contribution, waiting, finish))
+
+        def choose_window(counts, state):
+            key = state.pop("next", None)
+            return Choice("window", key) if key is not None else None
+
+        learning = Repeat("learning", (window,), choose_window, "learning-policy")
+        wait_start = Block("wait-start", (Call("wait-start", wait_for_start),))
+        take = Block(
+            "take",
+            (
+                Join("other-input", ("input",), (Output("other-value", float),), lambda *args: True),
+                Call("consume", consume, ("other-value",)),
+            ),
+        )
+
+        def policy(counts, state):
+            if not counts:
+                return Choice("wait-start")
+            count = counts.get("take", 0)
+            return Choice("take", count) if count < 48 else None
+
+        other = Repeat("other-consumer", (wait_start, take), policy, "policy")
+        filing = Run(
+            Together("run", (Producer("source", ("input",), produce), learning, other)),
+            (scale("model", 1.0),),
+            (Unit("weights", (("model", "weight"),)),),
+            (OwnedState("policy", lambda: None), OwnedState("learning-policy", lambda: {"next": "training"})),
+            (Channel("input", 2),),
+        )
+        ready = prepare(Contract().accept(filing), lowering=lowering, access=access).publish()
+        state = ready.state
+        assert state.image is not None
+        unit = state.image.units["weights"]
+
+        def fail():
+            raise RuntimeError("uncertain backend")
+
+        monkeypatch.setattr(unit.optimizer, "step", fail)
+        engine = Engine(ready)
+        with pytest.raises(ExceptionGroup) as caught:
+            await engine.run()
+        failures = [failure for failure in leaves(caught.value) if isinstance(failure, WorkFailed)]
+        assert len(failures) == 1 and str(failures[0].cause) == "uncertain backend"
+        assert state.coordinates["other-consumer"]["take"] == 48
+        assert unit.unfinished and tuple(unit.active_outcomes) == tuple(origins)
+        assert [(record.invocation, record.optimizer, record.reset) for record in failures[0].unit_outcomes] == [
+            (origins[0], "uncertain", "not_attempted")
+        ]
+        assert not state.progress.leases and not state.active_retentions
+        with pytest.raises(NotReady):
+            state.capture()
+        assert not any(event[1] == origins[0] for event in state.feeds["input"].handed_off)
+        assert not any(kind == "admitted" and isinstance(value, tuple) and value[0] == origins[0] for kind, value in state.trace)
+        unit.outcomes.clear()  # The live owner, not even its outcome history.
+        facts = unit.active_outcomes[origins[0]].input_handoffs
+        assert len(facts) == 1
+        assert (facts[0].scope, facts[0].work, facts[0].invocation, facts[0].channel, facts[0].key) == (
+            "window",
+            ("contribute", "training-input"),
+            origins[0],
+            "input",
+            "training",
+        )
+        assert facts == failures[0].unit_outcomes[0].input_handoffs == failures[0].input_handoffs == engine.failure_input_handoffs
+
+    run(scenario())
 
 
 @pytest.mark.parametrize("lowering", ("calls", "inline"))
