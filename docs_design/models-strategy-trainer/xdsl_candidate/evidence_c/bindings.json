@@ -1,0 +1,23 @@
+{
+  "abi": "candidate-grant-cpu-v1",
+  "bindings": [
+    {
+      "effect": "load",
+      "role": "model",
+      "symbol": "scale_v1",
+      "version": "1"
+    },
+    {
+      "effect": "scoped_write",
+      "role": "grant",
+      "symbol": "two_pass_v1",
+      "version": "1"
+    }
+  ],
+  "model_role": {
+    "model": "model"
+  },
+  "profile": "restored-two-pass-v1",
+  "registry": "grant-fixtures-v1",
+  "schema": 1
+}

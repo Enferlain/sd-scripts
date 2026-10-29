@@ -30,6 +30,7 @@ def selected_keys(session: SessionOp) -> tuple[int, ...]:
 
 
 def verify_model(session: SessionOp) -> None:
+    require(session.horizon is not None, session, "explicit finite source horizon required")
     require(session.stop_rule.data == "drain_entered_close_unadmitted", session, "unknown stop/failure disposition")
     children = tuple(session.body.block.ops)
     allowed = (EntityOp, FlowOp, SourceOp, FilterOp, FanOutOp, ComposeOp, ModelOp, ModelFlowOp, CorrelateOp, WindowOp, EvaluateOp)

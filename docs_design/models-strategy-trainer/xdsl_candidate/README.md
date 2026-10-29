@@ -1,13 +1,14 @@
 # xDSL workflow experiments
 
-This isolated research package implements **B and A** of the plan
-recorded in `sd-scripts-syv.31.8`, as `sd-scripts-syv.31.9` and
-`sd-scripts-syv.31.10`. It tests xDSL as the
+This isolated research package implements **B, A and C** of the plan
+recorded in `sd-scripts-syv.31.8`, as `sd-scripts-syv.31.9`,
+`sd-scripts-syv.31.10` and `sd-scripts-syv.31.11`. It tests xDSL as the
 actual semantic and prepared IR infrastructure for a system that can represent
 data and model workflows. Production code, governing OpenSpec requirements and
 framework selection remain unchanged. B's data-only experiment is described
 below; [A's owner integration](#a-correlated-data-model-work-and-evaluation)
-adds bounded training/evaluation evidence. C and fusion remain later handoffs.
+adds bounded training/evaluation evidence, and [C's granted authority](#c-offered-two-pass-authority-and-retained-advancement)
+checks a selected two-pass region. Fusion remains a later handoff.
 
 The Python author in [fixture.py](fixture.py) constructs nested xDSL operations:
 
@@ -146,8 +147,8 @@ memory-effect traits do not establish workflow purity or removability; even
 `pure` scalar calls may fail. No generic DCE or fusion pass is applied here.
 
 This makes xDSL promising for representation and diagnostics in B. C's granted
-authority integration and the planned semantics-preserving fusion experiment
-remain open. Python 3.14t execution and observed GIL state do not establish
+authority integration is described below; the planned semantics-preserving
+fusion experiment remains open. Python 3.14t execution and observed GIL state do not establish
 arbitrary extension concurrency safety, GPU/distributed interoperability,
 production performance or a final framework choice.
 
@@ -229,9 +230,9 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync \
   docs_design/models-strategy-trainer/xdsl_candidate
 ```
 
-The combined suite passes **158 tests** (83 original B, 17 model semantic tests,
-58 optional owner-integration tests). In the isolated environment, **100 pass
-and one optional module skips**. Actual GIL state is recorded, never forced.
+The A handoff passed **158 tests** (83 original B, 17 model semantic tests,
+58 optional owner-integration tests). Its isolated environment had **100 pass
+and one optional module skip**. Actual GIL state is recorded, never forced.
 The A suite covers both existing CPU emissions, evaluation on/off a worker,
 changed production order, zero diagnostic history, missing/bad/swapped/stale
 second-member rejection without partial consumption, retained active input facts
@@ -248,3 +249,116 @@ reran all 158 tests after `review-mcp` failed with a provider usage-limit error.
 A small follow-up reads normalization from decoded IR instead of a target
 literal; the affected gates pass after that correction. Broader architecture
 viewpoints remain deferred until C and fusion have results.
+
+## C: offered two-pass authority and retained advancement
+
+[grant_dialect.py](grant_dialect.py) and [grant_contract.py](grant_contract.py)
+add a model-only extension to the same session/snapshot infrastructure. Its
+typed `!grant.contribution<@weights>` SSA edge connects one granted region to
+one retained advancement. The phase body declares the exact offered protocol:
+`backward -> temporary_edit -> intermediate_reset -> backward -> restore`.
+The selected region receives those services; the standard owner retains
+clipping, the final optimizer call and final reset. Unsupported authority splits
+or phase protocols reject semantic acceptance. An accepted request can still
+fail preparation when the concrete grant is not offered or its bindings and
+parameter correspondence cannot be resolved.
+
+```text
+model .8 -> offered write grant [two-pass binding]
+                        |
+              return + actual handback verification
+                        |
+           verified contribution for @weights
+                        |
+             retained [clip? -> SGD -> reset]
+
+raise / incomplete / interruption -> drain physical uses -> retain unverified work
+```
+
+C carries no dummy flow horizon, mailbox capacity or feedback field. Those
+properties are optional in the shared structural container and remain required
+by the A/B semantic contracts that use them. C's source IDs, subject/unit
+references, delegated/retained authority, five phases and typed handback survive
+printing, parsing and preparation without importing Torch. The prepared recipe
+retains the checked semantic subtree, concrete target, owner protocol, versioned
+bindings, source ancestry and physical-return/verification requirement. Its
+dispatch tables and final step settings are extracted from the reparsed plan;
+tests deliberately corrupt those descriptors and require rejection.
+
+[grant_adapter.py](grant_adapter.py) selects the maintained numerical callable
+from `execution_candidate.examples.two_pass` unchanged. It discards that example's
+authored `Run`, generates a `TwoPass -> Advance` backend artifact from prepared
+xDSL, and invokes one existing Engine. Participant/current-use protection,
+`GrantedAccess`, pending contribution ownership, actual handback verification,
+clipping, functional SGD and reset remain existing services. No production or
+legacy candidate source changes are needed. The test-only `selected` facts
+observe numerical return and phase history; execution never consults them to
+authorize an update. A static SSA edge likewise conveys no live readiness.
+This single-member target derives concrete unit membership from the granted
+subject and advancement parameter; it has no general unit-member schema.
+
+For `(2*w-1)^2` at initial `.8`, the first gradient is `2.4`; perturbing by `.1`
+gives temporary weight `1.04` and second gradient `4.32`. Restoring `.8`, then
+applying retained SGD at `.05` gives **`.584`** with a cleared final gradient.
+A retained clipping bound of `1` instead gives approximately **`.75`**. The
+stdlib-only [C oracle](grant_conformance.py) derives these results without the
+numerical binding or owner implementation and checks phase/source attribution,
+owner outcomes and final release. A shared no-op optimizer passes agreement
+between both CPU emissions but fails this independent oracle.
+
+| Observed case | Required owner outcome |
+|---|---|
+| Complete, restored region returns with final gradient | `granted_ready`, one retained step/reset, no pending work |
+| Region restores and raises, returns incomplete, loses its gradient, or edits after restore | `unverified_grant`, no attempted optimizer/reset, pending work and unusable subject remain |
+| Restored region is suspended or physical work is still running | Conflicting current use remains blocked; even a correctly addressed fabricated contribution cannot advance |
+| Repeated cancellation, with successful or failed physical return | Protection remains until actual drain; interruption and any physical failure survive, with no verified handback |
+| Retained optimizer or reset raises after effects | Verified handback remains distinguishable from uncertain advancement/reset; pending evidence survives and cannot authorize retry |
+
+The complete suite passes **245 tests**, including **83 C tests** (23 semantic,
+60 optional numerical/owner tests) and four post-review A plan-bound regressions. The environment without Torch passes
+**123 tests and skips two optional modules**. The combined numerical suite's
+actual GIL state is false before and after execution. Separately, **39 existing
+owner/optimizer/grant checks** pass; the standard-optimizer comparison there
+loads Triton and enables the GIL, so that older oracle is not evidence of
+GIL-disabled execution. Ruff, formatting and ty pass. [C evidence](evidence_c/)
+records the exact snapshots, success/failure observations, qualification and
+required correctness-review status. The [C review](evidence_c/review.md) found no
+blocking correctness defects. Small follow-ups derive C's report parameter from
+the decoded declaration and recheck A's horizon/capacity after plan decoding;
+all 245 tests and static gates pass afterward. A's evidence remains the historical A
+snapshot committed as `6d103b14`; C records the changed shared-source hashes.
+
+The standalone physical-failure-after-cancellation probe also printed an
+asyncio shield diagnostic. A [stdlib-only reproduction](evidence_c/shield_diagnostic.json)
+on this installed Python 3.14.5 shows the same exception-handler message even
+when another drain observes the exception. The required review found no C
+ownership defect: the failed physical use and interruption remain in the report,
+and protection ends only after actual drain. No older worker-service change is
+included here.
+
+```bash
+uv run --no-sync --with-requirements docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt \
+  python -m docs_design.models-strategy-trainer.xdsl_candidate.grant_demo --dump-dir /tmp/xdsl-c
+uv run --no-sync --with-requirements docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt \
+  python -m docs_design.models-strategy-trainer.xdsl_candidate.grant_demo \
+  --load /tmp/xdsl-c/accepted.mlir --manifest /tmp/xdsl-c/bindings.json
+```
+
+C strengthens the representation case: a nonstandard numerical region and its
+retained owner obligations are inspectable, typed and reconstructable without
+making common infrastructure dispatch on a training algorithm. It also exposes
+the division of work: xDSL does not offer or verify live grants, prove binding
+arithmetic, own parameters, or drain private threads. The selected binding must
+join private physical work before returning or raising; tests use the existing
+`Workers` service for that boundary. Grant services restrict available operations
+within this cooperative ABI; they do not form a Python security sandbox. Phase
+ops describe a fixed protocol, with numerical execution behind a versioned
+binding, rather than a general differentiable numerical IR.
+
+B uses its small scalar realization; A and C each reuse the existing owner
+engine. These results do not yet demonstrate a single dynamic feedback/model
+run. Fusion, broader combined-runtime behavior, GPU/distributed execution,
+durable restoration and production performance remain unqualified. Framework
+selection, including whether custom machinery is preferable, depends on the
+remaining evidence. Outside architecture viewpoints remain deferred until the
+planned fusion comparison is complete.

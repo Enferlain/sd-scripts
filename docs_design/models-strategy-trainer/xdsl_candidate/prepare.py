@@ -146,6 +146,7 @@ def accept(module: ModuleOp, *, extension: ContractExtension | None = None) -> A
         extension.verify(session)
         return Accepted(dump(module), extension.obligations)
     require(session.stop_rule.data == "settle_selected", session, "undeclared in-flight disposition")
+    require(session.horizon is not None, session, "explicit flow horizon required")
     children = tuple(session.body.block.ops)
     allowed = (EntityOp, FlowOp, SelectOp, ComposeOp, ScoreOp, PublishOp)
     require(all(isinstance(op, allowed) for op in children), session, "unsupported service operation")
@@ -235,7 +236,9 @@ def prepare(accepted: Accepted, registry: Registry, *, capacity: int = 1, target
     if accept(module).text != accepted.text:
         raise NotReady("accepted snapshot is not canonical")
     session = next(op for op in module.walk() if isinstance(op, SessionOp))
-    if target != TARGET or capacity != 1 or session.horizon.value.data > 2:
+    horizon = session.horizon
+    assert horizon is not None  # Established by this target's semantic contract.
+    if target != TARGET or capacity != 1 or horizon.value.data > 2:
         raise NotReady(f"{origin(session)}: target {target} supports capacity 1 and horizon at most 2")
     compose = next(op for op in module.walk() if isinstance(op, ComposeOp))
     score = next(op for op in module.walk() if isinstance(op, ScoreOp))
@@ -334,6 +337,7 @@ def prepare(accepted: Accepted, registry: Registry, *, capacity: int = 1, target
     loaded = parse(text)
     loaded.verify()
     root = next(op for op in loaded.walk() if isinstance(op, PlanOp))
+    assert root.horizon is not None and root.capacity is not None
     resolved: dict[str, tuple[ResolvedCall, ...]] = {}
     for chain in root.body.block.ops:
         if not isinstance(chain, ChainOp):

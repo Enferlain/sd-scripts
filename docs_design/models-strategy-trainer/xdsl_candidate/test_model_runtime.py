@@ -18,7 +18,7 @@ import pytest
 
 from xdsl.dialects.builtin import StringAttr
 
-from .dialects import CallOp, integer
+from .dialects import CallOp, PlanOp, dump, integer
 from .model_conformance import check_a, check_admission_failure
 from .model_contract import accept_model, build_model, one
 from .model_dialect import AddressOp, AdvanceOp
@@ -31,6 +31,21 @@ assert __package__ is not None
 adapter = importlib.import_module(__package__ + ".model_adapter")
 Controls, DomainRegistry = adapter.Controls, adapter.DomainRegistry
 model_registry, prepare_model = adapter.model_registry, adapter.prepare_model
+
+
+@pytest.mark.parametrize("field_name,missing", [("horizon", True), ("capacity", True), ("horizon", False), ("capacity", False)])
+def test_prepared_owner_flow_bounds_are_checked_after_decode(field_name: str, missing: bool, monkeypatch) -> None:
+    def corrupted(module):
+        root = one(module, PlanOp)
+        if missing:
+            root.properties.pop(field_name)
+        else:
+            root.properties[field_name] = integer(1)
+        return dump(module)
+
+    monkeypatch.setattr(adapter, "dump", corrupted)
+    with pytest.raises(NotReady, match="flow bounds"):
+        prepare_model(accept_model(build_model()))
 
 
 @pytest.mark.asyncio

@@ -45,13 +45,13 @@ class SessionOp(IRDLOperation):
     source_id = prop_def(StringAttr)
     contract = prop_def(StringAttr)
     version = prop_def(IntegerAttr)
-    horizon = prop_def(IntegerAttr)
+    horizon = opt_prop_def(IntegerAttr)
     stop_rule = prop_def(StringAttr)
     body = region_def("single_block")
     traits = traits_def(NoTerminator(), IsolatedFromAbove())
 
     def verify_(self) -> None:
-        if self.horizon.value.data <= 0:
+        if self.horizon is not None and self.horizon.value.data <= 0:
             raise VerifyException(f"{self.source_id.data}: horizon must be positive")
 
 
@@ -144,8 +144,8 @@ class PlanOp(IRDLOperation):
     accepted_digest = prop_def(StringAttr)
     target = prop_def(StringAttr)
     contract = prop_def(StringAttr)
-    horizon = prop_def(IntegerAttr)
-    capacity = prop_def(IntegerAttr)
+    horizon = opt_prop_def(IntegerAttr)
+    capacity = opt_prop_def(IntegerAttr)
     stop_rule = prop_def(StringAttr)
     feedback = opt_prop_def(StringAttr)
     body = region_def("single_block")

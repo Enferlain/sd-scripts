@@ -1,0 +1,150 @@
+{
+  "scope": "C granted authority and retained advancement, with A/B regressions; fusion and framework/production selection remain open",
+  "baseline_commit": "6d103b14",
+  "versions": {
+    "python": "3.14.5",
+    "xdsl": "0.74.0",
+    "torch": "2.14.1+cu130"
+  },
+  "gil_before_and_after_combined_suite": [
+    false,
+    false
+  ],
+  "validation": {
+    "combined_tests": {
+      "passed": 245,
+      "seconds": 14.5,
+      "C_tests": 83,
+      "C_semantic_tests": 23,
+      "C_optional_owner_tests": 60,
+      "post_review_A_plan_bound_regressions": 4
+    },
+    "isolated_without_torch": {
+      "passed": 123,
+      "optional_module_skips": 2,
+      "seconds": 3.55,
+      "note": "No-Torch source paths unchanged by the two optional-adapter follow-ups; the final combined suite reran the123 pure tests too."
+    },
+    "legacy_owner_tests": {
+      "optimization_ownership_and_eager_optimizer": 35,
+      "granted_two_pass_and_handback": 4,
+      "note": "Separate legacy optimizer oracle imports standard Torch SGD/Triton and enables the GIL."
+    },
+    "ruff": "passed",
+    "format": "passed",
+    "ty_full_and_pure_ir": "passed",
+    "git_diff_check": "passed"
+  },
+  "sample": {
+    "accepted_digest": "fdf03da85d67b673bea3d8b103abe0905751b6dbd0a28f0b0466950fe62e37d3",
+    "status": "stopped",
+    "weight": 0.5840000510215759,
+    "final_gradient": null,
+    "steps": 1,
+    "epoch": 2
+  },
+  "independent_checks": {
+    "oracle": "grant_conformance.py; stdlib only, independent loss derivative and SGD/clipping arithmetic",
+    "negative_controls": "Ten corrupted successful reports and one shared no-op optimizer across both existing lowerings. Unverified/partial states checked independently of successful equivalence.",
+    "fresh_process": "Saved clipped accepted document and binding manifest reconstruct with build_grant disabled; prepared text matches."
+  },
+  "failure_reports": {
+    "artifact": "failure_reports.json",
+    "cases": [
+      "restored_raises",
+      "missing_gradient",
+      "incomplete",
+      "optimizer_after_effects",
+      "reset_after_effects",
+      "physical_failure_after_repeated_cancel"
+    ],
+    "reproduction": "The same faults and assertions are maintained in test_grant_runtime.py. Selected-call fault overrides use versioned test registries; optimizer/reset faults modify only that unpublished test instance.",
+    "physical_probe": "Actual Workers(1) call remains entered and holds current-use protection through two cancellation requests; completion/failure observed before release; no verified handback."
+  },
+  "limits": [
+    "Fixed restored-two-pass profile, one scalar CPU float32 trainable parameter and one retained SGD/reset. Phase body is a protocol contract; numerical code remains a versioned binding.",
+    "One existing Engine consumes generated backend Run/TwoPass/Advance records; no legacy candidate, production, root dependency or governing OpenSpec source changed.",
+    "B uses its small scalar realization; A/C each reuse the existing owner engine. A single dynamic feedback/model run is not demonstrated.",
+    "The selected binding must join private work before returning/raising. No arbitrary Python sandbox or detached-work guarantee.",
+    "Physical release differs from pending numerical ownership; no rollback or safe retry inferred after partial effects.",
+    "No fusion, GPU/distributed/durability/production-performance qualification or final framework decision."
+  ],
+  "review": {
+    "status": "completed_via_review_mcp",
+    "result_ok": true,
+    "verdict": "No blocking correctness defects; approve C milestone. Minor consistency corrections verified with245 tests and static gates.",
+    "artifact": "review.md",
+    "original_artifacts": "/tmp/review-mcp-run-pu0_n1s7",
+    "model": "glm-5.3",
+    "reasoning_effort": "max",
+    "elapsed_seconds": 545.74,
+    "reviewed_source_sha256": {
+      "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+      "__main__.py": "85994274e6f27f8943a901b181712deeae080be73a1f28b20f72631c031b6c35",
+      "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+      "dialects.py": "9f6a6965e0a44b6ac577d5e291f59128d5da801a4022c299786fca71544f38b7",
+      "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+      "grant_adapter.py": "4b4ed2abdcf8061174103751f28248f468a524fbe295b46f98e0f05d82e40f7f",
+      "grant_conformance.py": "6157b8c9337c08ddb9dbbd4d892ed4166cfe04e8882a2368f64ea25ec4746dd9",
+      "grant_contract.py": "44602d07c6876535d5e217daa7e84aec10ef4397e17fae8d11ddbcb55028cb21",
+      "grant_demo.py": "76d06758e5ced49c531ea4556bf6002f2894f7db2b05f415aeed030ccb39631c",
+      "grant_dialect.py": "7d475b334f7df63ece4020cdb420ab52d676e9f2d4235024a69586a818773c2e",
+      "model_adapter.py": "5dac815a5bddeb67a4d863b528748f5583ccd969d3fb993059288bb632ba8c7f",
+      "model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+      "model_contract.py": "f1b428d8d24afbfee93dc286c9498ccd92475e6200de29cb7232b193a577ae9b",
+      "model_demo.py": "74e730e0db9e4636478247e95aed29fbdcc27c81737aeaaf92733e3735843f75",
+      "model_dialect.py": "be32946bab1e0d38a7d57e66e0ad5e1e7e16ff422406318b2f35d2b30bc71c58",
+      "prepare.py": "12412f8cb8dc8b7990d45fcfcf666def8d773a60d2ea6ee2e0516aabc3d4bce7",
+      "runtime.py": "024e10e662470bc2265c094be151eb1316f141281e1097dd797eb84b8b6d2885",
+      "test_grant_ir.py": "1722565f9f65846972edbdfe84926f9af1701fea83a84a2ddf3c4091f1f08fe4",
+      "test_grant_runtime.py": "ed1c34f5b4ac6287c109708a85c7dbd6f36eb0c13b70f77e68dde24788cc17ef",
+      "test_ir.py": "e892bf206fd5f4477639221b4af4c3b690f02e313d67426988f868c65604b948",
+      "test_model_ir.py": "4c5fbf4956bf84e337567eecb6848e62763a843fcfffb9f18b5b6b70004ba320",
+      "test_model_runtime.py": "3c9a87bffc042fadf22ca8b84b367804de4bb40fb450f676c9593f2432eac591",
+      "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f",
+      "README.md": "932384c3bb670893c94cd937b4199a64ebbf5c07eea370d6dd5548c232c82f0f"
+    },
+    "followup": "Store the decoded parameter name on PreparedGrant for reporting; recheck A prepared horizon/capacity after optionality, with four corruption regressions. Small corrections; no second full review required. Final245 tests pass14.50s, GIL false before/after; Ruff, formatting, ty and diff checks pass.",
+    "informational_notes": "Literal bool offer and report-returning harness remain intentional. Concrete single-member unit derives from granted subject/advance parameter; general unit-member schema is outside this fixture.",
+    "shield_diagnostic": {
+      "artifact": "shield_diagnostic.json",
+      "assessment": "Installed Python3.14.5 asyncio.shield independently reproduces the same exception-handler message even while a second drain observes the exception. No C ownership defect, no old Workers change."
+    }
+  },
+  "sha256": {
+    "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+    "__main__.py": "85994274e6f27f8943a901b181712deeae080be73a1f28b20f72631c031b6c35",
+    "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "dialects.py": "9f6a6965e0a44b6ac577d5e291f59128d5da801a4022c299786fca71544f38b7",
+    "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+    "grant_adapter.py": "4c8b566db5aace6cc9ad820d7afb933ab65843c5887ffbbda29fee1210938ccf",
+    "grant_conformance.py": "6157b8c9337c08ddb9dbbd4d892ed4166cfe04e8882a2368f64ea25ec4746dd9",
+    "grant_contract.py": "44602d07c6876535d5e217daa7e84aec10ef4397e17fae8d11ddbcb55028cb21",
+    "grant_demo.py": "76d06758e5ced49c531ea4556bf6002f2894f7db2b05f415aeed030ccb39631c",
+    "grant_dialect.py": "7d475b334f7df63ece4020cdb420ab52d676e9f2d4235024a69586a818773c2e",
+    "model_adapter.py": "a4becb0f2ae379eedbaac48979add154353774d3e96e8c49adde150016ae09fa",
+    "model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+    "model_contract.py": "f1b428d8d24afbfee93dc286c9498ccd92475e6200de29cb7232b193a577ae9b",
+    "model_demo.py": "74e730e0db9e4636478247e95aed29fbdcc27c81737aeaaf92733e3735843f75",
+    "model_dialect.py": "be32946bab1e0d38a7d57e66e0ad5e1e7e16ff422406318b2f35d2b30bc71c58",
+    "prepare.py": "12412f8cb8dc8b7990d45fcfcf666def8d773a60d2ea6ee2e0516aabc3d4bce7",
+    "runtime.py": "024e10e662470bc2265c094be151eb1316f141281e1097dd797eb84b8b6d2885",
+    "test_grant_ir.py": "1722565f9f65846972edbdfe84926f9af1701fea83a84a2ddf3c4091f1f08fe4",
+    "test_grant_runtime.py": "ed1c34f5b4ac6287c109708a85c7dbd6f36eb0c13b70f77e68dde24788cc17ef",
+    "test_ir.py": "e892bf206fd5f4477639221b4af4c3b690f02e313d67426988f868c65604b948",
+    "test_model_ir.py": "4c5fbf4956bf84e337567eecb6848e62763a843fcfffb9f18b5b6b70004ba320",
+    "test_model_runtime.py": "0083b3ce53a8e6372340d4878635931ecaa44d7e95c5313334caee38f050137f",
+    "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f",
+    "README.md": "40f6a4b2480d51a59aceb1f21542c6ed398801a24f8ce317b15bdebd509f82f4",
+    "requirements.in": "2301a722a6eb757a302ca5952acd00bd658ae3389eae4f65c61990314546d15d",
+    "requirements.txt": "cb1c078a33754de0142cef15c14f6e247ef859aace7998b6196013a4d2687774",
+    "evidence_c/accepted.mlir": "fdf03da85d67b673bea3d8b103abe0905751b6dbd0a28f0b0466950fe62e37d3",
+    "evidence_c/bindings.json": "d77a32182a9608f62dc84ef2775457fe802404fabee43f84eb8f34bbea4034ec",
+    "evidence_c/clipped_report.json": "fb8a23232ee14dc6565377a202490c4f8ce8c60b915254f5d508baf485a924ba",
+    "evidence_c/failure_reports.json": "50f0d938a992ecd67e83b99079bc4a160c1ef0d0e0413a84df6d2a9a0855b56e",
+    "evidence_c/prepared.mlir": "fcdc711f1f8b31f4153fef9fc249ac2c7d4f1e579ee9deebd7627c57144a977e",
+    "evidence_c/report.json": "212d30becc5e53700fe6495deee541ac5e1d52e72cf023988cf1312627bcfd37",
+    "evidence_c/review.md": "f1c547f3fbb79307b70bc46363e91e498e1a06a0a2743cc233dfb17373a5fb85",
+    "evidence_c/shield_diagnostic.json": "3ad628ad28ec346e58a2779f53d817f1a145b2220e908e215ba441dce053517d"
+  }
+}

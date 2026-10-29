@@ -1,0 +1,57 @@
+{
+  "status": "stopped",
+  "errors": [],
+  "selected": {
+    "entered": true,
+    "selected_returned": true,
+    "initial_weight": 0.800000011920929,
+    "selected_end_weight": 0.800000011920929,
+    "selected_gradient": 4.319999694824219,
+    "restored": true,
+    "phases": [
+      {
+        "phase": "backward",
+        "origin": "phase.0.backward"
+      },
+      {
+        "phase": "temporary_edit",
+        "origin": "phase.1.temporary_edit"
+      },
+      {
+        "phase": "intermediate_reset",
+        "origin": "phase.2.intermediate_reset"
+      },
+      {
+        "phase": "backward",
+        "origin": "phase.3.backward"
+      },
+      {
+        "phase": "restore",
+        "origin": "phase.4.restore"
+      }
+    ]
+  },
+  "final_weight": 0.75,
+  "final_gradient": null,
+  "epoch": 2,
+  "steps": 1,
+  "unit_outcomes": [
+    {
+      "contribution": "granted_ready",
+      "optimizer": "returned",
+      "reset": "returned",
+      "invocation": 1,
+      "advance_invocation": 1,
+      "work": [
+        "grant-session",
+        "selected-two-pass"
+      ],
+      "input_count": 0
+    }
+  ],
+  "pending": false,
+  "handback_verified": true,
+  "unusable": [],
+  "released": true,
+  "diagnostics": 6
+}

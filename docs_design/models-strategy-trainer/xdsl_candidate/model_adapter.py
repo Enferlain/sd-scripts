@@ -329,6 +329,7 @@ def prepare_model(
     if accept_model(module) != accepted:
         raise NotReady("noncanonical A snapshot")
     session = one(module, SessionOp)
+    assert session.horizon is not None
     window, advance = one(session, WindowOp), one(session, AdvanceOp)
     keys = selected_keys(session)
     if target != TARGET_A or window.count.value.data != 2 or len(keys) > 4 or session.horizon.value.data < len(keys):
@@ -417,6 +418,9 @@ def prepare_model(
     decoded = one(loaded, SessionOp)
     if accept_model(ModuleOp([decoded.clone()])).digest != accepted.digest:
         raise NotReady("prepared owner recipe changed the accepted meaning")
+    root = one(loaded, PlanOp)
+    if root.horizon != decoded.horizon or root.capacity != integer(2):
+        raise NotReady("prepared owner recipe changed the selected flow bounds")
     calls: dict[str, DomainBinding] = {}
     for op in loaded.walk():
         if isinstance(op, CallOp):
