@@ -3,11 +3,12 @@
 ## Training Architecture Research
 
 The isolated [xDSL experiment](docs_design/models-strategy-trainer/xdsl_candidate/README.md)
-now implements the data-only B handoff (`sd-scripts-syv.31.9`): semantic and
-prepared xDSL, fresh-process reconstruction, bounded keyed feedback and explicit
-stop/drain, with independent conformance. Model/optimization adapters in A/C and
-the fusion comparison remain separate later handoffs; no framework or
-production representation has been selected.
+now implements data-only B (`sd-scripts-syv.31.9`) and correlated data/model A
+(`sd-scripts-syv.31.10`): semantic/prepared xDSL, fresh-process reconstruction,
+bounded feedback and explicit stop/drain, plus existing owner integration for
+atomic admission, accumulation and independent current-at-start evaluation.
+Granted authority in C and the fusion comparison remain later handoffs; no
+framework or production representation has been selected.
 
 The `rework-model-strategy-trainer` OpenSpec governs the target architecture;
 the active production stack described below has not yet been migrated. The

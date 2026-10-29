@@ -17,6 +17,7 @@ from xdsl.irdl import (
     irdl_attr_definition,
     irdl_op_definition,
     operand_def,
+    opt_prop_def,
     prop_def,
     region_def,
     result_def,
@@ -146,7 +147,7 @@ class PlanOp(IRDLOperation):
     horizon = prop_def(IntegerAttr)
     capacity = prop_def(IntegerAttr)
     stop_rule = prop_def(StringAttr)
-    feedback = prop_def(StringAttr)
+    feedback = opt_prop_def(StringAttr)
     body = region_def("single_block")
     traits = traits_def(NoTerminator(), IsolatedFromAbove())
 
@@ -216,8 +217,8 @@ def dump(module: ModuleOp) -> str:
     return stream.getvalue() + "\n"
 
 
-def parse(text: str) -> ModuleOp:
+def parse(text: str, *, extensions: tuple[Dialect, ...] = ()) -> ModuleOp:
     context = Context()
-    for dialect in (Builtin, Workflow, Data, Execution):
+    for dialect in (Builtin, Workflow, Data, Execution, *extensions):
         context.load_dialect(dialect)
     return Parser(context, text).parse_module()

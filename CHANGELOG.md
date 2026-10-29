@@ -14,6 +14,7 @@ Rules:
 
 ### Added
 
+- **xDSL research now integrates correlated model/data work with existing owners** — explicit sample/window mappings, atomic two-path admission, two-contribution accumulation and current-at-start requested evaluation reuse the candidate's state, optimization and physical-drain services. Independent numerical, failure and reconstruction checks preserve the data-only path; framework selection remains open.
 - **Isolated xDSL research now executes a data-only feedback workflow** — typed semantic and prepared IR reconstruct without the authoring object; independent checks cover actual policy provenance, aggregate outstanding bounds, feedback under blocked publication, partial failure and physical drain through cancellation. Production interfaces and framework selection remain unchanged.
 
 ## [2026-10-28]

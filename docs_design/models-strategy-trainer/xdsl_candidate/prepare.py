@@ -64,7 +64,7 @@ def require(condition: bool, op: Operation, message: str) -> None:
 def ref(value: SymbolRefAttr) -> str:
     # This contract uses flat module-owned entities and implementation names.
     if value.nested_references:
-        raise Rejected(f"{value}: nested symbol paths are not in contract {CONTRACT}")
+        raise Rejected(f"{value}: nested symbol paths are not supported by this flat-symbol contract")
     return value.root_reference.data
 
 
@@ -107,7 +107,17 @@ class Accepted:
         return hashlib.sha256(self.text.encode()).hexdigest()
 
 
-def accept(module: ModuleOp) -> Accepted:
+@dataclass(frozen=True)
+class ContractExtension:
+    """Installed contract code, selected explicitly; never retained in Accepted."""
+
+    name: str
+    version: int
+    verify: Callable[[SessionOp], None]
+    obligations: tuple[str, ...]
+
+
+def accept(module: ModuleOp, *, extension: ContractExtension | None = None) -> Accepted:
     """xDSL structural verification plus the selected data extension's rules."""
     try:
         module.verify()
@@ -122,8 +132,8 @@ def accept(module: ModuleOp) -> Accepted:
     if len(roots) != 1 or not isinstance(roots[0], SessionOp):
         raise Rejected("module: exactly one wf.session required")
     session = roots[0]
-    require(session.contract.data == CONTRACT and session.version.value.data == 1, session, "unsupported contract/version")
-    require(session.stop_rule.data == "settle_selected", session, "undeclared in-flight disposition")
+    name, version = (extension.name, extension.version) if extension else (CONTRACT, 1)
+    require(session.contract.data == name and session.version.value.data == version, session, "unsupported contract/version")
     ids: set[str] = set()
     for op in session.walk():
         if isinstance(op, YieldOp):
@@ -132,6 +142,10 @@ def accept(module: ModuleOp) -> Accepted:
         require(bool(name) and name not in ids, op, "empty or duplicate source identity")
         ids.add(name)
 
+    if extension is not None:
+        extension.verify(session)
+        return Accepted(dump(module), extension.obligations)
+    require(session.stop_rule.data == "settle_selected", session, "undeclared in-flight disposition")
     children = tuple(session.body.block.ops)
     allowed = (EntityOp, FlowOp, SelectOp, ComposeOp, ScoreOp, PublishOp)
     require(all(isinstance(op, allowed) for op in children), session, "unsupported service operation")

@@ -1,0 +1,111 @@
+{
+  "scope": "A only, with B regressions; no C, fusion, production/G5 or final framework selection",
+  "baseline_commit": "2131f31d",
+  "versions": {
+    "python": "3.14.5",
+    "xdsl": "0.74.0",
+    "torch": "2.14.1+cu130"
+  },
+  "gil_before_and_after_combined_suite": [
+    false,
+    false
+  ],
+  "validation": {
+    "combined_tests": {
+      "passed": 158,
+      "seconds": 11.41
+    },
+    "isolated_without_torch": {
+      "passed": 100,
+      "optional_module_skips": 1,
+      "seconds": 3.37
+    },
+    "legacy_owner_tests": {
+      "repeated_regions_provider_workers_submission": 119,
+      "input_associations": 37,
+      "note": "The 119-test legacy suite loads standard Torch optimizer/Triton in its independent oracle and enables the GIL; the separate new combined suite remained GIL-disabled."
+    },
+    "ruff": "passed",
+    "format": "passed",
+    "ty": "passed"
+  },
+  "sample": {
+    "accepted_digest": "bfa26dbabc94281ef6719fcd28140f7a26dcb8a2fc694b42b588a8d31ef2d249",
+    "status": "stopped",
+    "steps": 2,
+    "evaluation_trigger": 0,
+    "actual_evaluated_epoch": 2
+  },
+  "limits": [
+    "Finite source/filter and at most four selected samples; lower horizon or different valid window size may be unsupported by this CPU target.",
+    "One existing Engine coordinates generated backend Run/Work records. No legacy candidate or production source changed.",
+    "Rejected ports close against further claims; unconsumed records and incomplete contribution evidence remain inspectable in this bounded failed owner lifetime.",
+    "No GPU/distributed/durable restoration, arbitrary extension concurrency safety or performance qualification."
+  ],
+  "review": {
+    "status": "completed_via_interactive_omp",
+    "mcp": {
+      "status": "failed",
+      "result_ok": false,
+      "reason": "HTTP429 GLM five-hour usage limit; no verdict",
+      "original_artifacts": "/tmp/review-mcp-run-qpy6kpkf"
+    },
+    "interactive_omp": {
+      "status": "passed",
+      "reviewer": "labe",
+      "artifact": "review.md",
+      "result_thread": "xdsl-a-review-20261029-result",
+      "result_event": 50433,
+      "independently_reran": {
+        "passed": 158,
+        "seconds": 10.1
+      },
+      "reviewed_source_sha256": {
+        "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+        "__main__.py": "85994274e6f27f8943a901b181712deeae080be73a1f28b20f72631c031b6c35",
+        "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+        "dialects.py": "37830beb0179fd5fba9c001f2aaaa07e7c9f0b81ad012729b10ea3991091d743",
+        "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+        "model_adapter.py": "ccc3b27f9f9877f73e272c450c9a41e32f71fe7c9321c09ec0f4fdd6e4b90512",
+        "model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+        "model_contract.py": "7ddbf8e98aa3595d768d7f84356bc28e4240e92bbb06c68c72490fe1925ac55a",
+        "model_demo.py": "74e730e0db9e4636478247e95aed29fbdcc27c81737aeaaf92733e3735843f75",
+        "model_dialect.py": "be32946bab1e0d38a7d57e66e0ad5e1e7e16ff422406318b2f35d2b30bc71c58",
+        "prepare.py": "2b6c3269330bbf547d95f19412f8bd04b2d53b2fd2fb19004b09a379de23b517",
+        "runtime.py": "024e10e662470bc2265c094be151eb1316f141281e1097dd797eb84b8b6d2885",
+        "test_ir.py": "e892bf206fd5f4477639221b4af4c3b690f02e313d67426988f868c65604b948",
+        "test_model_ir.py": "4c5fbf4956bf84e337567eecb6848e62763a843fcfffb9f18b5b6b70004ba320",
+        "test_model_runtime.py": "3c9a87bffc042fadf22ca8b84b367804de4bb40fb450f676c9593f2432eac591",
+        "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f"
+      }
+    },
+    "followup": "Small robustness correction derives objective normalization from decoded ContributeOp;158 existing tests and static gates pass afterward. No significant refactor or second full review required.",
+    "informational_note": "Direct await run.run() inside normal asyncio callers still runs under asyncio.current_task; reviewer did not identify a supported failing path. Existing direct-await and explicit-task cases both pass."
+  },
+  "sha256": {
+    "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+    "__main__.py": "85994274e6f27f8943a901b181712deeae080be73a1f28b20f72631c031b6c35",
+    "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "dialects.py": "37830beb0179fd5fba9c001f2aaaa07e7c9f0b81ad012729b10ea3991091d743",
+    "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+    "model_adapter.py": "c3c10d6d1ae0b22bb94bdd166e0f5ef34152a6545cae6d0b25858b490a93a739",
+    "model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+    "model_contract.py": "7ddbf8e98aa3595d768d7f84356bc28e4240e92bbb06c68c72490fe1925ac55a",
+    "model_demo.py": "74e730e0db9e4636478247e95aed29fbdcc27c81737aeaaf92733e3735843f75",
+    "model_dialect.py": "be32946bab1e0d38a7d57e66e0ad5e1e7e16ff422406318b2f35d2b30bc71c58",
+    "prepare.py": "2b6c3269330bbf547d95f19412f8bd04b2d53b2fd2fb19004b09a379de23b517",
+    "runtime.py": "024e10e662470bc2265c094be151eb1316f141281e1097dd797eb84b8b6d2885",
+    "test_ir.py": "e892bf206fd5f4477639221b4af4c3b690f02e313d67426988f868c65604b948",
+    "test_model_ir.py": "4c5fbf4956bf84e337567eecb6848e62763a843fcfffb9f18b5b6b70004ba320",
+    "test_model_runtime.py": "3c9a87bffc042fadf22ca8b84b367804de4bb40fb450f676c9593f2432eac591",
+    "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f",
+    "README.md": "3e355d1b7a5f4f039206972618de3bd67f62bfbb6be9e0594d63f7f16cf86427",
+    "requirements.in": "2301a722a6eb757a302ca5952acd00bd658ae3389eae4f65c61990314546d15d",
+    "requirements.txt": "cb1c078a33754de0142cef15c14f6e247ef859aace7998b6196013a4d2687774",
+    "evidence_a/accepted.mlir": "bfa26dbabc94281ef6719fcd28140f7a26dcb8a2fc694b42b588a8d31ef2d249",
+    "evidence_a/prepared.mlir": "13a27a610e5d5174d59f33ebc620c6456bd5b83e7b72c191b175c2c6342adacf",
+    "evidence_a/bindings.json": "245eccf33a22ae53e9d7396d3586522c035e2abc2f6b5a1bf83e4954cf545075",
+    "evidence_a/report.json": "6b5be7fad20cbb019fa08daf487a8fe51e1dcda9798a3ba619e782e29c92e8d1",
+    "evidence_a/review.md": "d5cf1bf763d96c032fa5433a14694aadfaffb52d35b40e71e8480683cf66d017"
+  }
+}
