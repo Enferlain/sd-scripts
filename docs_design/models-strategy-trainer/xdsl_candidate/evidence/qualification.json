@@ -1,0 +1,79 @@
+{
+  "scope": "B only; A, C, fusion and production adoption not qualified",
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "free_threaded_build": true,
+  "gil_before_and_after_suite": [
+    false,
+    false
+  ],
+  "xdsl": "0.74.0",
+  "validation": {
+    "pytest": {
+      "passed": 83,
+      "failed": 0,
+      "seconds": 3.1
+    },
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "ty": "passed"
+  },
+  "review": {
+    "status": "completed",
+    "result_ok": true,
+    "artifact": "review.md",
+    "original_artifacts": "/tmp/review-mcp-run-hed2vwmy",
+    "reviewed_source_sha256": {
+      "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+      "__main__.py": "16e3efe13b126aed92aa53b1833996f3da585aec6eaf379f2670c203c5f6109a",
+      "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+      "dialects.py": "2bef6377ae2dabae7bbd71a60e14efa5d9ec2eb4222ff136704a89419320fd80",
+      "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+      "prepare.py": "22ac3a49f17d43927736dfdc0a456be9f097ace7def142e39d42e82f7a2e86e4",
+      "runtime.py": "024e10e662470bc2265c094be151eb1316f141281e1097dd797eb84b8b6d2885",
+      "test_ir.py": "39e2affb2050aa09205186f107674b5368512de7f6e278b29305eda023936001",
+      "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f"
+    },
+    "followups": {
+      "1": "CLI oracle uses prepared horizon; fresh-process H1/H2 checked",
+      "2": "Dispatch resolves and validates prepared producer/consumer chain roles and call binding/completion descriptors",
+      "3": "CLI records installed xDSL version from package metadata",
+      "5": "Nonpositive stop count is an argparse usage error before execution"
+    },
+    "defensive_notes": "Review notes 4 and 6 are nonblocking: arbitrary internal service-code faults are outside the fixed B qualification, and in-package private control probes remain deliberate. No general runtime qualification is claimed. Small follow-up corrections did not change the runtime ownership mechanism."
+  },
+  "sample": {
+    "status": "stopped",
+    "tickets": 6,
+    "high_water": 2,
+    "accepted_digest": "f681f9ec97b3983fabc6bb83ff6d9fc2f4ac5be57b91ec04947cf704d772f304"
+  },
+  "sha256": {
+    "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+    "__main__.py": "85994274e6f27f8943a901b181712deeae080be73a1f28b20f72631c031b6c35",
+    "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "dialects.py": "2bef6377ae2dabae7bbd71a60e14efa5d9ec2eb4222ff136704a89419320fd80",
+    "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+    "prepare.py": "5aca85e380bcd37a3975657e7e3060d6e29a6ae1ab7721b5eb3da5f97d27ce59",
+    "runtime.py": "024e10e662470bc2265c094be151eb1316f141281e1097dd797eb84b8b6d2885",
+    "test_ir.py": "e892bf206fd5f4477639221b4af4c3b690f02e313d67426988f868c65604b948",
+    "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f",
+    "README.md": "0eec4d4f493c6271c865cfc65bdeaf923900889b55d209f6751cd2031162d529",
+    ".gitignore": "4308694e736f863f0cca74c61c360031c9097088960fce48955059e7ceb3b662",
+    "requirements.in": "2301a722a6eb757a302ca5952acd00bd658ae3389eae4f65c61990314546d15d",
+    "requirements.txt": "cb1c078a33754de0142cef15c14f6e247ef859aace7998b6196013a4d2687774",
+    "evidence/accepted.mlir": "f681f9ec97b3983fabc6bb83ff6d9fc2f4ac5be57b91ec04947cf704d772f304",
+    "evidence/prepared.mlir": "5570bf6c0f2f08b0b6c681913b985c7298dedc7d8e685c60a36d520c36a3e730",
+    "evidence/bindings.json": "11e53cfb3ca3856dd9f3fcd0d33eab1318ea7a311e9bf2959c61700ce8bb017d",
+    "evidence/report.json": "9aa3158980381d3347559033514690ccfa4a6304b0bf162a5dabf123d9594a62",
+    "evidence/review.md": "a13bd21f088da02c1252d9dd785e6a19b1dcf1f8893e86e6f29b34262d73cacd"
+  },
+  "xdsl_source_sha256": {
+    "irdl/operations.py": "c9d64ff76aa8bec434945815766034010b26e1c3fc1285c5f5a9ceb27e54bee8",
+    "irdl/attributes.py": "5390db1921844923d604abee03d99d2b713b388848a9b2e0f528826fe182e473",
+    "ir/core.py": "d007e5d60aa204782f4fab5ac6b5c0de637311df07db65368bf80f6717a31398",
+    "traits.py": "9a8df8a232a7d79c1836ce40136a5245559b9f6e6f9ea7e5b5f7782d5bcb7a2e",
+    "parser/core.py": "b5b276bd7d1e2edb1a0832fae30261e0a472f69c0356cd562be95c7ffb9b802c",
+    "context.py": "398f6fe1a77cb940e30cb499f5ddd3e6d80073fb9d4e3b0ea5bc3f5fdc4b81de",
+    "printer.py": "44d48c3d67a1a60793434c3f92376840f764b0fa2f7a7e835173a0ba819e7765"
+  }
+}

@@ -1,0 +1,2 @@
+# Retain this experiment's compiled pins despite the repository's *.txt rule.
+!requirements.txt

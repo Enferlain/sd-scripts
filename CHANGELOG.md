@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-29]
+
+### Added
+
+- **Isolated xDSL research now executes a data-only feedback workflow** — typed semantic and prepared IR reconstruct without the authoring object; independent checks cover actual policy provenance, aggregate outstanding bounds, feedback under blocked publication, partial failure and physical drain through cancellation. Production interfaces and framework selection remain unchanged.
+
 ## [2026-10-28]
 
 ### Added
