@@ -9,8 +9,16 @@ bounded feedback and explicit stop/drain, plus existing owner integration for
 atomic admission, accumulation and independent current-at-start evaluation.
 Explicit delegated/retained authority and a typed handback reuse the same
 existing grant/optimization owners; failed handback cannot authorize advancement,
-and partial optimizer/reset outcomes remain owned. The fusion comparison remains
-a later handoff; no framework or production representation has been selected.
+and partial optimizer/reset outcomes remain owned. The local fusion comparison
+is now reviewed research; no framework or production representation has been selected.
+The external review's A/B prepared-plan correspondence gap is addressed in the
+isolated candidate (`sd-scripts-syv.31.14`), with explicit field authority and
+corruption checks before owner construction. Fusion, continuous feedback with
+model ownership, and an independent operation/schema extension form the bounded
+research sequence (`sd-scripts-syv.31.12`, `.31.15`, `.31.16`). The local fusion
+comparison now has a real prepared-IR rewrite and direct grouped execution with
+preserved stage observations; current gates and review status are recorded in
+its evidence. The mixed workflow now combines an open producer, learning-driven policy, dynamic exclusion and shared trainable-model reads/updates under one engine, including blocked-handoff stop and physical-drain evidence. The independent extension now runs through the existing scalar session using common local interfaces, typed payloads and checked immutable configuration snapshots; its evidence records qualification and review. These complete the bounded external-review followups without selecting a framework.
 
 The `rework-model-strategy-trainer` OpenSpec governs the target architecture;
 the active production stack described below has not yet been migrated. The

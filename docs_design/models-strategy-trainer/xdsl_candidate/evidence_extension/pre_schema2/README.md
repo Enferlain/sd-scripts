@@ -1,0 +1,1 @@
+These first successful observations preceded the manifest schema-2 tag and final cold-validation guards. They are retained as historical observations; no exact source hash was captured for this intermediate snapshot. Final qualified observations are in the parent fused/unfused folders. No timing or performance comparison is made.

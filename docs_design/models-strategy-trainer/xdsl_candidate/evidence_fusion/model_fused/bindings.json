@@ -1,0 +1,51 @@
+{
+  "abi": "candidate-owner-cpu-v1",
+  "bindings": [
+    {
+      "effect": "load",
+      "role": "model",
+      "symbol": "scale_v1",
+      "version": "1"
+    },
+    {
+      "effect": "load",
+      "role": "model",
+      "symbol": "scale_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "double_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "offset_v1",
+      "version": "1"
+    },
+    {
+      "effect": "read_source",
+      "role": "encode",
+      "symbol": "encode_v1",
+      "version": "1"
+    },
+    {
+      "effect": "build_loss",
+      "role": "objective",
+      "symbol": "loss_v1",
+      "version": "1"
+    },
+    {
+      "effect": "current_read",
+      "role": "measure",
+      "symbol": "measure_v1",
+      "version": "1"
+    }
+  ],
+  "fused_groups": 1,
+  "local_lowering": "fused-v1",
+  "registry": "correlated-fixtures-v1",
+  "schema": 1
+}

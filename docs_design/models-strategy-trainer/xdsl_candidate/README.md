@@ -1,14 +1,22 @@
 # xDSL workflow experiments
 
-This isolated research package implements **B, A and C** of the plan
-recorded in `sd-scripts-syv.31.8`, as `sd-scripts-syv.31.9`,
-`sd-scripts-syv.31.10` and `sd-scripts-syv.31.11`. It tests xDSL as the
+This isolated research package implements **B, A and C** of the plan recorded
+in `sd-scripts-syv.31.8`, as `sd-scripts-syv.31.9`, `sd-scripts-syv.31.10`
+and `sd-scripts-syv.31.11`. Later sections record local fusion, a mixed ownership
+workflow and an independent local operation/schema extension. It tests xDSL as the
 actual semantic and prepared IR infrastructure for a system that can represent
 data and model workflows. Production code, governing OpenSpec requirements and
 framework selection remain unchanged. B's data-only experiment is described
 below; [A's owner integration](#a-correlated-data-model-work-and-evaluation)
 adds bounded training/evaluation evidence, and [C's granted authority](#c-offered-two-pass-authority-and-retained-advancement)
-checks a selected two-pass region. Fusion remains a later handoff.
+checks a selected two-pass region. The [local fusion comparison](#local-data-fusion)
+now tests one conservative transformation of prepared dispatch.
+
+Latest combined qualification: **457 research tests pass** with the GIL
+disabled before and after the full run; the Torch-free environment passes
+**256 tests** with three optional backend modules skipped. Four milestone
+reviews approved the work; bounded follow-up corrections and final validation
+are recorded in [the current qualification](evidence_extension/qualification.json).
 
 The Python author in [fixture.py](fixture.py) constructs nested xDSL operations:
 
@@ -63,7 +71,7 @@ in a fresh process with the authoring builder disabled. Preparation resolves
 wiring once; current policy, ticket admission, receipts and physical completion
 remain live checks. No authored Python closure is serialized.
 
-The binding ABI is `int -> Awaitable[object]`, followed by exact integer output
+The original scalar fixture uses `int -> Awaitable[object]`, followed by exact integer output
 validation; publication additionally validates an equal returned receipt.
 A binding must return or raise only after its own physical uses and cleanup
 finish. The coordinator shields selected service lifetimes from cancellation.
@@ -134,7 +142,9 @@ about arbitrary internal service faults and private test probes do not extend
 this fixed target's qualification to a general runtime.
 
 [evidence/](evidence/) retains the accepted/prepared IR, binding manifest, one
-execution report and qualification/source metadata. The live associations are
+execution report and qualification/source metadata. Base B's checked-in
+`evidence/bindings.json` is historical schema 1; use a newly generated schema-2
+manifest with current code. The live associations are
 bounded by the horizon; the experiment retains completed facts for its externally
 bounded test recorder. It does not claim bounded archival memory for an
 indefinitely running production service, storage durability or restoration.
@@ -144,11 +154,11 @@ SSA use tracking, isolation/terminator checks, parsing/printing and cloning.
 Our extension still supplies semantic acceptance, symbolic binding policy,
 target matching, domain/progress protocols and independent conformance. Generic
 memory-effect traits do not establish workflow purity or removability; even
-`pure` scalar calls may fail. No generic DCE or fusion pass is applied here.
+`pure` scalar calls may fail. No generic DCE is applied; the optional local
+fusion below preserves stage validation and failure rather than removing calls.
 
 This makes xDSL promising for representation and diagnostics in B. C's granted
-authority integration is described below; the planned semantics-preserving
-fusion experiment remains open. Python 3.14t execution and observed GIL state do not establish
+authority integration and local fusion are described below. Python 3.14t execution and observed GIL state do not establish
 arbitrary extension concurrency safety, GPU/distributed interoperability,
 production performance or a final framework choice.
 
@@ -248,7 +258,8 @@ The [interactive OMP code review](evidence_a/review.md) passed and independently
 reran all 158 tests after `review-mcp` failed with a provider usage-limit error.
 A small follow-up reads normalization from decoded IR instead of a target
 literal; the affected gates pass after that correction. Broader architecture
-viewpoints remain deferred until C and fusion have results.
+viewpoints were deferred at that handoff. The subsequent external review led
+to the prepared-plan repair described below.
 
 ## C: offered two-pass authority and retained advancement
 
@@ -314,7 +325,7 @@ between both CPU emissions but fails this independent oracle.
 | Repeated cancellation, with successful or failed physical return | Protection remains until actual drain; interruption and any physical failure survive, with no verified handback |
 | Retained optimizer or reset raises after effects | Verified handback remains distinguishable from uncertain advancement/reset; pending evidence survives and cannot authorize retry |
 
-The complete suite passes **245 tests**, including **83 C tests** (23 semantic,
+The C handoff passed **245 tests**, including **83 C tests** (23 semantic,
 60 optional numerical/owner tests) and four post-review A plan-bound regressions. The environment without Torch passes
 **123 tests and skips two optional modules**. The combined numerical suite's
 actual GIL state is false before and after execution. Separately, **39 existing
@@ -356,9 +367,306 @@ ops describe a fixed protocol, with numerical execution behind a versioned
 binding, rather than a general differentiable numerical IR.
 
 B uses its small scalar realization; A and C each reuse the existing owner
-engine. These results do not yet demonstrate a single dynamic feedback/model
-run. Fusion, broader combined-runtime behavior, GPU/distributed execution,
-durable restoration and production performance remain unqualified. Framework
-selection, including whether custom machinery is preferable, depends on the
-remaining evidence. Outside architecture viewpoints remain deferred until the
-planned fusion comparison is complete.
+engine. The mixed experiment below now demonstrates a bounded dynamic
+feedback/model run through one owner engine. Broader combined-runtime behavior,
+GPU/distributed execution, durable restoration and production performance remain
+unqualified. Framework selection, including whether custom machinery is
+preferable, depends on the accumulated evidence and remaining tradeoffs.
+
+## Prepared-plan correspondence repair
+
+The external review of `6bea859b` exposed a cold verification gap: A could
+resolve a different compatible implementation under an unchanged stage origin;
+B could accept changed bounds, target or feedback descriptors. Independent
+oracles detected wrong execution, but preparation did not consistently reject
+the broken correspondence. These were faulty-emission/pass probes, rather than
+failures of the ordinary generator. `sd-scripts-syv.31.14` addresses this before
+the planned fusion comparison.
+
+Decoded A/B plans now check their identity, concrete target, contract, bounds
+and disposition against accepted meaning. Every semantic implementation
+selection has exactly one prepared call with its selected symbol, installed
+version, role/effect/completion requirements and actual source ancestry. B
+additionally checks chain order and the complete owner/control recipes; A checks
+the retained semantic recipe, owner protocol and address correspondence before
+loading models. Unknown executable properties and unsupported operations reject
+readiness. The repair initially required one-to-one call correspondence. Local
+fusion below retains that leaf-binding correspondence and adds checked
+many-to-one dispatch grouping.
+
+The current prepared vocabulary has these authorities:
+
+| Fields | Authority and consumption |
+|---|---|
+| `exec.plan.accepted_digest`, `contract`, `target` | Checked identity of the accepted document and supported backend. They cannot select an unimplemented target by changing a label. |
+| `horizon`, `capacity` | Concrete choices constrained by accepted bounds and the selected target. B consumes them for live admission/mailbox control; A checks them against its finite address/owner realization. |
+| `stop_rule`, `feedback` | Required fixed-protocol descriptors, checked against the accepted disposition and supported coordinator. They are not arbitrary instruction strings. |
+| `exec.call.implementation`, `binding_version`, `role`, `effect`, `completion` | Checked correspondence to the semantic selection and installed ABI. The resolved implementation is invoked; the backend supplies the verified completion mechanism. |
+| `exec.call.origin`, `ancestors` | Checked source correspondence retained for outcomes and diagnostics. A compatible binding under another origin does not satisfy it. |
+| `exec.chain.role`, `transport`, ordered calls | The role and call order construct dispatch. Transport identifies the supported fixed handoff/lifetime protocol and is checked. |
+| B `exec.select`, `exec.handoff`, `exec.feedback` properties and owner declarations | Required scalar-profile contracts matched exactly to accepted entities/endpoints. The versioned backend implements selection, update, retention and acknowledgement; it does not interpret the descriptive arithmetic strings. |
+| A `model_data.recipe` properties and semantic body | Checked owner-protocol contract and accepted subtree. This is input to owner-program construction, not a fully lowered machine program. |
+| A `model_data.address` | Sample/window/slot correspondence is checked. Concrete port names are consumed by publication/admission and must satisfy the target's distinct-member constraints. |
+| xDSL locations and ordinary diagnostic attributes | Non-authoritative metadata for this backend. Execution obligations cannot be established solely by such annotations. |
+
+The repaired suite passes **309 tests**, including 64 new regression cases.
+The environment without Torch passes **167 tests and skips two optional
+modules**. Actual GIL state stays false before/after the full suite. Ruff,
+formatting and ty pass. [Repair evidence](evidence_verification/) records the
+original and rejected mutation cases, source hashes and the [approved review](evidence_verification/review.md).
+Small reviewed follow-ups normalize readiness failures, pin missing/novel chains,
+and align C's decoded structural-failure classification. xDSL IRDL already rejects
+undeclared properties; the target checks also enforce its known protocol profile.
+Earlier B/A/C evidence directories remain their historical snapshots.
+
+This repair preserves the small fixed-protocol runtime. It does not introduce
+a general interpreter, a plugin system or a new effect algebra. The subsequent
+fusion, mixed feedback/model workflow and independent operation/schema tests
+are recorded in the following sections; no framework or production choice follows
+from this defensive verification alone.
+
+## Local data fusion
+
+`sd-scripts-syv.31.12` adds an actual xDSL rewrite of the prepared local binding
+selections. The accepted semantic document is unchanged. [fusion.py](fusion.py)
+uses `RewritePattern`, `PatternRewriteWalker`, cloning and replacement to group
+adjacent eligible calls into an `exec.fused` region. The group retains every
+leaf implementation selection, ordered source ID and ancestor chain:
+
+```text
+unfused: exec.call(data.double) ; exec.call(data.offset)
+fused:   exec.fused(origins=[data.double,data.offset]) {
+           exec.call(data.double) ; exec.call(data.offset)
+         }
+```
+
+The rewrite queries two small semantic interfaces in
+[local_contract.py](local_contract.py). A local transform describes its input
+and output types, one-to-one cardinality, declared resource footprint and
+possible outcomes. A transparent local region declares ordered composition
+without a separate live-resource lifetime. Eligibility requires the supported
+scalar contract, no declared resource effects, known preserved outcomes and
+transparent ancestry. Unknown semantics and effectful stages are barriers.
+Model uses, publication, feedback and granted phase protocols are outside the
+eligible group. These interfaces serve this pass; they do not establish a
+general effect or plugin system.
+
+After parsing, preparation rechecks group profile, closed body, complete leaf
+bindings, ordered origins and semantic stage order. This matters especially in
+A, whose original ungrouped bindings were consumed by origin lookup. Grouping
+cannot convert metadata order into a different algorithm. The optional policy
+is explicit as `prepare(..., fuse=True)` / `prepare_model(..., fuse=True)` and
+`--fuse` in both CLIs. Fresh-process tests reconstruct both realizations with
+the authoring builder disabled.
+The binding manifest reports actual formed groups, including zero when the
+requested rewrite finds only barriers. Maximal grouping is not a semantic
+requirement; complete leaf correspondence and order are.
+
+[local_runtime.py](local_runtime.py) makes the execution difference concrete:
+unfused leaves enter separate guarded coroutines; a fused group uses one
+generated coroutine with the guard shell inlined for its stages. Numeric
+bindings still run, in order, and validate before the next stage can enter.
+Code generation interpolates trusted templates and integer indexes; source
+labels remain data. The shared observer ABI records entry, physical return,
+validation and release. B retains its original per-stage clocks/outcomes. A
+now uses that common guarded-stage ABI and retains sample/source/outcome facts;
+its model admission, state and optimization owners are unchanged.
+
+For four A records, local dispatch observations change from eight to four while
+all eight data-stage outcomes survive. B likewise uses one rather than two
+dispatches per completed local chain. These counters are observations, not
+readiness or admission authority. C has no eligible local stages; the rewrite
+is a checked no-op and its grant conformance still passes.
+
+The suite passes **356 tests**, including rejected corrupt groups, effect
+barriers, invalid pure output, raised failures, prevention of later-stage entry,
+physical stop/repeated cancellation with successful or failed return, changed
+production order, independent A/B numerical/association checks and C's no-op.
+An intentionally shared incorrect binding still passes agreement between the
+two realizations and fails the independent oracle. The no-Torch environment
+passes **196 tests and skips two optional modules**. Actual GIL state stays
+false before/after the full run; Ruff, formatting and ty pass.
+
+[Fusion evidence](evidence_fusion/) retains prepared text, full B observations,
+one fused A snapshot, source hashes, raw costs and review status.
+The [required review](evidence_fusion/review.md) approved the rewrite and runtime
+distinction. Small follow-ups corrected the manifest's actual-group diagnostic
+and removed the obsolete flat dispatch field; all 356 tests and static gates
+pass afterward. The cost files retain their original measurement snapshot,
+before these descriptor/unused-field cleanups and the typing-only Protocol
+correction; hot guards and selected bindings did not change or get resampled.
+[fusion_probe.py](fusion_probe.py) separates acceptance/preparation from an
+isolated local-dispatch probe with real yielding scalar bindings and a small
+validating observer. Seven alternating pairs of 1,000 records gave local
+medians of **6.575 ms unfused / 6.392 ms fused**, ratio **1.029**, and preparation
+medians **10.55 / 11.99 ms**. Raw samples are retained; this small single-process
+probe establishes no statistical or production speedup. It excludes complete
+session coordination, model owners and GPU work, and does not compare against
+the previous execution candidate. The first timing run is retained without
+resampling for a more favorable result.
+
+The concrete infrastructure reused here is xDSL's traits, recursive IR,
+cloning, pattern walker/replacement, structural verification and text round-trip.
+The legality rules, source correspondence, binding/observer ABI and executable
+construction remain project work. The prepared calls have no SSA results, so
+this rewrite does not exercise SSA result remapping or prove that generic
+framework analyses understand our ownership semantics. The following sections
+record continuous mixed feedback/model behavior and independent operation/schema
+composition as separate qualifications.
+
+```bash
+/tmp/sd-scripts-xdsl-b-env/bin/python -m docs_design.models-strategy-trainer.xdsl_candidate \
+  --fuse --dump-dir /tmp/xdsl-b-fused
+/tmp/sd-scripts-xdsl-b-env/bin/python -m docs_design.models-strategy-trainer.xdsl_candidate.fusion_probe \
+  --dump-dir /tmp/xdsl-fusion-costs
+```
+
+## Mixed continuous selection and shared model ownership
+
+The bounded [mixed contract](mixed_contract.py) combines B's open selection and
+learning-driven feedback with A's real owner services. Its accepted document
+contains dynamic filtering, shared-participant model preprocessing, atomic
+correlation, ordinary contribution/advancement, post-step feedback and an
+external stop checkpoint. [mixed_workflow.svg](mixed_workflow.svg) shows the
+feedback loop, containment and shared state.
+
+One existing `Engine` runs an open `Producer` beside a learning `Repeat`.
+The producer owns cursor, policy and three outstanding tickets; learning sends
+post-advance weight/input observations through a bounded message transport.
+The producer's receiver validates membership, updates bias to
+`int(abs(weight)*10)%5`, increments revision and retires exactly that ticket.
+Selection uses the actual applied revision and `key + bias`. Key multiples of
+four are excluded only after feedback exists, so key zero is admitted and key
+four is dynamically excluded. This policy is an installed fixture, not a
+universal feedback or training rule.
+
+The **same trainable participant** supplies detached preprocessing reads and
+receives updates. Admission requires the same binding and actual protected
+production provenance; it permits an older numerical epoch at later claim.
+The numerical checker independently reconstructs the weight at that observed
+epoch. Each loss is `(w*(left+right)-selected/2)^2/2`; one contribution advances
+at learning rate `.001`. Existing retained-state, input, unit, physical-worker
+and progress services own these lifetimes. There is no second scalar session
+or run coordinator. Common local dispatch/fusion handles the pure branch.
+
+This CPU profile reaches a declared checkpoint after three windows and waits
+for **external** stop. Stop closes selection, discards unclaimed ready products
+and cancels/joins private production. The pressure driver deliberately keeps
+key six in a real worker while key five waits on bounded publication. Stop and
+repeated interruption cannot release that model read before physical return;
+a subsequent physical failure remains visible alongside completed updates.
+An interruption that wins before normal producer completion can retain ready
+products in **closed** feeds for diagnosis. The oracle accounts for retained,
+discarded and never-published products separately. Retired outstanding tickets
+are labelled `closed_without_feedback`, not fabricated acknowledgements.
+
+Run the pressure driver (Torch optional outside this extension):
+
+```bash
+uv run --no-sync --with-requirements docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt \
+  python -m docs_design.models-strategy-trainer.xdsl_candidate.mixed_demo \
+  --fuse --dump-dir /tmp/xdsl-mixed
+```
+
+Accepted/prepared text and the version manifest reconstruct with the author
+builder disabled in a fresh process. Corrupt target, bounds, source ancestry,
+implementation, stage order, retained meaning or owner protocol reject before
+model loading. Independent arithmetic and report-corruption controls also
+reject a shared wrong implementation across fused/unfused paths. Diagnostics
+can be evicted entirely without losing live association or completion evidence.
+
+This qualifies one explicit stop checkpoint, CPU payload/profile and feedback
+policy. It does not qualify arbitrary mid-gradient stop, indefinite archival
+memory, general plugin discovery, GPU/distributed execution or a framework
+selection. As in C, CPython's shield machinery can log a physical exception
+during repeated cancellation even though the joined owner report retains it;
+that diagnostic is not evidence of detached work. First failures, qualification
+and required review are retained in [evidence_mixed/](evidence_mixed/).
+
+The shared `ack_before_next_selection` descriptor means selection reflects all
+feedback already applied before it; the horizon permits selecting other tickets
+before a predecessor's acknowledgement. The pressure driver requires its explicit
+key-six gate and fails promptly if that control is absent. Planned shutdown also
+relies on the existing producer cancelling private tasks before closing their
+ports; reversing that target ordering would need renewed qualification. Failed
+runs return a report whose `status` callers must inspect; interruption propagates
+after the report and drain are retained.
+
+## Independent operation, payload schema and declared resource
+
+[pair_extension.py](pair_extension.py) installs an independent `pairing.pack`
+operation and `pairing.vector<width>` payload type. It uses B's existing session
+contract, selector, mailbox, feedback and runtime. No new whole-workflow verifier,
+owner engine, adapter or core operation-name case is added for it.
+
+Inside the existing recursive local region, the original scalar result enters
+`pairing.pack`, which reads the versioned frozen coefficients `(1, 2)` and
+produces the typed pair `(value, 2*value)`. An ordinary `data.map` binding selects
+the first lane. This deliberately preserves B's surrounding numerical behavior
+while making the internal payload independently observable. A wrong second lane
+passes the old final-scalar oracle and fails the separate payload oracle.
+
+The concrete common interfaces are now:
+
+| Interface | Checked meaning |
+|---|---|
+| `wf.flow` payload | An open schema name or structurally valid payload type, with codec installation checked during preparation, rather than three core payload strings. The independent type verifies positive width itself; unsupported positive widths can be accepted and then rejected for missing target codec support. |
+| `LocalTransform` | Typed unary input/output, one-to-one cardinality, declared resources and possible outcomes. `local_maps` retains its old name but analyzes interfaces and SSA links rather than a closed `MapOp | LocalOp` list. |
+| `TransparentLocal` | An ordered region with no separate resource lifetime; its final yield must match its declared output schema. |
+| Local payload/resource ABI | Versioned input/output codecs, exact resource symbol/access/version/content digest, immutable snapshot scope and an installed lowering. Only declared snapshots reach the lowering factory. |
+
+The bounded resource access here is **`read_frozen` configuration**. Frozen
+integer tuples and read-only maps prevent mutation through this ABI. This does
+not implement live model leases, mutable resources, security isolation or a
+universal effect system. Installed code remains trusted. Domain `negative_input`
+raises a declared failure; validation failures and undeclared outcomes stop
+before later local work or publication can enter.
+
+Prepared B plans now contain `exec.local_signature` for every local stage.
+Its schemas, codec versions, resource identity and outcomes are compared with
+the accepted operation interfaces and installed registry **after decoding and
+before any lowering factory runs**. The manifest uses schema 2 and records the
+same codec/resource/outcome information. Missing/duplicate/corrupted signatures,
+unsupported bindings and illegal fusion reject during preparation. Historical
+manifests remain historical snapshots and are rejected if they differ from the
+current realization; this is not a stable artifact-compatibility promise.
+
+The unchanged fusion eligibility logic fuses the original pure scalar pair and
+keeps both resource-bearing pack and unfamiliar-schema unpack as barriers.
+Grouped/un-grouped execution preserves all six call facts per completed ticket.
+The two existing scalar owner adapters explicitly reject accepted unsupported
+local schemas during preparation; they do not silently acquire this new ABI.
+
+```bash
+/tmp/sd-scripts-xdsl-b-env/bin/python \
+  -m docs_design.models-strategy-trainer.xdsl_candidate.extension_demo \
+  --fuse --dump-dir /tmp/xdsl-extension
+```
+
+Fresh-process tests disable the authoring builder and reconstruct from accepted
+text plus the installed dialect/codecs/version manifest. Tests also cover malformed
+schema/cardinality/wiring, missing support, resource identity/access/outcome
+mismatch, decoded contract corruption before lowering, invalid payload after
+entry, declared/undeclared failures, a shared hidden-lane mistake and real physical
+work draining through repeated cancellation. The combined gates and required
+review are retained in [evidence_extension/](evidence_extension/).
+
+This demonstrates local composability and exposes useful minimal interfaces.
+Whole-session service contracts are still fixture profiles; generic cardinality,
+mutable resources, arbitrary region semantics and multi-unit overlap remain
+unqualified. xDSL provides the structural/type/parser/rewrite substrate, while
+project code still owns these semantics, binding policy, runtime authority and
+independent oracles. These results strengthen its candidacy without settling
+xDSL versus a custom system.
+
+The archive-erasure audit also found and corrected an incidental mixed-workflow
+dependency: post-step feedback had read the last contribution from its recorder.
+It now receives the actual admitted record through the existing Sequence value
+link. Both owner lowering modes complete with every source/learning observation
+archive disabled, while retained owner input facts independently reconstruct the
+final parameter. The before-fix failure is retained in mixed evidence.
+
+Domain failure names cannot impersonate runtime outcomes such as `returned` or
+`invalid_output`; they are rejected or classified as an undeclared outcome.
+Missing local source identity also has an explicit preparation error, independent
+of Python assertion optimization.

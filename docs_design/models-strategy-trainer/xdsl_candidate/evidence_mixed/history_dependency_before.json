@@ -1,0 +1,459 @@
+{
+  "status": "failed",
+  "error": "unhandled errors in a TaskGroup (1 sub-exception)",
+  "errors": [
+    {
+      "type": "WorkFailed",
+      "message": "learned: post-invocation failure (list index out of range)"
+    },
+    {
+      "type": "IndexError",
+      "message": "list index out of range"
+    }
+  ],
+  "source": {
+    "excluded": [],
+    "products": [
+      {
+        "key": 0,
+        "ordinal": 0,
+        "selected": 0,
+        "revision": 0,
+        "bias": 0,
+        "branch": "left",
+        "value": 1.0,
+        "sources": [],
+        "attempt": 10,
+        "returned": 11
+      },
+      {
+        "key": 1,
+        "ordinal": 1,
+        "selected": 1,
+        "revision": 0,
+        "bias": 0,
+        "branch": "left",
+        "value": 3.0,
+        "sources": [],
+        "attempt": 12,
+        "returned": 21
+      },
+      {
+        "key": 0,
+        "ordinal": 0,
+        "selected": 0,
+        "revision": 0,
+        "bias": 0,
+        "branch": "right",
+        "value": 0.0,
+        "sources": [
+          [
+            "learner",
+            1,
+            0
+          ]
+        ],
+        "attempt": 14,
+        "returned": 15
+      },
+      {
+        "key": 1,
+        "ordinal": 1,
+        "selected": 1,
+        "revision": 0,
+        "bias": 0,
+        "branch": "right",
+        "value": 0.20000000298023224,
+        "sources": [
+          [
+            "learner",
+            1,
+            0
+          ]
+        ],
+        "attempt": 17,
+        "returned": 20
+      },
+      {
+        "key": 2,
+        "ordinal": 2,
+        "selected": 2,
+        "revision": 0,
+        "bias": 0,
+        "branch": "right",
+        "value": 0.4000000059604645,
+        "sources": [
+          [
+            "learner",
+            1,
+            0
+          ]
+        ],
+        "attempt": 22,
+        "returned": null
+      },
+      {
+        "key": 2,
+        "ordinal": 2,
+        "selected": 2,
+        "revision": 0,
+        "bias": 0,
+        "branch": "left",
+        "value": 5.0,
+        "sources": [],
+        "attempt": 23,
+        "returned": null
+      }
+    ],
+    "stages": [
+      {
+        "sample": 0,
+        "origin": "data.double",
+        "input": 0,
+        "output": 0,
+        "outcome": "returned"
+      },
+      {
+        "sample": 0,
+        "origin": "data.encode",
+        "input": 0,
+        "output": 0.0,
+        "outcome": "returned",
+        "entered": 4,
+        "physical_end": 6,
+        "release": 13,
+        "sources": [
+          [
+            "learner",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "sample": 1,
+        "origin": "data.double",
+        "input": 1,
+        "output": 2,
+        "outcome": "returned"
+      },
+      {
+        "sample": 1,
+        "origin": "data.encode",
+        "input": 1,
+        "output": 0.20000000298023224,
+        "outcome": "returned",
+        "entered": 5,
+        "physical_end": 7,
+        "release": 16,
+        "sources": [
+          [
+            "learner",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "sample": 2,
+        "origin": "data.double",
+        "input": 2,
+        "output": 4,
+        "outcome": "returned"
+      },
+      {
+        "sample": 2,
+        "origin": "data.encode",
+        "input": 2,
+        "output": 0.4000000059604645,
+        "outcome": "returned",
+        "entered": 8,
+        "physical_end": 9,
+        "release": 18,
+        "sources": [
+          [
+            "learner",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "sample": 0,
+        "origin": "data.offset",
+        "input": 0,
+        "output": 1,
+        "outcome": "returned"
+      },
+      {
+        "sample": 1,
+        "origin": "data.offset",
+        "input": 2,
+        "output": 3,
+        "outcome": "returned"
+      },
+      {
+        "sample": 2,
+        "origin": "data.offset",
+        "input": 4,
+        "output": 5,
+        "outcome": "returned"
+      }
+    ],
+    "local_metrics": {
+      "dispatches": 6
+    },
+    "cursor": 3,
+    "revision": 0,
+    "bias": 0,
+    "selections": [
+      {
+        "key": 0,
+        "value": 0,
+        "revision": 0,
+        "bias": 0,
+        "ordinal": 0,
+        "at": 1
+      },
+      {
+        "key": 1,
+        "value": 1,
+        "revision": 0,
+        "bias": 0,
+        "ordinal": 1,
+        "at": 2
+      },
+      {
+        "key": 2,
+        "value": 2,
+        "revision": 0,
+        "bias": 0,
+        "ordinal": 2,
+        "at": 3
+      }
+    ],
+    "updates": [],
+    "max_active": 3,
+    "events": [
+      {
+        "event": "selection",
+        "key": 0,
+        "at": 1
+      },
+      {
+        "event": "selection",
+        "key": 1,
+        "at": 2
+      },
+      {
+        "event": "selection",
+        "key": 2,
+        "at": 3
+      },
+      {
+        "event": "source_entered",
+        "key": 0,
+        "at": 4
+      },
+      {
+        "event": "source_entered",
+        "key": 1,
+        "at": 5
+      },
+      {
+        "event": "source_physical_end",
+        "key": 0,
+        "at": 6
+      },
+      {
+        "event": "source_physical_end",
+        "key": 1,
+        "at": 7
+      },
+      {
+        "event": "source_entered",
+        "key": 2,
+        "at": 8
+      },
+      {
+        "event": "source_physical_end",
+        "key": 2,
+        "at": 9
+      },
+      {
+        "event": "publication_attempt.left",
+        "key": 0,
+        "at": 10
+      },
+      {
+        "event": "publication_return.left",
+        "key": 0,
+        "at": 11
+      },
+      {
+        "event": "publication_attempt.left",
+        "key": 1,
+        "at": 12
+      },
+      {
+        "event": "source_release",
+        "key": 0,
+        "at": 13
+      },
+      {
+        "event": "publication_attempt.right",
+        "key": 0,
+        "at": 14
+      },
+      {
+        "event": "publication_return.right",
+        "key": 0,
+        "at": 15
+      },
+      {
+        "event": "source_release",
+        "key": 1,
+        "at": 16
+      },
+      {
+        "event": "publication_attempt.right",
+        "key": 1,
+        "at": 17
+      },
+      {
+        "event": "source_release",
+        "key": 2,
+        "at": 18
+      },
+      {
+        "event": "contribution",
+        "key": 0,
+        "at": 19
+      },
+      {
+        "event": "publication_return.right",
+        "key": 1,
+        "at": 20
+      },
+      {
+        "event": "publication_return.left",
+        "key": 1,
+        "at": 21
+      },
+      {
+        "event": "publication_attempt.right",
+        "key": 2,
+        "at": 22
+      },
+      {
+        "event": "publication_attempt.left",
+        "key": 2,
+        "at": 23
+      },
+      {
+        "event": "ticket_closed",
+        "key": 0,
+        "at": 24
+      },
+      {
+        "event": "ticket_closed",
+        "key": 1,
+        "at": 25
+      },
+      {
+        "event": "ticket_closed",
+        "key": 2,
+        "at": 26
+      },
+      {
+        "event": "producer_drained",
+        "key": null,
+        "at": 27
+      }
+    ],
+    "settlements": [
+      {
+        "key": 0,
+        "ordinal": 0,
+        "disposition": "closed_without_feedback",
+        "at": 24
+      },
+      {
+        "key": 1,
+        "ordinal": 1,
+        "disposition": "closed_without_feedback",
+        "at": 25
+      },
+      {
+        "key": 2,
+        "ordinal": 2,
+        "disposition": "closed_without_feedback",
+        "at": 26
+      }
+    ],
+    "active": []
+  },
+  "learning": {
+    "contributions": [],
+    "windows": []
+  },
+  "unit_outcomes": [
+    {
+      "invocation": 1,
+      "advance_invocation": 2,
+      "contribution": "ready",
+      "optimizer": "returned",
+      "reset": "returned",
+      "inputs": [
+        {
+          "channel": "mixed.left",
+          "window": 0
+        },
+        {
+          "channel": "mixed.right",
+          "window": 0
+        }
+      ]
+    }
+  ],
+  "steps": 1,
+  "pending": false,
+  "remaining": {
+    "mixed.left": [
+      1
+    ],
+    "mixed.right": [
+      1
+    ]
+  },
+  "ports_closed": {
+    "mixed.left": true,
+    "mixed.right": true
+  },
+  "claimed": {
+    "mixed.left": [
+      [
+        0,
+        1
+      ]
+    ],
+    "mixed.right": [
+      [
+        0,
+        1
+      ]
+    ]
+  },
+  "discarded": {
+    "mixed.left": [],
+    "mixed.right": []
+  },
+  "high_water": {
+    "mixed.left": 1,
+    "mixed.right": 1
+  },
+  "released": true,
+  "diagnostics": 23,
+  "checkpoint": false,
+  "stop_requested": false
+}

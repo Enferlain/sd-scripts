@@ -1,0 +1,708 @@
+{
+  "unfused": {
+    "status": "stopped",
+    "tickets": [
+      {
+        "key": 0,
+        "source_revision": 0,
+        "policy_revision": 0,
+        "policy_bias": 0,
+        "value": 0,
+        "selected": 1,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 0,
+            "output": 0,
+            "outcome": "returned",
+            "entered": 2,
+            "physical_end": 3,
+            "released": 4
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 0,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 5,
+            "physical_end": 6,
+            "released": 7
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 1,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 9,
+            "physical_end": 10,
+            "released": 11
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 1,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 12,
+            "physical_end": 13,
+            "released": 14
+          }
+        ],
+        "publication_ack": 15,
+        "feedback_ack": 16,
+        "terminal": "acknowledged",
+        "retired": 17
+      },
+      {
+        "key": 1,
+        "source_revision": 0,
+        "policy_revision": 1,
+        "policy_bias": 1,
+        "value": 2,
+        "selected": 18,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 2,
+            "output": 4,
+            "outcome": "returned",
+            "entered": 19,
+            "physical_end": 21,
+            "released": 22
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 4,
+            "output": 5,
+            "outcome": "returned",
+            "entered": 23,
+            "physical_end": 24,
+            "released": 25
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 5,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 27,
+            "physical_end": 28,
+            "released": 29
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 25,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 30,
+            "physical_end": 31,
+            "released": 32
+          }
+        ],
+        "publication_ack": 33,
+        "feedback_ack": 34,
+        "terminal": "acknowledged",
+        "retired": 35
+      },
+      {
+        "key": 2,
+        "source_revision": 0,
+        "policy_revision": 2,
+        "policy_bias": 0,
+        "value": 2,
+        "selected": 36,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 2,
+            "output": 4,
+            "outcome": "returned",
+            "entered": 37,
+            "physical_end": 39,
+            "released": 40
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 4,
+            "output": 5,
+            "outcome": "returned",
+            "entered": 41,
+            "physical_end": 42,
+            "released": 43
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 5,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 45,
+            "physical_end": 46,
+            "released": 47
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 25,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 48,
+            "physical_end": 49,
+            "released": 50
+          }
+        ],
+        "publication_ack": 51,
+        "feedback_ack": 52,
+        "terminal": "acknowledged",
+        "retired": 53
+      },
+      {
+        "key": 3,
+        "source_revision": 0,
+        "policy_revision": 3,
+        "policy_bias": 0,
+        "value": 3,
+        "selected": 54,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 3,
+            "output": 6,
+            "outcome": "returned",
+            "entered": 55,
+            "physical_end": 57,
+            "released": 58
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 6,
+            "output": 7,
+            "outcome": "returned",
+            "entered": 59,
+            "physical_end": 60,
+            "released": 61
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 7,
+            "output": 49,
+            "outcome": "returned",
+            "entered": 63,
+            "physical_end": 64,
+            "released": 65
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 49,
+            "output": 49,
+            "outcome": "returned",
+            "entered": 66,
+            "physical_end": 67,
+            "released": 68
+          }
+        ],
+        "publication_ack": 69,
+        "feedback_ack": 70,
+        "terminal": "acknowledged",
+        "retired": 71
+      },
+      {
+        "key": 4,
+        "source_revision": 0,
+        "policy_revision": 4,
+        "policy_bias": 4,
+        "value": 8,
+        "selected": 72,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 8,
+            "output": 16,
+            "outcome": "returned",
+            "entered": 73,
+            "physical_end": 75,
+            "released": 76
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 16,
+            "output": 17,
+            "outcome": "returned",
+            "entered": 77,
+            "physical_end": 79,
+            "released": 80
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 17,
+            "output": 289,
+            "outcome": "returned",
+            "entered": 83,
+            "physical_end": 84,
+            "released": 85
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 289,
+            "output": 289,
+            "outcome": "returned",
+            "entered": 86,
+            "physical_end": 87,
+            "released": 88
+          }
+        ],
+        "publication_ack": 89,
+        "feedback_ack": 90,
+        "terminal": "acknowledged",
+        "retired": 91
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "selected",
+        "key": 0,
+        "revision": 0,
+        "bias": 0,
+        "clock": 1
+      },
+      {
+        "kind": "feedback",
+        "key": 0,
+        "revision": 1,
+        "bias": 1,
+        "clock": 16
+      },
+      {
+        "kind": "selected",
+        "key": 1,
+        "revision": 1,
+        "bias": 1,
+        "clock": 18
+      },
+      {
+        "kind": "feedback",
+        "key": 1,
+        "revision": 2,
+        "bias": 0,
+        "clock": 34
+      },
+      {
+        "kind": "selected",
+        "key": 2,
+        "revision": 2,
+        "bias": 0,
+        "clock": 36
+      },
+      {
+        "kind": "feedback",
+        "key": 2,
+        "revision": 3,
+        "bias": 0,
+        "clock": 52
+      },
+      {
+        "kind": "selected",
+        "key": 3,
+        "revision": 3,
+        "bias": 0,
+        "clock": 54
+      },
+      {
+        "kind": "feedback",
+        "key": 3,
+        "revision": 4,
+        "bias": 4,
+        "clock": 70
+      },
+      {
+        "kind": "selected",
+        "key": 4,
+        "revision": 4,
+        "bias": 4,
+        "clock": 72
+      },
+      {
+        "kind": "feedback",
+        "key": 4,
+        "revision": 5,
+        "bias": 4,
+        "clock": 90
+      }
+    ],
+    "high_water": 1,
+    "stop_clock": 78,
+    "released": 93,
+    "errors": [],
+    "diagnostics": [],
+    "local_dispatches": 10
+  },
+  "fused": {
+    "status": "stopped",
+    "tickets": [
+      {
+        "key": 0,
+        "source_revision": 0,
+        "policy_revision": 0,
+        "policy_bias": 0,
+        "value": 0,
+        "selected": 1,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 0,
+            "output": 0,
+            "outcome": "returned",
+            "entered": 2,
+            "physical_end": 3,
+            "released": 4
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 0,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 5,
+            "physical_end": 6,
+            "released": 7
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 1,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 9,
+            "physical_end": 10,
+            "released": 11
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 1,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 12,
+            "physical_end": 13,
+            "released": 14
+          }
+        ],
+        "publication_ack": 15,
+        "feedback_ack": 16,
+        "terminal": "acknowledged",
+        "retired": 17
+      },
+      {
+        "key": 1,
+        "source_revision": 0,
+        "policy_revision": 1,
+        "policy_bias": 1,
+        "value": 2,
+        "selected": 18,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 2,
+            "output": 4,
+            "outcome": "returned",
+            "entered": 19,
+            "physical_end": 21,
+            "released": 22
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 4,
+            "output": 5,
+            "outcome": "returned",
+            "entered": 23,
+            "physical_end": 24,
+            "released": 25
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 5,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 27,
+            "physical_end": 28,
+            "released": 29
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 25,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 30,
+            "physical_end": 31,
+            "released": 32
+          }
+        ],
+        "publication_ack": 33,
+        "feedback_ack": 34,
+        "terminal": "acknowledged",
+        "retired": 35
+      },
+      {
+        "key": 2,
+        "source_revision": 0,
+        "policy_revision": 2,
+        "policy_bias": 0,
+        "value": 2,
+        "selected": 36,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 2,
+            "output": 4,
+            "outcome": "returned",
+            "entered": 37,
+            "physical_end": 39,
+            "released": 40
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 4,
+            "output": 5,
+            "outcome": "returned",
+            "entered": 41,
+            "physical_end": 42,
+            "released": 43
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 5,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 45,
+            "physical_end": 46,
+            "released": 47
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 25,
+            "output": 25,
+            "outcome": "returned",
+            "entered": 48,
+            "physical_end": 49,
+            "released": 50
+          }
+        ],
+        "publication_ack": 51,
+        "feedback_ack": 52,
+        "terminal": "acknowledged",
+        "retired": 53
+      },
+      {
+        "key": 3,
+        "source_revision": 0,
+        "policy_revision": 3,
+        "policy_bias": 0,
+        "value": 3,
+        "selected": 54,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 3,
+            "output": 6,
+            "outcome": "returned",
+            "entered": 55,
+            "physical_end": 57,
+            "released": 58
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 6,
+            "output": 7,
+            "outcome": "returned",
+            "entered": 59,
+            "physical_end": 60,
+            "released": 61
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 7,
+            "output": 49,
+            "outcome": "returned",
+            "entered": 63,
+            "physical_end": 64,
+            "released": 65
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 49,
+            "output": 49,
+            "outcome": "returned",
+            "entered": 66,
+            "physical_end": 67,
+            "released": 68
+          }
+        ],
+        "publication_ack": 69,
+        "feedback_ack": 70,
+        "terminal": "acknowledged",
+        "retired": 71
+      },
+      {
+        "key": 4,
+        "source_revision": 0,
+        "policy_revision": 4,
+        "policy_bias": 4,
+        "value": 8,
+        "selected": 72,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 8,
+            "output": 16,
+            "outcome": "returned",
+            "entered": 73,
+            "physical_end": 75,
+            "released": 76
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 16,
+            "output": 17,
+            "outcome": "returned",
+            "entered": 77,
+            "physical_end": 79,
+            "released": 80
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 17,
+            "output": 289,
+            "outcome": "returned",
+            "entered": 83,
+            "physical_end": 84,
+            "released": 85
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 289,
+            "output": 289,
+            "outcome": "returned",
+            "entered": 86,
+            "physical_end": 87,
+            "released": 88
+          }
+        ],
+        "publication_ack": 89,
+        "feedback_ack": 90,
+        "terminal": "acknowledged",
+        "retired": 91
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "selected",
+        "key": 0,
+        "revision": 0,
+        "bias": 0,
+        "clock": 1
+      },
+      {
+        "kind": "feedback",
+        "key": 0,
+        "revision": 1,
+        "bias": 1,
+        "clock": 16
+      },
+      {
+        "kind": "selected",
+        "key": 1,
+        "revision": 1,
+        "bias": 1,
+        "clock": 18
+      },
+      {
+        "kind": "feedback",
+        "key": 1,
+        "revision": 2,
+        "bias": 0,
+        "clock": 34
+      },
+      {
+        "kind": "selected",
+        "key": 2,
+        "revision": 2,
+        "bias": 0,
+        "clock": 36
+      },
+      {
+        "kind": "feedback",
+        "key": 2,
+        "revision": 3,
+        "bias": 0,
+        "clock": 52
+      },
+      {
+        "kind": "selected",
+        "key": 3,
+        "revision": 3,
+        "bias": 0,
+        "clock": 54
+      },
+      {
+        "kind": "feedback",
+        "key": 3,
+        "revision": 4,
+        "bias": 4,
+        "clock": 70
+      },
+      {
+        "kind": "selected",
+        "key": 4,
+        "revision": 4,
+        "bias": 4,
+        "clock": 72
+      },
+      {
+        "kind": "feedback",
+        "key": 4,
+        "revision": 5,
+        "bias": 4,
+        "clock": 90
+      }
+    ],
+    "high_water": 1,
+    "stop_clock": 78,
+    "released": 93,
+    "errors": [],
+    "diagnostics": [],
+    "local_dispatches": 5
+  }
+}

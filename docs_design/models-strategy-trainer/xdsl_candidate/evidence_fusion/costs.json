@@ -1,0 +1,279 @@
+{
+  "scope": "isolated scalar local dispatch with real yielding bindings and a validating counter; full B conformance reports separately retained",
+  "python": "3.14.5",
+  "xdsl": "0.74.0",
+  "gil_enabled": false,
+  "cpu_count": 32,
+  "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+  "recorded_at": "2026-10-29T20:03:12.425552+00:00",
+  "count_per_batch": 1000,
+  "pairs": 7,
+  "warmup_batches_per_mode": 2,
+  "order": "alternating within pairs",
+  "cold": {
+    "unfused": [
+      {
+        "accept_seconds": 0.002555655999458395,
+        "prepare_seconds": 0.011306726999464445
+      },
+      {
+        "accept_seconds": 0.00217392200283939,
+        "prepare_seconds": 0.010221511001873296
+      },
+      {
+        "accept_seconds": 0.0022015639988239855,
+        "prepare_seconds": 0.010522049000428524
+      },
+      {
+        "accept_seconds": 0.002120627999829594,
+        "prepare_seconds": 0.01062688599631656
+      },
+      {
+        "accept_seconds": 0.002105687999574002,
+        "prepare_seconds": 0.010423273997730576
+      },
+      {
+        "accept_seconds": 0.0021754230037913658,
+        "prepare_seconds": 0.010697159996198025
+      },
+      {
+        "accept_seconds": 0.0023083100022631697,
+        "prepare_seconds": 0.010546310993959196
+      }
+    ],
+    "fused": [
+      {
+        "accept_seconds": 0.0020897180002066307,
+        "prepare_seconds": 0.012702782005362678
+      },
+      {
+        "accept_seconds": 0.0023281910034711473,
+        "prepare_seconds": 0.012818978997529484
+      },
+      {
+        "accept_seconds": 0.0018071399972541258,
+        "prepare_seconds": 0.011653508001472801
+      },
+      {
+        "accept_seconds": 0.0021669919951818883,
+        "prepare_seconds": 0.011882522005180363
+      },
+      {
+        "accept_seconds": 0.0019781500013777986,
+        "prepare_seconds": 0.012239003997819964
+      },
+      {
+        "accept_seconds": 0.0023100100006558932,
+        "prepare_seconds": 0.011986249002802651
+      },
+      {
+        "accept_seconds": 0.0020753770004375838,
+        "prepare_seconds": 0.011600494995946065
+      }
+    ]
+  },
+  "hot": {
+    "unfused": [
+      {
+        "seconds": 0.006748539999534842,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.0066165419993922114,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.0064147299999604,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.00681717399857007,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006575329003680963,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006569720004335977,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006458953001128975,
+        "dispatches": 2000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      }
+    ],
+    "fused": [
+      {
+        "seconds": 0.00897045499732485,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006203158001881093,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006392067996785045,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.0064496919949306175,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006323915004031733,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.00630234200070845,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      },
+      {
+        "seconds": 0.006429223998566158,
+        "dispatches": 1000,
+        "stages": {
+          "entered": 2000,
+          "physical": 2000,
+          "validated": 2000,
+          "released": 2000
+        }
+      }
+    ]
+  },
+  "median_local_seconds": {
+    "unfused": 0.006575329003680963,
+    "fused": 0.006392067996785045
+  },
+  "unfused_over_fused_ratio": 1.0286700653040755,
+  "source_groups": {
+    "unfused": [
+      [
+        "data.double"
+      ],
+      [
+        "data.offset"
+      ]
+    ],
+    "fused": [
+      [
+        "data.double",
+        "data.offset"
+      ]
+    ]
+  },
+  "source_sha256": {
+    "__init__.py": "c07fe115d8ab7e46a1dfb0d5ba27cdd88e5a4609e488c1bbde5b1eff2c843d8d",
+    "__main__.py": "832f39f4f30ad7eb50155e182e6a82ba5dba3e2a2bea5191a7a9fee9313cb2b2",
+    "conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "dialects.py": "ceecd7cfe4a2bd3ca71219881e531fea5303d2c4c337b7da8214778f53f746b2",
+    "fixture.py": "7157bf258a5929367932be1dfbc33501fdd204d2399aae7783d707462e860fde",
+    "fusion.py": "f6b04e5c804736ff14efbacc1656950d4d04c24afe6beb861e418986194c5464",
+    "fusion_probe.py": "5f2a9956303c34afd3d08083d1685ef609bd8c84d7c2c11b89616ac6f8d52c24",
+    "grant_adapter.py": "19adf2fb5ca2730fb4206664b7dfbdbb9e9d456ee99e7600f4379f88fe59c687",
+    "grant_conformance.py": "6157b8c9337c08ddb9dbbd4d892ed4166cfe04e8882a2368f64ea25ec4746dd9",
+    "grant_contract.py": "44602d07c6876535d5e217daa7e84aec10ef4397e17fae8d11ddbcb55028cb21",
+    "grant_demo.py": "76d06758e5ced49c531ea4556bf6002f2894f7db2b05f415aeed030ccb39631c",
+    "grant_dialect.py": "7d475b334f7df63ece4020cdb420ab52d676e9f2d4235024a69586a818773c2e",
+    "local_contract.py": "b9bbc9e2d84684b8aa36bbf43b44b9baef98d42ff121137cee6e7b720c1d3d59",
+    "local_runtime.py": "1202b5c971edba438524731dbedbc6a3c93e27f03ed0eb5432af0699ad02daa0",
+    "model_adapter.py": "ee2a1ff060c1841f29d29af2ec94f8f5e6db42e352474d6d721459d72901aa9c",
+    "model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+    "model_contract.py": "f1b428d8d24afbfee93dc286c9498ccd92475e6200de29cb7232b193a577ae9b",
+    "model_demo.py": "a456a5f688df784019a8309cb936023515b2dbacf6d9522fce5a09e897a17c7e",
+    "model_dialect.py": "be32946bab1e0d38a7d57e66e0ad5e1e7e16ff422406318b2f35d2b30bc71c58",
+    "prepare.py": "03148dd6364002c5bf85f65f75e643e8e663ad63ff819a99e5bee2d1e72691b5",
+    "runtime.py": "375091abfc838974fee53d821de45100f91e53f8ee0706c35314143d33102bef",
+    "test_fusion.py": "8fed89bfc30b55bf4fd7a1f1de1abc9d8bac2f0e49d7e46e0e5fe3206dc6bdd4",
+    "test_grant_ir.py": "1722565f9f65846972edbdfe84926f9af1701fea83a84a2ddf3c4091f1f08fe4",
+    "test_grant_runtime.py": "c85e348cd2d9422bd865cb5b08273d74dda3dae8e3d59a49d95c8341c22e56a2",
+    "test_ir.py": "c5e51c12f492e05f9dcc869ed78dd425b2a9a7c98cca7ab2491f00d2487ff717",
+    "test_model_ir.py": "4c5fbf4956bf84e337567eecb6848e62763a843fcfffb9f18b5b6b70004ba320",
+    "test_model_runtime.py": "0db3badf922df5e138eb0e38d7f292d76241bddefa0f4d6b6d62650e1f852144",
+    "test_plan_verification.py": "0bf2e1307fa63cabae9dcb69bb8e273f52bb307d6aa1ac26a4944604a59cf9ed",
+    "test_runtime.py": "119cc45c3ebe764178cfdb91947c6e83efebf79c6a898f2aafa44565d2e0a54f"
+  },
+  "limits": [
+    "One local CPU process and seven pairs by default; no statistical or production-speedup claim.",
+    "Hot probe excludes complete session admission/feedback, model owners and GPU work.",
+    "Both paths use the same observer contract; A now shares that guarded-stage ABI but is not timed here.",
+    "Physical binding calls and per-stage validation remain; only local dispatch grouping changes."
+  ]
+}

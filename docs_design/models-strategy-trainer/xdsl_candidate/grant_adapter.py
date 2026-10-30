@@ -203,9 +203,14 @@ def prepare_grant(
     )
     plan.verify()
     text = dump(plan)
-    decoded = parse_grant(text)
-    decoded.verify()
+    try:
+        decoded = parse_grant(text)
+        decoded.verify()
+    except Exception as error:
+        raise NotReady(f"prepared grant plan: invalid structure: {error}") from error
     root = one(decoded, PlanOp)
+    if set(root.properties) != {"accepted_digest", "contract", "target", "stop_rule"}:
+        raise NotReady("prepared grant: unknown execution property or flow coordination")
     semantic = one(decoded, SessionOp)
     if root.accepted_digest.data != accepted.digest or accept_grant(ModuleOp([semantic.clone()])).digest != accepted.digest:
         raise NotReady("prepared grant recipe changed accepted meaning")
@@ -214,6 +219,8 @@ def prepare_grant(
     if root.horizon is not None or root.capacity is not None or root.feedback is not None:
         raise NotReady("model-only grant plan cannot introduce flow coordination")
     recipe = one(decoded, RecipeOp)
+    if set(recipe.properties) != {"origin", "role", "protocol"}:
+        raise NotReady("prepared grant: unknown owner protocol property")
     if (recipe.origin.data, recipe.role.data, recipe.protocol.data) != (origin(grant), "grant-owner", PROTOCOL) or tuple(
         recipe.body.block.ops
     ) != (semantic,):
@@ -225,6 +232,8 @@ def prepare_grant(
     resolved: dict[str, DomainBinding] = {}
     for op in decoded.walk():
         if isinstance(op, CallOp):
+            if set(op.properties) != {"origin", "ancestors", "implementation", "binding_version", "effect", "role", "completion"}:
+                raise NotReady(f"{op.origin.data}: unknown prepared grant binding property")
             binding = registry.bindings.get(ref(op.implementation))
             if binding is None or (op.role.data, op.effect.data, op.binding_version.data, op.completion.data) != (
                 binding.role,

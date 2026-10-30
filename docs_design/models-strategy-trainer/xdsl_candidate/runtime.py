@@ -1,4 +1,4 @@
-"""One loop-confined scalar realization of the prepared B plan.
+"""One loop-confined scalar feedback target with typed local stages.
 
 The owner counts tickets until feedback acknowledgement, across every local
 handoff and selected call. A mailbox slot stays owned through publication and
@@ -13,8 +13,12 @@ import asyncio
 from collections import deque
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from types import TracebackType
+from typing import Any
 
+from .local_runtime import LocalMetrics, Stage, invoke_stage
 from .prepare import Prepared, ResolvedCall
+from .payloads import INTEGER, RESERVED_OUTCOMES, LocalOutcomeError
 
 
 async def drain[T](completion: asyncio.Future[T], interrupted: Callable[[], None]) -> tuple[T, asyncio.CancelledError | None]:
@@ -37,8 +41,8 @@ async def drain[T](completion: asyncio.Future[T], interrupted: Callable[[], None
 class CallFact:
     origin: str
     role: str
-    input: int
-    output: int | None
+    input: Any
+    output: Any
     outcome: str
     entered: int
     physical_end: int
@@ -79,6 +83,7 @@ class Report:
     released: int
     errors: tuple[str, ...]
     diagnostics: tuple[tuple[str, int, int], ...]
+    local_dispatches: int = 0
 
 
 @dataclass
@@ -93,11 +98,77 @@ class _Ticket:
     feedback_ack: int | None = None
 
 
+@dataclass
+class ScalarFrame:
+    owner: ScalarSession
+    ticket: _Ticket
+    origin: str
+    role: str
+    value: Any
+    result: object = None
+    outcome: str = "entered_failed"
+    entered: int = 0
+    ended: int = 0
+    observed_input: Any = None
+
+    def __enter__(self) -> ScalarFrame:
+        contract = self.owner.prepared.local_contracts.get(self.origin)
+        if contract is not None and not contract.input.validate(self.value):
+            raise ValueError(f"{self.origin}: invalid input schema before entry")
+        self.observed_input = contract.input.observe(self.value) if contract is not None else self.value
+        self.entered = self.owner._fact("entered:" + self.origin, self.ticket.key)
+        self.owner._active_calls += 1
+        return self
+
+    def physical_end(self) -> None:
+        self.ended = self.owner._fact("physical_end:" + self.origin, self.ticket.key)
+
+    def validate(self, result: Any) -> Any:
+        self.result = result if type(result) is int else None
+        self.outcome = "invalid_output"
+        contract = self.owner.prepared.local_contracts.get(self.origin)
+        codec = contract.output if contract is not None else INTEGER
+        if not codec.validate(result) or (self.role == "publish" and result != self.value):
+            raise ValueError(f"{self.origin}: invalid returned scalar/receipt after entry")
+        self.result = codec.observe(result)
+        self.outcome = "returned"
+        return result
+
+    def __exit__(self, kind: type[BaseException] | None, error: BaseException | None, traceback: TracebackType | None) -> None:
+        undeclared = False
+        contract = self.owner.prepared.local_contracts.get(self.origin)
+        if isinstance(error, LocalOutcomeError):
+            undeclared = (
+                not isinstance(error.outcome, str)
+                or error.outcome in RESERVED_OUTCOMES
+                or contract is None
+                or error.outcome not in contract.outcomes
+            )
+            self.outcome = "undeclared_outcome" if undeclared else error.outcome
+        self.owner._active_calls -= 1
+        released = self.owner._fact("call_released:" + self.origin, self.ticket.key)
+        self.ticket.calls.append(
+            CallFact(
+                self.origin,
+                self.role,
+                self.observed_input,
+                self.result,
+                self.outcome,
+                self.entered,
+                self.ended,
+                released,
+            )
+        )
+        if undeclared:
+            raise ValueError(f"{self.origin}: undeclared selected outcome") from error
+
+
 class ScalarSession:
     """Explicit open-source lifecycle; callers request stop independently."""
 
     def __init__(self, prepared: Prepared, *, diagnostic_limit: int = 32):
         self.prepared = prepared
+        self.local_metrics = LocalMetrics()
         self._changed = asyncio.Event()
         self._feedback: asyncio.Queue[tuple[_Ticket, int, asyncio.Future[None]] | None] = asyncio.Queue()
         self._active: dict[int, _Ticket] = {}
@@ -170,30 +241,11 @@ class ScalarSession:
         )
 
     async def _invoke(self, ticket: _Ticket, value: int, call: ResolvedCall) -> int:
-        entered = self._fact("entered:" + call.origin, ticket.key)
-        self._active_calls += 1
-        result: object = None
-        outcome = "entered_failed"
-        try:
-            try:
-                result = await call.binding.invoke(value)
-            finally:
-                physical_end = self._fact("physical_end:" + call.origin, ticket.key)
-            # Validation is after invocation; even a pure declaration does not
-            # make a failed publication/returned contract a NotEntered result.
-            outcome = "invalid_output"
-            if type(result) is not int or (call.binding.role == "publish" and result != value):
-                raise ValueError(f"{call.origin}: invalid returned scalar/receipt after entry")
-            outcome = "returned"
-            return result
-        finally:
-            self._active_calls -= 1
-            released = self._fact("call_released:" + call.origin, ticket.key)
-            ticket.calls.append(
-                CallFact(
-                    call.origin, call.binding.role, value, result if type(result) is int else None, outcome, entered, physical_end, released
-                )
-            )
+        return await invoke_stage(
+            Stage(call.origin, call.binding.invoke),
+            value,
+            lambda source, incoming: ScalarFrame(self, ticket, source, call.binding.role, incoming),
+        )
 
     async def _producer(self) -> None:
         ticket: _Ticket | None = None
@@ -208,9 +260,11 @@ class ScalarSession:
                 self._active[key] = ticket
                 self._high_water = max(self._high_water, len(self._active))
                 self._decisions.append(Decision("selected", key, self._revision, self._bias, selected))
-                value = ticket.value
-                for call in self.prepared.maps:
-                    value = await self._invoke(ticket, value, call)
+                value = await self.prepared.local.run(
+                    ticket.value,
+                    lambda source, incoming, selected=ticket: ScalarFrame(self, selected, source, "map", incoming),
+                    self.local_metrics,
+                )
                 if len(self._mailbox) == self.prepared.capacity:
                     self.publication_waiting.add(key)
                     self._fact("publication_waiting", key)
@@ -302,6 +356,7 @@ class ScalarSession:
             released,
             tuple(self._errors),
             tuple(self._diagnostics),
+            self.local_metrics.dispatches,
         )
         if cancelled:
             raise cancelled

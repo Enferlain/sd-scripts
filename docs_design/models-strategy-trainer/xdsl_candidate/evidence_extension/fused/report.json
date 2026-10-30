@@ -1,0 +1,744 @@
+{
+  "python": "3.14.5",
+  "gil_enabled": false,
+  "xdsl": "0.74.0",
+  "accepted_digest": "7c35e625216db67200999e1b44c411ebdf9c04a5654cf20f4b9855cd46998bc8",
+  "report": {
+    "status": "stopped",
+    "tickets": [
+      {
+        "key": 0,
+        "source_revision": 0,
+        "policy_revision": 0,
+        "policy_bias": 0,
+        "value": 0,
+        "selected": 1,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 0,
+            "output": 0,
+            "outcome": "returned",
+            "entered": 2,
+            "physical_end": 3,
+            "released": 4
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 0,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 5,
+            "physical_end": 6,
+            "released": 7
+          },
+          {
+            "origin": "pair.pack",
+            "role": "map",
+            "input": 1,
+            "output": [
+              1,
+              2
+            ],
+            "outcome": "returned",
+            "entered": 8,
+            "physical_end": 9,
+            "released": 10
+          },
+          {
+            "origin": "pair.first",
+            "role": "map",
+            "input": [
+              1,
+              2
+            ],
+            "output": 1,
+            "outcome": "returned",
+            "entered": 11,
+            "physical_end": 12,
+            "released": 13
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 1,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 17,
+            "physical_end": 21,
+            "released": 22
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 1,
+            "output": 1,
+            "outcome": "returned",
+            "entered": 23,
+            "physical_end": 27,
+            "released": 28
+          }
+        ],
+        "publication_ack": 29,
+        "feedback_ack": 33,
+        "terminal": "acknowledged",
+        "retired": 34
+      },
+      {
+        "key": 1,
+        "source_revision": 0,
+        "policy_revision": 0,
+        "policy_bias": 0,
+        "value": 1,
+        "selected": 15,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 1,
+            "output": 2,
+            "outcome": "returned",
+            "entered": 16,
+            "physical_end": 18,
+            "released": 19
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 2,
+            "output": 3,
+            "outcome": "returned",
+            "entered": 20,
+            "physical_end": 24,
+            "released": 25
+          },
+          {
+            "origin": "pair.pack",
+            "role": "map",
+            "input": 3,
+            "output": [
+              3,
+              6
+            ],
+            "outcome": "returned",
+            "entered": 26,
+            "physical_end": 30,
+            "released": 31
+          },
+          {
+            "origin": "pair.first",
+            "role": "map",
+            "input": [
+              3,
+              6
+            ],
+            "output": 3,
+            "outcome": "returned",
+            "entered": 32,
+            "physical_end": 35,
+            "released": 36
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 3,
+            "output": 9,
+            "outcome": "returned",
+            "entered": 42,
+            "physical_end": 46,
+            "released": 47
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 9,
+            "output": 9,
+            "outcome": "returned",
+            "entered": 48,
+            "physical_end": 52,
+            "released": 53
+          }
+        ],
+        "publication_ack": 54,
+        "feedback_ack": 58,
+        "terminal": "acknowledged",
+        "retired": 59
+      },
+      {
+        "key": 2,
+        "source_revision": 0,
+        "policy_revision": 1,
+        "policy_bias": 1,
+        "value": 3,
+        "selected": 40,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 3,
+            "output": 6,
+            "outcome": "returned",
+            "entered": 41,
+            "physical_end": 43,
+            "released": 44
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 6,
+            "output": 7,
+            "outcome": "returned",
+            "entered": 45,
+            "physical_end": 49,
+            "released": 50
+          },
+          {
+            "origin": "pair.pack",
+            "role": "map",
+            "input": 7,
+            "output": [
+              7,
+              14
+            ],
+            "outcome": "returned",
+            "entered": 51,
+            "physical_end": 55,
+            "released": 56
+          },
+          {
+            "origin": "pair.first",
+            "role": "map",
+            "input": [
+              7,
+              14
+            ],
+            "output": 7,
+            "outcome": "returned",
+            "entered": 57,
+            "physical_end": 60,
+            "released": 61
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 7,
+            "output": 49,
+            "outcome": "returned",
+            "entered": 67,
+            "physical_end": 71,
+            "released": 72
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 49,
+            "output": 49,
+            "outcome": "returned",
+            "entered": 73,
+            "physical_end": 77,
+            "released": 78
+          }
+        ],
+        "publication_ack": 79,
+        "feedback_ack": 83,
+        "terminal": "acknowledged",
+        "retired": 84
+      },
+      {
+        "key": 3,
+        "source_revision": 0,
+        "policy_revision": 2,
+        "policy_bias": 4,
+        "value": 7,
+        "selected": 65,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 7,
+            "output": 14,
+            "outcome": "returned",
+            "entered": 66,
+            "physical_end": 68,
+            "released": 69
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 14,
+            "output": 15,
+            "outcome": "returned",
+            "entered": 70,
+            "physical_end": 74,
+            "released": 75
+          },
+          {
+            "origin": "pair.pack",
+            "role": "map",
+            "input": 15,
+            "output": [
+              15,
+              30
+            ],
+            "outcome": "returned",
+            "entered": 76,
+            "physical_end": 80,
+            "released": 81
+          },
+          {
+            "origin": "pair.first",
+            "role": "map",
+            "input": [
+              15,
+              30
+            ],
+            "output": 15,
+            "outcome": "returned",
+            "entered": 82,
+            "physical_end": 85,
+            "released": 86
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 15,
+            "output": 225,
+            "outcome": "returned",
+            "entered": 92,
+            "physical_end": 96,
+            "released": 97
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 225,
+            "output": 225,
+            "outcome": "returned",
+            "entered": 98,
+            "physical_end": 102,
+            "released": 103
+          }
+        ],
+        "publication_ack": 104,
+        "feedback_ack": 108,
+        "terminal": "acknowledged",
+        "retired": 109
+      },
+      {
+        "key": 4,
+        "source_revision": 0,
+        "policy_revision": 3,
+        "policy_bias": 4,
+        "value": 8,
+        "selected": 90,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 8,
+            "output": 16,
+            "outcome": "returned",
+            "entered": 91,
+            "physical_end": 93,
+            "released": 94
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 16,
+            "output": 17,
+            "outcome": "returned",
+            "entered": 95,
+            "physical_end": 99,
+            "released": 100
+          },
+          {
+            "origin": "pair.pack",
+            "role": "map",
+            "input": 17,
+            "output": [
+              17,
+              34
+            ],
+            "outcome": "returned",
+            "entered": 101,
+            "physical_end": 105,
+            "released": 106
+          },
+          {
+            "origin": "pair.first",
+            "role": "map",
+            "input": [
+              17,
+              34
+            ],
+            "output": 17,
+            "outcome": "returned",
+            "entered": 107,
+            "physical_end": 110,
+            "released": 111
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 17,
+            "output": 289,
+            "outcome": "returned",
+            "entered": 118,
+            "physical_end": 122,
+            "released": 123
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 289,
+            "output": 289,
+            "outcome": "returned",
+            "entered": 124,
+            "physical_end": 128,
+            "released": 129
+          }
+        ],
+        "publication_ack": 130,
+        "feedback_ack": 134,
+        "terminal": "acknowledged",
+        "retired": 135
+      },
+      {
+        "key": 5,
+        "source_revision": 0,
+        "policy_revision": 4,
+        "policy_bias": 0,
+        "value": 5,
+        "selected": 115,
+        "calls": [
+          {
+            "origin": "data.double",
+            "role": "map",
+            "input": 5,
+            "output": 10,
+            "outcome": "returned",
+            "entered": 116,
+            "physical_end": 119,
+            "released": 120
+          },
+          {
+            "origin": "data.offset",
+            "role": "map",
+            "input": 10,
+            "output": 11,
+            "outcome": "returned",
+            "entered": 121,
+            "physical_end": 125,
+            "released": 126
+          },
+          {
+            "origin": "pair.pack",
+            "role": "map",
+            "input": 11,
+            "output": [
+              11,
+              22
+            ],
+            "outcome": "returned",
+            "entered": 127,
+            "physical_end": 131,
+            "released": 132
+          },
+          {
+            "origin": "pair.first",
+            "role": "map",
+            "input": [
+              11,
+              22
+            ],
+            "output": 11,
+            "outcome": "returned",
+            "entered": 133,
+            "physical_end": 136,
+            "released": 137
+          },
+          {
+            "origin": "scorer",
+            "role": "score",
+            "input": 11,
+            "output": 121,
+            "outcome": "returned",
+            "entered": 142,
+            "physical_end": 143,
+            "released": 144
+          },
+          {
+            "origin": "publisher",
+            "role": "publish",
+            "input": 121,
+            "output": 121,
+            "outcome": "returned",
+            "entered": 145,
+            "physical_end": 146,
+            "released": 147
+          }
+        ],
+        "publication_ack": 148,
+        "feedback_ack": 149,
+        "terminal": "acknowledged",
+        "retired": 150
+      }
+    ],
+    "decisions": [
+      {
+        "kind": "selected",
+        "key": 0,
+        "revision": 0,
+        "bias": 0,
+        "clock": 1
+      },
+      {
+        "kind": "selected",
+        "key": 1,
+        "revision": 0,
+        "bias": 0,
+        "clock": 15
+      },
+      {
+        "kind": "feedback",
+        "key": 0,
+        "revision": 1,
+        "bias": 1,
+        "clock": 33
+      },
+      {
+        "kind": "selected",
+        "key": 2,
+        "revision": 1,
+        "bias": 1,
+        "clock": 40
+      },
+      {
+        "kind": "feedback",
+        "key": 1,
+        "revision": 2,
+        "bias": 4,
+        "clock": 58
+      },
+      {
+        "kind": "selected",
+        "key": 3,
+        "revision": 2,
+        "bias": 4,
+        "clock": 65
+      },
+      {
+        "kind": "feedback",
+        "key": 2,
+        "revision": 3,
+        "bias": 4,
+        "clock": 83
+      },
+      {
+        "kind": "selected",
+        "key": 4,
+        "revision": 3,
+        "bias": 4,
+        "clock": 90
+      },
+      {
+        "kind": "feedback",
+        "key": 3,
+        "revision": 4,
+        "bias": 0,
+        "clock": 108
+      },
+      {
+        "kind": "selected",
+        "key": 5,
+        "revision": 4,
+        "bias": 0,
+        "clock": 115
+      },
+      {
+        "kind": "feedback",
+        "key": 4,
+        "revision": 5,
+        "bias": 4,
+        "clock": 134
+      },
+      {
+        "kind": "feedback",
+        "key": 5,
+        "revision": 6,
+        "bias": 1,
+        "clock": 149
+      }
+    ],
+    "high_water": 2,
+    "stop_clock": 117,
+    "released": 152,
+    "errors": [],
+    "diagnostics": [
+      [
+        "entered:data.offset",
+        5,
+        121
+      ],
+      [
+        "physical_end:scorer",
+        4,
+        122
+      ],
+      [
+        "call_released:scorer",
+        4,
+        123
+      ],
+      [
+        "entered:publisher",
+        4,
+        124
+      ],
+      [
+        "physical_end:data.offset",
+        5,
+        125
+      ],
+      [
+        "call_released:data.offset",
+        5,
+        126
+      ],
+      [
+        "entered:pair.pack",
+        5,
+        127
+      ],
+      [
+        "physical_end:publisher",
+        4,
+        128
+      ],
+      [
+        "call_released:publisher",
+        4,
+        129
+      ],
+      [
+        "publication_ack",
+        4,
+        130
+      ],
+      [
+        "physical_end:pair.pack",
+        5,
+        131
+      ],
+      [
+        "call_released:pair.pack",
+        5,
+        132
+      ],
+      [
+        "entered:pair.first",
+        5,
+        133
+      ],
+      [
+        "feedback_ack",
+        4,
+        134
+      ],
+      [
+        "acknowledged",
+        4,
+        135
+      ],
+      [
+        "physical_end:pair.first",
+        5,
+        136
+      ],
+      [
+        "call_released:pair.first",
+        5,
+        137
+      ],
+      [
+        "publication_waiting",
+        5,
+        138
+      ],
+      [
+        "handoff_released",
+        4,
+        139
+      ],
+      [
+        "handoff_published",
+        5,
+        140
+      ],
+      [
+        "producer_closed",
+        -1,
+        141
+      ],
+      [
+        "entered:scorer",
+        5,
+        142
+      ],
+      [
+        "physical_end:scorer",
+        5,
+        143
+      ],
+      [
+        "call_released:scorer",
+        5,
+        144
+      ],
+      [
+        "entered:publisher",
+        5,
+        145
+      ],
+      [
+        "physical_end:publisher",
+        5,
+        146
+      ],
+      [
+        "call_released:publisher",
+        5,
+        147
+      ],
+      [
+        "publication_ack",
+        5,
+        148
+      ],
+      [
+        "feedback_ack",
+        5,
+        149
+      ],
+      [
+        "acknowledged",
+        5,
+        150
+      ],
+      [
+        "handoff_released",
+        5,
+        151
+      ],
+      [
+        "session_released",
+        -1,
+        152
+      ]
+    ],
+    "local_dispatches": 18
+  }
+}

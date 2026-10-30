@@ -16,12 +16,12 @@ from pathlib import Path
 
 import pytest
 
-from xdsl.dialects.builtin import StringAttr
+from xdsl.dialects.builtin import ArrayAttr, StringAttr
 
-from .dialects import CallOp, PlanOp, dump, integer
+from .dialects import CallOp, FusedOp, PlanOp, dump, integer
 from .model_conformance import check_a, check_admission_failure
 from .model_contract import accept_model, build_model, one
-from .model_dialect import AddressOp, AdvanceOp
+from .model_dialect import AddressOp, AdvanceOp, RecipeOp
 from .prepare import NotReady
 
 # This is an optional-backend test module. Keep every ordinary import above;
@@ -31,6 +31,152 @@ assert __package__ is not None
 adapter = importlib.import_module(__package__ + ".model_adapter")
 Controls, DomainRegistry = adapter.Controls, adapter.DomainRegistry
 model_registry, prepare_model = adapter.model_registry, adapter.prepare_model
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("lowering", ["calls", "inline"])
+@pytest.mark.parametrize("workers", [False, True])
+@pytest.mark.parametrize("history", [0, 256])
+async def test_fused_data_groups_preserve_model_owner_conformance(lowering, workers, history) -> None:
+    prepared = prepare_model(
+        accept_model(build_model()), lowering=lowering, workers=workers, controls=Controls(history_limit=history), fuse=True
+    )
+    report = await prepared.publish().run()
+    check_a(report)
+    assert prepared.local.source_groups == (("data.double", "data.offset"),)
+    assert report["source"]["local_metrics"]["dispatches"] == 4
+    assert len([item for item in report["source"]["stages"] if item["origin"] in ("data.double", "data.offset")]) == 8
+
+
+def test_fused_owner_group_cannot_reorder_stages_even_with_matching_origin_labels(monkeypatch) -> None:
+    original = adapter.parse_model
+
+    def corrupted(text):
+        module = original(text)
+        for group in module.walk():
+            if isinstance(group, FusedOp):
+                first = group.body.block.first_op
+                assert first is not None
+                group.body.block.detach_op(first)
+                group.body.block.add_op(first)
+                group.properties["origins"] = ArrayAttr(call.origin for call in group.body.block.ops if isinstance(call, CallOp))
+        return module
+
+    monkeypatch.setattr(adapter, "parse_model", corrupted)
+    with pytest.raises(NotReady, match="stage order"):
+        prepare_model(accept_model(build_model()), fuse=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("symbol", ["double_v1", "offset_v1"])
+async def test_fused_invalid_pure_stage_blocks_later_data_and_learning(symbol: str) -> None:
+    bindings = dict(model_registry().bindings)
+
+    async def invalid(value):
+        return None
+
+    bindings[symbol] = replace(bindings[symbol], invoke=invalid)
+    report = await prepare_model(accept_model(build_model()), DomainRegistry("invalid-fused", bindings), fuse=True).publish().run()
+    assert report["status"] == "failed" and report["steps"] == 0 and report["released"]
+    invalid_seen = False
+    for sample in (1, 2, 4, 5):
+        stages = [
+            item for item in report["source"]["stages"] if item["sample"] == sample and item["origin"] in ("data.double", "data.offset")
+        ]
+        if stages:
+            expected = ["data.double"] if symbol == "double_v1" else ["data.double", "data.offset"]
+            assert [item["origin"] for item in stages] == expected[: len(stages)]
+            assert all(item["outcome"] == "returned" for item in stages[:-1])
+            assert stages[-1]["outcome"] in ("invalid_output", "entered_failed")
+            if stages[-1]["outcome"] == "invalid_output":
+                invalid_seen = True
+                assert len(stages) == len(expected)
+    assert invalid_seen  # Peer cancellation may stop other samples at an earlier stage.
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "accepted_digest",
+        "target",
+        "contract",
+        "stop_rule",
+        "feedback",
+        "origin",
+        "ancestry",
+        "missing_call",
+        "duplicate_call",
+        "protocol",
+        "recipe_origin",
+        "recipe_role",
+        "missing_recipe",
+        "duplicate_recipe",
+        "extra_operation",
+    ],
+)
+def test_decoded_owner_plan_correspondence_fails_before_loading(case: str, monkeypatch) -> None:
+    original = adapter.parse_model
+    loaded_models = []
+    bindings = dict(model_registry().bindings)
+    bindings["scale_v1"] = replace(bindings["scale_v1"], invoke=lambda *args: loaded_models.append(args))
+
+    def corrupt(text):
+        module = original(text)
+        roots = [op for op in module.walk() if isinstance(op, PlanOp)]
+        if not roots:
+            return module
+        root = roots[0]
+        call = next(op for op in root.body.block.ops if isinstance(op, CallOp))
+        recipe = next(op for op in root.body.block.ops if isinstance(op, RecipeOp))
+        if case in ("accepted_digest", "target", "contract", "stop_rule", "feedback"):
+            root.properties[case] = StringAttr("changed")
+        elif case == "origin":
+            call.properties["origin"] = StringAttr("unrelated-stage")
+        elif case == "ancestry":
+            call.properties["ancestors"] = ArrayAttr([StringAttr("unrelated-region")])
+        elif case == "missing_call":
+            root.body.block.erase_op(call)
+        elif case == "duplicate_call":
+            root.body.block.add_op(call.clone())
+        elif case in ("protocol", "recipe_origin", "recipe_role"):
+            recipe.properties[{"protocol": "protocol", "recipe_origin": "origin", "recipe_role": "role"}[case]] = StringAttr("changed")
+        elif case == "missing_recipe":
+            root.body.block.erase_op(recipe)
+        elif case == "duplicate_recipe":
+            root.body.block.add_op(recipe.clone())
+        else:
+            root.body.block.add_op(
+                AdvanceOp(
+                    properties={
+                        "source_id": StringAttr("extra"),
+                        "unit": adapter.SymbolRefAttr("weights"),
+                        "parameter": StringAttr("weight"),
+                        "learning_rate": next(op for op in recipe.walk() if isinstance(op, AdvanceOp)).learning_rate,
+                    }
+                )
+            )
+        return module
+
+    monkeypatch.setattr(adapter, "parse_model", corrupt)
+    with pytest.raises(NotReady, match="prepared"):
+        prepare_model(accept_model(build_model()), DomainRegistry("load-probe", bindings))
+    assert not loaded_models
+
+
+@pytest.mark.parametrize("lowering", ["calls", "inline"])
+def test_swapped_compatible_map_symbols_cannot_redefine_accepted_stages(lowering: str, monkeypatch) -> None:
+    original = adapter.parse_model
+
+    def corrupt(text):
+        module = original(text)
+        if any(isinstance(op, PlanOp) for op in module.walk()):
+            left, right = [op for op in module.walk() if isinstance(op, CallOp) and op.role.data == "map"]
+            left.properties["implementation"], right.properties["implementation"] = right.implementation, left.implementation
+        return module
+
+    monkeypatch.setattr(adapter, "parse_model", corrupt)
+    with pytest.raises(NotReady, match="accepted selection"):
+        prepare_model(accept_model(build_model()), lowering=lowering)
 
 
 @pytest.mark.parametrize("field_name,missing", [("horizon", True), ("capacity", True), ("horizon", False), ("capacity", False)])
@@ -63,10 +209,11 @@ async def test_owner_backend_matches_independent_arithmetic_and_associations(low
 
 
 @pytest.mark.asyncio
-async def test_changed_production_order_preserves_the_declared_learning_order() -> None:
+@pytest.mark.parametrize("fuse", [False, True])
+async def test_changed_production_order_preserves_the_declared_learning_order(fuse: bool) -> None:
     reports = []
     for reverse in (False, True):
-        run = prepare_model(accept_model(build_model()), controls=Controls(reverse_production=reverse)).publish()
+        run = prepare_model(accept_model(build_model()), controls=Controls(reverse_production=reverse), fuse=fuse).publish()
         report = await run.run()
         check_a(report)
         reports.append(report)
@@ -164,7 +311,8 @@ async def test_invalid_selected_output_remains_entered_failure(symbol: str) -> N
 @pytest.mark.asyncio
 @pytest.mark.parametrize("target", ["encode_v1", "measure_v1"])
 @pytest.mark.parametrize("fail", [False, True])
-async def test_cancellation_waits_for_physical_current_use(target: str, fail: bool) -> None:
+@pytest.mark.parametrize("fuse", [False, True])
+async def test_cancellation_waits_for_physical_current_use(target: str, fail: bool, fuse: bool) -> None:
     entered, release, finished = threading.Event(), threading.Event(), threading.Event()
     registry = model_registry()
     bindings = dict(registry.bindings)
@@ -182,7 +330,7 @@ async def test_cancellation_waits_for_physical_current_use(target: str, fail: bo
             finished.set()
 
     bindings[target] = replace(bindings[target], invoke=blocked)
-    run = prepare_model(accept_model(build_model()), DomainRegistry("blocked", bindings)).publish()
+    run = prepare_model(accept_model(build_model()), DomainRegistry("blocked", bindings), fuse=fuse).publish()
     running = asyncio.create_task(run.run())
     try:
         assert await asyncio.to_thread(entered.wait, 3)
@@ -301,8 +449,9 @@ async def test_shared_wrong_loss_is_detected_beyond_backend_equivalence() -> Non
             check_a(report)
 
 
-def test_model_document_reconstructs_without_author_in_fresh_process(tmp_path: Path) -> None:
-    prepared = prepare_model(accept_model(build_model()))
+@pytest.mark.parametrize("fuse", [False, True])
+def test_model_document_reconstructs_without_author_in_fresh_process(tmp_path: Path, fuse: bool) -> None:
+    prepared = prepare_model(accept_model(build_model()), fuse=fuse)
     semantic, manifest = tmp_path / "accepted.mlir", tmp_path / "bindings.json"
     semantic.write_text(prepared.accepted.text)
     manifest.write_text(prepared.manifest)
@@ -314,7 +463,18 @@ demo=importlib.import_module('docs_design.models-strategy-trainer.xdsl_candidate
 demo.main()
 """
     completed = subprocess.run(
-        [sys.executable, "-c", script, "--load", str(semantic), "--manifest", str(manifest), "--dump-dir", str(tmp_path / "loaded")],
+        [
+            sys.executable,
+            "-c",
+            script,
+            "--load",
+            str(semantic),
+            "--manifest",
+            str(manifest),
+            "--dump-dir",
+            str(tmp_path / "loaded"),
+            *(["--fuse"] if fuse else []),
+        ],
         env=os.environ.copy(),
         capture_output=True,
         text=True,
@@ -325,3 +485,15 @@ demo.main()
     check_a(result["report"])
     assert result["accepted_digest"] == prepared.accepted.digest
     assert (tmp_path / "loaded" / "prepared.mlir").read_text() == prepared.text
+
+
+def test_owner_target_rejects_accepted_non_scalar_local_schema_before_loading() -> None:
+    from .dialects import FlowType, LocalOp, MapOp
+
+    module = build_model()
+    custom = FlowType(StringAttr("another-payload"))
+    next(op for op in module.walk() if isinstance(op, MapOp)).output._type = custom
+    next(op for op in module.walk() if isinstance(op, LocalOp)).body.block.args[0]._type = custom
+    accepted = accept_model(module)
+    with pytest.raises(NotReady, match="local schema/resources"):
+        prepare_model(accepted)

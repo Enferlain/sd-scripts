@@ -24,6 +24,7 @@ def main() -> None:
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--dump-dir", type=Path)
     parser.add_argument("--stop-after", type=int, default=4)
+    parser.add_argument("--fuse", action="store_true")
     options = parser.parse_args()
     if options.stop_after < 1:
         parser.error("--stop-after must be positive")
@@ -31,7 +32,7 @@ def main() -> None:
     accepted = accept(parse(options.load.read_text()) if options.load else build())
     accepted_seconds = perf_counter() - start
     start = perf_counter()
-    prepared = prepare(accepted, registry())
+    prepared = prepare(accepted, registry(), fuse=options.fuse)
     prepared_seconds = perf_counter() - start
     if options.manifest and json.loads(options.manifest.read_text()) != json.loads(prepared.manifest):
         raise ValueError("binding manifest differs from available registry")

@@ -1,0 +1,99 @@
+{
+  "abi": "scalar-async-v1",
+  "bindings": [
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "double_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "offset_v1",
+      "version": "1"
+    },
+    {
+      "effect": "read_frozen",
+      "role": "map",
+      "symbol": "pack_pair_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "first_lane_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "score",
+      "symbol": "square_v1",
+      "version": "1"
+    },
+    {
+      "effect": "publication",
+      "role": "publish",
+      "symbol": "receipt_v1",
+      "version": "1"
+    }
+  ],
+  "fused_groups": 1,
+  "local_contracts": [
+    {
+      "input_codec": "exact-integer-v1",
+      "origin": "data.double",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output_codec": "exact-integer-v1",
+      "resources": []
+    },
+    {
+      "input_codec": "exact-integer-v1",
+      "origin": "data.offset",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output_codec": "exact-integer-v1",
+      "resources": []
+    },
+    {
+      "input_codec": "exact-integer-v1",
+      "origin": "pair.pack",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised",
+        "negative_input"
+      ],
+      "output_codec": "pair-int2-v1",
+      "resources": [
+        {
+          "access": "read_frozen",
+          "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+          "symbol": "pair_coefficients",
+          "version": "1"
+        }
+      ]
+    },
+    {
+      "input_codec": "pair-int2-v1",
+      "origin": "pair.first",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output_codec": "exact-integer-v1",
+      "resources": []
+    }
+  ],
+  "local_lowering": "fused-v1",
+  "registry": "independent-pair-fixture-v1",
+  "schema": 1
+}

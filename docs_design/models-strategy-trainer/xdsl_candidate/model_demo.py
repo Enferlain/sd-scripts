@@ -22,12 +22,13 @@ def main() -> None:
     parser.add_argument("--load", type=Path)
     parser.add_argument("--manifest", type=Path)
     parser.add_argument("--dump-dir", type=Path)
+    parser.add_argument("--fuse", action="store_true")
     options = parser.parse_args()
     started = perf_counter()
     accepted = accept_model(parse_model(options.load.read_text()) if options.load else build_model())
     accepted_seconds = perf_counter() - started
     started = perf_counter()
-    prepared = prepare_model(accepted)
+    prepared = prepare_model(accepted, fuse=options.fuse)
     prepared_seconds = perf_counter() - started
     if options.manifest and json.loads(options.manifest.read_text()) != json.loads(prepared.manifest):
         raise ValueError("binding manifest differs from installed model registry")

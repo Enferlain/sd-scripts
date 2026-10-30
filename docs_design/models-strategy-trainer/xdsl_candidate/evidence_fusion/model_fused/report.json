@@ -1,0 +1,641 @@
+{
+  "python": "3.14.5",
+  "gil_enabled": false,
+  "xdsl": "0.74.0",
+  "torch": "2.14.1+cu130",
+  "accepted_digest": "bfa26dbabc94281ef6719fcd28140f7a26dcb8a2fc694b42b588a8d31ef2d249",
+  "accept_seconds": 0.00501803799852496,
+  "prepare_seconds": 0.03702562599937664,
+  "execute_seconds": 0.0900314079990494,
+  "report": {
+    "status": "stopped",
+    "error": null,
+    "errors": [],
+    "addresses": [
+      {
+        "window": 0,
+        "slot": 0,
+        "sample": 1
+      },
+      {
+        "window": 0,
+        "slot": 1,
+        "sample": 2
+      },
+      {
+        "window": 1,
+        "slot": 0,
+        "sample": 4
+      },
+      {
+        "window": 1,
+        "slot": 1,
+        "sample": 5
+      }
+    ],
+    "source": {
+      "excluded": [
+        3,
+        6
+      ],
+      "products": [
+        {
+          "sample": 5,
+          "window": 1,
+          "slot": 1,
+          "branch": "left",
+          "value": 11.0,
+          "sources": []
+        },
+        {
+          "sample": 4,
+          "window": 1,
+          "slot": 0,
+          "branch": "left",
+          "value": 9.0,
+          "sources": []
+        },
+        {
+          "sample": 2,
+          "window": 0,
+          "slot": 1,
+          "branch": "left",
+          "value": 5.0,
+          "sources": []
+        },
+        {
+          "sample": 1,
+          "window": 0,
+          "slot": 0,
+          "branch": "left",
+          "value": 3.0,
+          "sources": []
+        },
+        {
+          "sample": 4,
+          "window": 1,
+          "slot": 0,
+          "branch": "right",
+          "value": 1.5,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "sample": 5,
+          "window": 1,
+          "slot": 1,
+          "branch": "right",
+          "value": 1.875,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "sample": 2,
+          "window": 0,
+          "slot": 1,
+          "branch": "right",
+          "value": 0.75,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "sample": 1,
+          "window": 0,
+          "slot": 0,
+          "branch": "right",
+          "value": 0.375,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        }
+      ],
+      "stages": [
+        {
+          "sample": 5,
+          "origin": "data.double",
+          "input": 5,
+          "output": 10,
+          "outcome": "returned"
+        },
+        {
+          "sample": 5,
+          "origin": "data.encode",
+          "input": 5,
+          "output": 1.875,
+          "outcome": "returned"
+        },
+        {
+          "sample": 4,
+          "origin": "data.double",
+          "input": 4,
+          "output": 8,
+          "outcome": "returned"
+        },
+        {
+          "sample": 4,
+          "origin": "data.encode",
+          "input": 4,
+          "output": 1.5,
+          "outcome": "returned"
+        },
+        {
+          "sample": 2,
+          "origin": "data.double",
+          "input": 2,
+          "output": 4,
+          "outcome": "returned"
+        },
+        {
+          "sample": 2,
+          "origin": "data.encode",
+          "input": 2,
+          "output": 0.75,
+          "outcome": "returned"
+        },
+        {
+          "sample": 1,
+          "origin": "data.double",
+          "input": 1,
+          "output": 2,
+          "outcome": "returned"
+        },
+        {
+          "sample": 1,
+          "origin": "data.encode",
+          "input": 1,
+          "output": 0.375,
+          "outcome": "returned"
+        },
+        {
+          "sample": 5,
+          "origin": "data.offset",
+          "input": 10,
+          "output": 11,
+          "outcome": "returned"
+        },
+        {
+          "sample": 4,
+          "origin": "data.offset",
+          "input": 8,
+          "output": 9,
+          "outcome": "returned"
+        },
+        {
+          "sample": 2,
+          "origin": "data.offset",
+          "input": 4,
+          "output": 5,
+          "outcome": "returned"
+        },
+        {
+          "sample": 1,
+          "origin": "data.offset",
+          "input": 2,
+          "output": 3,
+          "outcome": "returned"
+        }
+      ],
+      "local_metrics": {
+        "dispatches": 4
+      }
+    },
+    "learning": {
+      "contributions": [
+        {
+          "sample": 1,
+          "window": 0,
+          "slot": 0,
+          "left": 3.0,
+          "right": 0.375,
+          "weight": 0.800000011920929,
+          "epoch": 0,
+          "loss": 2.4200000762939453,
+          "invocation": 1,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "sample": 2,
+          "window": 0,
+          "slot": 1,
+          "left": 5.0,
+          "right": 0.75,
+          "weight": 0.800000011920929,
+          "epoch": 0,
+          "loss": 6.479999542236328,
+          "invocation": 2,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            },
+            {
+              "channel": "left.1",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.1",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "sample": 4,
+          "window": 1,
+          "slot": 0,
+          "left": 9.0,
+          "right": 1.5,
+          "weight": -0.606249988079071,
+          "epoch": 1,
+          "loss": 34.991844177246094,
+          "invocation": 4,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 1,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 1,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "sample": 5,
+          "window": 1,
+          "slot": 1,
+          "left": 11.0,
+          "right": 1.875,
+          "weight": -0.606249988079071,
+          "epoch": 1,
+          "loss": 53.101341247558594,
+          "invocation": 5,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 1,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 1,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            },
+            {
+              "channel": "left.1",
+              "window": 1,
+              "sources": []
+            },
+            {
+              "channel": "right.1",
+              "window": 1,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        }
+      ],
+      "windows": [
+        {
+          "window": 0,
+          "weight": -0.606249988079071,
+          "epoch": 1,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            },
+            {
+              "channel": "left.1",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.1",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        },
+        {
+          "window": 1,
+          "weight": 10.419848442077637,
+          "epoch": 2,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 1,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 1,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            },
+            {
+              "channel": "left.1",
+              "window": 1,
+              "sources": []
+            },
+            {
+              "channel": "right.1",
+              "window": 1,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "evaluation": {
+      "measurements": [
+        {
+          "trigger_window": 0,
+          "trigger_position": 1,
+          "epoch": 2,
+          "binding": 1,
+          "weight": 10.419848442077637,
+          "value": 10.419848442077637,
+          "returned": true,
+          "completed": true,
+          "inputs": [
+            {
+              "channel": "left.0",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.0",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            },
+            {
+              "channel": "left.1",
+              "window": 0,
+              "sources": []
+            },
+            {
+              "channel": "right.1",
+              "window": 0,
+              "sources": [
+                [
+                  "encoder",
+                  1,
+                  0
+                ]
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "unit_outcomes": [
+      {
+        "invocation": 1,
+        "advance_invocation": 3,
+        "contribution": "ready",
+        "optimizer": "returned",
+        "reset": "returned",
+        "inputs": [
+          {
+            "channel": "left.0",
+            "window": 0
+          },
+          {
+            "channel": "right.0",
+            "window": 0
+          }
+        ]
+      },
+      {
+        "invocation": 2,
+        "advance_invocation": 3,
+        "contribution": "ready",
+        "optimizer": "returned",
+        "reset": "returned",
+        "inputs": [
+          {
+            "channel": "left.0",
+            "window": 0
+          },
+          {
+            "channel": "right.0",
+            "window": 0
+          },
+          {
+            "channel": "left.1",
+            "window": 0
+          },
+          {
+            "channel": "right.1",
+            "window": 0
+          }
+        ]
+      },
+      {
+        "invocation": 4,
+        "advance_invocation": 6,
+        "contribution": "ready",
+        "optimizer": "returned",
+        "reset": "returned",
+        "inputs": [
+          {
+            "channel": "left.0",
+            "window": 1
+          },
+          {
+            "channel": "right.0",
+            "window": 1
+          }
+        ]
+      },
+      {
+        "invocation": 5,
+        "advance_invocation": 6,
+        "contribution": "ready",
+        "optimizer": "returned",
+        "reset": "returned",
+        "inputs": [
+          {
+            "channel": "left.0",
+            "window": 1
+          },
+          {
+            "channel": "right.0",
+            "window": 1
+          },
+          {
+            "channel": "left.1",
+            "window": 1
+          },
+          {
+            "channel": "right.1",
+            "window": 1
+          }
+        ]
+      }
+    ],
+    "pending": false,
+    "steps": 2,
+    "remaining": {
+      "left.0": [],
+      "right.0": [],
+      "left.1": [],
+      "right.1": []
+    },
+    "claimed": {
+      "left.0": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "right.0": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          4
+        ]
+      ],
+      "left.1": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          5
+        ]
+      ],
+      "right.1": [
+        [
+          0,
+          2
+        ],
+        [
+          1,
+          5
+        ]
+      ]
+    },
+    "associations_on_failure": [],
+    "released": true,
+    "diagnostics": 91
+  }
+}

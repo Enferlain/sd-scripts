@@ -1,0 +1,327 @@
+{
+  "gil_enabled": false,
+  "modes": {
+    "calls": {
+      "report": {
+        "status": "stopped",
+        "error": null,
+        "errors": [],
+        "source": {
+          "excluded": [],
+          "products": [],
+          "stages": [],
+          "local_metrics": {
+            "dispatches": 12
+          },
+          "cursor": 7,
+          "revision": 3,
+          "bias": 2,
+          "selections": [],
+          "updates": [],
+          "max_active": 3,
+          "events": [],
+          "settlements": [],
+          "active": []
+        },
+        "learning": {
+          "contributions": [],
+          "windows": []
+        },
+        "unit_outcomes": [
+          {
+            "invocation": 1,
+            "advance_invocation": 2,
+            "contribution": "ready",
+            "optimizer": "returned",
+            "reset": "returned",
+            "inputs": [
+              {
+                "channel": "mixed.left",
+                "window": 0
+              },
+              {
+                "channel": "mixed.right",
+                "window": 0
+              }
+            ]
+          },
+          {
+            "invocation": 3,
+            "advance_invocation": 4,
+            "contribution": "ready",
+            "optimizer": "returned",
+            "reset": "returned",
+            "inputs": [
+              {
+                "channel": "mixed.left",
+                "window": 1
+              },
+              {
+                "channel": "mixed.right",
+                "window": 1
+              }
+            ]
+          },
+          {
+            "invocation": 5,
+            "advance_invocation": 6,
+            "contribution": "ready",
+            "optimizer": "returned",
+            "reset": "returned",
+            "inputs": [
+              {
+                "channel": "mixed.left",
+                "window": 2
+              },
+              {
+                "channel": "mixed.right",
+                "window": 2
+              }
+            ]
+          }
+        ],
+        "steps": 3,
+        "pending": false,
+        "remaining": {
+          "mixed.left": [],
+          "mixed.right": []
+        },
+        "ports_closed": {
+          "mixed.left": true,
+          "mixed.right": true
+        },
+        "claimed": {
+          "mixed.left": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              5
+            ]
+          ],
+          "mixed.right": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              5
+            ]
+          ]
+        },
+        "discarded": {
+          "mixed.left": [
+            3
+          ],
+          "mixed.right": [
+            3
+          ]
+        },
+        "high_water": {
+          "mixed.left": 1,
+          "mixed.right": 1
+        },
+        "released": true,
+        "diagnostics": 0,
+        "checkpoint": true,
+        "stop_requested": true
+      },
+      "retained_owner_sources": [
+        {
+          "ordinal": 0,
+          "source_binding": 1,
+          "source_epoch": 0
+        },
+        {
+          "ordinal": 1,
+          "source_binding": 1,
+          "source_epoch": 0
+        },
+        {
+          "ordinal": 2,
+          "source_binding": 1,
+          "source_epoch": 0
+        }
+      ],
+      "independent_weights": [
+        0.8,
+        0.7992,
+        0.792616192,
+        0.77490350384128
+      ],
+      "actual_weight": 0.7749034762382507
+    },
+    "inline": {
+      "report": {
+        "status": "stopped",
+        "error": null,
+        "errors": [],
+        "source": {
+          "excluded": [],
+          "products": [],
+          "stages": [],
+          "local_metrics": {
+            "dispatches": 12
+          },
+          "cursor": 7,
+          "revision": 3,
+          "bias": 2,
+          "selections": [],
+          "updates": [],
+          "max_active": 3,
+          "events": [],
+          "settlements": [],
+          "active": []
+        },
+        "learning": {
+          "contributions": [],
+          "windows": []
+        },
+        "unit_outcomes": [
+          {
+            "invocation": 1,
+            "advance_invocation": 2,
+            "contribution": "ready",
+            "optimizer": "returned",
+            "reset": "returned",
+            "inputs": [
+              {
+                "channel": "mixed.left",
+                "window": 0
+              },
+              {
+                "channel": "mixed.right",
+                "window": 0
+              }
+            ]
+          },
+          {
+            "invocation": 3,
+            "advance_invocation": 4,
+            "contribution": "ready",
+            "optimizer": "returned",
+            "reset": "returned",
+            "inputs": [
+              {
+                "channel": "mixed.left",
+                "window": 1
+              },
+              {
+                "channel": "mixed.right",
+                "window": 1
+              }
+            ]
+          },
+          {
+            "invocation": 5,
+            "advance_invocation": 6,
+            "contribution": "ready",
+            "optimizer": "returned",
+            "reset": "returned",
+            "inputs": [
+              {
+                "channel": "mixed.left",
+                "window": 2
+              },
+              {
+                "channel": "mixed.right",
+                "window": 2
+              }
+            ]
+          }
+        ],
+        "steps": 3,
+        "pending": false,
+        "remaining": {
+          "mixed.left": [],
+          "mixed.right": []
+        },
+        "ports_closed": {
+          "mixed.left": true,
+          "mixed.right": true
+        },
+        "claimed": {
+          "mixed.left": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              5
+            ]
+          ],
+          "mixed.right": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              3
+            ],
+            [
+              2,
+              5
+            ]
+          ]
+        },
+        "discarded": {
+          "mixed.left": [
+            3
+          ],
+          "mixed.right": [
+            3
+          ]
+        },
+        "high_water": {
+          "mixed.left": 1,
+          "mixed.right": 1
+        },
+        "released": true,
+        "diagnostics": 0,
+        "checkpoint": true,
+        "stop_requested": true
+      },
+      "retained_owner_sources": [
+        {
+          "ordinal": 0,
+          "source_binding": 1,
+          "source_epoch": 0
+        },
+        {
+          "ordinal": 1,
+          "source_binding": 1,
+          "source_epoch": 0
+        },
+        {
+          "ordinal": 2,
+          "source_binding": 1,
+          "source_epoch": 0
+        }
+      ],
+      "independent_weights": [
+        0.8,
+        0.7992,
+        0.792616192,
+        0.77490350384128
+      ],
+      "actual_weight": 0.7749034762382507
+    }
+  }
+}

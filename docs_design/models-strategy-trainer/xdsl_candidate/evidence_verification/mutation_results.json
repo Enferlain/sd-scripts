@@ -1,0 +1,85 @@
+{
+  "baseline_commit": "6bea859b",
+  "before": [
+    {
+      "fixture": "A",
+      "case": "swap_maps",
+      "lowering": "calls",
+      "preparation": "accepted",
+      "status": "stopped",
+      "sample1_left": 4.0,
+      "oracle_rejection": "prepared data: 12.0 != 11"
+    },
+    {
+      "fixture": "A",
+      "case": "swap_maps",
+      "lowering": "inline",
+      "preparation": "accepted",
+      "status": "stopped",
+      "sample1_left": 4.0,
+      "oracle_rejection": "prepared data: 12.0 != 11"
+    },
+    {
+      "fixture": "B",
+      "case": "horizon_zero",
+      "preparation": "accepted",
+      "horizon": 0
+    },
+    {
+      "fixture": "B",
+      "case": "target",
+      "preparation": "accepted",
+      "horizon": 2
+    },
+    {
+      "fixture": "B",
+      "case": "feedback",
+      "preparation": "accepted",
+      "horizon": 2,
+      "status": "stopped",
+      "actual_feedback_biases": [
+        1,
+        4,
+        4,
+        0,
+        4,
+        1
+      ],
+      "original_oracle": "passed despite mutated update recipe"
+    }
+  ],
+  "after": [
+    {
+      "fixture": "B",
+      "mutation": "horizon_zero",
+      "result": "NotReady",
+      "message": "data-session: prepared plan flow bounds differ"
+    },
+    {
+      "fixture": "B",
+      "mutation": "target",
+      "result": "NotReady",
+      "message": "data-session: prepared plan identity/target/protocol differs"
+    },
+    {
+      "fixture": "B",
+      "mutation": "feedback",
+      "result": "NotReady",
+      "message": "prepared plan: exec.feedback source/protocol differs"
+    },
+    {
+      "fixture": "A",
+      "mutation": "swap_maps",
+      "lowering": "calls",
+      "result": "NotReady",
+      "message": "data.double: prepared implementation differs from accepted selection"
+    },
+    {
+      "fixture": "A",
+      "mutation": "swap_maps",
+      "lowering": "inline",
+      "result": "NotReady",
+      "message": "data.double: prepared implementation differs from accepted selection"
+    }
+  ]
+}

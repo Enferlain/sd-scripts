@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pytest
 from xdsl.dialects.builtin import StringAttr, SymbolRefAttr
-from xdsl.ir import Operation
+from xdsl.ir import Block, Operation, Region
 
 from .dialects import (
     CallOp,
@@ -22,6 +22,7 @@ from .dialects import (
     FlowType,
     LocalOp,
     MapOp,
+    PlanOp,
     SelectOp,
     SessionOp,
     YieldOp,
@@ -148,8 +149,9 @@ def test_target_failures_do_not_reject_semantics(capacity: int, target: str) -> 
 
 
 @pytest.mark.parametrize("horizon", [1, 2])
-def test_loaded_document_executes_in_fresh_process_without_torch(tmp_path: Path, horizon: int) -> None:
-    prepared = prepare(accept(build(horizon=horizon)), registry())
+@pytest.mark.parametrize("fuse", [False, True])
+def test_loaded_document_executes_in_fresh_process_without_torch(tmp_path: Path, horizon: int, fuse: bool) -> None:
+    prepared = prepare(accept(build(horizon=horizon)), registry(), fuse=fuse)
     semantic = tmp_path / "input.mlir"
     manifest = tmp_path / "bindings.json"
     semantic.write_text(prepared.accepted.text)
@@ -170,7 +172,18 @@ assert 'torch' not in sys.modules
 """
     environment = {**os.environ, "PYTHONPATH": str(Path(__file__).resolve().parent.parent)}
     completed = subprocess.run(
-        [sys.executable, "-c", script, "--load", str(semantic), "--manifest", str(manifest), "--dump-dir", str(tmp_path / "loaded")],
+        [
+            sys.executable,
+            "-c",
+            script,
+            "--load",
+            str(semantic),
+            "--manifest",
+            str(manifest),
+            "--dump-dir",
+            str(tmp_path / "loaded"),
+            *(["--fuse"] if fuse else []),
+        ],
         env=environment,
         capture_output=True,
         text=True,
@@ -186,7 +199,7 @@ assert 'torch' not in sys.modules
     wrong["bindings"][0]["version"] = "other-version"
     manifest.write_text(json.dumps(wrong))
     failed = subprocess.run(
-        [sys.executable, "-c", script, "--load", str(semantic), "--manifest", str(manifest)],
+        [sys.executable, "-c", script, "--load", str(semantic), "--manifest", str(manifest), *(["--fuse"] if fuse else [])],
         env=environment,
         capture_output=True,
         text=True,
@@ -195,8 +208,8 @@ assert 'torch' not in sys.modules
     assert failed.returncode != 0 and "binding manifest differs" in failed.stderr
 
 
-@pytest.mark.parametrize("corruption", ["duplicate_chain", "wrong_call_role"])
-def test_prepared_dispatch_checks_chain_roles(corruption: str, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("corruption", ["duplicate_chain", "wrong_call_role", "novel_chain", "missing_chain"])
+def test_prepared_dispatch_checks_roles_and_binding_contracts(corruption: str, monkeypatch: pytest.MonkeyPatch) -> None:
     original = preparation_module.parse
 
     def corrupted(text: str):
@@ -205,12 +218,19 @@ def test_prepared_dispatch_checks_chain_roles(corruption: str, monkeypatch: pyte
             if corruption == "duplicate_chain":
                 chains = [op for op in module.walk() if isinstance(op, ChainOp)]
                 chains[-1].properties["role"] = StringAttr("producer")
-            else:
+            elif corruption == "wrong_call_role":
                 find(module, CallOp).properties["role"] = StringAttr("publish")
+            elif corruption == "novel_chain":
+                find(module, PlanOp).body.block.add_op(
+                    ChainOp(properties={"role": StringAttr("novel"), "transport": StringAttr("unknown")}, regions=[Region(Block())])
+                )
+            else:
+                root = find(module, PlanOp)
+                root.body.block.erase_op(find(root, ChainOp))
         return module
 
     monkeypatch.setattr(preparation_module, "parse", corrupted)
-    with pytest.raises(NotReady, match=r"prepared.*(chain role|call roles)"):
+    with pytest.raises(NotReady, match=r"prepared.*(chain role|call roles|binding|selection)"):
         prepare(accept(build()), registry())
 
 

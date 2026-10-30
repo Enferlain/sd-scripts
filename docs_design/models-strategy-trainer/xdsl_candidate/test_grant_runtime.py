@@ -21,6 +21,7 @@ from .dialects import CallOp, PlanOp, dump, integer
 from .grant_conformance import check_c, check_unverified, reference
 from .grant_contract import accept_grant, build_grant
 from .grant_dialect import AdvanceGrantedOp, parse_grant
+from .fusion import rewrite
 from .model_contract import one
 from .model_dialect import RecipeOp
 from .prepare import NotReady
@@ -31,6 +32,15 @@ adapter = importlib.import_module(__package__ + ".grant_adapter")
 model_adapter = importlib.import_module(__package__ + ".model_adapter")
 torch, owners, physical = adapter.torch, model_adapter.owners, model_adapter.physical
 DomainRegistry, grant_registry, prepare_grant = adapter.DomainRegistry, adapter.grant_registry, adapter.prepare_grant
+
+
+@pytest.mark.asyncio
+async def test_local_rewrite_is_a_noop_across_grant_and_retained_owner_boundaries() -> None:
+    prepared = prepare_grant(accept_grant(build_grant()))
+    module = parse_grant(prepared.text)
+    transformed = rewrite(module, {})
+    assert dump(transformed) == prepared.text
+    check_c(await prepared.publish().run())
 
 
 def selected_registry(selected):
@@ -90,7 +100,9 @@ def test_unavailable_concrete_grant_rejects_before_model_load(case: str) -> None
     assert not loads and accept_grant(parse_grant(accepted.text)) == accepted
 
 
-@pytest.mark.parametrize("case", ["completion", "symbol", "ancestry", "target", "protocol", "capacity"])
+@pytest.mark.parametrize(
+    "case", ["completion", "symbol", "ancestry", "target", "protocol", "capacity", "unknown_plan", "unknown_call", "unknown_recipe"]
+)
 def test_prepared_recipe_is_checked_before_generated_owner_program(case: str, monkeypatch) -> None:
     bindings = dict(grant_registry().bindings)
     bindings["alternate"] = bindings["two_pass_v1"]
@@ -107,6 +119,9 @@ def test_prepared_recipe_is_checked_before_generated_owner_program(case: str, mo
             one(module, PlanOp).properties["target"] = StringAttr("other")
         elif case == "protocol":
             one(module, RecipeOp).properties["protocol"] = StringAttr("skip_owner_verification")
+        elif case.startswith("unknown_"):
+            selected = one(module, PlanOp) if case == "unknown_plan" else call if case == "unknown_call" else one(module, RecipeOp)
+            selected.properties["unsupported_execution_choice"] = StringAttr("changed")
         else:
             one(module, PlanOp).properties["capacity"] = integer(1)
         return dump(module)

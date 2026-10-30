@@ -1,0 +1,50 @@
+{
+  "abi": "continuous-owner-cpu-v1",
+  "bindings": [
+    {
+      "effect": "load",
+      "role": "model",
+      "symbol": "scale_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "double_v1",
+      "version": "1"
+    },
+    {
+      "effect": "pure",
+      "role": "map",
+      "symbol": "offset_v1",
+      "version": "1"
+    },
+    {
+      "effect": "read_source",
+      "role": "encode",
+      "symbol": "encode_v1",
+      "version": "1"
+    },
+    {
+      "effect": "build_loss",
+      "role": "objective",
+      "symbol": "mixed_loss_v1",
+      "version": "1"
+    },
+    {
+      "effect": "read_policy",
+      "role": "filter",
+      "symbol": "dynamic_filter_v1",
+      "version": "1"
+    },
+    {
+      "effect": "derive_update",
+      "role": "policy",
+      "symbol": "learned_bias_v1",
+      "version": "1"
+    }
+  ],
+  "local_lowering": "fused-v1",
+  "registry": "continuous-learning-fixture-v1",
+  "schema": 1
+}

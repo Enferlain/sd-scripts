@@ -14,9 +14,17 @@ Rules:
 
 ### Added
 
+- **xDSL local composition now admits an independent operation and payload schema** — common interfaces and decoded local signatures verify codecs, immutable resource identity, outcomes and lowering before execution. The same scalar workflow/runtime carries a typed pair; independent payload checks catch hidden corruption, and conservative fusion preserves resource/schema barriers.
+- **xDSL research now combines continuous selection with shared model ownership** — one existing engine handles dynamic policy feedback, protected trainable-model preprocessing, atomic admission and ordinary updates; a real blocked-handoff/physical-read stop case retains failure and interruption evidence. The explicit checkpoint and CPU profile remain bounded research.
+- **xDSL research now compares unfused and fused local data dispatch** — an actual prepared-IR rewrite groups eligible stages while retaining per-stage validation, source and failure facts. A/B independent conformance, physical interruption/drain checks and a C no-op guard the boundary; bounded raw local costs are recorded without a production speedup claim.
 - **xDSL research now represents offered two-pass authority and retained advancement** — typed handback and explicit phase/authority contracts reuse the existing grant, protected-state and optimization owners. Independent numerical and failure checks distinguish restoration from verified handback, drain physical work through interruption, and retain uncertain optimizer/reset outcomes; the fusion comparison and framework choice remain open.
 - **xDSL research now integrates correlated model/data work with existing owners** — explicit sample/window mappings, atomic two-path admission, two-contribution accumulation and current-at-start requested evaluation reuse the candidate's state, optimization and physical-drain services. Independent numerical, failure and reconstruction checks preserve the data-only path; framework selection remains open.
 - **Isolated xDSL research now executes a data-only feedback workflow** — typed semantic and prepared IR reconstruct without the authoring object; independent checks cover actual policy provenance, aggregate outstanding bounds, feedback under blocked publication, partial failure and physical drain through cancellation. Production interfaces and framework selection remain unchanged.
+
+### Fixed
+
+- **Mixed xDSL feedback now follows the actual admitted input through the owner sequence** — control no longer reads the last contribution from a recorder. Archive-erasure checks preserve learning, feedback, physical draining and numerical results with source/learning observations disabled.
+- **xDSL preparation now verifies decoded plan correspondence** — A/B reject altered target/bounds/control descriptors, substituted stage bindings, missing/duplicate calls and incorrect source ancestry. Fixed backend protocol fields are checked explicitly before runtime construction, with regression evidence for the external review's corruption cases.
 
 ## [2026-10-28]
 

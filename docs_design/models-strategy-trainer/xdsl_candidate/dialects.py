@@ -10,8 +10,8 @@ from __future__ import annotations
 from io import StringIO
 
 from xdsl.context import Context
-from xdsl.dialects.builtin import ArrayAttr, Builtin, IntegerAttr, ModuleOp, StringAttr, SymbolRefAttr, i64
-from xdsl.ir import Dialect, ParametrizedAttribute, TypeAttribute
+from xdsl.dialects.builtin import ArrayAttr, Builtin, DictionaryAttr, IntegerAttr, ModuleOp, StringAttr, SymbolRefAttr, i64
+from xdsl.ir import Attribute, Dialect, ParametrizedAttribute, TypeAttribute
 from xdsl.irdl import (
     IRDLOperation,
     irdl_attr_definition,
@@ -28,15 +28,17 @@ from xdsl.printer import Printer
 from xdsl.traits import IsolatedFromAbove, IsTerminator, NoTerminator
 from xdsl.utils.exceptions import VerifyException
 
+from .local_contract import ScalarTransform, TransparentLocal
+
 
 @irdl_attr_definition
 class FlowType(ParametrizedAttribute, TypeAttribute):
     name = "wf.flow"
-    payload: StringAttr
+    payload: Attribute
 
     def verify(self) -> None:
-        if self.payload.data not in ("record", "score", "feedback"):
-            raise VerifyException("wf.flow: unknown payload contract")
+        if not isinstance(self.payload, StringAttr | TypeAttribute) or (isinstance(self.payload, StringAttr) and not self.payload.data):
+            raise VerifyException("wf.flow: nonempty schema name or installed payload type required")
 
 
 @irdl_op_definition
@@ -88,6 +90,7 @@ class ComposeOp(IRDLOperation):
     input = operand_def(FlowType)
     output = operand_def(FlowType)
     body = region_def("single_block")
+    traits = traits_def(TransparentLocal())
 
 
 @irdl_op_definition
@@ -98,6 +101,7 @@ class MapOp(IRDLOperation):
     effect = prop_def(StringAttr)
     input = operand_def(FlowType)
     output = result_def(FlowType)
+    traits = traits_def(ScalarTransform())
 
 
 @irdl_op_definition
@@ -109,6 +113,7 @@ class LocalOp(IRDLOperation):
     input = operand_def(FlowType)
     output = result_def(FlowType)
     body = region_def("single_block")
+    traits = traits_def(TransparentLocal())
 
 
 @irdl_op_definition
@@ -174,6 +179,18 @@ class CallOp(IRDLOperation):
 
 
 @irdl_op_definition
+class LocalSignatureOp(IRDLOperation):
+    name = "exec.local_signature"
+    origin = prop_def(StringAttr)
+    input_type = prop_def(FlowType)
+    output_type = prop_def(FlowType)
+    input_codec = prop_def(StringAttr)
+    output_codec = prop_def(StringAttr)
+    resources = prop_def(ArrayAttr[DictionaryAttr])
+    outcomes = prop_def(ArrayAttr[StringAttr])
+
+
+@irdl_op_definition
 class SelectRecipeOp(IRDLOperation):
     name = "exec.select"
     origin = prop_def(StringAttr)
@@ -202,9 +219,18 @@ class FeedbackRecipeOp(IRDLOperation):
     admission = prop_def(StringAttr)
 
 
+@irdl_op_definition
+class FusedOp(IRDLOperation):
+    name = "exec.fused"
+    profile = prop_def(StringAttr)
+    origins = prop_def(ArrayAttr[StringAttr])
+    body = region_def("single_block")
+    traits = traits_def(NoTerminator())
+
+
 Workflow = Dialect("wf", [SessionOp, EntityOp, FlowOp, ComposeOp, LocalOp, YieldOp], [FlowType])
 Data = Dialect("data", [SelectOp, MapOp, ScoreOp, PublishOp], [])
-Execution = Dialect("exec", [PlanOp, ChainOp, CallOp, SelectRecipeOp, HandoffRecipeOp, FeedbackRecipeOp], [])
+Execution = Dialect("exec", [PlanOp, ChainOp, CallOp, LocalSignatureOp, SelectRecipeOp, HandoffRecipeOp, FeedbackRecipeOp, FusedOp], [])
 
 
 def integer(value: int) -> IntegerAttr:
