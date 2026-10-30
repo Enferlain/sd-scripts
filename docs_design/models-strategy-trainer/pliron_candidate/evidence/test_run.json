@@ -1,0 +1,18 @@
+{
+  "exit_code": 0,
+  "gil_before": false,
+  "gil_after": false,
+  "seconds": 18.316676909002126,
+  "arguments": [
+    "-ra",
+    "--ignore=tests/_deprecated",
+    "--noconftest",
+    "docs_design/models-strategy-trainer/pliron_candidate",
+    "docs_design/models-strategy-trainer/xdsl_candidate",
+    "-q",
+    "-p",
+    "pytest_asyncio.plugin",
+    "--tb=short"
+  ],
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]"
+}

@@ -1,0 +1,30 @@
+{
+  "analysis": [
+    [
+      2,
+      1,
+      1
+    ],
+    [
+      1,
+      2,
+      1
+    ]
+  ],
+  "dispatch_groups": [
+    [
+      "data.double",
+      "data.offset"
+    ]
+  ],
+  "gil_after": false,
+  "gil_before": false,
+  "local_dispatches": 6,
+  "pliron": "0.20.0",
+  "preparation_seconds_including_processes": 0.07879197899455903,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "session_seconds": 0.001292935005039908,
+  "status": "stopped",
+  "tickets": 6,
+  "torch_imported": false
+}

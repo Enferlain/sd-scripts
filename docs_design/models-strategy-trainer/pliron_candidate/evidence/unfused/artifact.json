@@ -1,0 +1,123 @@
+{
+  "accepted": "wf.session () [] [source_id: builtin.string \"data-session\", contract: builtin.string \"scalar-feedback-v1\", version: builtin.string \"1\", horizon: builtin.string \"2\", stop_rule: builtin.string \"settle_selected\"]: <() -> ()>\n{\n  ^workflow_block1v1() !0:\n    cursor_v0 = wf.entity () [] [source_id: builtin.string \"owner.cursor\", kind: builtin.string \"cursor\"]: <() -> (wf.entity )> !1;\n    policy_v1 = wf.entity () [] [source_id: builtin.string \"owner.policy\", kind: builtin.string \"policy\"]: <() -> (wf.entity )> !2;\n    publication_v2 = wf.entity () [] [source_id: builtin.string \"owner.publication\", kind: builtin.string \"publication\"]: <() -> (wf.entity )> !3;\n    selected_v3 = wf.flow () [] [source_id: builtin.string \"selected\"]: <() -> (wf.record )> !4;\n    mapped_v4 = wf.flow () [] [source_id: builtin.string \"mapped\"]: <() -> (wf.record )> !5;\n    scored_v5 = wf.flow () [] [source_id: builtin.string \"scored\"]: <() -> (wf.score )> !6;\n    feedback_v6 = wf.flow () [] [source_id: builtin.string \"feedback\"]: <() -> (wf.feedback )> !7;\n    wf.select (cursor_v0, policy_v1, feedback_v6, selected_v3) [] [source_id: builtin.string \"selector\", application: builtin.string \"ack_before_next_selection\"]: <(wf.entity , wf.entity , wf.feedback , wf.record ) -> ()> !8;\n    wf.compose (selected_v3, mapped_v4) [] [source_id: builtin.string \"data.composed\"]: <(wf.record , wf.record ) -> ()>\n    {\n      ^local_block_block2v1(input_v7: wf.record ) !9:\n        doubled_v8 = wf.map (input_v7) [] [source_id: builtin.string \"data.double\", implementation: builtin.string \"double_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !10;\n        nested_v9 = wf.local (doubled_v8) [] [source_id: builtin.string \"data.nested\"]: <(wf.record ) -> (wf.record )>\n        {\n          ^nested_block_block3v1(nested_input_v10: wf.record ) !11:\n            offset_v11 = wf.map (nested_input_v10) [] [source_id: builtin.string \"data.offset\", implementation: builtin.string \"offset_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !12;\n            wf.yield (offset_v11) [] []: <(wf.record ) -> ()> !13\n        } !14;\n        wf.yield (nested_v9) [] []: <(wf.record ) -> ()> !15\n    } !16;\n    wf.score (mapped_v4, scored_v5) [] [source_id: builtin.string \"scorer\", implementation: builtin.string \"square_v1\", effect: builtin.string \"pure\"]: <(wf.record , wf.score ) -> ()> !17;\n    wf.publish (scored_v5, feedback_v6, publication_v2) [] [source_id: builtin.string \"publisher\", implementation: builtin.string \"receipt_v1\", effect: builtin.string \"publication\", acknowledgement: builtin.string \"returned_receipt\"]: <(wf.score , wf.feedback , wf.entity ) -> ()> !18\n} !19\n\noutlined_attributes:\n!0 = @[<in-memory>: line: 2, column: 3], []\n!1 = @[<in-memory>: line: 3, column: 5], [builtin_given_names = builtin.given_names [cursor]]\n!2 = @[<in-memory>: line: 4, column: 5], [builtin_given_names = builtin.given_names [policy]]\n!3 = @[<in-memory>: line: 5, column: 5], [builtin_given_names = builtin.given_names [publication]]\n!4 = @[<in-memory>: line: 6, column: 5], [builtin_given_names = builtin.given_names [selected]]\n!5 = @[<in-memory>: line: 7, column: 5], [builtin_given_names = builtin.given_names [mapped]]\n!6 = @[<in-memory>: line: 8, column: 5], [builtin_given_names = builtin.given_names [scored]]\n!7 = @[<in-memory>: line: 9, column: 5], [builtin_given_names = builtin.given_names [feedback]]\n!8 = @[<in-memory>: line: 10, column: 5], []\n!9 = @[<in-memory>: line: 12, column: 7], [builtin_given_names = builtin.given_names [input]]\n!10 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [doubled]]\n!11 = @[<in-memory>: line: 15, column: 7], [builtin_given_names = builtin.given_names [nested_input]]\n!12 = @[<in-memory>: line: 16, column: 9], [builtin_given_names = builtin.given_names [offset]]\n!13 = @[<in-memory>: line: 17, column: 9], []\n!14 = @[<in-memory>: line: 14, column: 9], [builtin_given_names = builtin.given_names [nested]]\n!15 = @[<in-memory>: line: 19, column: 9], []\n!16 = @[<in-memory>: line: 11, column: 5], []\n!17 = @[<in-memory>: line: 21, column: 5], []\n!18 = @[<in-memory>: line: 22, column: 5], []\n!19 = @[<in-memory>: line: 1, column: 1], []\n",
+  "accepted_sha256": "44f777fb61d8666920c62d74c3fbc77103b898c483e3e011a089048cfc5cd8f6",
+  "analysis": [
+    [
+      2,
+      1,
+      1
+    ],
+    [
+      2,
+      1,
+      1
+    ]
+  ],
+  "capacity": 1,
+  "consumer": [
+    {
+      "ancestors": [
+        "data-session"
+      ],
+      "effect": "pure",
+      "origin": "scorer",
+      "role": "score",
+      "symbol": "square_v1"
+    },
+    {
+      "ancestors": [
+        "data-session"
+      ],
+      "effect": "publication",
+      "origin": "publisher",
+      "role": "publish",
+      "symbol": "receipt_v1"
+    }
+  ],
+  "horizon": 2,
+  "manifest": {
+    "bindings": {
+      "double_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "resources": [],
+        "role": "map",
+        "version": "1"
+      },
+      "offset_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "resources": [],
+        "role": "map",
+        "version": "1"
+      },
+      "receipt_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "publication",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "resources": [],
+        "role": "publish",
+        "version": "1"
+      },
+      "square_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "resources": [],
+        "role": "score",
+        "version": "1"
+      }
+    },
+    "registry": "scalar-fixtures-v1",
+    "schema": 1
+  },
+  "pliron": "0.20.0",
+  "prepared": "exec.plan () [] [accepted_hash: builtin.string \"13814335134920582193\", capacity: builtin.string \"1\", completion: builtin.string \"drain_physical_before_release\", horizon: builtin.string \"2\", schema: builtin.string \"1\", stop_rule: builtin.string \"settle_selected\", target: builtin.string \"scalar-async-cpu-v1\"]: <() -> ()>\n{\n  ^block4v1():\n    wf.session () [] [source_id: builtin.string \"data-session\", contract: builtin.string \"scalar-feedback-v1\", version: builtin.string \"1\", horizon: builtin.string \"2\", stop_rule: builtin.string \"settle_selected\"]: <() -> ()>\n    {\n      ^workflow_block1v1_block1v1() !0:\n        cursor_v0 = wf.entity () [] [source_id: builtin.string \"owner.cursor\", kind: builtin.string \"cursor\"]: <() -> (wf.entity )> !1;\n        policy_v1 = wf.entity () [] [source_id: builtin.string \"owner.policy\", kind: builtin.string \"policy\"]: <() -> (wf.entity )> !2;\n        publication_v2 = wf.entity () [] [source_id: builtin.string \"owner.publication\", kind: builtin.string \"publication\"]: <() -> (wf.entity )> !3;\n        selected_v3 = wf.flow () [] [source_id: builtin.string \"selected\"]: <() -> (wf.record )> !4;\n        mapped_v4 = wf.flow () [] [source_id: builtin.string \"mapped\"]: <() -> (wf.record )> !5;\n        scored_v5 = wf.flow () [] [source_id: builtin.string \"scored\"]: <() -> (wf.score )> !6;\n        feedback_v6 = wf.flow () [] [source_id: builtin.string \"feedback\"]: <() -> (wf.feedback )> !7;\n        wf.select (cursor_v0, policy_v1, feedback_v6, selected_v3) [] [source_id: builtin.string \"selector\", application: builtin.string \"ack_before_next_selection\"]: <(wf.entity , wf.entity , wf.feedback , wf.record ) -> ()> !8;\n        wf.compose (selected_v3, mapped_v4) [] [source_id: builtin.string \"data.composed\"]: <(wf.record , wf.record ) -> ()>\n        {\n          ^local_block_block2v1_block2v1(input_v7: wf.record ) !9:\n            doubled_v8 = wf.map (input_v7) [] [source_id: builtin.string \"data.double\", implementation: builtin.string \"double_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !10;\n            nested_v9 = wf.local (doubled_v8) [] [source_id: builtin.string \"data.nested\"]: <(wf.record ) -> (wf.record )>\n            {\n              ^nested_block_block3v1_block3v1(nested_input_v10: wf.record ) !11:\n                offset_v11 = wf.map (nested_input_v10) [] [source_id: builtin.string \"data.offset\", implementation: builtin.string \"offset_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !12;\n                wf.yield (offset_v11) [] []: <(wf.record ) -> ()> !13\n            } !14;\n            wf.yield (nested_v9) [] []: <(wf.record ) -> ()> !15\n        } !16;\n        wf.score (mapped_v4, scored_v5) [] [source_id: builtin.string \"scorer\", implementation: builtin.string \"square_v1\", effect: builtin.string \"pure\"]: <(wf.record , wf.score ) -> ()> !17;\n        wf.publish (scored_v5, feedback_v6, publication_v2) [] [source_id: builtin.string \"publisher\", implementation: builtin.string \"receipt_v1\", effect: builtin.string \"publication\", acknowledgement: builtin.string \"returned_receipt\"]: <(wf.score , wf.feedback , wf.entity ) -> ()> !18\n    } !19\n}\n\n{\n  ^block5v1():\n    exec.select () [] [admission: builtin.string \"count_until_feedback_ack\", selection: builtin.string \"cursor_plus_current_policy_bias;source_revision=0\"]: <() -> ()>;\n    exec.handoff () [] [release: builtin.string \"after_feedback_ack;no_protection_while_waiting\", transport: builtin.string \"bounded_mailbox\"]: <() -> ()>;\n    exec.feedback () [] [admission: builtin.string \"live_validated_publication;once_per_key\", control: builtin.string \"dedicated_task;receipt_then_apply_then_retire_then_release\", update: builtin.string \"bias=score%5;revision+=1\"]: <() -> ()>;\n    exec.chain () [] [role: builtin.string \"producer\"]: <() -> ()>\n    {\n      ^block6v1():\n        exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\",\\\"data.composed\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"double_v1\", origin: builtin.string \"data.double\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", resources: builtin.string \"none\", role: builtin.string \"map\"]: <() -> ()>;\n        exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\",\\\"data.composed\\\",\\\"data.nested\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"offset_v1\", origin: builtin.string \"data.offset\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", resources: builtin.string \"none\", role: builtin.string \"map\"]: <() -> ()>\n    };\n    exec.chain () [] [role: builtin.string \"consumer\"]: <() -> ()>\n    {\n      ^block7v1():\n        exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"square_v1\", origin: builtin.string \"scorer\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", resources: builtin.string \"none\", role: builtin.string \"score\"]: <() -> ()>;\n        exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"publication\", implementation: builtin.string \"receipt_v1\", origin: builtin.string \"publisher\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", resources: builtin.string \"none\", role: builtin.string \"publish\"]: <() -> ()>\n    }\n}\n\noutlined_attributes:\n!0 = @[<in-memory>: line: 2, column: 3], []\n!1 = @[<in-memory>: line: 3, column: 5], [builtin_given_names = builtin.given_names [cursor]]\n!2 = @[<in-memory>: line: 4, column: 5], [builtin_given_names = builtin.given_names [policy]]\n!3 = @[<in-memory>: line: 5, column: 5], [builtin_given_names = builtin.given_names [publication]]\n!4 = @[<in-memory>: line: 6, column: 5], [builtin_given_names = builtin.given_names [selected]]\n!5 = @[<in-memory>: line: 7, column: 5], [builtin_given_names = builtin.given_names [mapped]]\n!6 = @[<in-memory>: line: 8, column: 5], [builtin_given_names = builtin.given_names [scored]]\n!7 = @[<in-memory>: line: 9, column: 5], [builtin_given_names = builtin.given_names [feedback]]\n!8 = @[<in-memory>: line: 10, column: 5], []\n!9 = @[<in-memory>: line: 12, column: 7], [builtin_given_names = builtin.given_names [input]]\n!10 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [doubled]]\n!11 = @[<in-memory>: line: 15, column: 7], [builtin_given_names = builtin.given_names [nested_input]]\n!12 = @[<in-memory>: line: 16, column: 9], [builtin_given_names = builtin.given_names [offset]]\n!13 = @[<in-memory>: line: 17, column: 9], []\n!14 = @[<in-memory>: line: 14, column: 9], [builtin_given_names = builtin.given_names [nested]]\n!15 = @[<in-memory>: line: 19, column: 9], []\n!16 = @[<in-memory>: line: 11, column: 5], []\n!17 = @[<in-memory>: line: 21, column: 5], []\n!18 = @[<in-memory>: line: 22, column: 5], []\n!19 = @[<in-memory>: line: 1, column: 1], []\n",
+  "producer": [
+    [
+      {
+        "ancestors": [
+          "data-session",
+          "data.composed"
+        ],
+        "effect": "pure",
+        "origin": "data.double",
+        "role": "map",
+        "symbol": "double_v1"
+      }
+    ],
+    [
+      {
+        "ancestors": [
+          "data-session",
+          "data.composed",
+          "data.nested"
+        ],
+        "effect": "pure",
+        "origin": "data.offset",
+        "role": "map",
+        "symbol": "offset_v1"
+      }
+    ]
+  ],
+  "schema": 1,
+  "target": "scalar-async-cpu-v1"
+}

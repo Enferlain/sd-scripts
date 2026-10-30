@@ -12,6 +12,14 @@ owner APIs do not establish those choices. Shared correspondence checks protect
 readiness, execution and dependent effects without prescribing preparation order. New
 composition pressure, broader parity and matched costs remain later comparisons.
 
+The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
+tests that comparison through real graph/SSA regions, semantic/prepared round-trip
+and correspondence, guarded local fusion and cached-analysis invalidation
+(`sd-scripts-syv.31.19`). It reuses B's Python runtime/bindings/oracle. A process
+bridge and the backend's separate 0.19.0 pin leave native sharing unproven.
+An independent payload/resource extension is the bounded next comparison if the
+reviewed B result supports it; owner integration and broader parity remain later.
+
 The isolated [xDSL experiment](docs_design/models-strategy-trainer/xdsl_candidate/README.md)
 now implements data-only B (`sd-scripts-syv.31.9`), correlated data/model A
 (`sd-scripts-syv.31.10`) and granted two-pass C (`sd-scripts-syv.31.11`): semantic/prepared xDSL, fresh-process reconstruction,

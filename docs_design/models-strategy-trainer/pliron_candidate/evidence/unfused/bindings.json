@@ -1,0 +1,54 @@
+{
+  "bindings": {
+    "double_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "resources": [],
+      "role": "map",
+      "version": "1"
+    },
+    "offset_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "resources": [],
+      "role": "map",
+      "version": "1"
+    },
+    "receipt_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "publication",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "resources": [],
+      "role": "publish",
+      "version": "1"
+    },
+    "square_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "resources": [],
+      "role": "score",
+      "version": "1"
+    }
+  },
+  "registry": "scalar-fixtures-v1",
+  "schema": 1
+}

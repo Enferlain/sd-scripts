@@ -1,0 +1,13 @@
+[package]
+name = "rmst-pliron-b"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+pliron = "=0.20.0"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+
+[workspace]

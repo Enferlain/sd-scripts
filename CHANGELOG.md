@@ -14,6 +14,7 @@ Rules:
 
 ### Added
 
+- **Pliron 0.20.0 now has an isolated data-only feedback comparison** — real semantic/prepared operations, graph/SSA region checks, verified cold correspondence and local fusion use native framework infrastructure while reusing B's Python runtime and independent oracle. Analysis invalidation is exercised; xDSL remains the provisional baseline and native backend sharing remains unproven.
 - **Candidate comparison now separates provisional choices from open language decisions** — the assessment maps original/xDSL evidence and reusable checks, identifies xDSL as a viable working baseline and protects readiness/execution/effects without prescribing preparation order; language design and final implementations remain unselected.
 
 ### Fixed

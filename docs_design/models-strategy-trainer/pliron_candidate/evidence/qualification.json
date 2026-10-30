@@ -1,0 +1,200 @@
+{
+  "analysis_evidence": {
+    "custom_analyses": true,
+    "framework_cache_invalidation": true,
+    "fused": [
+      [
+        2,
+        1,
+        1
+      ],
+      [
+        1,
+        2,
+        1
+      ]
+    ],
+    "tuple_fields": [
+      "producer_dispatch_groups",
+      "dispatch_computations",
+      "source_computations"
+    ],
+    "unfused": [
+      [
+        2,
+        1,
+        1
+      ],
+      [
+        2,
+        1,
+        1
+      ]
+    ]
+  },
+  "artifact_sha256": {
+    "evidence/fused/accepted.pliron": "44f777fb61d8666920c62d74c3fbc77103b898c483e3e011a089048cfc5cd8f6",
+    "evidence/fused/artifact.json": "25e52fb17a3dbfee89bdc8845d99eb39fe8e86c49669f7cd584bd004791b155a",
+    "evidence/fused/bindings.json": "b2406a7bf0a4817986df769e71f5eee61da6040494f0635e3cf95852763709cf",
+    "evidence/fused/prepared.pliron": "86cc66ed9bbf70b329353cbdf5cc99d8eaf281eac8822cec31aefb2524dc7aba",
+    "evidence/fused/report.json": "4f351e6f4792793e9b46fb2417c753fd81fb72bb2350222a34a111289d9029ef",
+    "evidence/fused/run.json": "215b9bde015d803e00bca1b3027ace80a2dd790ad4aa6cf94f4677c0b8dce7ae",
+    "evidence/review.md": "2e24527202eb8a690aa2ef636f1dea6b88212f5b9eeb0919675512164a918e24",
+    "evidence/test_run.json": "906094b9c9ab0a58bf1c020d4cca1121c3eb6741bbe35e75edb08e35d1ffeb37",
+    "evidence/unfused/accepted.pliron": "44f777fb61d8666920c62d74c3fbc77103b898c483e3e011a089048cfc5cd8f6",
+    "evidence/unfused/artifact.json": "554c874d25cad8755293fc7ca270d9fe8b4fe59ece4a29f746a35064f3219978",
+    "evidence/unfused/bindings.json": "b2406a7bf0a4817986df769e71f5eee61da6040494f0635e3cf95852763709cf",
+    "evidence/unfused/prepared.pliron": "087de3608ccb4aebefab302f05780fcdd3c0f8bcf2af140f08e055d79f72f211",
+    "evidence/unfused/report.json": "78c3db005d2b3ed2ebff88b4eb6818afd3849f4315e2dfcae45df968803a2f2e",
+    "evidence/unfused/run.json": "c8b9a458c009dea6309feb429ab7916d3748dd9c692e111343bd8c3c1c67ba72"
+  },
+  "baseline_preservation": {
+    "all_match": true,
+    "previously_retained_source_and_report_hashes_checked": 20,
+    "user_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92"
+  },
+  "bead": "sd-scripts-syv.31.19",
+  "date": "2026-10-30",
+  "document_validation": {
+    "experiment_whitespace": "pass",
+    "local_links": 10,
+    "root_doc_insertions_whitespace": "pass; preexisting unrelated roadmap whitespace left intact"
+  },
+  "environment": {
+    "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+    "executable": "/tmp/sd-scripts-xdsl-b-env/bin/python",
+    "gil_disabled_build": true,
+    "gil_enabled_now": false,
+    "gil_forced": false,
+    "native_profile": "debug",
+    "packages": {
+      "pytest": "9.1.1",
+      "pytest-asyncio": "1.4.0",
+      "ruff": "0.17.2",
+      "ty": "0.0.86",
+      "xdsl": "0.74.0"
+    },
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+    "target_directory": "/tmp/sd-scripts-pliron-b-target"
+  },
+  "graph": {
+    "backend": "Cargo.toml metadata_changed; direct manifest and source reads performed; no exhaustive integration claim",
+    "baseline_no_recorded_issue": true,
+    "baseline_paths": 6,
+    "new_generation": "2026-10-30T14:49:50Z",
+    "new_no_recorded_issue": true,
+    "new_paths": 8,
+    "release_sources": "Downloaded crate is not graph indexed; exact source reads and hashes used. The local upstream graph does not certify release coverage.",
+    "signal": "best_effort",
+    "tier": 2
+  },
+  "independent_saved_report_replay": {
+    "assertions_enabled": true,
+    "blocked_imports": [
+      "torch",
+      "xdsl",
+      "*.runtime",
+      "*.prepare",
+      "*.fixture"
+    ],
+    "corruptions_rejected": 12,
+    "oracle": "../xdsl_candidate/conformance.py:check_b",
+    "positive_reports": 2
+  },
+  "limits": [
+    "Reuses B runtime/bindings/local compiler; not an independent runtime validation",
+    "Process bridge; no in-process Python binding or shared native backend representation",
+    "Prepared calls have no SSA results; no SSA result-remapping proof",
+    "No resource extension/owner integration/new composition/general language claim",
+    "No matched performance/maintenance cost comparison",
+    "No GPU/distributed/restoration qualification",
+    "xDSL remains provisional working baseline"
+  ],
+  "quality_gates": {
+    "clippy": "pass with --locked --all-targets -- -D warnings",
+    "no_additional_rust_test_count_claim": true,
+    "ruff_check": "pass",
+    "ruff_format": "pass",
+    "rustfmt": "pass",
+    "ty": "pass with --extra-search-path docs_design/models-strategy-trainer"
+  },
+  "release_source_sha256": {
+    "src/basic_block.rs": "3ac95cb10b6ab3bfe837089c5d3fa1e6c00b239d41dadf60d2cc65d5fac97cc7",
+    "src/builtin/attributes.rs": "74e265215ae1d63643f5bdd1961ff58c0a3870d9c36a7bc8afee426394a5bbfe",
+    "src/builtin/op_interfaces.rs": "8ce9241ad5488b6fd19a9d0b28586a4994f9aa6d2a56d7c3570639ff13000dba",
+    "src/builtin/ops.rs": "25087ba460967d59669d89cf974173d977e84a5cdb2beaa57587c808a5dbc439",
+    "src/identifier.rs": "abff20b76a368ae2e59cd96d527eff00564d19aadb8a61cb7abcfabc04d8692e",
+    "src/irbuild/equivalence.rs": "5bf1cb5099fbd71005e98f803a86a15ce7d18bd68ad5129963b0863a72111024",
+    "src/irbuild/inserter.rs": "cb680ea8fb6efda2135fb2cb23d6bcb68ec5f057ae0c4b740058db0b40a9da01",
+    "src/irbuild/match_rewrite.rs": "3c300714b040789210f820c1fda1bf80ec8c47a6d05aefb44cd23a4ea0763bb5",
+    "src/irbuild/rewriter.rs": "7f305774641dfe442d2be5c849a9c7131eb90f3f29753f9063d3c0b791b7571e",
+    "src/operation.rs": "2dd0e64752bb6779e6264816fb4835d1b95d3bcab01bc1454c5e248650c6ad5f",
+    "src/pass.rs": "d7cfff12ec72242dd22c5e327b10992417c90a0f8dc367ffe9db27f43ac0ff70",
+    "src/region.rs": "b408126423185d64f861b078271cba60171e8fd04c60659a28d02e7baeb00b7d"
+  },
+  "review": {
+    "actionable_findings": [],
+    "artifact_directory": "/tmp/review-mcp-run-er0m2q8b",
+    "diff_target": "HEAD",
+    "exit_code": 0,
+    "minor_observations": [
+      "Version strings are literal and must stay coordinated with the exact Cargo pin",
+      "Research bridge exposes subprocess filesystem/timeout errors directly",
+      "Private analyses rely on their constructed and verified input invariant",
+      "Cold loading permits any sound eligible grouping, not only one matcher grouping"
+    ],
+    "new_files_read_directly": true,
+    "post_review_changes": "Recorded completed review and final gate result; no code changes",
+    "result_ok": true,
+    "reviewer_reran_tests": false,
+    "saved_review": "evidence/review.md",
+    "service": "review-mcp",
+    "status": "completed"
+  },
+  "scope": "Pliron B representation/preparation/fusion with reused scalar Python runtime; no production language/runtime/backend adoption",
+  "source_sha256": {
+    "README.md": "f90fe8e8f25bb6e47e852d540d660b05d73dfc00e59ad08ade4cb6c8eca6a5e8",
+    "__init__.py": "3bf1db39c7dd4174e9cc239d8f3278f9f3e37b24b3b2fd903a7fbc2bebf9ab73",
+    "__main__.py": "785cb0d2dd5d3b0b9f87d4a7c12149e026ca7dc844260417ae9e1b59d92310c0",
+    "author.py": "2c2fffc5d21964b6d07664a80b98a98f45ddda7b0850c3816029a60317abed0f",
+    "bridge.py": "d98e13836bfef77290080800a4c48814d0b7d044ec0b15f14e215c8f307494aa",
+    "native/Cargo.lock": "77b0a27c4deffcba7960dce670a025335b7dc15ea0650d4bdeb06745c8224a6c",
+    "native/Cargo.toml": "d47a5552a2e0bceae39d3b0a8d6efe5f026121f6d3b5927692f5eb604f045b4e",
+    "native/src/dialect.rs": "90af9896329c896459b4da998725d4238cf586e75cd0d784570065fc13297e3e",
+    "native/src/lib.rs": "29541bc50fd560010e64831de10b2e6a11170c09efded83b43c3c59a3afcb5c2",
+    "native/src/main.rs": "806e72474653163ba8dee7231820b449c0916f33791cb0b062cc58e5b4abb08c",
+    "native/src/prepare.rs": "eae65adb016791e133d5b3e88c3aaf82ddfd23ca57ee08af12a996995bc6d2b0",
+    "requirements.txt": "9ccc4f02a87de9f236030ae3e2d37788c4c77c9250d63d23bbbd5565f4e7f91a",
+    "test_b.py": "dcf02b7f93681acb9b9b8f3003d065c7c6dc1c9942bdea7b6079e2a5833a18d8"
+  },
+  "tests": {
+    "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /tmp/sd-scripts-xdsl-b-env/bin/python -m pytest --noconftest docs_design/models-strategy-trainer/pliron_candidate docs_design/models-strategy-trainer/xdsl_candidate -q -p pytest_asyncio.plugin --tb=short",
+    "existing_torch_free_passed": 261,
+    "final_passing_run_pytest_seconds": 18.17,
+    "final_passing_run_wall_seconds": 18.316676909002126,
+    "final_run_record": "evidence/test_run.json",
+    "fresh_processes": "fused/unfused x normal/optimized Python; independent oracle in normal parent",
+    "gil_after": false,
+    "gil_before": false,
+    "initial_failure": {
+      "failed": 2,
+      "passed": 99,
+      "reason": "Fault injection value+1 accidentally correct for offset; corrected to value+123 before successful run"
+    },
+    "initial_passing_run_seconds": 22.84,
+    "passed": 364,
+    "pliron_passed": 103,
+    "skip_reason": "Optional A/C/mixed Torch owner modules; Torch absent",
+    "skipped": 3
+  },
+  "version": {
+    "backend_pin_observed": "=0.19.0",
+    "checksum": "7395b93d3fc99ee1923027fedead143eb63e4c76b6f6f6d79ebfac6698956317",
+    "dependency": "pliron = =0.20.0",
+    "llvm_dependency": false,
+    "local_upstream_is_not_release": true,
+    "release_revision": "435536c8611af34c48c8f73d78e77894a05d103d",
+    "source": "crates.io"
+  }
+}
