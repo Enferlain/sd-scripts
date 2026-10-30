@@ -1,0 +1,119 @@
+{
+  "bead": "sd-scripts-syv.31.18",
+  "date": "2026-10-30",
+  "scope": "Consolidate existing candidate evidence and verify reuse of existing independent expectations before another candidate. Language design, authoring interface, framework and final implementations remain open.",
+  "changes": "Research documents only; no runtime, oracle, test, production, OpenSpec or user-report edits.",
+  "oracle_reuse": {
+    "command": [
+      "/tmp/sd-scripts-xdsl-b-env/bin/python",
+      "<temporary driver path>",
+      "<repository root>"
+    ],
+    "requires": "Python 3.14 with assertions enabled; the replay itself uses only standard-library imports and repository oracle modules.",
+    "driver": "\"\"\"Replay saved observations through existing independent research oracles.\"\"\"\n\nimport importlib\nimport importlib.abc\nimport json\nimport copy\nfrom dataclasses import replace\nfrom pathlib import Path\nimport sys\n\n\nROOT = Path(sys.argv[1]).resolve()\nsys.path.insert(0, str(ROOT))\nif not __debug__:\n    raise RuntimeError('Oracle assertions must remain enabled')\n\n\nclass NoRuntimeImports(importlib.abc.MetaPathFinder):\n    def find_spec(self, fullname, path=None, target=None):\n        leaf = fullname.rsplit('.', 1)[-1]\n        if fullname.split('.', 1)[0] in {'torch', 'xdsl'} or leaf in {\n            'runtime', 'local_runtime', 'prepare', 'graph', 'state', 'workers',\n            'model_adapter', 'grant_adapter', 'mixed_adapter', 'fixture',\n        }:\n            raise ImportError(f'Comparison oracle imported forbidden runtime: {fullname}')\n        return None\n\n\nsys.meta_path.insert(0, NoRuntimeImports())\nprefix = 'docs_design.models-strategy-trainer'\noriginal = importlib.import_module(prefix + '.execution_candidate.conformance')\nmodules = {\n    name: importlib.import_module(prefix + '.xdsl_candidate.' + name)\n    for name in (\n        'conformance', 'model_conformance', 'grant_conformance',\n        'mixed_conformance', 'extension_conformance',\n    )\n}\noriginal.check_learning(original.adaptive_reference())\ndata_root = ROOT / 'docs_design/models-strategy-trainer/xdsl_candidate'\n\n\ndef report(relative):\n    value = json.loads((data_root / relative).read_text())\n    return value.get('report', value)\n\n\nchecked = []\nfor name, relative, method in (\n    ('B', 'evidence/report.json', 'check_b'),\n    ('A', 'evidence_a/report.json', 'check_a'),\n    ('C', 'evidence_c/report.json', 'check_c'),\n):\n    module = {'B': 'conformance', 'A': 'model_conformance', 'C': 'grant_conformance'}[name]\n    getattr(modules[module], method)(report(relative))\n    checked.append(relative)\n\nfusion = report('evidence_fusion/reports.json')\nfor name in ('unfused', 'fused'):\n    modules['conformance'].check_b(fusion[name])\n    checked.append('evidence_fusion/reports.json:' + name)\n\nfor name in ('unfused', 'fused'):\n    relative = 'evidence_mixed/' + name + '/report.json'\n    modules['mixed_conformance'].check_mixed(report(relative))\n    checked.append(relative)\n    relative = 'evidence_extension/' + name + '/report.json'\n    modules['extension_conformance'].check_extension(report(relative))\n    checked.append(relative)\n\nrejected = []\n\n\ndef must_reject(name, check, facts):\n    try:\n        check(facts)\n    except AssertionError:\n        rejected.append(name)\n    else:\n        raise RuntimeError('Oracle accepted deliberate corruption: ' + name)\n\n\nadaptive = original.adaptive_reference()\nmust_reject('original numerical result', original.check_learning, replace(adaptive, weights=(0.0,) * 3))\nbad = copy.deepcopy(report('evidence/report.json'))\nbad['tickets'][0]['calls'][0]['output'] += 1\nmust_reject('B returned arithmetic', modules['conformance'].check_b, bad)\nbad = copy.deepcopy(report('evidence_a/report.json'))\nbad['learning']['contributions'][0]['sample'] = 2\nmust_reject('A input association', modules['model_conformance'].check_a, bad)\nbad = copy.deepcopy(report('evidence_c/report.json'))\nbad['handback_verified'] = False\nmust_reject('C verified handback', modules['grant_conformance'].check_c, bad)\nbad = copy.deepcopy(report('evidence_mixed/unfused/report.json'))\nbad['source']['updates'][1]['epoch'] = 99\nmust_reject('mixed feedback provenance', modules['mixed_conformance'].check_mixed, bad)\nbad = copy.deepcopy(report('evidence_extension/unfused/report.json'))\nbad['tickets'][0]['calls'][2]['output'][1] += 1\nmust_reject('extension hidden pair lane', modules['extension_conformance'].check_extension, bad)\n\nprint(json.dumps({\n    'oracle_modules_imported': 6,\n    'saved_reports_checked': checked,\n    'original_adaptive_reference_checked': True,\n    'deliberate_corruptions_rejected': rejected,\n    'runtime_and_framework_imports_blocked': True,\n    'assertions_enabled': __debug__,\n    'gil_enabled': sys._is_gil_enabled(),\n}, indent=2))\n",
+    "result": {
+      "oracle_modules_imported": 6,
+      "saved_reports_checked": [
+        "evidence/report.json",
+        "evidence_a/report.json",
+        "evidence_c/report.json",
+        "evidence_fusion/reports.json:unfused",
+        "evidence_fusion/reports.json:fused",
+        "evidence_mixed/unfused/report.json",
+        "evidence_extension/unfused/report.json",
+        "evidence_mixed/fused/report.json",
+        "evidence_extension/fused/report.json"
+      ],
+      "original_adaptive_reference_checked": true,
+      "deliberate_corruptions_rejected": [
+        "original numerical result",
+        "B returned arithmetic",
+        "A input association",
+        "C verified handback",
+        "mixed feedback provenance",
+        "extension hidden pair lane"
+      ],
+      "runtime_and_framework_imports_blocked": true,
+      "assertions_enabled": true,
+      "gil_enabled": false
+    },
+    "boundary": "Saved-report replay validates independent checker reuse against historical observations. It is not archived runtime reexecution, manifest compatibility or a new candidate adapter."
+  },
+  "current_tests": {
+    "exit_code": 0,
+    "passed": 781,
+    "failed": 0,
+    "skipped": 0,
+    "seconds": 32.037,
+    "gil_before": false,
+    "gil_after": false,
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "xdsl": "0.74.0",
+    "torch": "2.14.1+cu130",
+    "pytest_args": [
+      "-ra",
+      "--ignore=tests/_deprecated",
+      "--noconftest",
+      "docs_design/models-strategy-trainer/execution_candidate/test_conformance.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate",
+      "-q",
+      "-p",
+      "pytest_asyncio.plugin",
+      "--tb=short"
+    ],
+    "plugin_autoload": false,
+    "scope": "Existing original independent conformance plus the complete xDSL research suite; no runtime changes."
+  },
+  "current_test_command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 uv run --no-sync --with-requirements docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt python -m pytest --noconftest docs_design/models-strategy-trainer/execution_candidate/test_conformance.py docs_design/models-strategy-trainer/xdsl_candidate -q -p pytest_asyncio.plugin --tb=short",
+  "source_and_saved_report_sha256": {
+    "execution_candidate/conformance.py": "9c9709041866f74d8f4772eee870f5a714ced9a3beb2d73452f07c44565445b9",
+    "execution_candidate/test_conformance.py": "a05354e777dac1412c24743ee7c92f2ccddcaf3adfbc4be0042b5aa454dee76a",
+    "xdsl_candidate/conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "xdsl_candidate/model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+    "xdsl_candidate/grant_conformance.py": "6157b8c9337c08ddb9dbbd4d892ed4166cfe04e8882a2368f64ea25ec4746dd9",
+    "xdsl_candidate/mixed_conformance.py": "64e83fd1e7666e5ab4f577924659e758aa14e3040ab0ecd63e69f3df3b56942b",
+    "xdsl_candidate/extension_conformance.py": "6b31e02af2223f33efff7015e49612c7b60d9d1d4b39fc006e17c6957d465f5e",
+    "xdsl_candidate/test_runtime.py": "7f0955e1809bacc7839080afe72264fba40e9ab43974a98e75871871f583e947",
+    "xdsl_candidate/test_model_runtime.py": "36bad5efd0b724f61359956d3dac24ef4127c4805b5b3e3df189845a3e31f46c",
+    "xdsl_candidate/test_grant_runtime.py": "c85e348cd2d9422bd865cb5b08273d74dda3dae8e3d59a49d95c8341c22e56a2",
+    "xdsl_candidate/test_mixed_runtime.py": "e1fb4775cf3cb03f08db000e61e25c8e5efbb9a6c5187bc8d0d6042b6b5b626f",
+    "xdsl_candidate/test_extension.py": "328bd1769738ce1d99e3dd72bc3015a880bc2fb19ad32302879e407f8445ecf3",
+    "xdsl_candidate/evidence/report.json": "9aa3158980381d3347559033514690ccfa4a6304b0bf162a5dabf123d9594a62",
+    "xdsl_candidate/evidence_a/report.json": "6b5be7fad20cbb019fa08daf487a8fe51e1dcda9798a3ba619e782e29c92e8d1",
+    "xdsl_candidate/evidence_c/report.json": "212d30becc5e53700fe6495deee541ac5e1d52e72cf023988cf1312627bcfd37",
+    "xdsl_candidate/evidence_fusion/reports.json": "93ef080d62ac5a9f282fa68cfed7d08ff5e69ed608d2c54be34b3debeb4bb9b0",
+    "xdsl_candidate/evidence_mixed/unfused/report.json": "480140892d41ae480b5fd1ca6b382f5693d2bcbb38cc62a749acd092193aba55",
+    "xdsl_candidate/evidence_mixed/fused/report.json": "cc6bcfcfc298f69f6dea3946ebe8bbb0a8e6c61a93010bd4c902636fb8da01db",
+    "xdsl_candidate/evidence_extension/unfused/report.json": "9a3e918ac9199b816dc23ce8a2d3690120197c5912f1ff67a4b7b5b07c2b9716",
+    "xdsl_candidate/evidence_extension/fused/report.json": "de49e03bbd99ba7f028e9975ca9a706cd6edf3e31cde88c69e3a57b85291ccda"
+  },
+  "user_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+  "graph_verification": {
+    "status": "unavailable",
+    "error": "Transport closed",
+    "attempted": [
+      "index_status",
+      "search_graph",
+      "check_index_coverage"
+    ],
+    "fallback": "Direct source/test inspection and executed independent/runtime checks; no exhaustive graph coverage claim."
+  },
+  "review": {
+    "status": "failed",
+    "diff_target": "HEAD",
+    "review_completed": false,
+    "independent_approval": false,
+    "provider_error": "Error calling model glm-5.3 API during analysis: HTTP 429, usage limit reached for 5 hours.",
+    "provider_reported_reset": "2026-10-30 19:49:43 (timezone not specified by the service)",
+    "artifact_directory": "/tmp/review-mcp-run-ekwepesf",
+    "followup": "Retry independent review under sd-scripts-syv.31.18 when the required service is available. No fallback agent was launched; user preference keeps repository work single-agent."
+  },
+  "document_validation": {
+    "local_links_checked": 13,
+    "evidence_hashes_checked": 20,
+    "retained_driver_reproduced": true,
+    "user_report_unchanged": true,
+    "added_line_whitespace": "passed",
+    "scope_note": "The initial whole-file whitespace scan found inherited ROADMAP.md line 302 spacing. It is unchanged; added/changed lines pass."
+  }
+}

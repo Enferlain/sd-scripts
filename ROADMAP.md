@@ -2,6 +2,13 @@
 
 ## Training Architecture Research
 
+The [candidate comparison](docs_design/models-strategy-trainer/candidate_comparison.md)
+consolidates original/xDSL evidence and the existing independent expectations
+for testing another candidate (`sd-scripts-syv.31.18`). Language design,
+authoring constructs, framework and final implementations remain open;
+experimental dialects and owner APIs do not establish those choices. New
+composition pressure, broader parity and matched costs remain later comparisons.
+
 The isolated [xDSL experiment](docs_design/models-strategy-trainer/xdsl_candidate/README.md)
 now implements data-only B (`sd-scripts-syv.31.9`), correlated data/model A
 (`sd-scripts-syv.31.10`) and granted two-pass C (`sd-scripts-syv.31.11`): semantic/prepared xDSL, fresh-process reconstruction,

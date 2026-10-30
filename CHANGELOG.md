@@ -12,6 +12,10 @@ Rules:
 
 ## [2026-10-30]
 
+### Added
+
+- **Candidate comparison now separates evidence from open language decisions** — the research assessment maps original/xDSL results, fixture limits and reusable independent checks before another candidate is tested; language design and final implementations remain unselected.
+
 ### Fixed
 
 - **Mixed xDSL selection now yields after bounded filter work** — long excluded stretches permit sibling work, feedback and cancellation without filling the admitted-ticket horizon.
