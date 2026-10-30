@@ -20,6 +20,11 @@ comparison now has a real prepared-IR rewrite and direct grouped execution with
 preserved stage observations; current gates and review status are recorded in
 its evidence. The mixed workflow now combines an open producer, learning-driven policy, dynamic exclusion and shared trainable-model reads/updates under one engine, including blocked-handoff stop and physical-drain evidence. The independent extension now runs through the existing scalar session using common local interfaces, typed payloads and checked immutable configuration snapshots; its evidence records qualification and review. These complete the bounded external-review followups without selecting a framework.
 
+The follow-up review of `504dcf8` identified exclusion-loop starvation,
+incomplete local outcome declarations and assertion-dependent ticket retirement.
+The isolated fixes and expanded fused/archive-free interruption checks are tracked
+in `sd-scripts-syv.31.17`, with before/after evidence under `evidence_progress`.
+
 The `rework-model-strategy-trainer` OpenSpec governs the target architecture;
 the active production stack described below has not yet been migrated. The
 isolated [execution candidate](docs_design/models-strategy-trainer/execution_candidate/README.md)

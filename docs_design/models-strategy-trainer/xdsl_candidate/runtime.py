@@ -222,7 +222,9 @@ class ScalarSession:
         self.stop()
 
     def _retire(self, ticket: _Ticket, terminal: str) -> None:
-        assert self._active.pop(ticket.key) is ticket
+        removed = self._active.pop(ticket.key)
+        if removed is not ticket:
+            raise RuntimeError("ticket retirement lost active ownership")
         retired = self._fact(terminal, ticket.key)
         self._completed.append(
             TicketFact(

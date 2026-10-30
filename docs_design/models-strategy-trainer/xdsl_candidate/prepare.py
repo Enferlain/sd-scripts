@@ -148,6 +148,11 @@ def local_maps(op: ComposeOp | LocalOp) -> tuple[Operation, ...]:
                     child,
                     "invalid local outcomes",
                 )
+                require(
+                    set(DEFAULT_OUTCOMES).issubset(description.outcomes),
+                    child,
+                    "missing mandatory baseline local outcomes",
+                )
                 implementation(child)
                 local_effect(child)
                 maps.append(child)

@@ -48,6 +48,7 @@ TARGET_MIXED = "continuous-owner-cpu-v1"
 OWNER_PROTOCOL = "open producer; owner feedback receiver; ordered bounded ports; same-binding production snapshots; external checkpoint"
 COMPLETION = "protected_physical_return_then_validate"
 PORTS = ("mixed.left", "mixed.right")
+SELECTION_QUANTUM = 64
 
 
 def mixed_registry() -> DomainRegistry:
@@ -589,12 +590,21 @@ def lower_mixed(session: SessionOp, calls: Mapping[str, DomainBinding], local: A
             async with asyncio.TaskGroup() as tasks:
                 tasks.create_task(feedback())
                 ordinal = 0
+                selected_in_quantum = 0
                 while not bridge.stop.is_set():
+                    if selected_in_quantum == SELECTION_QUANTUM:
+                        # Exclusions do not consume horizon capacity. Bound
+                        # returning filter work so control/cancellation can run.
+                        selected_in_quantum = 0
+                        await asyncio.sleep(0)
+                        continue  # Recheck shutdown before another selection.
                     if len(source.active) >= horizon:
                         bridge.wake.clear()
                         if len(source.active) >= horizon and not bridge.stop.is_set():
                             await bridge.wake.wait()
+                            selected_in_quantum = 0
                         continue
+                    selected_in_quantum += 1
                     key = source.cursor
                     source.cursor += 1
                     value, revision, bias = key + source.bias, source.revision, source.bias

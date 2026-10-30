@@ -10,6 +10,14 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-30]
+
+### Fixed
+
+- **Mixed xDSL selection now yields after bounded filter work** — long excluded stretches permit sibling work, feedback and cancellation without filling the admitted-ticket horizon.
+- **Local outcome contracts now require the runtime baseline** — acceptance and cold resolution reject matching operation/binding declarations that omit returned, invalid-output or raised outcomes.
+- **Scalar ticket retirement now runs with Python assertions disabled** — removal and the identity guard no longer depend on `assert`; optimized B/extension execution and fused archive-free cancellation/failure cases are qualified.
+
 ## [2026-10-29]
 
 ### Added

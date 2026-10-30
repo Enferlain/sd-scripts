@@ -106,6 +106,8 @@ def resolve_local(
         raise ValueError(f"{source.data}: missing local transform description")
     if not isinstance(description.input_type, FlowType) or not isinstance(description.output_type, FlowType):
         raise ValueError(f"{source.data}: local stage schemas must be wf.flow types")
+    if not set(DEFAULT_OUTCOMES).issubset(description.outcomes):
+        raise ValueError(f"{source.data}: missing mandatory baseline local outcomes")
     input_codec = codecs.get(description.input_type)
     output_codec = codecs.get(description.output_type)
     if (

@@ -308,7 +308,11 @@ def test_mixed_owner_target_rejects_accepted_non_scalar_local_schema() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("lowering", ["calls", "inline"])
-async def test_live_feedback_and_model_ownership_do_not_depend_on_observation_archives(monkeypatch, lowering) -> None:
+@pytest.mark.parametrize("fuse", [False, True])
+@pytest.mark.parametrize("interrupt_with_failure", [False, True])
+async def test_live_feedback_and_model_ownership_do_not_depend_on_observation_archives(
+    monkeypatch, lowering, fuse, interrupt_with_failure
+) -> None:
     class DiscardedObservations(list):
         def append(self, item):
             pass
@@ -326,8 +330,8 @@ async def test_live_feedback_and_model_ownership_do_not_depend_on_observation_ar
     monkeypatch.setattr(
         a, "LearningFacts", lambda: original_learning(contributions=DiscardedObservations(), windows=DiscardedObservations())
     )
-    controls = a.MixedControls(block_key=6, history_limit=0)
-    prepared = a.prepare_mixed(accept_mixed(build_mixed()), controls=controls, lowering=lowering)
+    controls = a.MixedControls(block_key=6, history_limit=0, fail_physical=interrupt_with_failure)
+    prepared = a.prepare_mixed(accept_mixed(build_mixed()), controls=controls, lowering=lowering, fuse=fuse)
     run = prepared.publish()
     task = asyncio.create_task(run.run())
     try:
@@ -341,9 +345,23 @@ async def test_live_feedback_and_model_ownership_do_not_depend_on_observation_ar
         while not run.ready.state.feeds["mixed.left"].closed:
             await asyncio.sleep(0)
         assert not task.done() and run.ready.state.readers
+        if interrupt_with_failure:
+            for _ in range(3):
+                task.cancel()
+                await asyncio.sleep(0.005)
+                assert not task.done() and run.ready.state.readers and run.ready.state.active_producers
         controls.release.set()
-        report = await asyncio.wait_for(task, 10)
-        assert report["status"] == "stopped" and report["released"] and report["steps"] == 3
+        if interrupt_with_failure:
+            with pytest.raises((asyncio.CancelledError, BaseExceptionGroup)):
+                await asyncio.wait_for(task, 10)
+            report = run.last_report
+            assert report["status"] == "cancelled"
+            assert any("mixed physical failure after stop" in item["message"] for item in report["errors"])
+            assert any(item["type"] == "CancelledError" for item in report["errors"])
+        else:
+            report = await asyncio.wait_for(task, 10)
+            assert report["status"] == "stopped" and not report["errors"]
+        assert report["released"] and report["steps"] == 3 and not report["pending"]
         assert report["learning"] == {"contributions": [], "windows": []} and report["diagnostics"] == 0
         assert report["source"]["revision"] == 3 and not report["source"]["active"]
         assert all(not value for value in report["source"].values() if isinstance(value, list))
@@ -365,6 +383,83 @@ async def test_live_feedback_and_model_ownership_do_not_depend_on_observation_ar
         assert float(unit.parameters[0].detach()) == pytest.approx(weights[-1], rel=2e-6, abs=2e-6)
     finally:
         controls.release.set()
+        if not task.done():
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("admit_first", [False, True])
+async def test_long_excluded_stretch_allows_heartbeat_and_actual_feedback(admit_first) -> None:
+    class ProbeFinished(RuntimeError):
+        pass
+
+    limit = 20_000
+    calls = 0
+    heartbeats = []
+    first_feedback_at = None
+
+    def filtered(key, revision):
+        nonlocal calls, first_feedback_at
+        calls += 1
+        if calls == 1:
+            asyncio.get_running_loop().call_soon(lambda: heartbeats.append(calls))
+        if revision and first_feedback_at is None:
+            first_feedback_at = calls
+        if calls == limit:
+            raise ProbeFinished("finite excluded-stretch probe complete")
+        return admit_first and key == 0
+
+    registry = a.mixed_registry()
+    bindings = dict(registry.bindings)
+    bindings["dynamic_filter_v1"] = replace(bindings["dynamic_filter_v1"], invoke=filtered)
+    run = a.prepare_mixed(accept_mixed(build_mixed()), replace(registry, bindings=bindings)).publish()
+    report = await run.run()
+    assert calls == limit and report["status"] == "failed" and report["released"]
+    # The blocked consumer reports a generic producer failure; each owning
+    # input port retains the precise source exception.
+    assert all(any("finite excluded-stretch" in str(error) for error in a.causes(feed.failure)) for feed in run.ready.state.feeds.values())
+    assert heartbeats and 0 < heartbeats[0] < limit
+    if admit_first:
+        assert first_feedback_at is not None and first_feedback_at < limit
+        assert report["steps"] == report["source"]["revision"] == 1
+        assert report["learning"]["windows"][0]["weight"] == pytest.approx(0.7992, rel=2e-6, abs=2e-6)
+    else:
+        assert report["steps"] == report["source"]["revision"] == 0
+
+
+@pytest.mark.asyncio
+async def test_cancellation_callback_runs_during_long_excluded_stretch() -> None:
+    limit = 20_000
+    calls = 0
+    cancellation_at = []
+
+    def cancel():
+        cancellation_at.append(calls)
+        task.cancel()
+
+    def filtered(key, revision):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            asyncio.get_running_loop().call_soon(cancel)
+        if calls == limit:
+            raise RuntimeError("cancellation failed to interrupt excluded selection")
+        return False
+
+    registry = a.mixed_registry()
+    bindings = dict(registry.bindings)
+    bindings["dynamic_filter_v1"] = replace(bindings["dynamic_filter_v1"], invoke=filtered)
+    run = a.prepare_mixed(accept_mixed(build_mixed()), replace(registry, bindings=bindings)).publish()
+    task = asyncio.create_task(run.run())
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            await task
+        assert cancellation_at and cancellation_at[0] < limit and calls < limit
+        assert run.last_report["status"] == "cancelled" and run.last_report["released"]
+        assert not run.last_report["source"]["active"] and run.last_report["steps"] == 0
+        assert not any("failed to interrupt" in error["message"] for error in run.last_report["errors"])
+    finally:
         if not task.done():
             task.cancel()
             await asyncio.gather(task, return_exceptions=True)

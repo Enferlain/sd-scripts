@@ -1,0 +1,32 @@
+{
+  "reviewed_commit": "504dcf88dcdb2b76218e19af89117f7f7de22c59",
+  "versions": {
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "xdsl": "0.74.0",
+    "torch": "2.14.1+cu130",
+    "gil_enabled": false
+  },
+  "exclusion": {
+    "filter_calls": 20000,
+    "first_heartbeat_at": 20000,
+    "status": "failed",
+    "released": true
+  },
+  "outcomes": {
+    "declared": [
+      "negative_input"
+    ],
+    "observed": "returned",
+    "status": "stopped"
+  },
+  "optimized_retirement": {
+    "outstanding": 1,
+    "retired": 1
+  },
+  "source_sha256": {
+    "mixed_adapter.py": "a1ff5c178763c6cab6eab623ca282f37e57ba46895109abed03342ed23aea47c",
+    "payloads.py": "c62354396a5b1f3c3d7ddc00970038a4b4bd7a8b006e70e94b3f69553e0d5743",
+    "runtime.py": "9427e0b51a3300d2c8025b9331022d43bb19fa5b627d5647b5b6a1ae533e4b4a",
+    "prepare.py": "81d400e97228c79e12f9ebed51ac471e660c45291af6c816d2d87786c9520c20"
+  }
+}

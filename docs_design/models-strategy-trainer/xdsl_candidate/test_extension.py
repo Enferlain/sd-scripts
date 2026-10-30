@@ -426,3 +426,27 @@ def test_domain_contract_cannot_declare_a_reserved_runtime_failure_label(monkeyp
     bindings["pack_pair_v1"] = replace(binding, outcomes=(*binding.outcomes, "entered_failed"))
     with pytest.raises(NotReady, match="reserved runtime outcome"):
         prepare(accept(build_extension()), replace(registry, bindings=bindings))
+
+
+@pytest.mark.parametrize("outcomes", [("negative_input",), ("returned", "negative_input"), ("invalid_output", "raised", "negative_input")])
+def test_operation_and_binding_cannot_jointly_omit_baseline_outcomes(monkeypatch, outcomes) -> None:
+    from .payloads import resolve_local
+
+    original = PackContract.describe
+
+    def describe(self, op):
+        description = original(self, op)
+        assert description is not None
+        return replace(description, outcomes=outcomes)
+
+    monkeypatch.setattr(PackContract, "describe", describe)
+    registry = extension_registry()
+    bindings = dict(registry.bindings)
+    bindings["pack_pair_v1"] = replace(bindings["pack_pair_v1"], outcomes=outcomes)
+    module = build_extension()
+    pack = next(op for op in module.walk() if isinstance(op, PackOp))
+    with pytest.raises(Rejected, match="mandatory baseline local outcomes"):
+        accept(module)
+    # Cold resolution defends its boundary even for a caller bypassing accept.
+    with pytest.raises(ValueError, match="mandatory baseline local outcomes"):
+        resolve_local(pack, bindings["pack_pair_v1"], registry.codecs, registry.resources)

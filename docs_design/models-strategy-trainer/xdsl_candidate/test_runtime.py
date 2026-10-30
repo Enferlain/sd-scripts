@@ -348,3 +348,50 @@ async def test_slow_scoring_does_not_change_the_selected_algorithm(yields: int) 
     result = await asyncio.wait_for(execute(with_call("square_v1", slow), stop_after=8, diagnostic_limit=1), 3)
     check_b(asdict(result.report))
     assert result.report.high_water == 2
+
+
+@pytest.mark.parametrize("extension", [False, True])
+def test_actual_session_completes_with_python_assertions_disabled(extension: bool) -> None:
+    import json
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    script = """
+import asyncio,importlib,json,sys
+from dataclasses import asdict
+base="docs_design.models-strategy-trainer.xdsl_candidate."
+p=importlib.import_module(base+"prepare")
+f=importlib.import_module(base+"fixture")
+if sys.argv[1]=="extension":
+    e=importlib.import_module(base+"pair_extension")
+    builder,registry=e.build_extension,e.extension_registry
+else:
+    builder,registry=f.build,f.registry
+runtime=importlib.import_module(base+"runtime")
+async def main():
+    session=runtime.ScalarSession(p.prepare(p.accept(builder()),registry(),fuse=True))
+    task=asyncio.create_task(session.run())
+    await session.wait_for(lambda:session.feedback_count>=4)
+    session.stop()
+    report=await task
+    print(json.dumps({"report":asdict(report),"outstanding":session.outstanding,"active_calls":session.active_calls,"optimized":not __debug__}))
+asyncio.run(main())
+"""
+    completed = subprocess.run(
+        [sys.executable, "-O", "-c", script, "extension" if extension else "base"],
+        capture_output=True,
+        text=True,
+        cwd=Path(__file__).resolve().parents[3],
+        timeout=15,
+    )
+    assert completed.returncode == 0, completed.stderr
+    result = json.loads(completed.stdout)
+    assert result["optimized"] and result["outstanding"] == result["active_calls"] == 0
+    assert result["report"]["status"] == "stopped" and len(result["report"]["tickets"]) >= 4
+    if extension:
+        from .extension_conformance import check_extension
+
+        check_extension(result["report"])
+    else:
+        check_b(result["report"])

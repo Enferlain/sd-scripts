@@ -19,6 +19,12 @@ class ResourceUse:
 
 @dataclass(frozen=True)
 class LocalDescription:
+    """Selected-entry outcomes include returned/invalid_output/raised.
+
+    Additional names describe domain failures, not replacements for this
+    mandatory baseline supplied by the guarded execution ABI.
+    """
+
     input_type: Attribute
     output_type: Attribute
     cardinality: str

@@ -12,11 +12,11 @@ adds bounded training/evaluation evidence, and [C's granted authority](#c-offere
 checks a selected two-pass region. The [local fusion comparison](#local-data-fusion)
 now tests one conservative transformation of prepared dispatch.
 
-Latest combined qualification: **457 research tests pass** with the GIL
+Latest combined qualification: **471 research tests pass** with the GIL
 disabled before and after the full run; the Torch-free environment passes
-**256 tests** with three optional backend modules skipped. Four milestone
-reviews approved the work; bounded follow-up corrections and final validation
-are recorded in [the current qualification](evidence_extension/qualification.json).
+**261 tests** with three optional backend modules skipped. Four milestone
+reviews and the returning-filter/contract correction review approved the work;
+final validation is recorded in [the current qualification](evidence_progress/qualification.json).
 
 The Python author in [fixture.py](fixture.py) constructs nested xDSL operations:
 
@@ -670,3 +670,39 @@ Domain failure names cannot impersonate runtime outcomes such as `returned` or
 `invalid_output`; they are rejected or classified as an undeclared outcome.
 Missing local source identity also has an explicit preparation error, independent
 of Python assertion optimization.
+
+
+## Returning-filter progress and runtime contract repair
+
+The follow-up review of `504dcf8` reproduced three local defects. A source that
+kept excluding records never filled the admitted-ticket horizon and could run
+without suspending. Matching operation/binding declarations could omit baseline
+outcomes that execution still emitted. B's ticket removal was inside an assertion
+and disappeared under `python -O`.
+
+The mixed target now yields after at most **64 selection attempts** without a
+capacity wait, including excluded attempts, then rechecks shutdown. This target
+quantum lets loop callbacks, model work, learning feedback and cancellation run.
+It does not preempt a blocking/non-returning binding or bound archival memory for
+an indefinitely running service. Horizon accounting still counts admitted tickets;
+excluded keys do not gain fabricated admissions.
+
+`LocalDescription.outcomes` must explicitly include `returned`, `invalid_output`
+and `raised`; additional names describe domain failures. `raised` names an
+exceptional exit category, recorded in detailed guard facts as `entered_failed`.
+Semantic acceptance and
+cold resolution both reject omissions, even when the installed binding agrees
+with the incomplete declaration. Scalar retirement performs removal and checks
+identity explicitly, so optimized execution has the same ownership effect.
+
+The progress probes use individually fast predicates with a finite excluded
+stretch. They check a callback before the sentinel, actual model/learning feedback
+while exclusion continues, and cancellation before the finite fallback. Optimized
+subprocesses execute full B and extension sessions; the independent oracles run
+in the parent with assertions enabled. Archive-erasure qualification now covers
+both owner lowerings and both local fusion modes, including repeated cancellation
+coupled with physical failure while the source read remains protected.
+
+[Progress/contract evidence](evidence_progress/qualification.json) retains the
+before/after probes, environment, source hashes, final gates and required review.
+Older evidence folders remain snapshots of their recorded source revisions.
