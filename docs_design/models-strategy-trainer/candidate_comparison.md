@@ -9,6 +9,12 @@ authoring interface, complete semantic grammar, extension ABI or runtime design.
 The comparison expectations below are test-case meanings, not a new language or
 shared production protocol.
 
+**xDSL is a demonstrated viable implementation substrate for the tested
+workflows and can serve as the working baseline while the language is developed.**
+Comparison remains open where another candidate offers a concrete architectural
+or engineering advantage. This provisional choice does not settle the language
+design or final implementation.
+
 The governing [OpenSpec change](../../openspec/changes/rework-model-strategy-trainer/)
 retains authority over existing requirements. The [IR research report](../../openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md)
 supplies proposals and experiment criteria. This assessment neither promotes the
@@ -23,7 +29,7 @@ select custom infrastructure as a required destination.
 | Authoring | Python ecosystem integration is the report's premise. | The author-facing constructs, syntax, types, validation experience and extension mechanism. Python hosting does not answer these questions. |
 | Semantic representation | Both experiments retain an accepted hierarchy. xDSL additionally exercises typed data composition. | The common operation families, region semantics, flow/cardinality rules, effects and valid combinations. |
 | Prepared representation | xDSL makes a selected realization inspectable and reconstructable; the original derives executable coordination. | The production plan vocabulary, its correspondence rules, versioning and compatibility promises. Distinct acceptance/readiness does not prescribe a particular storage format. |
-| Structural infrastructure | Custom objects and xDSL have concrete experimental implementations. | Framework selection and machinery implementation language. A framework can inform the language design without defining its semantics for us. |
+| Structural infrastructure | Custom objects and xDSL have concrete experimental implementations; xDSL is a viable provisional working baseline. | Final framework selection and machinery implementation language. A framework can inform the language design without defining its semantics for us. |
 | Execution and ownership | The original owner services supply substantial evidence; xDSL A/C/mixed reuse them. B has a separate, small data-only realization. | The final runtime/service boundaries and implementation. Reuse in an experiment does not adopt those classes as production APIs. |
 | Numerical execution | Selected numerical work can remain behind declared bindings. | Backend integrations, device ordering/completion and target-specific qualification. Framework selection does not select a numerical compiler. |
 
@@ -74,7 +80,14 @@ private scheduler trace.
 | Addressed partial outcomes | Contribution, entered/returned/uncertain/unattempted advancement and reset, affected availability and pending work. | Relabel an uncertain or unattempted unit as returned while retaining the same weights. |
 | Physical lifetime | Selected entry, actual completion/failure, protection release and final disposition. | Release protection before a held physical use finishes; cancellation must not erase its later failure. |
 | Progress and bounded work | Outstanding admission across handoffs/control, exclusion disposition, stop and settlement. | Fill transport or keep returning exclusion results while heartbeat, feedback or cancellation must progress. |
-| Accepted/prepared correspondence | Source/role, binding, resource/schema/outcome requirements and target support. | Corrupt a decoded plan while leaving it structurally valid; reject before constructing owners or invoking lowering factories. |
+| Accepted/prepared correspondence | Source/role, binding, resource/schema/outcome requirements and target support. | Corrupt a decoded plan while leaving it structurally valid; broken correspondence must not authorize execution, publish readiness or permit effects that depend on the invalid claim. |
+
+The existing corruption cases additionally require rejection before owner
+construction or lowering-factory invocation. Those are stronger expectations
+for the current cases and their selected preparation ABI. Another architecture
+may construct pure owner objects or perform legitimate preparation before
+completing verification. The shared requirement protects readiness, execution
+and dependent effects; it does not prescribe one preparation sequence.
 
 These are separate checks. A plausible final weight does not prove correct
 association, handback or advancement. Agreement between two lowerings sharing
@@ -141,18 +154,26 @@ of a few profiles must not silently settle them.
 
 ## Basis for testing another candidate
 
-The preparation gate is the evidence/expectation inventory above, supported by
-the [current verification record](candidate_comparison_evidence.json). Another
-candidate can now be screened using the same case meanings. A small existing
-case can establish structural fit before committing to A/C/mixed owner
-integration or a full deep dive. It need not reproduce xDSL's dialect syntax.
+The evidence/expectation inventory above and [current verification record](candidate_comparison_evidence.json)
+support using xDSL provisionally while developing the language. Another
+candidate should be screened against a specific proposed advantage, such as
+better region semantics, reusable analyses or concrete native integration.
+That comparison need not reopen xDSL's demonstrated feasibility on the tested
+workflows. Use the same case meanings to assess the proposed advantage, and
+identify where representations, analyses or construction would actually be
+shared rather than inferring an advantage from implementation language alone.
+
+A small existing case can establish the alternative's structural fit before
+committing to A/C/mixed owner integration or a full deep dive. It need not
+reproduce xDSL's dialect syntax.
 
 Use the proposed new whole-workflow composition case only as a later common
 pressure test for promising candidates. Broader original-candidate parity and
-matched cost measurements also remain later work. A framework decision should
+matched cost measurements also remain later work. A final framework decision should
 consider semantic fit, generic infrastructure actually reused, missing custom
-analyses and machinery-development ergonomics together. This assessment leaves
-the winner, language design and final implementations unselected.
+analyses and machinery-development ergonomics together. The working baseline is
+xDSL; the final framework choice, language design and implementations remain
+unselected.
 
 ## Verification boundaries
 
@@ -170,10 +191,15 @@ negative controls in addition to saved-report replay. No new runtime, general
 comparison ABI, language design, production code or governing-spec change is
 introduced by this preparation.
 
-The required independent review attempt failed during analysis with a provider
-quota error (HTTP 429). It supplied no review approval; the retry remains tracked
-in `sd-scripts-syv.31.18`.
+The original required independent review attempt failed during analysis with a
+provider quota error (HTTP 429) and supplied no approval. The user subsequently
+authorized a native GPT-6.1 Sol review at medium effort. It completed with no
+actionable findings and independently reproduced the oracle replay and retained
+hash checks. Its outcome is recorded separately from the failed service attempt
+under `sd-scripts-syv.31.18`.
 
-Graph tools returned `Transport closed`, including the coverage check. This
-assessment therefore uses direct source/test inspection and executed checks;
-it makes no exhaustive graph-coverage claim.
+The original graph attempts returned `Transport closed`, including the coverage
+check, so the assessment used direct source/test inspection and executed checks.
+The later reviewer's graph search and coverage checks succeeded; their exact
+paths and best-effort limits are recorded separately. Neither result establishes
+exhaustive graph coverage.

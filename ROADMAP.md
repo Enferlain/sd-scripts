@@ -4,9 +4,12 @@
 
 The [candidate comparison](docs_design/models-strategy-trainer/candidate_comparison.md)
 consolidates original/xDSL evidence and the existing independent expectations
-for testing another candidate (`sd-scripts-syv.31.18`). Language design,
-authoring constructs, framework and final implementations remain open;
-experimental dialects and owner APIs do not establish those choices. New
+for testing another candidate (`sd-scripts-syv.31.18`). xDSL is a viable
+provisional working baseline; further comparison should test a concrete
+architectural or engineering advantage. Language design, authoring constructs,
+final framework and implementations remain open; experimental dialects and
+owner APIs do not establish those choices. Shared correspondence checks protect
+readiness, execution and dependent effects without prescribing preparation order. New
 composition pressure, broader parity and matched costs remain later comparisons.
 
 The isolated [xDSL experiment](docs_design/models-strategy-trainer/xdsl_candidate/README.md)
@@ -17,7 +20,7 @@ atomic admission, accumulation and independent current-at-start evaluation.
 Explicit delegated/retained authority and a typed handback reuse the same
 existing grant/optimization owners; failed handback cannot authorize advancement,
 and partial optimizer/reset outcomes remain owned. The local fusion comparison
-is now reviewed research; no framework or production representation has been selected.
+is now reviewed research; no production framework or representation has been selected.
 The external review's A/B prepared-plan correspondence gap is addressed in the
 isolated candidate (`sd-scripts-syv.31.14`), with explicit field authority and
 corruption checks before owner construction. Fusion, continuous feedback with

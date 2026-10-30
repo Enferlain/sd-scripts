@@ -14,7 +14,7 @@ Rules:
 
 ### Added
 
-- **Candidate comparison now separates evidence from open language decisions** — the research assessment maps original/xDSL results, fixture limits and reusable independent checks before another candidate is tested; language design and final implementations remain unselected.
+- **Candidate comparison now separates provisional choices from open language decisions** — the assessment maps original/xDSL evidence and reusable checks, identifies xDSL as a viable working baseline and protects readiness/execution/effects without prescribing preparation order; language design and final implementations remain unselected.
 
 ### Fixed
 
