@@ -1,0 +1,66 @@
+{
+  "analysis": [
+    [
+      4,
+      1,
+      1
+    ],
+    [
+      1,
+      2,
+      1
+    ]
+  ],
+  "dispatch_groups": [
+    [
+      "data.double",
+      "data.offset",
+      "pair.pack",
+      "pair.first"
+    ]
+  ],
+  "gil_after": false,
+  "gil_before": false,
+  "local_dispatches": 6,
+  "pliron": "0.20.0",
+  "preparation_seconds_including_processes": 0.08608527600154048,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "resource_analysis": {
+    "computations": 1,
+    "decisions": [
+      {
+        "groupable": true,
+        "origin": "data.double",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "data.offset",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "pair.pack",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "pair.first",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      }
+    ],
+    "reads": [
+      {
+        "access": "read_frozen",
+        "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+        "symbol": "pair_coefficients",
+        "version": "1"
+      }
+    ],
+    "unknown_sources": []
+  },
+  "session_seconds": 0.0008742309946683235,
+  "status": "stopped",
+  "tickets": 6,
+  "torch_imported": false
+}

@@ -1,0 +1,308 @@
+{
+  "accepted": "wf.session () [] [source_id: builtin.string \"data-session\", contract: builtin.string \"scalar-feedback-v1\", version: builtin.string \"1\", horizon: builtin.string \"2\", stop_rule: builtin.string \"settle_selected\"]: <() -> ()>\n{\n  ^workflow_block1v1() !0:\n    cursor_v0 = wf.entity () [] [source_id: builtin.string \"owner.cursor\", kind: builtin.string \"cursor\"]: <() -> (wf.entity )> !1;\n    policy_v1 = wf.entity () [] [source_id: builtin.string \"owner.policy\", kind: builtin.string \"policy\"]: <() -> (wf.entity )> !2;\n    publication_v2 = wf.entity () [] [source_id: builtin.string \"owner.publication\", kind: builtin.string \"publication\"]: <() -> (wf.entity )> !3;\n    selected_v3 = wf.flow () [] [source_id: builtin.string \"selected\"]: <() -> (wf.record )> !4;\n    mapped_v4 = wf.flow () [] [source_id: builtin.string \"mapped\"]: <() -> (wf.record )> !5;\n    scored_v5 = wf.flow () [] [source_id: builtin.string \"scored\"]: <() -> (wf.score )> !6;\n    feedback_v6 = wf.flow () [] [source_id: builtin.string \"feedback\"]: <() -> (wf.feedback )> !7;\n    wf.select (cursor_v0, policy_v1, feedback_v6, selected_v3) [] [source_id: builtin.string \"selector\", application: builtin.string \"ack_before_next_selection\"]: <(wf.entity , wf.entity , wf.feedback , wf.record ) -> ()> !8;\n    wf.compose (selected_v3, mapped_v4) [] [source_id: builtin.string \"data.composed\"]: <(wf.record , wf.record ) -> ()>\n    {\n      ^local_block_block2v1(input_v7: wf.record ) !9:\n        doubled_v8 = wf.map (input_v7) [] [source_id: builtin.string \"data.double\", implementation: builtin.string \"double_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !10;\n        nested_v9 = wf.local (doubled_v8) [] [source_id: builtin.string \"data.nested\"]: <(wf.record ) -> (wf.record )>\n        {\n          ^nested_block_block3v1(nested_input_v10: wf.record ) !11:\n            offset_v11 = wf.map (nested_input_v10) [] [source_id: builtin.string \"data.offset\", implementation: builtin.string \"offset_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !12;\n            pair_v12 = pairing.pack (offset_v11) [] [source_id: builtin.string \"pair.pack\", implementation: builtin.string \"pack_pair_v1\", effect: builtin.string \"read_frozen\", resource: builtin.string \"pair_coefficients\", resource_version: builtin.string \"1\", resource_digest: builtin.string \"49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684\"]: <(wf.record ) -> (pairing.pair )> !13;\n            first_v13 = pairing.first (pair_v12) [] [source_id: builtin.string \"pair.first\", implementation: builtin.string \"first_lane_v1\", effect: builtin.string \"pure\"]: <(pairing.pair ) -> (wf.record )> !14;\n            wf.yield (first_v13) [] []: <(wf.record ) -> ()> !15\n        } !16;\n        wf.yield (nested_v9) [] []: <(wf.record ) -> ()> !17\n    } !18;\n    wf.score (mapped_v4, scored_v5) [] [source_id: builtin.string \"scorer\", implementation: builtin.string \"square_v1\", effect: builtin.string \"pure\"]: <(wf.record , wf.score ) -> ()> !19;\n    wf.publish (scored_v5, feedback_v6, publication_v2) [] [source_id: builtin.string \"publisher\", implementation: builtin.string \"receipt_v1\", effect: builtin.string \"publication\", acknowledgement: builtin.string \"returned_receipt\"]: <(wf.score , wf.feedback , wf.entity ) -> ()> !20\n} !21\n\noutlined_attributes:\n!0 = @[<in-memory>: line: 2, column: 3], []\n!1 = @[<in-memory>: line: 3, column: 5], [builtin_given_names = builtin.given_names [cursor]]\n!2 = @[<in-memory>: line: 4, column: 5], [builtin_given_names = builtin.given_names [policy]]\n!3 = @[<in-memory>: line: 5, column: 5], [builtin_given_names = builtin.given_names [publication]]\n!4 = @[<in-memory>: line: 6, column: 5], [builtin_given_names = builtin.given_names [selected]]\n!5 = @[<in-memory>: line: 7, column: 5], [builtin_given_names = builtin.given_names [mapped]]\n!6 = @[<in-memory>: line: 8, column: 5], [builtin_given_names = builtin.given_names [scored]]\n!7 = @[<in-memory>: line: 9, column: 5], [builtin_given_names = builtin.given_names [feedback]]\n!8 = @[<in-memory>: line: 10, column: 5], []\n!9 = @[<in-memory>: line: 12, column: 7], [builtin_given_names = builtin.given_names [input]]\n!10 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [doubled]]\n!11 = @[<in-memory>: line: 15, column: 7], [builtin_given_names = builtin.given_names [nested_input]]\n!12 = @[<in-memory>: line: 16, column: 9], [builtin_given_names = builtin.given_names [offset]]\n!13 = @[<in-memory>: line: 17, column: 9], [builtin_given_names = builtin.given_names [pair]]\n!14 = @[<in-memory>: line: 18, column: 9], [builtin_given_names = builtin.given_names [first]]\n!15 = @[<in-memory>: line: 19, column: 9], []\n!16 = @[<in-memory>: line: 14, column: 9], [builtin_given_names = builtin.given_names [nested]]\n!17 = @[<in-memory>: line: 21, column: 9], []\n!18 = @[<in-memory>: line: 11, column: 5], []\n!19 = @[<in-memory>: line: 23, column: 5], []\n!20 = @[<in-memory>: line: 24, column: 5], []\n!21 = @[<in-memory>: line: 1, column: 1], []\n",
+  "accepted_sha256": "222944ced0ef7d690409f4d6a42b451085c3e10b73427f2585cadcfcce2f7355",
+  "analysis": [
+    [
+      4,
+      1,
+      1
+    ],
+    [
+      1,
+      2,
+      1
+    ]
+  ],
+  "capacity": 1,
+  "consumer": [
+    {
+      "ancestors": [
+        "data-session"
+      ],
+      "effect": "pure",
+      "input": "record",
+      "input_codec": "exact-integer-v1",
+      "origin": "scorer",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "output_codec": "exact-integer-v1",
+      "resources": [],
+      "role": "score",
+      "symbol": "square_v1"
+    },
+    {
+      "ancestors": [
+        "data-session"
+      ],
+      "effect": "publication",
+      "input": "record",
+      "input_codec": "exact-integer-v1",
+      "origin": "publisher",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "output_codec": "exact-integer-v1",
+      "resources": [],
+      "role": "publish",
+      "symbol": "receipt_v1"
+    }
+  ],
+  "horizon": 2,
+  "manifest": {
+    "bindings": {
+      "double_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "input": "record",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "resources": [],
+        "role": "map",
+        "version": "1"
+      },
+      "first_lane_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "input": "pair-int2",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "resources": [],
+        "role": "map",
+        "version": "1"
+      },
+      "offset_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "input": "record",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "resources": [],
+        "role": "map",
+        "version": "1"
+      },
+      "pack_pair_v1": {
+        "codec": "pair-int2-v1",
+        "effect": "read_frozen",
+        "input": "record",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised",
+          "negative_input"
+        ],
+        "output": "pair-int2",
+        "resources": [
+          {
+            "access": "read_frozen",
+            "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+            "symbol": "pair_coefficients",
+            "version": "1"
+          }
+        ],
+        "role": "map",
+        "version": "1"
+      },
+      "receipt_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "publication",
+        "input": "record",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "resources": [],
+        "role": "publish",
+        "version": "1"
+      },
+      "square_v1": {
+        "codec": "exact-integer-v1",
+        "effect": "pure",
+        "input": "record",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "resources": [],
+        "role": "score",
+        "version": "1"
+      }
+    },
+    "codecs": {
+      "pair-int2": "pair-int2-v1",
+      "record": "exact-integer-v1"
+    },
+    "registry": "independent-pair-fixture-v1",
+    "resources": {
+      "pair_coefficients": {
+        "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+        "version": "1"
+      }
+    },
+    "runtime_outcomes": [
+      "entered_failed",
+      "invalid_input",
+      "invalid_output",
+      "not_entered",
+      "raised",
+      "returned",
+      "undeclared_outcome"
+    ],
+    "schema": 2
+  },
+  "pliron": "0.20.0",
+  "prepared": "exec.plan () [] [accepted_hash: builtin.string \"1566631371198036881\", capacity: builtin.string \"1\", completion: builtin.string \"drain_physical_before_release\", horizon: builtin.string \"2\", schema: builtin.string \"2\", stop_rule: builtin.string \"settle_selected\", target: builtin.string \"scalar-async-cpu-v1\"]: <() -> ()>\n{\n  ^block4v1():\n    wf.session () [] [source_id: builtin.string \"data-session\", contract: builtin.string \"scalar-feedback-v1\", version: builtin.string \"1\", horizon: builtin.string \"2\", stop_rule: builtin.string \"settle_selected\"]: <() -> ()>\n    {\n      ^workflow_block1v1_block1v1() !0:\n        cursor_v0 = wf.entity () [] [source_id: builtin.string \"owner.cursor\", kind: builtin.string \"cursor\"]: <() -> (wf.entity )> !1;\n        policy_v1 = wf.entity () [] [source_id: builtin.string \"owner.policy\", kind: builtin.string \"policy\"]: <() -> (wf.entity )> !2;\n        publication_v2 = wf.entity () [] [source_id: builtin.string \"owner.publication\", kind: builtin.string \"publication\"]: <() -> (wf.entity )> !3;\n        selected_v3 = wf.flow () [] [source_id: builtin.string \"selected\"]: <() -> (wf.record )> !4;\n        mapped_v4 = wf.flow () [] [source_id: builtin.string \"mapped\"]: <() -> (wf.record )> !5;\n        scored_v5 = wf.flow () [] [source_id: builtin.string \"scored\"]: <() -> (wf.score )> !6;\n        feedback_v6 = wf.flow () [] [source_id: builtin.string \"feedback\"]: <() -> (wf.feedback )> !7;\n        wf.select (cursor_v0, policy_v1, feedback_v6, selected_v3) [] [source_id: builtin.string \"selector\", application: builtin.string \"ack_before_next_selection\"]: <(wf.entity , wf.entity , wf.feedback , wf.record ) -> ()> !8;\n        wf.compose (selected_v3, mapped_v4) [] [source_id: builtin.string \"data.composed\"]: <(wf.record , wf.record ) -> ()>\n        {\n          ^local_block_block2v1_block2v1(input_v7: wf.record ) !9:\n            doubled_v8 = wf.map (input_v7) [] [source_id: builtin.string \"data.double\", implementation: builtin.string \"double_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !10;\n            nested_v9 = wf.local (doubled_v8) [] [source_id: builtin.string \"data.nested\"]: <(wf.record ) -> (wf.record )>\n            {\n              ^nested_block_block3v1_block3v1(nested_input_v10: wf.record ) !11:\n                offset_v11 = wf.map (nested_input_v10) [] [source_id: builtin.string \"data.offset\", implementation: builtin.string \"offset_v1\", effect: builtin.string \"pure\"]: <(wf.record ) -> (wf.record )> !12;\n                pair_v12 = pairing.pack (offset_v11) [] [source_id: builtin.string \"pair.pack\", implementation: builtin.string \"pack_pair_v1\", effect: builtin.string \"read_frozen\", resource: builtin.string \"pair_coefficients\", resource_version: builtin.string \"1\", resource_digest: builtin.string \"49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684\"]: <(wf.record ) -> (pairing.pair )> !13;\n                first_v13 = pairing.first (pair_v12) [] [source_id: builtin.string \"pair.first\", implementation: builtin.string \"first_lane_v1\", effect: builtin.string \"pure\"]: <(pairing.pair ) -> (wf.record )> !14;\n                wf.yield (first_v13) [] []: <(wf.record ) -> ()> !15\n            } !16;\n            wf.yield (nested_v9) [] []: <(wf.record ) -> ()> !17\n        } !18;\n        wf.score (mapped_v4, scored_v5) [] [source_id: builtin.string \"scorer\", implementation: builtin.string \"square_v1\", effect: builtin.string \"pure\"]: <(wf.record , wf.score ) -> ()> !19;\n        wf.publish (scored_v5, feedback_v6, publication_v2) [] [source_id: builtin.string \"publisher\", implementation: builtin.string \"receipt_v1\", effect: builtin.string \"publication\", acknowledgement: builtin.string \"returned_receipt\"]: <(wf.score , wf.feedback , wf.entity ) -> ()> !20\n    } !21\n}\n\n{\n  ^block5v1():\n    exec.select () [] [admission: builtin.string \"count_until_feedback_ack\", selection: builtin.string \"cursor_plus_current_policy_bias;source_revision=0\"]: <() -> ()>;\n    exec.handoff () [] [release: builtin.string \"after_feedback_ack;no_protection_while_waiting\", transport: builtin.string \"bounded_mailbox\"]: <() -> ()>;\n    exec.feedback () [] [admission: builtin.string \"live_validated_publication;once_per_key\", control: builtin.string \"dedicated_task;receipt_then_apply_then_retire_then_release\", update: builtin.string \"bias=score%5;revision+=1\"]: <() -> ()>;\n    exec.chain () [] [role: builtin.string \"producer\"]: <() -> ()>\n    {\n      ^block6v1():\n        exec.fused () [] [protocol: builtin.string \"preserve_each_stage_guard_and_completion\"]: <() -> ()>\n        {\n          ^block8v1():\n            exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\",\\\"data.composed\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"double_v1\", input: builtin.string \"record\", input_codec: builtin.string \"exact-integer-v1\", origin: builtin.string \"data.double\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", output: builtin.string \"record\", resources: builtin.string \"[]\", role: builtin.string \"map\"]: <() -> ()>;\n            exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\",\\\"data.composed\\\",\\\"data.nested\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"offset_v1\", input: builtin.string \"record\", input_codec: builtin.string \"exact-integer-v1\", origin: builtin.string \"data.offset\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", output: builtin.string \"record\", resources: builtin.string \"[]\", role: builtin.string \"map\"]: <() -> ()>;\n            exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\",\\\"data.composed\\\",\\\"data.nested\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"pair-int2-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"read_frozen\", implementation: builtin.string \"pack_pair_v1\", input: builtin.string \"record\", input_codec: builtin.string \"exact-integer-v1\", origin: builtin.string \"pair.pack\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\",\\\"negative_input\\\"]\", output: builtin.string \"pair-int2\", resources: builtin.string \"[{\\\"symbol\\\":\\\"pair_coefficients\\\",\\\"access\\\":\\\"read_frozen\\\",\\\"version\\\":\\\"1\\\",\\\"digest\\\":\\\"49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684\\\"}]\", role: builtin.string \"map\"]: <() -> ()>;\n            exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\",\\\"data.composed\\\",\\\"data.nested\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"first_lane_v1\", input: builtin.string \"pair-int2\", input_codec: builtin.string \"pair-int2-v1\", origin: builtin.string \"pair.first\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", output: builtin.string \"record\", resources: builtin.string \"[]\", role: builtin.string \"map\"]: <() -> ()>\n        }\n    };\n    exec.chain () [] [role: builtin.string \"consumer\"]: <() -> ()>\n    {\n      ^block7v1():\n        exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"pure\", implementation: builtin.string \"square_v1\", input: builtin.string \"record\", input_codec: builtin.string \"exact-integer-v1\", origin: builtin.string \"scorer\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", output: builtin.string \"record\", resources: builtin.string \"[]\", role: builtin.string \"score\"]: <() -> ()>;\n        exec.call () [] [ancestors: builtin.string \"[\\\"data-session\\\"]\", binding_version: builtin.string \"1\", codec: builtin.string \"exact-integer-v1\", completion: builtin.string \"await_physical_then_validate\", effect: builtin.string \"publication\", implementation: builtin.string \"receipt_v1\", input: builtin.string \"record\", input_codec: builtin.string \"exact-integer-v1\", origin: builtin.string \"publisher\", outcomes: builtin.string \"[\\\"returned\\\",\\\"invalid_output\\\",\\\"raised\\\"]\", output: builtin.string \"record\", resources: builtin.string \"[]\", role: builtin.string \"publish\"]: <() -> ()>\n    }\n}\n\noutlined_attributes:\n!0 = @[<in-memory>: line: 2, column: 3], []\n!1 = @[<in-memory>: line: 3, column: 5], [builtin_given_names = builtin.given_names [cursor]]\n!2 = @[<in-memory>: line: 4, column: 5], [builtin_given_names = builtin.given_names [policy]]\n!3 = @[<in-memory>: line: 5, column: 5], [builtin_given_names = builtin.given_names [publication]]\n!4 = @[<in-memory>: line: 6, column: 5], [builtin_given_names = builtin.given_names [selected]]\n!5 = @[<in-memory>: line: 7, column: 5], [builtin_given_names = builtin.given_names [mapped]]\n!6 = @[<in-memory>: line: 8, column: 5], [builtin_given_names = builtin.given_names [scored]]\n!7 = @[<in-memory>: line: 9, column: 5], [builtin_given_names = builtin.given_names [feedback]]\n!8 = @[<in-memory>: line: 10, column: 5], []\n!9 = @[<in-memory>: line: 12, column: 7], [builtin_given_names = builtin.given_names [input]]\n!10 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [doubled]]\n!11 = @[<in-memory>: line: 15, column: 7], [builtin_given_names = builtin.given_names [nested_input]]\n!12 = @[<in-memory>: line: 16, column: 9], [builtin_given_names = builtin.given_names [offset]]\n!13 = @[<in-memory>: line: 17, column: 9], [builtin_given_names = builtin.given_names [pair]]\n!14 = @[<in-memory>: line: 18, column: 9], [builtin_given_names = builtin.given_names [first]]\n!15 = @[<in-memory>: line: 19, column: 9], []\n!16 = @[<in-memory>: line: 14, column: 9], [builtin_given_names = builtin.given_names [nested]]\n!17 = @[<in-memory>: line: 21, column: 9], []\n!18 = @[<in-memory>: line: 11, column: 5], []\n!19 = @[<in-memory>: line: 23, column: 5], []\n!20 = @[<in-memory>: line: 24, column: 5], []\n!21 = @[<in-memory>: line: 1, column: 1], []\n",
+  "producer": [
+    [
+      {
+        "ancestors": [
+          "data-session",
+          "data.composed"
+        ],
+        "effect": "pure",
+        "input": "record",
+        "input_codec": "exact-integer-v1",
+        "origin": "data.double",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "output_codec": "exact-integer-v1",
+        "resources": [],
+        "role": "map",
+        "symbol": "double_v1"
+      },
+      {
+        "ancestors": [
+          "data-session",
+          "data.composed",
+          "data.nested"
+        ],
+        "effect": "pure",
+        "input": "record",
+        "input_codec": "exact-integer-v1",
+        "origin": "data.offset",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "output_codec": "exact-integer-v1",
+        "resources": [],
+        "role": "map",
+        "symbol": "offset_v1"
+      },
+      {
+        "ancestors": [
+          "data-session",
+          "data.composed",
+          "data.nested"
+        ],
+        "effect": "read_frozen",
+        "input": "record",
+        "input_codec": "exact-integer-v1",
+        "origin": "pair.pack",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised",
+          "negative_input"
+        ],
+        "output": "pair-int2",
+        "output_codec": "pair-int2-v1",
+        "resources": [
+          {
+            "access": "read_frozen",
+            "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+            "symbol": "pair_coefficients",
+            "version": "1"
+          }
+        ],
+        "role": "map",
+        "symbol": "pack_pair_v1"
+      },
+      {
+        "ancestors": [
+          "data-session",
+          "data.composed",
+          "data.nested"
+        ],
+        "effect": "pure",
+        "input": "pair-int2",
+        "input_codec": "pair-int2-v1",
+        "origin": "pair.first",
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "output": "record",
+        "output_codec": "exact-integer-v1",
+        "resources": [],
+        "role": "map",
+        "symbol": "first_lane_v1"
+      }
+    ]
+  ],
+  "resource_analysis": {
+    "computations": 1,
+    "decisions": [
+      {
+        "groupable": true,
+        "origin": "data.double",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "data.offset",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "pair.pack",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "pair.first",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      }
+    ],
+    "reads": [
+      {
+        "access": "read_frozen",
+        "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+        "symbol": "pair_coefficients",
+        "version": "1"
+      }
+    ],
+    "unknown_sources": []
+  },
+  "schema": 2,
+  "target": "scalar-async-cpu-v1"
+}

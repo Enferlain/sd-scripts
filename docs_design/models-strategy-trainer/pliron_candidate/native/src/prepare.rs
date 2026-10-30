@@ -2,7 +2,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use pliron::{
     basic_block::BasicBlock,
-    builtin::attributes::{GivenNamesAttr, StringAttr},
+    builtin::attributes::StringAttr,
+    combine::{Parser, eof, parser::char::spaces},
     context::{Context, Ptr},
     identifier::Identifier,
     irbuild::{
@@ -19,18 +20,19 @@ use pliron::{
     pass::{Analysis, AnalysisManager, Pass, PassResult, Passes},
     printable::Printable,
     result::Result as IrResult,
-    r#type::Typed,
+    r#type::{TypeHandle, Typed},
     value::Value,
 };
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
+use crate::contract::{self, BASE_OUTCOMES, RESERVED_OUTCOMES, ResourceUse};
 use crate::dialect::*;
 
 pub type Checked<T> = Result<T, String>;
 pub const TARGET: &str = "scalar-async-cpu-v1";
 const CONTRACT: &str = "scalar-feedback-v1";
-const OUTCOMES: [&str; 3] = ["returned", "invalid_output", "raised"];
+const OUTCOMES: [&str; 3] = BASE_OUTCOMES;
 const COMPLETION: &str = "await_physical_then_validate";
 const CODEC: &str = "exact-integer-v1";
 
@@ -42,7 +44,15 @@ pub struct Binding {
     pub effect: String,
     pub outcomes: Vec<String>,
     pub codec: String,
-    pub resources: Vec<String>,
+    pub input: String,
+    pub output: String,
+    pub resources: Option<Vec<ResourceUse>>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct FrozenResource {
+    pub version: String,
+    pub digest: String,
 }
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
@@ -50,6 +60,9 @@ pub struct Manifest {
     pub schema: u32,
     pub registry: String,
     pub bindings: BTreeMap<String, Binding>,
+    pub codecs: BTreeMap<String, String>,
+    pub resources: BTreeMap<String, FrozenResource>,
+    pub runtime_outcomes: Vec<String>,
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Call {
@@ -58,9 +71,16 @@ pub struct Call {
     pub role: String,
     pub effect: String,
     pub ancestors: Vec<String>,
+    pub input: String,
+    pub output: String,
+    pub input_codec: String,
+    pub output_codec: String,
+    pub resources: Option<Vec<ResourceUse>>,
+    pub outcomes: Vec<String>,
 }
 #[derive(Clone, Debug)]
 struct Meaning {
+    origin: String,
     horizon: usize,
     producer: Vec<Call>,
     consumer: Vec<Call>,
@@ -79,11 +99,17 @@ pub struct Artifact {
     pub consumer: Vec<Call>,
     pub manifest: Manifest,
     pub analysis: Vec<(usize, usize, usize)>,
+    pub resource_analysis: ResourceReport,
 }
 
 pub fn parse(ctx: &mut Context, text: &str) -> Checked<Ptr<Operation>> {
-    let op = parse_from_str(Operation::top_level_parser(), ctx, text)
-        .map_err(|e| format!("parse: {e}"))?;
+    // parse_from_str discards the remainder; this boundary verifies a document.
+    let op = parse_from_str(
+        Operation::top_level_parser().skip(spaces()).skip(eof()),
+        ctx,
+        text,
+    )
+    .map_err(|e| format!("parse: {e}"))?;
     verify_operation(op, ctx).map_err(|e| format!("structural verification: {}", e.disp(ctx)))?;
     no_successors(ctx, op)?;
     Ok(op)
@@ -109,18 +135,7 @@ fn ensure(ok: bool, message: impl Into<String>) -> Checked<()> {
     if ok { Ok(()) } else { Err(message.into()) }
 }
 fn attrs(ctx: &Context, op: Ptr<Operation>) -> Checked<BTreeMap<String, String>> {
-    op.deref(ctx)
-        .attributes
-        .0
-        .iter()
-        .filter(|(_, a)| !a.is::<GivenNamesAttr>())
-        .map(|(key, value)| {
-            value
-                .downcast_ref::<StringAttr>()
-                .map(|v| (key.to_string(), v.as_str().to_string()))
-                .ok_or_else(|| format!("{key}: expected string attribute"))
-        })
-        .collect()
+    contract::strings(ctx, op)
 }
 fn attr(ctx: &Context, op: Ptr<Operation>, key: &str) -> Checked<String> {
     attrs(ctx, op)?
@@ -130,15 +145,23 @@ fn attr(ctx: &Context, op: Ptr<Operation>, key: &str) -> Checked<String> {
         .ok_or_else(|| format!("{}: missing {key}", Operation::get_opid(op, ctx)))
 }
 fn keys(ctx: &Context, op: Ptr<Operation>, names: &[&str]) -> Checked<()> {
+    let attributes = attrs(ctx, op)?;
+    let provided = attributes
+        .keys()
+        .map(String::as_str)
+        .collect::<BTreeSet<_>>();
+    let expected = names.iter().copied().collect::<BTreeSet<_>>();
     ensure(
-        attrs(ctx, op)?
-            .keys()
-            .map(String::as_str)
-            .collect::<BTreeSet<_>>()
-            == names.iter().copied().collect(),
+        provided == expected,
         format!(
-            "{}: missing or unknown semantic attributes",
-            Operation::get_opid(op, ctx)
+            "{}: {} missing or unknown semantic attributes; expected {:?}, provided {:?}",
+            attributes
+                .get("source_id")
+                .map(String::as_str)
+                .unwrap_or("operation"),
+            Operation::get_opid(op, ctx),
+            expected,
+            provided
         ),
     )
 }
@@ -199,6 +222,12 @@ fn stage(
         role: role.into(),
         effect: effect.into(),
         ancestors: ancestors.into(),
+        input: "record".into(),
+        output: "record".into(),
+        input_codec: CODEC.into(),
+        output_codec: CODEC.into(),
+        resources: Some(vec![]),
+        outcomes: OUTCOMES.iter().map(|s| s.to_string()).collect(),
     })
 }
 fn local(
@@ -206,13 +235,14 @@ fn local(
     op: Ptr<Operation>,
     ancestors: &[String],
     seen: &mut BTreeSet<String>,
+    input_type: TypeHandle,
+    output_type: TypeHandle,
 ) -> Checked<Vec<Call>> {
     let block = body(ctx, op, 0)?;
-    let record = RecordType::get(ctx).into();
     ensure(
         block.deref(ctx).get_num_arguments() == 1
-            && block.deref(ctx).get_argument(0).get_type(ctx) == record,
-        "local region needs one record argument",
+            && block.deref(ctx).get_argument(0).get_type(ctx) == input_type,
+        "local region needs one argument with declared input schema",
     )?;
     let ops = children(ctx, op, 0)?;
     ensure(
@@ -223,34 +253,70 @@ fn local(
     let mut calls = Vec::new();
     for child in &ops[..ops.len() - 1] {
         ensure(
-            operands(ctx, *child) == [previous]
-                && child.deref(ctx).get_num_results() == 1
-                && result(ctx, *child).get_type(ctx) == record,
-            "broken ordered local record chain",
+            operands(ctx, *child) == [previous] && child.deref(ctx).get_num_results() == 1,
+            "broken ordered local value chain",
         )?;
         if is::<LocalOp>(ctx, *child) {
             keys(ctx, *child, &["source_id"])?;
             let mut path = ancestors.to_vec();
             path.push(source(ctx, *child, seen)?);
-            calls.extend(local(ctx, *child, &path, seen)?);
+            calls.extend(local(
+                ctx,
+                *child,
+                &path,
+                seen,
+                previous.get_type(ctx),
+                result(ctx, *child).get_type(ctx),
+            )?);
         } else {
             let object = Operation::get_op_dyn(*child, ctx);
             let interface = op_cast::<dyn LocalStageInterface>(&*object)
                 .ok_or("unsupported local operation/interface")?;
+            let description = interface.describe(ctx)?;
+            let origin = source(ctx, *child, seen)?;
             ensure(
-                interface.cardinality() == "one-to-one",
-                "unsupported cardinality",
+                description.cardinality == "one-to-one"
+                    && description.input == previous.get_type(ctx)
+                    && description.output == result(ctx, *child).get_type(ctx),
+                format!("{origin}: local schema/cardinality interface differs from SSA types"),
             )?;
-            keys(ctx, *child, &["source_id", "implementation", "effect"])?;
-            calls.push(stage(ctx, *child, "map", ancestors, seen)?);
+            keys(ctx, *child, &description.attributes)?;
+            let outcomes = &description.outcomes;
+            ensure(
+                OUTCOMES.iter().all(|s| outcomes.iter().any(|o| o == s))
+                    && outcomes.iter().all(|s| !s.is_empty())
+                    && outcomes.iter().collect::<BTreeSet<_>>().len() == outcomes.len()
+                    && outcomes.iter().all(|s| {
+                        !RESERVED_OUTCOMES.contains(&s.as_str())
+                            || BASE_OUTCOMES.contains(&s.as_str())
+                    }),
+                format!("{origin}: missing baseline or invalid declared outcomes"),
+            )?;
+            let (input, input_codec) =
+                contract::payload(ctx, description.input).map_err(|e| format!("{origin}: {e}"))?;
+            let (output, output_codec) =
+                contract::payload(ctx, description.output).map_err(|e| format!("{origin}: {e}"))?;
+            calls.push(Call {
+                origin,
+                symbol: attr(ctx, *child, "implementation")?,
+                role: "map".into(),
+                effect: attr(ctx, *child, "effect")?,
+                ancestors: ancestors.into(),
+                input,
+                output,
+                input_codec,
+                output_codec,
+                resources: description.resources,
+                outcomes: description.outcomes,
+            });
         }
         previous = result(ctx, *child);
     }
     let yield_op = *ops.last().unwrap();
     keys(ctx, yield_op, &[])?;
     ensure(
-        operands(ctx, yield_op) == [previous],
-        "yield must expose the final local endpoint",
+        operands(ctx, yield_op) == [previous] && previous.get_type(ctx) == output_type,
+        "yield must expose the final local endpoint with declared output schema",
     )?;
     Ok(calls)
 }
@@ -350,7 +416,14 @@ fn meaning(ctx: &Context, session: Ptr<Operation>) -> Checked<Meaning> {
         operands(ctx, compose) == [flows["selected"], flows["mapped"]],
         "composition endpoint wiring differs",
     )?;
-    let producer = local(ctx, compose, &path, &mut seen)?;
+    let producer = local(
+        ctx,
+        compose,
+        &path,
+        &mut seen,
+        flows["selected"].get_type(ctx),
+        flows["mapped"].get_type(ctx),
+    )?;
     keys(ctx, score, &["source_id", "implementation", "effect"])?;
     keys(
         ctx,
@@ -369,6 +442,7 @@ fn meaning(ctx: &Context, session: Ptr<Operation>) -> Checked<Meaning> {
         stage(ctx, publish, "publish", &[root], &mut seen)?,
     ];
     Ok(Meaning {
+        origin: attr(ctx, session, "source_id")?,
         horizon,
         producer,
         consumer,
@@ -398,8 +472,21 @@ pub fn accept(text: &str) -> Checked<String> {
     Ok(canonical)
 }
 fn check_manifest(manifest: &Manifest, semantic: &Meaning) -> Checked<()> {
+    let reserved = RESERVED_OUTCOMES
+        .iter()
+        .map(|s| s.to_string())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .collect::<Vec<_>>();
     ensure(
-        manifest.schema == 1 && !manifest.registry.is_empty(),
+        manifest.runtime_outcomes == reserved,
+        format!(
+            "target {} runtime outcome ABI mismatch; expected {:?}, provided {:?}",
+            TARGET, reserved, manifest.runtime_outcomes
+        ),
+    )?;
+    ensure(
+        manifest.schema == 2 && !manifest.registry.is_empty(),
         "unsupported binding manifest",
     )?;
     for call in semantic.producer.iter().chain(&semantic.consumer) {
@@ -411,14 +498,51 @@ fn check_manifest(manifest: &Manifest, semantic: &Meaning) -> Checked<()> {
             !binding.version.is_empty()
                 && binding.role == call.role
                 && binding.effect == call.effect
-                && binding.outcomes == OUTCOMES
-                && binding.codec == CODEC
-                && binding.resources.is_empty(),
+                && binding.outcomes == call.outcomes
+                && binding.input == call.input
+                && binding.output == call.output
+                && binding.codec == call.output_codec
+                && binding.resources == call.resources
+                && manifest.codecs.get(&call.input) == Some(&call.input_codec)
+                && manifest.codecs.get(&call.output) == Some(&call.output_codec),
             format!(
-                "{}: incompatible binding/schema/resources/outcomes",
-                call.origin
+                "{}: target {} incompatible binding/schema/resources/outcomes for {}: expected input={} output={} codecs={}/{} resources={:?} outcomes={:?}; provided {:?}, installed codecs={:?}",
+                call.origin,
+                TARGET,
+                call.symbol,
+                call.input,
+                call.output,
+                call.input_codec,
+                call.output_codec,
+                call.resources,
+                call.outcomes,
+                binding,
+                manifest.codecs
             ),
         )?;
+        let mut seen = BTreeSet::new();
+        for resource in call.resources.iter().flatten() {
+            ensure(
+                resource.access == "read_frozen"
+                    && !resource.symbol.is_empty()
+                    && !resource.version.is_empty()
+                    && !resource.digest.is_empty()
+                    && seen.insert(&resource.symbol),
+                format!(
+                    "{}: target {} requires unique read_frozen resource contracts, provided {:?}",
+                    call.origin, TARGET, resource
+                ),
+            )?;
+            let actual = manifest.resources.get(&resource.symbol);
+            ensure(
+                actual
+                    .is_some_and(|r| r.version == resource.version && r.digest == resource.digest),
+                format!(
+                    "{}: target {} resource @{} requires frozen version={} digest={}, provided {:?}",
+                    call.origin, TARGET, resource.symbol, resource.version, resource.digest, actual
+                ),
+            )?;
+        }
     }
     Ok(())
 }
@@ -437,10 +561,36 @@ fn call_attrs(call: &Call, manifest: &Manifest) -> BTreeMap<String, String> {
             manifest.bindings[&call.symbol].version.clone(),
         ),
         ("completion".into(), COMPLETION.into()),
-        ("codec".into(), CODEC.into()),
-        ("outcomes".into(), serde_json::to_string(&OUTCOMES).unwrap()),
-        ("resources".into(), "none".into()),
+        ("input".into(), call.input.clone()),
+        ("output".into(), call.output.clone()),
+        ("input_codec".into(), call.input_codec.clone()),
+        ("codec".into(), call.output_codec.clone()),
+        (
+            "outcomes".into(),
+            serde_json::to_string(&call.outcomes).unwrap(),
+        ),
+        (
+            "resources".into(),
+            serde_json::to_string(&call.resources).unwrap(),
+        ),
     ])
+}
+fn differences(expected: &BTreeMap<String, String>, provided: &BTreeMap<String, String>) -> String {
+    expected
+        .keys()
+        .chain(provided.keys())
+        .collect::<BTreeSet<_>>()
+        .into_iter()
+        .filter(|key| expected.get(*key) != provided.get(*key))
+        .map(|key| {
+            format!(
+                "{key}: expected {:?}, provided {:?}",
+                expected.get(key),
+                provided.get(key)
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("; ")
 }
 fn set_attrs(ctx: &Context, op: Ptr<Operation>, attributes: BTreeMap<String, String>) {
     for (key, value) in attributes {
@@ -507,7 +657,7 @@ fn plan_attrs(
     capacity: usize,
 ) -> BTreeMap<String, String> {
     let mut attrs = pairs(&[
-        ("schema", "1"),
+        ("schema", "2"),
         ("target", TARGET),
         ("stop_rule", "settle_selected"),
         ("completion", "drain_physical_before_release"),
@@ -523,23 +673,110 @@ fn plan_attrs(
 fn target(meaning: &Meaning, capacity: usize) -> Checked<()> {
     ensure(
         meaning.horizon <= 2 && capacity == 1,
-        "accepted but unsupported target horizon/capacity",
+        format!(
+            "{}: accepted but unsupported target {}: provided horizon={}, capacity={}; expected horizon 1..=2, capacity 1",
+            meaning.origin, TARGET, meaning.horizon, capacity
+        ),
     )
 }
 
-struct Fuse;
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct StageDecision {
+    pub origin: String,
+    pub groupable: bool,
+    pub reason: String,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+pub struct ResourceReport {
+    pub reads: Vec<ResourceUse>,
+    pub unknown_sources: Vec<String>,
+    pub decisions: Vec<StageDecision>,
+    pub computations: usize,
+}
+impl ResourceReport {
+    fn from_plan(ctx: &Context, op: Ptr<Operation>) -> Self {
+        let semantic = meaning(
+            ctx,
+            children(ctx, op, 0).expect("verified snapshot region")[0],
+        )
+        .expect("verified semantic contracts");
+        Self::from_calls(semantic.producer)
+    }
+    fn from_calls(calls: Vec<Call>) -> Self {
+        let mut reads = BTreeSet::new();
+        let mut unknown_sources = vec![];
+        let mut decisions = vec![];
+        for call in calls {
+            let known =
+                call.resources.is_some() && ["pure", "read_frozen"].contains(&call.effect.as_str());
+            if let Some(uses) = &call.resources {
+                reads.extend(uses.iter().cloned());
+            }
+            if !known {
+                unknown_sources.push(call.origin.clone());
+            }
+            decisions.push(StageDecision{origin:call.origin,groupable:known,reason:if known {"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion".into()} else {format!("target {} declines grouping: unknown resource access/effect {}",TARGET,call.effect)}});
+        }
+        Self {
+            reads: reads.into_iter().collect(),
+            unknown_sources,
+            decisions,
+            computations: 0,
+        }
+    }
+    fn permits(&self, origin: &str) -> bool {
+        self.decisions
+            .iter()
+            .any(|d| d.origin == origin && d.groupable)
+    }
+}
+pliron::dict_key!(RESOURCE_COMPUTATIONS, "resource_computations");
+struct ResourceAnalysis(ResourceReport);
+impl Analysis for ResourceAnalysis {
+    fn name(&self) -> &str {
+        "local_resource_use_and_stability"
+    }
+    fn compute(
+        op: Ptr<Operation>,
+        ctx: &Context,
+        analyses: &mut AnalysisManager,
+    ) -> IrResult<Self> {
+        bump(analyses, RESOURCE_COMPUTATIONS.clone());
+        Ok(Self(ResourceReport::from_plan(ctx, op)))
+    }
+}
+
+struct Fuse {
+    resources: ResourceReport,
+}
+impl Fuse {
+    fn runs(&self, ctx: &Context, op: Ptr<Operation>) -> Vec<Vec<Ptr<Operation>>> {
+        let mut runs = vec![];
+        let mut run = vec![];
+        for child in children(ctx, op, 0).expect("verified chain") {
+            if is::<CallOp>(ctx, child)
+                && attr(ctx, child, "origin").is_ok_and(|o| self.resources.permits(&o))
+            {
+                run.push(child);
+            } else {
+                if run.len() > 1 {
+                    runs.push(std::mem::take(&mut run));
+                } else {
+                    run.clear();
+                }
+            }
+        }
+        if run.len() > 1 {
+            runs.push(run);
+        }
+        runs
+    }
+}
 impl MatchRewrite for Fuse {
     fn r#match(&mut self, ctx: &Context, op: Ptr<Operation>) -> bool {
         is::<ChainOp>(ctx, op)
             && attr(ctx, op, "role").is_ok_and(|r| r == "producer")
-            && children(ctx, op, 0).is_ok_and(|ops| {
-                ops.len() > 1
-                    && ops.iter().all(|p| {
-                        is::<CallOp>(ctx, *p)
-                            && attr(ctx, *p, "effect").is_ok_and(|e| e == "pure")
-                            && attr(ctx, *p, "resources").is_ok_and(|r| r == "none")
-                    })
-            })
+            && !self.runs(ctx, op).is_empty()
     }
     fn rewrite(
         &mut self,
@@ -547,17 +784,18 @@ impl MatchRewrite for Fuse {
         rewriter: &mut MatchRewriter,
         op: Ptr<Operation>,
     ) -> IrResult<()> {
-        let calls = children(ctx, op, 0).expect("verified chain");
-        let fused = new::<FusedOp>(
-            ctx,
-            1,
-            pairs(&[("protocol", "preserve_each_stage_guard_and_completion")]),
-        );
-        rewriter.set_insertion_point(OpInsertionPoint::BeforeOperation(calls[0]));
-        rewriter.insert_operation(ctx, fused);
-        let block = body(ctx, fused, 0).expect("fresh fused block");
-        for call in calls {
-            rewriter.move_operation(ctx, call, OpInsertionPoint::AtBlockEnd(block));
+        for calls in self.runs(ctx, op) {
+            let fused = new::<FusedOp>(
+                ctx,
+                1,
+                pairs(&[("protocol", "preserve_each_stage_guard_and_completion")]),
+            );
+            rewriter.set_insertion_point(OpInsertionPoint::BeforeOperation(calls[0]));
+            rewriter.insert_operation(ctx, fused);
+            let block = body(ctx, fused, 0).expect("fresh fused block");
+            for call in calls {
+                rewriter.move_operation(ctx, call, OpInsertionPoint::AtBlockEnd(block));
+            }
         }
         Ok(())
     }
@@ -643,6 +881,11 @@ impl Pass for Observe {
             source_hash,
             operation_hash(ctx, children(ctx, op, 0).unwrap()[0], &IGNORE_LOC_NAMES)
         );
+        let resources = analyses
+            .get_analysis::<ResourceAnalysis>(op, ctx)?
+            .0
+            .clone();
+        assert_eq!(resources, ResourceReport::from_plan(ctx, op));
         let row = (
             dispatch,
             count(analyses, &COMPUTATIONS),
@@ -670,12 +913,18 @@ impl Pass for FusionPass {
         &mut self,
         op: Ptr<Operation>,
         ctx: &mut Context,
-        _analyses: &mut AnalysisManager,
+        analyses: &mut AnalysisManager,
     ) -> IrResult<PassResult> {
-        let ir_changed = apply_match_rewrite(ctx, &mut Fuse, RewriterOrder::default(), op)?;
+        let resources = analyses
+            .get_analysis::<ResourceAnalysis>(op, ctx)?
+            .0
+            .clone();
+        let ir_changed =
+            apply_match_rewrite(ctx, &mut Fuse { resources }, RewriterOrder::default(), op)?;
         let mut result = PassResult::default();
         result.ir_changed = ir_changed;
         result.set_preserved::<SourceAnalysis>();
+        result.set_preserved::<ResourceAnalysis>();
         Ok(result)
     }
 }
@@ -736,6 +985,7 @@ pub fn prepare(
     let text = plan.deref(ctx).disp(ctx).to_string();
     let mut artifact = load(accepted, &text, manifest)?;
     artifact.analysis = evidence;
+    artifact.resource_analysis.computations = count(&analyses, &RESOURCE_COMPUTATIONS);
     Ok(artifact)
 }
 
@@ -788,6 +1038,13 @@ pub fn load(accepted: &str, prepared: &str, manifest: Manifest) -> Checked<Artif
             "prepared selection/handoff/feedback protocol differs",
         )?;
     }
+    let mut analyses = AnalysisManager::default();
+    let mut resource_report = analyses
+        .get_analysis::<ResourceAnalysis>(plan, ctx)
+        .expect("verified source analysis")
+        .0
+        .clone();
+    resource_report.computations = count(&analyses, &RESOURCE_COMPUTATIONS);
     let mut producer = Vec::new();
     for (chain, role, expected) in [
         (ops[3], "producer", &semantic.producer),
@@ -819,16 +1076,23 @@ pub fn load(accepted: &str, prepared: &str, manifest: Manifest) -> Checked<Artif
             for call in calls {
                 ensure(is::<CallOp>(ctx, call), "unsupported prepared call/group")?;
                 let source = expected.get(index).ok_or("extra prepared stage")?;
+                let claim = attrs(ctx, call)?;
+                let required = call_attrs(source, &manifest);
                 ensure(
-                    attrs(ctx, call)? == call_attrs(source, &manifest),
+                    claim == required,
                     format!(
-                        "{}: prepared binding/source/ancestry/schema/outcome/completion differs",
-                        source.origin
+                        "{}: target {} prepared binding/source/ancestry/schema/outcome/completion differs: {}",
+                        source.origin,
+                        TARGET,
+                        differences(&required, &claim)
                     ),
                 )?;
                 ensure(
-                    !fused || (source.role == "map" && source.effect == "pure"),
-                    "ineligible fused stage",
+                    !fused || (source.role == "map" && resource_report.permits(&source.origin)),
+                    format!(
+                        "{}: ineligible fused stage; resource analysis requires known frozen stability, provided effect={} resources={:?}",
+                        source.origin, source.effect, source.resources
+                    ),
                 )?;
                 group.push(source.clone());
                 index += 1;
@@ -843,7 +1107,7 @@ pub fn load(accepted: &str, prepared: &str, manifest: Manifest) -> Checked<Artif
         )?;
     }
     Ok(Artifact {
-        schema: 1,
+        schema: 2,
         pliron: "0.20.0",
         accepted: accepted.into(),
         prepared: prepared.into(),
@@ -855,5 +1119,36 @@ pub fn load(accepted: &str, prepared: &str, manifest: Manifest) -> Checked<Artif
         consumer: semantic.consumer,
         manifest,
         analysis: vec![],
+        resource_analysis: resource_report,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn partial_known_reads_do_not_hide_unknown_effects() {
+        let read = ResourceUse {
+            symbol: "coefficients".into(),
+            access: "read_frozen".into(),
+            version: "1".into(),
+            digest: "snapshot".into(),
+        };
+        let report = ResourceReport::from_calls(vec![Call {
+            origin: "partial".into(),
+            symbol: "selected".into(),
+            role: "map".into(),
+            effect: "may_effect".into(),
+            ancestors: vec![],
+            input: "record".into(),
+            output: "record".into(),
+            input_codec: CODEC.into(),
+            output_codec: CODEC.into(),
+            resources: Some(vec![read.clone()]),
+            outcomes: OUTCOMES.iter().map(|s| s.to_string()).collect(),
+        }]);
+        assert_eq!(report.reads, vec![read]);
+        assert_eq!(report.unknown_sources, vec!["partial"]);
+        assert!(!report.permits("partial"));
+    }
 }

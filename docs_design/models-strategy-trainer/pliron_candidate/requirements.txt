@@ -1,0 +1,3 @@
+# Reuse the existing pinned, Torch-free Python target and test environment.
+# Pliron itself is pinned separately by native/Cargo.toml and Cargo.lock.
+-r ../xdsl_candidate/requirements.txt

@@ -78,6 +78,35 @@ def test_graph_forward_reference_and_ordered_ssa_verification(native: Native) ->
         native.accept(text.replace("wf.map (input)", "wf.map (nested)"))
 
 
+@pytest.mark.parametrize("boundary", ["accept", "prepare", "load_accepted", "load_prepared"])
+@pytest.mark.parametrize("suffix", ["garbage", "second_root", "comment_like"])
+def test_complete_document_required_before_projection(native: Native, monkeypatch, boundary: str, suffix: str) -> None:
+    _, artifact = ready(native, fuse=True)
+    tail = {"garbage": "\nunchecked garbage", "second_root": "\n" + author.build(), "comment_like": "\n// unchecked suffix"}[suffix]
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("unvalidated document reached executable projection")
+
+    monkeypatch.setattr(importlib.import_module(Native.__module__).local_runtime, "compile_local", forbidden)
+    with pytest.raises(Rejected, match="parse:"):
+        if boundary == "accept":
+            native.accept(artifact["accepted"] + tail)
+        elif boundary == "prepare":
+            native.prepare(artifact["accepted"] + tail, fixture.registry())
+        else:
+            accepted = artifact["accepted"] + (tail if boundary == "load_accepted" else "")
+            prepared = artifact["prepared"] + (tail if boundary == "load_prepared" else "")
+            native.load(accepted, prepared, artifact["manifest"], fixture.registry())
+
+
+@pytest.mark.parametrize("whitespace", ["", " \t\r\n", "\u2003\n\t"])
+def test_complete_documents_allow_trailing_whitespace(native: Native, whitespace: str) -> None:
+    accepted = native.accept(author.build() + whitespace)
+    prepared, artifact = native.prepare(accepted + whitespace, fixture.registry(), fuse=True)
+    restored, _ = native.load(accepted + whitespace, artifact["prepared"] + whitespace, artifact["manifest"], fixture.registry())
+    assert restored.local.source_groups == prepared.local.source_groups
+
+
 @pytest.mark.parametrize("case", ["horizon", "wiring", "entity", "receipt", "yield", "source", "contract", "effect", "unknown", "type"])
 def test_bad_semantics_rejected(native: Native, case: str) -> None:
     substitutions = {
@@ -115,7 +144,7 @@ def test_accepted_is_separate_from_target_readiness(native: Native) -> None:
         ("version", ""),
         ("codec", "unknown"),
         ("outcomes", ["negative_input"]),
-        ("resources", ["mutable"]),
+        ("resources", [{"symbol": "mutable", "access": "write", "version": "1", "digest": "bad"}]),
     ],
 )
 def test_binding_contract_rejected_before_projection(native: Native, field, value) -> None:

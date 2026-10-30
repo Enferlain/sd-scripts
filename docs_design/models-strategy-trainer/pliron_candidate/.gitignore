@@ -1,3 +1,4 @@
 native/target/
 __pycache__/
 .pytest_cache/
+!requirements.txt

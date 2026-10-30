@@ -14,6 +14,41 @@
         1
       ]
     ],
+    "opaque_fused": [
+      [
+        4,
+        1,
+        1
+      ],
+      [
+        3,
+        2,
+        1
+      ]
+    ],
+    "pair_fused": [
+      [
+        4,
+        1,
+        1
+      ],
+      [
+        1,
+        2,
+        1
+      ]
+    ],
+    "resource_summary": {
+      "computed_per_pipeline": 1,
+      "forged_group": "structurally valid group crossing opaque stage rejected after source/signature checks",
+      "fresh_summary_equality_guard": true,
+      "full_run_resource_authority_claim": false,
+      "opaque_case": "valid unfused program with numerically equivalent offset and observed private effect; unknown resource footprint declines grouping through that stage",
+      "partial_known_reads": "Retained in reads while incomplete effects also appear in unknown_sources; native regression",
+      "preserved_across_grouping": true,
+      "scope": "composed producer local stages only",
+      "transformation_consults_cached_analysis": true
+    },
     "tuple_fields": [
       "producer_dispatch_groups",
       "dispatch_computations",
@@ -32,32 +67,71 @@
       ]
     ]
   },
+  "artifact_format": {
+    "base_b_artifacts": "regenerated and cold-loaded with current schema2",
+    "extension_artifacts": [
+      "unfused",
+      "fused",
+      "opaque_unfused",
+      "opaque_fused"
+    ],
+    "native_manifest": 2,
+    "old_schema1": "historical; regenerate",
+    "prepared_plan": 2
+  },
   "artifact_sha256": {
     "evidence/fused/accepted.pliron": "44f777fb61d8666920c62d74c3fbc77103b898c483e3e011a089048cfc5cd8f6",
-    "evidence/fused/artifact.json": "25e52fb17a3dbfee89bdc8845d99eb39fe8e86c49669f7cd584bd004791b155a",
-    "evidence/fused/bindings.json": "b2406a7bf0a4817986df769e71f5eee61da6040494f0635e3cf95852763709cf",
-    "evidence/fused/prepared.pliron": "86cc66ed9bbf70b329353cbdf5cc99d8eaf281eac8822cec31aefb2524dc7aba",
+    "evidence/fused/artifact.json": "dde2d8c51e0eec082421391d1e991f6540ee8169ee24571a34e93bc544501b44",
+    "evidence/fused/bindings.json": "894e6e3991a3c592a1cdc6ee1da41803f8af0d652f194ecbcbece5200471e834",
+    "evidence/fused/prepared.pliron": "94771b75cf580e1c51d47c6922aaff4356a96bacb8f0155a474a5fb1e20e7769",
     "evidence/fused/report.json": "4f351e6f4792793e9b46fb2417c753fd81fb72bb2350222a34a111289d9029ef",
-    "evidence/fused/run.json": "215b9bde015d803e00bca1b3027ace80a2dd790ad4aa6cf94f4677c0b8dce7ae",
+    "evidence/fused/run.json": "c5cef6ef54ee5bfce80e749a40e139d1f6ef73b01d52d8ce872614878d2ac7ef",
     "evidence/review.md": "2e24527202eb8a690aa2ef636f1dea6b88212f5b9eeb0919675512164a918e24",
-    "evidence/test_run.json": "906094b9c9ab0a58bf1c020d4cca1121c3eb6741bbe35e75edb08e35d1ffeb37",
+    "evidence/review_document_boundary.md": "fcdff0d07b34b6d7232c7e2658d563f6e53ba08d1984ba640ca05d57407e6125",
+    "evidence/test_run.json": "345727bf736e5af455600c1623c82ce14b065d43052a5c9062e141906fa2197e",
     "evidence/unfused/accepted.pliron": "44f777fb61d8666920c62d74c3fbc77103b898c483e3e011a089048cfc5cd8f6",
-    "evidence/unfused/artifact.json": "554c874d25cad8755293fc7ca270d9fe8b4fe59ece4a29f746a35064f3219978",
-    "evidence/unfused/bindings.json": "b2406a7bf0a4817986df769e71f5eee61da6040494f0635e3cf95852763709cf",
-    "evidence/unfused/prepared.pliron": "087de3608ccb4aebefab302f05780fcdd3c0f8bcf2af140f08e055d79f72f211",
+    "evidence/unfused/artifact.json": "b8c2c0b9f70233d53842d8fb3c7f725b9a6f22dff91f2c3fe57fe3423e6c4031",
+    "evidence/unfused/bindings.json": "894e6e3991a3c592a1cdc6ee1da41803f8af0d652f194ecbcbece5200471e834",
+    "evidence/unfused/prepared.pliron": "d8f480103b9c72c0e1e2eac9c121799201714b7506876821cfc8cb24100f2426",
     "evidence/unfused/report.json": "78c3db005d2b3ed2ebff88b4eb6818afd3849f4315e2dfcae45df968803a2f2e",
-    "evidence/unfused/run.json": "c8b9a458c009dea6309feb429ab7916d3748dd9c692e111343bd8c3c1c67ba72"
+    "evidence/unfused/run.json": "f659b6efa407eaa4afee038efe2babd60ef7a887ecda24832d655dbcb60212e6",
+    "evidence_extension/fused/accepted.pliron": "222944ced0ef7d690409f4d6a42b451085c3e10b73427f2585cadcfcce2f7355",
+    "evidence_extension/fused/artifact.json": "16a9866fe6f6e5ebbaf8e8d17336ab3142d9d743fa289e7a864060004a18d9ef",
+    "evidence_extension/fused/bindings.json": "011925e73e2471edb8513b0c9a268318d2b0290e57863f8ca4a3c60ca7462c5e",
+    "evidence_extension/fused/prepared.pliron": "a57bbb2c64152e095b06ad0b0995a09ab83c5f016bc86132f7b40e97cf8541b5",
+    "evidence_extension/fused/report.json": "9642992a34ec227d3a1af97cb18782268a29ae187037a689e63d950d00878816",
+    "evidence_extension/fused/run.json": "12660da12efe32849898bde66ca26f3c7b07c2aace42c1bb40cb75012c47e28b",
+    "evidence_extension/opaque_fused/accepted.pliron": "5a82f8d55b2188196c402e79b3185398de7ead988d6e115164870822baa57661",
+    "evidence_extension/opaque_fused/artifact.json": "41200b8338a013a2d3ba7d32baef259342d28fee189e96777c1146048980a512",
+    "evidence_extension/opaque_fused/bindings.json": "f2a66060778c15eacd17aac975d7d6079e142576965a3d1d43ac20d640f83091",
+    "evidence_extension/opaque_fused/prepared.pliron": "7519dcf0bf9f25da94ed97d41e33b03b1d0bd8529f7a25c4d7a662358b3c45de",
+    "evidence_extension/opaque_fused/report.json": "97b26b50e20371415f7a2a8d51c2c160e6c4969c8932f69c688867c1eb7bd9eb",
+    "evidence_extension/opaque_fused/run.json": "e3e0ec9c4602a755ed4cadfe671dc0ac28902df2e91a31b2930357afa892b8bb",
+    "evidence_extension/opaque_unfused/accepted.pliron": "5a82f8d55b2188196c402e79b3185398de7ead988d6e115164870822baa57661",
+    "evidence_extension/opaque_unfused/artifact.json": "419a318b7132a94a9c8b5a504a680591912022796e7e90a92f962613dd12da30",
+    "evidence_extension/opaque_unfused/bindings.json": "f2a66060778c15eacd17aac975d7d6079e142576965a3d1d43ac20d640f83091",
+    "evidence_extension/opaque_unfused/prepared.pliron": "1b1552cfc7eb60504349ba87f0029c8c9b2fcc8e23cf85c443cb53f87a7a7050",
+    "evidence_extension/opaque_unfused/report.json": "9caaea2cd20700aed5ad65be939b5110215930225e454a927ee6d549919c64b6",
+    "evidence_extension/opaque_unfused/run.json": "728e91b147d396f48518069cf40e5ff831db6dccae2e5246488e7aa01d42a174",
+    "evidence_extension/replay.json": "0670e33facfcf1a5b047050be67f8eb8cc65f9a75c8705b4086593acaccfeaa9",
+    "evidence_extension/review.md": "343726b6c46262f6fc721c608f4574b3e219cdf8db6d7298b2db53a8d7443420",
+    "evidence_extension/unfused/accepted.pliron": "222944ced0ef7d690409f4d6a42b451085c3e10b73427f2585cadcfcce2f7355",
+    "evidence_extension/unfused/artifact.json": "61a282662f1b89b76db715bb6b9aa1cd805ff6df831fd294c42b014d8f433538",
+    "evidence_extension/unfused/bindings.json": "011925e73e2471edb8513b0c9a268318d2b0290e57863f8ca4a3c60ca7462c5e",
+    "evidence_extension/unfused/prepared.pliron": "6260b1cc5dcbea69cad07ca95c9912268b78076f35f4f2e69807e039f327a4c8",
+    "evidence_extension/unfused/report.json": "9caaea2cd20700aed5ad65be939b5110215930225e454a927ee6d549919c64b6",
+    "evidence_extension/unfused/run.json": "62331fcb1249614396f033a383e6c437dce319bcc339cc71052bebeeddf992cf"
   },
   "baseline_preservation": {
     "all_match": true,
     "previously_retained_source_and_report_hashes_checked": 20,
     "user_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92"
   },
-  "bead": "sd-scripts-syv.31.19",
+  "bead": "sd-scripts-syv.31.20",
   "date": "2026-10-30",
   "document_validation": {
     "experiment_whitespace": "pass",
-    "local_links": 10,
+    "local_links": 15,
     "root_doc_insertions_whitespace": "pass; preexisting unrelated roadmap whitespace left intact"
   },
   "environment": {
@@ -78,10 +152,68 @@
     "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
     "target_directory": "/tmp/sd-scripts-pliron-b-target"
   },
+  "extension_boundary": {
+    "broader_grouping_than_xdsl": "project policy difference, not framework performance evidence",
+    "core_changes": [
+      "shared payload type interface and local stage descriptions",
+      "generic SSA payload chain checks",
+      "typed target registry and manifest2 with input/output schemas,codec versions,resources and outcomes",
+      "resource-use summary and common grouping decision",
+      "cold expected/provided diagnostics"
+    ],
+    "domain_outcome": "negative_input in addition to mandatory baseline",
+    "extension_identity_dispatch_in_core": false,
+    "extension_lowering": "read-only map containing only declared immutable snapshots after all native/cold/manifest checks",
+    "legacy_registry": "Default record/INTEGER codec and no dialect registration only; TargetRegistry required for native extensions",
+    "native_extension_module": "native/src/pair_extension.rs",
+    "oracle": "existing check_extension plus check_b projection/hidden-lane negative control",
+    "python_extension_module": "pair_extension.py",
+    "runtime": "existing ScalarSession,frame guards,local compiler and bindings ABI",
+    "runtime_outcome_abi": "Manifest carries sorted actual Python RESERVED_OUTCOMES; native expected set must agree before factories"
+  },
+  "external_review_correction": {
+    "after": {
+      "new_cases": 15,
+      "optional_torch_skips": 3,
+      "pliron_tests": 118,
+      "total_passed": 379
+    },
+    "bead": "sd-scripts-syv.31.21",
+    "before": {
+      "initial_experiment_tests": 103,
+      "initial_total_passed": 364,
+      "rejection_tests_failed": 12,
+      "seconds": 2.49,
+      "whitespace_tests_passed": 3
+    },
+    "findings": [
+      "parse_from_str discarded unconsumed document suffixes",
+      "root *.txt rule omitted requirements.txt from commit despite its locally recorded hash"
+    ],
+    "grammar": "Pliron0.20.0 uses whitespace and defines no comment syntax here; comment-like suffixes are rejected, not stripped",
+    "packaging": {
+      "all_source_manifest_files_visible_to_normal_git_add": true,
+      "documented_uv_sync": "pass;12 packages installed offline",
+      "fresh_environment": "/tmp/pliron-review-fresh-env",
+      "local_gitignore_exception": "!requirements.txt",
+      "requirements": "requirements.txt",
+      "requirements_sha256": "9ccc4f02a87de9f236030ae3e2d37788c4c77c9250d63d23bbbd5565f4e7f91a",
+      "saved_fused_plan_execution": "pass;GIL false before/after;Torch absent",
+      "source_files_visible_to_normal_git_add": 18,
+      "verification_command": "python - <<'PY'\nfrom pathlib import Path\nimport hashlib, json, subprocess\nbase = Path(\"docs_design/models-strategy-trainer/pliron_candidate\")\nrecord = json.loads((base / \"evidence/qualification.json\").read_text())\nvisible = set(subprocess.check_output([\"git\", \"ls-files\", \"--cached\", \"--others\", \"--exclude-standard\", \"-z\", \"--\", str(base)]).decode().split(\"\\0\"))\nfor name, digest in record[\"source_sha256\"].items():\n    path = base / name\n    if str(path) not in visible:\n        raise SystemExit(f\"source excluded from normal Git addition: {path}\")\n    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:\n        raise SystemExit(f\"source hash differs: {path}\")\nprint(\"All source hashes match and files are visible to normal Git addition\")\nPY\n",
+      "verification_driver": "from pathlib import Path\nimport hashlib, json, subprocess\nbase = Path(\"docs_design/models-strategy-trainer/pliron_candidate\")\nrecord = json.loads((base / \"evidence/qualification.json\").read_text())\nvisible = set(subprocess.check_output([\"git\", \"ls-files\", \"--cached\", \"--others\", \"--exclude-standard\", \"-z\", \"--\", str(base)]).decode().split(\"\\0\"))\nfor name, digest in record[\"source_sha256\"].items():\n    path = base / name\n    if str(path) not in visible:\n        raise SystemExit(f\"source excluded from normal Git addition: {path}\")\n    if hashlib.sha256(path.read_bytes()).hexdigest() != digest:\n        raise SystemExit(f\"source hash differs: {path}\")\nprint(\"All source hashes match and files are visible to normal Git addition\")\n",
+      "verification_kind": "manual, repeatable before commit; no repository hook or automated test"
+    },
+    "reviewed_commit": "5a737c27749bac7eb364d9cf21ea343dc5420234",
+    "scope": "No architecture/runtime/backend change; original saved artifacts and initial review retained"
+  },
   "graph": {
     "backend": "Cargo.toml metadata_changed; direct manifest and source reads performed; no exhaustive integration claim",
     "baseline_no_recorded_issue": true,
     "baseline_paths": 6,
+    "extension_generation": "2026-10-30T19:14:41Z",
+    "extension_no_recorded_issue": true,
+    "extension_source_paths": 9,
     "new_generation": "2026-10-30T14:49:50Z",
     "new_no_recorded_issue": true,
     "new_paths": 8,
@@ -99,19 +231,49 @@
       "*.fixture"
     ],
     "corruptions_rejected": 12,
+    "current_positive_reports": 6,
+    "current_rejected_corruptions": 16,
+    "current_replay_record": "evidence_extension/replay.json",
+    "extension_hidden_lane_corruptions_rejected": 4,
+    "extension_positive_reports": 4,
     "oracle": "../xdsl_candidate/conformance.py:check_b",
     "positive_reports": 2
   },
   "limits": [
-    "Reuses B runtime/bindings/local compiler; not an independent runtime validation",
-    "Process bridge; no in-process Python binding or shared native backend representation",
-    "Prepared calls have no SSA results; no SSA result-remapping proof",
-    "No resource extension/owner integration/new composition/general language claim",
-    "No matched performance/maintenance cost comparison",
-    "No GPU/distributed/restoration qualification",
-    "xDSL remains provisional working baseline"
+    "Whole-session acceptance remains fixed B profile; nested local structure is project-defined",
+    "No mutable modeled-resource replacement or stable-use scope",
+    "IR ownership is separate from runtime ownership; frozen snapshots and physical-completion ABI provide this target evidence",
+    "Python process bridge and reused runtime; no independently implemented ownership engine",
+    "No in-process binding/native numerical/backend sharing",
+    "No SSA result remapping",
+    "No matched performance/maintenance-cost claim",
+    "xDSL stays provisional working baseline; final language/framework/runtime open"
+  ],
+  "previous_review": {
+    "actionable_findings": [],
+    "artifact_directory": "/tmp/review-mcp-run-msbbnna1",
+    "diff_target": "HEAD",
+    "exit_code": 0,
+    "post_review_changes": "Recorded completed review and exact manual source-visibility command; no code changes",
+    "result_ok": true,
+    "reviewer_reran_tests": false,
+    "saved_review": "evidence/review_document_boundary.md",
+    "scope": "Whole-document parsing and dependency packaging corrections",
+    "service": "review-mcp",
+    "status": "completed"
+  },
+  "previous_review_milestones": [
+    {
+      "bead": "sd-scripts-syv.31.19",
+      "review": "evidence/review.md"
+    },
+    {
+      "bead": "sd-scripts-syv.31.21",
+      "review": "evidence/review_document_boundary.md"
+    }
   ],
   "quality_gates": {
+    "cargo_test": "pass:1 native regression; no doctest/main tests claimed",
     "clippy": "pass with --locked --all-targets -- -D warnings",
     "no_additional_rust_test_count_claim": true,
     "ruff_check": "pass",
@@ -124,55 +286,104 @@
     "src/builtin/attributes.rs": "74e265215ae1d63643f5bdd1961ff58c0a3870d9c36a7bc8afee426394a5bbfe",
     "src/builtin/op_interfaces.rs": "8ce9241ad5488b6fd19a9d0b28586a4994f9aa6d2a56d7c3570639ff13000dba",
     "src/builtin/ops.rs": "25087ba460967d59669d89cf974173d977e84a5cdb2beaa57587c808a5dbc439",
+    "src/builtin/type_interfaces.rs": "6a9d7e08c925db2ca6b194908f9a26f76f2209510aae36b59ec42051a0c60361",
     "src/identifier.rs": "abff20b76a368ae2e59cd96d527eff00564d19aadb8a61cb7abcfabc04d8692e",
     "src/irbuild/equivalence.rs": "5bf1cb5099fbd71005e98f803a86a15ce7d18bd68ad5129963b0863a72111024",
     "src/irbuild/inserter.rs": "cb680ea8fb6efda2135fb2cb23d6bcb68ec5f057ae0c4b740058db0b40a9da01",
     "src/irbuild/match_rewrite.rs": "3c300714b040789210f820c1fda1bf80ec8c47a6d05aefb44cd23a4ea0763bb5",
     "src/irbuild/rewriter.rs": "7f305774641dfe442d2be5c849a9c7131eb90f3f29753f9063d3c0b791b7571e",
     "src/operation.rs": "2dd0e64752bb6779e6264816fb4835d1b95d3bcab01bc1454c5e248650c6ad5f",
+    "src/parsable.rs": "32899b6bcca74b87bde373cb95136dcba136c05ab59fa65f741d8804f2ee64c3",
     "src/pass.rs": "d7cfff12ec72242dd22c5e327b10992417c90a0f8dc367ffe9db27f43ac0ff70",
-    "src/region.rs": "b408126423185d64f861b078271cba60171e8fd04c60659a28d02e7baeb00b7d"
+    "src/region.rs": "b408126423185d64f861b078271cba60171e8fd04c60659a28d02e7baeb00b7d",
+    "src/type.rs": "a722b31ed23c35a957e4cebb76d2a9c334ca92df5bd9572a886ff61933d1bdb7"
   },
   "review": {
-    "actionable_findings": [],
-    "artifact_directory": "/tmp/review-mcp-run-er0m2q8b",
+    "artifact_directory": "/tmp/review-mcp-run-yfjy04ld",
     "diff_target": "HEAD",
+    "execution_or_authorization_findings": false,
     "exit_code": 0,
-    "minor_observations": [
-      "Version strings are literal and must stay coordinated with the exact Cargo pin",
-      "Research bridge exposes subprocess filesystem/timeout errors directly",
-      "Private analyses rely on their constructed and verified input invariant",
-      "Cold loading permits any sound eligible grouping, not only one matcher grouping"
+    "findings_addressed": [
+      {
+        "id": 1,
+        "issue": "Legacy registry codecs/dialects silently discarded",
+        "resolution": "Explicit default-only adapter guard;3 regression cases",
+        "severity": "low"
+      },
+      {
+        "id": 2,
+        "issue": "Known reads plus unknown effects omitted from unknown_sources",
+        "resolution": "Summary retains known reads and reports incomplete footprint; native Rust regression",
+        "severity": "low"
+      },
+      {
+        "id": 3,
+        "issue": "Reserved outcome lists can drift across languages",
+        "resolution": "Shared native constant plus advertised actual Python reserved vocabulary checked before factories;2 drift controls",
+        "severity": "low"
+      },
+      {
+        "id": 4,
+        "issue": "Opaque artifact cold-load command absent",
+        "resolution": "Explicit --extension --opaque --load command documented and executed",
+        "severity": "low"
+      }
     ],
-    "new_files_read_directly": true,
-    "post_review_changes": "Recorded completed review and final gate result; no code changes",
+    "nonblocking_notes_retained": [
+      "Missing-codec diagnostics deliberately remain native for source attribution",
+      "Internal analyses rely on verified input invariants",
+      "Fixture author uses tested text construction; no final public authoring API"
+    ],
+    "post_review_changes": "Only the four small follow-ups above and evidence/documentation; full affected gates rerun; no scheduler/ownership/group-permission change",
     "result_ok": true,
     "reviewer_reran_tests": false,
-    "saved_review": "evidence/review.md",
+    "saved_review": "evidence_extension/review.md",
     "service": "review-mcp",
     "status": "completed"
   },
-  "scope": "Pliron B representation/preparation/fusion with reused scalar Python runtime; no production language/runtime/backend adoption",
+  "scope": "Pliron0.20.0 B plus independent pair/frozen-resource extension, typed cold contracts and local grouping analysis; reuses scalar Python target and independent oracles; no production adoption",
+  "source_and_baseline_preservation": {
+    "EOF_and_requirements_ignore_exception_preserved": true,
+    "reviewed_document_fix_snapshot": "/tmp/sd-scripts-pliron-extension-before",
+    "user_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+    "xdsl_candidate_changed": false
+  },
   "source_sha256": {
-    "README.md": "f90fe8e8f25bb6e47e852d540d660b05d73dfc00e59ad08ade4cb6c8eca6a5e8",
+    ".gitignore": "13e27c1653eea0cef66184b888c2088f36605a8f47225babd220e5b10778f037",
+    "README.md": "b3e127285464013cbc0d0768152783ed63e394aaa09b391937bfa9504bbce263",
     "__init__.py": "3bf1db39c7dd4174e9cc239d8f3278f9f3e37b24b3b2fd903a7fbc2bebf9ab73",
-    "__main__.py": "785cb0d2dd5d3b0b9f87d4a7c12149e026ca7dc844260417ae9e1b59d92310c0",
+    "__main__.py": "dbba055168e8c507559586e556487a26134cb60c59ebd9bfdcb0c3f5e93c940c",
     "author.py": "2c2fffc5d21964b6d07664a80b98a98f45ddda7b0850c3816029a60317abed0f",
-    "bridge.py": "d98e13836bfef77290080800a4c48814d0b7d044ec0b15f14e215c8f307494aa",
+    "bridge.py": "ceaf610b3b7fdb793431a87143ee480f31e13350086cec60c32116438a919ff2",
     "native/Cargo.lock": "77b0a27c4deffcba7960dce670a025335b7dc15ea0650d4bdeb06745c8224a6c",
     "native/Cargo.toml": "d47a5552a2e0bceae39d3b0a8d6efe5f026121f6d3b5927692f5eb604f045b4e",
-    "native/src/dialect.rs": "90af9896329c896459b4da998725d4238cf586e75cd0d784570065fc13297e3e",
-    "native/src/lib.rs": "29541bc50fd560010e64831de10b2e6a11170c09efded83b43c3c59a3afcb5c2",
+    "native/src/contract.rs": "908339c9bd6adeb9fce85e41e9f43d79e90242eb64024f0b82a23feb383fd921",
+    "native/src/dialect.rs": "e9a0422eb582be037b3f368edaf9e8ba87fb60151fd2bdabec9b71e0abe7cfd9",
+    "native/src/lib.rs": "5fa9b0bfa75d7ce86ed9610a2875ea66b9cce80e92904e5ec3b531381d49cb2b",
     "native/src/main.rs": "806e72474653163ba8dee7231820b449c0916f33791cb0b062cc58e5b4abb08c",
-    "native/src/prepare.rs": "eae65adb016791e133d5b3e88c3aaf82ddfd23ca57ee08af12a996995bc6d2b0",
+    "native/src/pair_extension.rs": "3d610d6d1d1e792a198cb3a1b89e065d32199e5e05d365b161eac5bac51e16d8",
+    "native/src/prepare.rs": "50f2d2846ae526b7d612bd96d60b642afb8cbf3a00fdc7a2303d3501f8b84f5d",
+    "pair_extension.py": "41d8e419aa83e18a06d5fa61b0824790d10f275b1d0a1018d80ec343b8ee9afd",
     "requirements.txt": "9ccc4f02a87de9f236030ae3e2d37788c4c77c9250d63d23bbbd5565f4e7f91a",
-    "test_b.py": "dcf02b7f93681acb9b9b8f3003d065c7c6dc1c9942bdea7b6079e2a5833a18d8"
+    "test_b.py": "1c9a77d245776898e6eeb01fb8ff5d2894f8356bec0283ddac7adac0438e1b1e",
+    "test_extension.py": "568c1b2c02544f112c13489f51cdf8f84049a4092ad32716a9b70c5e32ddeb9c"
   },
   "tests": {
+    "baseline_b_and_boundary_passed": 118,
     "command": "PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /tmp/sd-scripts-xdsl-b-env/bin/python -m pytest --noconftest docs_design/models-strategy-trainer/pliron_candidate docs_design/models-strategy-trainer/xdsl_candidate -q -p pytest_asyncio.plugin --tb=short",
     "existing_torch_free_passed": 261,
-    "final_passing_run_pytest_seconds": 18.17,
-    "final_passing_run_wall_seconds": 18.316676909002126,
+    "extension_cases": [
+      "typed/frozen success and opaque barrier",
+      "native/cold installed contract and signature corruption before factories",
+      "hidden pair lane control with scalar still correct",
+      "declared and undeclared outcomes",
+      "invalid extension/target/codec diagnostics",
+      "real physical frozen-resource read, repeated cancellation and later failure",
+      "normal and optimized cold process with normal parent oracle"
+    ],
+    "extension_passed": 77,
+    "final_passing_run_pytest_seconds": 33.67,
+    "final_passing_run_wall_seconds": 33.8686160530051,
     "final_run_record": "evidence/test_run.json",
     "fresh_processes": "fused/unfused x normal/optimized Python; independent oracle in normal parent",
     "gil_after": false,
@@ -183,8 +394,27 @@
       "reason": "Fault injection value+1 accidentally correct for offset; corrected to value+123 before successful run"
     },
     "initial_passing_run_seconds": 22.84,
-    "passed": 364,
-    "pliron_passed": 103,
+    "native_rust_regressions_passed": 1,
+    "passed": 456,
+    "pliron_passed": 195,
+    "post_review_gate": {
+      "GIL_after": false,
+      "GIL_before": false,
+      "extension": 77,
+      "native_rust": 1,
+      "passed": 456,
+      "pliron": 195,
+      "skips": 3
+    },
+    "pre_review_gate": {
+      "GIL": false,
+      "extension": 72,
+      "passed": 451,
+      "pliron": 190,
+      "seconds": 30.81,
+      "skips": 3
+    },
+    "schema_migration_note": "The old resource corruption fixture used a string;schema2 uses structured ResourceUse and the fixture now supplies a well-formed incompatible write claim. Native rejected both formats at their respective boundary.",
     "skip_reason": "Optional A/C/mixed Torch owner modules; Torch absent",
     "skipped": 3
   },

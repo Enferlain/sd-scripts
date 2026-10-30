@@ -1,0 +1,577 @@
+{
+  "decisions": [
+    {
+      "bias": 0,
+      "clock": 1,
+      "key": 0,
+      "kind": "selected",
+      "revision": 0
+    },
+    {
+      "bias": 0,
+      "clock": 15,
+      "key": 1,
+      "kind": "selected",
+      "revision": 0
+    },
+    {
+      "bias": 1,
+      "clock": 33,
+      "key": 0,
+      "kind": "feedback",
+      "revision": 1
+    },
+    {
+      "bias": 1,
+      "clock": 40,
+      "key": 2,
+      "kind": "selected",
+      "revision": 1
+    },
+    {
+      "bias": 4,
+      "clock": 58,
+      "key": 1,
+      "kind": "feedback",
+      "revision": 2
+    },
+    {
+      "bias": 4,
+      "clock": 65,
+      "key": 3,
+      "kind": "selected",
+      "revision": 2
+    },
+    {
+      "bias": 4,
+      "clock": 83,
+      "key": 2,
+      "kind": "feedback",
+      "revision": 3
+    },
+    {
+      "bias": 4,
+      "clock": 90,
+      "key": 4,
+      "kind": "selected",
+      "revision": 3
+    },
+    {
+      "bias": 0,
+      "clock": 108,
+      "key": 3,
+      "kind": "feedback",
+      "revision": 4
+    },
+    {
+      "bias": 0,
+      "clock": 115,
+      "key": 5,
+      "kind": "selected",
+      "revision": 4
+    },
+    {
+      "bias": 4,
+      "clock": 134,
+      "key": 4,
+      "kind": "feedback",
+      "revision": 5
+    },
+    {
+      "bias": 1,
+      "clock": 149,
+      "key": 5,
+      "kind": "feedback",
+      "revision": 6
+    }
+  ],
+  "diagnostics": [],
+  "errors": [],
+  "high_water": 2,
+  "local_dispatches": 18,
+  "released": 152,
+  "status": "stopped",
+  "stop_clock": 117,
+  "tickets": [
+    {
+      "calls": [
+        {
+          "entered": 2,
+          "input": 0,
+          "origin": "data.double",
+          "outcome": "returned",
+          "output": 0,
+          "physical_end": 3,
+          "released": 4,
+          "role": "map"
+        },
+        {
+          "entered": 5,
+          "input": 0,
+          "origin": "data.offset",
+          "outcome": "returned",
+          "output": 1,
+          "physical_end": 6,
+          "released": 7,
+          "role": "map"
+        },
+        {
+          "entered": 8,
+          "input": 1,
+          "origin": "pair.pack",
+          "outcome": "returned",
+          "output": [
+            1,
+            2
+          ],
+          "physical_end": 9,
+          "released": 10,
+          "role": "map"
+        },
+        {
+          "entered": 11,
+          "input": [
+            1,
+            2
+          ],
+          "origin": "pair.first",
+          "outcome": "returned",
+          "output": 1,
+          "physical_end": 12,
+          "released": 13,
+          "role": "map"
+        },
+        {
+          "entered": 17,
+          "input": 1,
+          "origin": "scorer",
+          "outcome": "returned",
+          "output": 1,
+          "physical_end": 21,
+          "released": 22,
+          "role": "score"
+        },
+        {
+          "entered": 23,
+          "input": 1,
+          "origin": "publisher",
+          "outcome": "returned",
+          "output": 1,
+          "physical_end": 27,
+          "released": 28,
+          "role": "publish"
+        }
+      ],
+      "feedback_ack": 33,
+      "key": 0,
+      "policy_bias": 0,
+      "policy_revision": 0,
+      "publication_ack": 29,
+      "retired": 34,
+      "selected": 1,
+      "source_revision": 0,
+      "terminal": "acknowledged",
+      "value": 0
+    },
+    {
+      "calls": [
+        {
+          "entered": 16,
+          "input": 1,
+          "origin": "data.double",
+          "outcome": "returned",
+          "output": 2,
+          "physical_end": 18,
+          "released": 19,
+          "role": "map"
+        },
+        {
+          "entered": 20,
+          "input": 2,
+          "origin": "data.offset",
+          "outcome": "returned",
+          "output": 3,
+          "physical_end": 24,
+          "released": 25,
+          "role": "map"
+        },
+        {
+          "entered": 26,
+          "input": 3,
+          "origin": "pair.pack",
+          "outcome": "returned",
+          "output": [
+            3,
+            6
+          ],
+          "physical_end": 30,
+          "released": 31,
+          "role": "map"
+        },
+        {
+          "entered": 32,
+          "input": [
+            3,
+            6
+          ],
+          "origin": "pair.first",
+          "outcome": "returned",
+          "output": 3,
+          "physical_end": 35,
+          "released": 36,
+          "role": "map"
+        },
+        {
+          "entered": 42,
+          "input": 3,
+          "origin": "scorer",
+          "outcome": "returned",
+          "output": 9,
+          "physical_end": 46,
+          "released": 47,
+          "role": "score"
+        },
+        {
+          "entered": 48,
+          "input": 9,
+          "origin": "publisher",
+          "outcome": "returned",
+          "output": 9,
+          "physical_end": 52,
+          "released": 53,
+          "role": "publish"
+        }
+      ],
+      "feedback_ack": 58,
+      "key": 1,
+      "policy_bias": 0,
+      "policy_revision": 0,
+      "publication_ack": 54,
+      "retired": 59,
+      "selected": 15,
+      "source_revision": 0,
+      "terminal": "acknowledged",
+      "value": 1
+    },
+    {
+      "calls": [
+        {
+          "entered": 41,
+          "input": 3,
+          "origin": "data.double",
+          "outcome": "returned",
+          "output": 6,
+          "physical_end": 43,
+          "released": 44,
+          "role": "map"
+        },
+        {
+          "entered": 45,
+          "input": 6,
+          "origin": "data.offset",
+          "outcome": "returned",
+          "output": 7,
+          "physical_end": 49,
+          "released": 50,
+          "role": "map"
+        },
+        {
+          "entered": 51,
+          "input": 7,
+          "origin": "pair.pack",
+          "outcome": "returned",
+          "output": [
+            7,
+            14
+          ],
+          "physical_end": 55,
+          "released": 56,
+          "role": "map"
+        },
+        {
+          "entered": 57,
+          "input": [
+            7,
+            14
+          ],
+          "origin": "pair.first",
+          "outcome": "returned",
+          "output": 7,
+          "physical_end": 60,
+          "released": 61,
+          "role": "map"
+        },
+        {
+          "entered": 67,
+          "input": 7,
+          "origin": "scorer",
+          "outcome": "returned",
+          "output": 49,
+          "physical_end": 71,
+          "released": 72,
+          "role": "score"
+        },
+        {
+          "entered": 73,
+          "input": 49,
+          "origin": "publisher",
+          "outcome": "returned",
+          "output": 49,
+          "physical_end": 77,
+          "released": 78,
+          "role": "publish"
+        }
+      ],
+      "feedback_ack": 83,
+      "key": 2,
+      "policy_bias": 1,
+      "policy_revision": 1,
+      "publication_ack": 79,
+      "retired": 84,
+      "selected": 40,
+      "source_revision": 0,
+      "terminal": "acknowledged",
+      "value": 3
+    },
+    {
+      "calls": [
+        {
+          "entered": 66,
+          "input": 7,
+          "origin": "data.double",
+          "outcome": "returned",
+          "output": 14,
+          "physical_end": 68,
+          "released": 69,
+          "role": "map"
+        },
+        {
+          "entered": 70,
+          "input": 14,
+          "origin": "data.offset",
+          "outcome": "returned",
+          "output": 15,
+          "physical_end": 74,
+          "released": 75,
+          "role": "map"
+        },
+        {
+          "entered": 76,
+          "input": 15,
+          "origin": "pair.pack",
+          "outcome": "returned",
+          "output": [
+            15,
+            30
+          ],
+          "physical_end": 80,
+          "released": 81,
+          "role": "map"
+        },
+        {
+          "entered": 82,
+          "input": [
+            15,
+            30
+          ],
+          "origin": "pair.first",
+          "outcome": "returned",
+          "output": 15,
+          "physical_end": 85,
+          "released": 86,
+          "role": "map"
+        },
+        {
+          "entered": 92,
+          "input": 15,
+          "origin": "scorer",
+          "outcome": "returned",
+          "output": 225,
+          "physical_end": 96,
+          "released": 97,
+          "role": "score"
+        },
+        {
+          "entered": 98,
+          "input": 225,
+          "origin": "publisher",
+          "outcome": "returned",
+          "output": 225,
+          "physical_end": 102,
+          "released": 103,
+          "role": "publish"
+        }
+      ],
+      "feedback_ack": 108,
+      "key": 3,
+      "policy_bias": 4,
+      "policy_revision": 2,
+      "publication_ack": 104,
+      "retired": 109,
+      "selected": 65,
+      "source_revision": 0,
+      "terminal": "acknowledged",
+      "value": 7
+    },
+    {
+      "calls": [
+        {
+          "entered": 91,
+          "input": 8,
+          "origin": "data.double",
+          "outcome": "returned",
+          "output": 16,
+          "physical_end": 93,
+          "released": 94,
+          "role": "map"
+        },
+        {
+          "entered": 95,
+          "input": 16,
+          "origin": "data.offset",
+          "outcome": "returned",
+          "output": 17,
+          "physical_end": 99,
+          "released": 100,
+          "role": "map"
+        },
+        {
+          "entered": 101,
+          "input": 17,
+          "origin": "pair.pack",
+          "outcome": "returned",
+          "output": [
+            17,
+            34
+          ],
+          "physical_end": 105,
+          "released": 106,
+          "role": "map"
+        },
+        {
+          "entered": 107,
+          "input": [
+            17,
+            34
+          ],
+          "origin": "pair.first",
+          "outcome": "returned",
+          "output": 17,
+          "physical_end": 110,
+          "released": 111,
+          "role": "map"
+        },
+        {
+          "entered": 118,
+          "input": 17,
+          "origin": "scorer",
+          "outcome": "returned",
+          "output": 289,
+          "physical_end": 122,
+          "released": 123,
+          "role": "score"
+        },
+        {
+          "entered": 124,
+          "input": 289,
+          "origin": "publisher",
+          "outcome": "returned",
+          "output": 289,
+          "physical_end": 128,
+          "released": 129,
+          "role": "publish"
+        }
+      ],
+      "feedback_ack": 134,
+      "key": 4,
+      "policy_bias": 4,
+      "policy_revision": 3,
+      "publication_ack": 130,
+      "retired": 135,
+      "selected": 90,
+      "source_revision": 0,
+      "terminal": "acknowledged",
+      "value": 8
+    },
+    {
+      "calls": [
+        {
+          "entered": 116,
+          "input": 5,
+          "origin": "data.double",
+          "outcome": "returned",
+          "output": 10,
+          "physical_end": 119,
+          "released": 120,
+          "role": "map"
+        },
+        {
+          "entered": 121,
+          "input": 10,
+          "origin": "data.offset",
+          "outcome": "returned",
+          "output": 11,
+          "physical_end": 125,
+          "released": 126,
+          "role": "map"
+        },
+        {
+          "entered": 127,
+          "input": 11,
+          "origin": "pair.pack",
+          "outcome": "returned",
+          "output": [
+            11,
+            22
+          ],
+          "physical_end": 131,
+          "released": 132,
+          "role": "map"
+        },
+        {
+          "entered": 133,
+          "input": [
+            11,
+            22
+          ],
+          "origin": "pair.first",
+          "outcome": "returned",
+          "output": 11,
+          "physical_end": 136,
+          "released": 137,
+          "role": "map"
+        },
+        {
+          "entered": 142,
+          "input": 11,
+          "origin": "scorer",
+          "outcome": "returned",
+          "output": 121,
+          "physical_end": 143,
+          "released": 144,
+          "role": "score"
+        },
+        {
+          "entered": 145,
+          "input": 121,
+          "origin": "publisher",
+          "outcome": "returned",
+          "output": 121,
+          "physical_end": 146,
+          "released": 147,
+          "role": "publish"
+        }
+      ],
+      "feedback_ack": 149,
+      "key": 5,
+      "policy_bias": 0,
+      "policy_revision": 4,
+      "publication_ack": 148,
+      "retired": 150,
+      "selected": 115,
+      "source_revision": 0,
+      "terminal": "acknowledged",
+      "value": 5
+    }
+  ]
+}

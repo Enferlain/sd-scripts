@@ -1,0 +1,14 @@
+{
+  "positive_reports": 6,
+  "base_corruptions_rejected": 12,
+  "hidden_lane_corruptions_rejected": 4,
+  "imports_blocked": [
+    "torch",
+    "xdsl",
+    "*.runtime",
+    "*.prepare",
+    "*.fixture"
+  ],
+  "gil": false,
+  "assertions": true
+}

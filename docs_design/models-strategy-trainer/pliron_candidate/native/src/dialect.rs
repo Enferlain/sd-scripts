@@ -1,5 +1,7 @@
 //! Research-only vocabulary. Region kinds are framework interfaces; workflow
 //! lifecycle and correspondence are checked separately in `prepare`.
+use crate::contract::{self, LocalDescription, PayloadTypeInterface};
+use pliron::r#type::Typed;
 use pliron::{
     builtin::op_interfaces::{
         IsTerminatorInterface, IsolatedFromAboveInterface, NOpdsInterface, NRegionsInterface,
@@ -7,7 +9,7 @@ use pliron::{
         RegionKind, RegionKindInterface, SingleBlockRegionInterface,
     },
     context::Context,
-    derive::{op_interface, op_interface_impl, pliron_op, pliron_type},
+    derive::{op_interface, op_interface_impl, pliron_op, pliron_type, type_interface_impl},
     op::Op,
     result::Result,
 };
@@ -23,6 +25,16 @@ payload!(RecordType, "wf.record");
 payload!(ScoreType, "wf.score");
 payload!(FeedbackType, "wf.feedback");
 payload!(EntityType, "wf.entity");
+
+#[type_interface_impl]
+impl PayloadTypeInterface for RecordType {
+    fn schema(&self) -> &'static str {
+        "record"
+    }
+    fn codec(&self) -> &'static str {
+        contract::INTEGER_CODEC
+    }
+}
 
 #[pliron_op(name = "wf.session", format, verifier = "succ", interfaces = [
     OneRegionInterface, SingleBlockRegionInterface, IsolatedFromAboveInterface,
@@ -64,7 +76,7 @@ impl RegionKindInterface for LocalOp {
 /// The small unary interface being screened, not an extension ABI adoption.
 #[op_interface]
 pub trait LocalStageInterface {
-    fn cardinality(&self) -> &'static str;
+    fn describe(&self, ctx: &Context) -> std::result::Result<LocalDescription, String>;
     fn verify(_op: &dyn Op, _ctx: &Context) -> Result<()>
     where
         Self: Sized,
@@ -76,8 +88,30 @@ pub trait LocalStageInterface {
 pub struct MapOp;
 #[op_interface_impl]
 impl LocalStageInterface for MapOp {
-    fn cardinality(&self) -> &'static str {
-        "one-to-one"
+    fn describe(&self, ctx: &Context) -> std::result::Result<LocalDescription, String> {
+        let effect = contract::required(ctx, self, "effect")?;
+        let resources = match effect.as_str() {
+            "pure" => Some(vec![]),
+            "may_effect" => None,
+            _ => {
+                return Err(format!(
+                    "{}: unsupported effect {effect}",
+                    contract::required(ctx, self, "source_id")?
+                ));
+            }
+        };
+        let operation = self.get_operation();
+        Ok(LocalDescription {
+            input: operation.deref(ctx).get_operand(0).get_type(ctx),
+            output: operation.deref(ctx).get_result(0).get_type(ctx),
+            cardinality: "one-to-one",
+            resources,
+            outcomes: contract::BASE_OUTCOMES
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            attributes: vec!["source_id", "implementation", "effect"],
+        })
     }
 }
 #[pliron_op(name = "wf.yield", format, verifier = "succ", interfaces = [NOpdsInterface<1>, NResultsInterface<0>, NRegionsInterface<0>, IsTerminatorInterface])]

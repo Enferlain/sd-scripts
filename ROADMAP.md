@@ -17,8 +17,14 @@ tests that comparison through real graph/SSA regions, semantic/prepared round-tr
 and correspondence, guarded local fusion and cached-analysis invalidation
 (`sd-scripts-syv.31.19`). It reuses B's Python runtime/bindings/oracle. A process
 bridge and the backend's separate 0.19.0 pin leave native sharing unproven.
-An independent payload/resource extension is the bounded next comparison if the
-reviewed B result supports it; owner integration and broader parity remain later.
+The independent payload/resource extension now tests shared typed contracts and
+resource-aware grouping (`sd-scripts-syv.31.20`), including a valid opaque-effect
+case where grouping is declined and diagnostic checks across preparation/cold
+loading. It reuses the same scalar target and pair oracle. Different-lifetime
+composition, owner integration and broader parity remain later comparisons;
+xDSL remains the provisional working baseline.
+External-review corrections under `sd-scripts-syv.31.21` require complete native
+document consumption and restore normal Git inclusion of the dependency file.
 
 The isolated [xDSL experiment](docs_design/models-strategy-trainer/xdsl_candidate/README.md)
 now implements data-only B (`sd-scripts-syv.31.9`), correlated data/model A

@@ -1,0 +1,117 @@
+{
+  "bindings": {
+    "double_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "input": "record",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "resources": [],
+      "role": "map",
+      "version": "1"
+    },
+    "first_lane_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "input": "pair-int2",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "resources": [],
+      "role": "map",
+      "version": "1"
+    },
+    "offset_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "input": "record",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "resources": [],
+      "role": "map",
+      "version": "1"
+    },
+    "pack_pair_v1": {
+      "codec": "pair-int2-v1",
+      "effect": "read_frozen",
+      "input": "record",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised",
+        "negative_input"
+      ],
+      "output": "pair-int2",
+      "resources": [
+        {
+          "access": "read_frozen",
+          "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+          "symbol": "pair_coefficients",
+          "version": "1"
+        }
+      ],
+      "role": "map",
+      "version": "1"
+    },
+    "receipt_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "publication",
+      "input": "record",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "resources": [],
+      "role": "publish",
+      "version": "1"
+    },
+    "square_v1": {
+      "codec": "exact-integer-v1",
+      "effect": "pure",
+      "input": "record",
+      "outcomes": [
+        "returned",
+        "invalid_output",
+        "raised"
+      ],
+      "output": "record",
+      "resources": [],
+      "role": "score",
+      "version": "1"
+    }
+  },
+  "codecs": {
+    "pair-int2": "pair-int2-v1",
+    "record": "exact-integer-v1"
+  },
+  "registry": "independent-pair-fixture-v1",
+  "resources": {
+    "pair_coefficients": {
+      "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+      "version": "1"
+    }
+  },
+  "runtime_outcomes": [
+    "entered_failed",
+    "invalid_input",
+    "invalid_output",
+    "not_entered",
+    "raised",
+    "returned",
+    "undeclared_outcome"
+  ],
+  "schema": 2
+}

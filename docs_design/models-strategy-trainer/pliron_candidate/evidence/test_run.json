@@ -2,7 +2,7 @@
   "exit_code": 0,
   "gil_before": false,
   "gil_after": false,
-  "seconds": 18.316676909002126,
+  "seconds": 33.8686160530051,
   "arguments": [
     "-ra",
     "--ignore=tests/_deprecated",

@@ -14,11 +14,13 @@ Rules:
 
 ### Added
 
+- **Pliron's independent local extension now uses shared payload/resource contracts** — a separate pair dialect and immutable coefficient binding run through the existing scalar target, while cached resource analysis permits known frozen grouping and retains an executable opaque-effect barrier. Cold correspondence, diagnostics, domain outcomes and physical draining are checked without selecting a production language or framework.
 - **Pliron 0.20.0 now has an isolated data-only feedback comparison** — real semantic/prepared operations, graph/SSA region checks, verified cold correspondence and local fusion use native framework infrastructure while reusing B's Python runtime and independent oracle. Analysis invalidation is exercised; xDSL remains the provisional baseline and native backend sharing remains unproven.
 - **Candidate comparison now separates provisional choices from open language decisions** — the assessment maps original/xDSL evidence and reusable checks, identifies xDSL as a viable working baseline and protects readiness/execution/effects without prescribing preparation order; language design and final implementations remain unselected.
 
 ### Fixed
 
+- **Pliron document verification now requires complete input** — semantic acceptance, preparation and cold loading reject trailing garbage or extra roots after permitted whitespace. The experiment's requirements file now has a local ignore exception so fresh-environment instructions can be included in a normal commit.
 - **Mixed xDSL selection now yields after bounded filter work** — long excluded stretches permit sibling work, feedback and cancellation without filling the admitted-ticket horizon.
 - **Local outcome contracts now require the runtime baseline** — acceptance and cold resolution reject matching operation/binding declarations that omit returned, invalid-output or raised outcomes.
 - **Scalar ticket retirement now runs with Python assertions disabled** — removal and the identity guard no longer depend on `assert`; optimized B/extension execution and fused archive-free cancellation/failure cases are qualified.

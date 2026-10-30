@@ -23,9 +23,26 @@
   "gil_before": false,
   "local_dispatches": 12,
   "pliron": "0.20.0",
-  "preparation_seconds_including_processes": 0.06847910999931628,
+  "preparation_seconds_including_processes": 0.06850053800008027,
   "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
-  "session_seconds": 0.0008004920018720441,
+  "resource_analysis": {
+    "computations": 1,
+    "decisions": [
+      {
+        "groupable": true,
+        "origin": "data.double",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      },
+      {
+        "groupable": true,
+        "origin": "data.offset",
+        "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+      }
+    ],
+    "reads": [],
+    "unknown_sources": []
+  },
+  "session_seconds": 0.0007170999961090274,
   "status": "stopped",
   "tickets": 6,
   "torch_imported": false
