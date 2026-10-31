@@ -1,0 +1,304 @@
+{
+  "schema": 1,
+  "bead": "sd-scripts-syv.31.22",
+  "date": "2026-10-31",
+  "base_commit": "98fbbb23f7066355a06b34d22a87a688673b6f14",
+  "contract": "bounded producer plus two accumulation windows and requested evaluation; separate group/producer/run settlement",
+  "dependency": {
+    "name": "pliron",
+    "version": "0.20.0",
+    "source": "registry+https://github.com/rust-lang/crates.io-index",
+    "checksum": "7395b93d3fc99ee1923027fedead143eb63e4c76b6f6f6d79ebfac6698956317",
+    "dependencies": [
+      "awint",
+      "combine",
+      "downcast-rs",
+      "dyn-clone",
+      "hashbrown",
+      "hi_sparse_bitset",
+      "indexmap",
+      "inventory",
+      "linkme",
+      "log",
+      "once_vec",
+      "pliron-derive",
+      "regex",
+      "rustc-hash",
+      "rustc_apfloat",
+      "slotmap",
+      "smallvec",
+      "spin",
+      "thiserror",
+      "utf8-chars"
+    ]
+  },
+  "rust": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cargo": "cargo 1.99.1 (5f94df478 2026-08-27)",
+  "python_test_gates": {
+    "torchfree_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "skipped": 4,
+        "passed": 503
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "seconds": 32.59360159899734,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/pliron_candidate",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "torch_imported": false
+    },
+    "owner_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "passed": 508
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "seconds": 41.04321272499874,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "torch_imported": true,
+      "torch": "2.14.1+cu130",
+      "cuda_initialized": false
+    }
+  },
+  "native_gates": {
+    "locked_build": true,
+    "clippy_all_targets_D_warnings": true,
+    "rustfmt": true,
+    "cargo_test_all_targets": {
+      "passed": 1,
+      "new_binary_unit_tests": 0,
+      "note": "native composition functionality is exercised by47 Python/native document tests"
+    }
+  },
+  "python_quality": {
+    "ruff": true,
+    "format": true,
+    "ty": true
+  },
+  "composition_tests": {
+    "document_and_native": 47,
+    "owner_and_oracle": 37,
+    "total": 84,
+    "fresh_process_normal_and_optimized": true,
+    "pre_entry_deterministic_regression": {
+      "before_fix": "failed: NotEntered(CancelledError) incorrectly failed orderly stop",
+      "after_fix": "passes; unentered evaluation also stays unconsumed"
+    },
+    "gil_enabled_probe": "31 composition runtime tests passed after actual standard-SGD/Triton import",
+    "post_review_malformed_envelope_regressions": 6
+  },
+  "independent_replay": {
+    "accepted": [
+      "late",
+      "prefetched",
+      "late_failure",
+      "erased",
+      "stop_before",
+      "stop_after",
+      "cancel_failure",
+      "partial_cancel",
+      "pending_cancel",
+      "training_failure",
+      "evaluation_failure"
+    ],
+    "rejected_corruptions": [
+      "weight",
+      "epoch",
+      "cause",
+      "input",
+      "bound",
+      "group",
+      "physical",
+      "consumption",
+      "request_disposition"
+    ],
+    "assertions_enabled": true,
+    "gil_before": false,
+    "gil_after": false,
+    "torch_imported": false,
+    "xdsl_imported": false
+  },
+  "preservation": {
+    "previous_B_extension_implementation_sources_unchanged": 17,
+    "previous_document_change_only": {
+      "README.md": "bcddd5b14efe5e77163d1d02386a7417801b9b2b14d186b78263a18823129f1c"
+    },
+    "previous_artifact_hashes_unchanged": 41,
+    "original_and_xdsl_source_report_hashes_unchanged": 20,
+    "protected_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+    "backend_pin_verified": "=0.19.0",
+    "no_production_or_governing_spec_changes": true
+  },
+  "investigations": {
+    "mixed_process": "B tests explicitly require no Torch import; owner suite is intentionally separate",
+    "overlay_dependencies": "old subprocess tests overwrite PYTHONPATH; resolved with dedicated temporary environment and local .pth reuse of installed Torch",
+    "pre_entry_adapter": "real bug fixed and independently reproduced with a deterministic before-entry cancellation control",
+    "legacy_audit": {
+      "exit_code": 1,
+      "counts": {
+        "passed": 1505,
+        "failed": 1
+      },
+      "gil_before": false,
+      "gil_after": true,
+      "seconds": 61.31403515599959,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "torch": "2.14.1+cu130",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/execution_candidate",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short"
+      ],
+      "cuda_initialized": false,
+      "purpose": "broader legacy audit; separate from GIL-disabled composition qualification"
+    },
+    "legacy_followup": "sd-scripts-syv.31.23; combined audit1 existing mixed witness fails, isolated fresh GIL-on probe passes. GIL transition observed, causality unresolved; no unrelated code changed.",
+    "shield_logging": "CPython may log shielded failures even though joined physical failure and cancellation remain in owner reports"
+  },
+  "graph": {
+    "project": "home-imi-Projects-sd-scripts",
+    "generation": "2026-10-31T11:15:55Z",
+    "coverage": "11 then-current paths no_recorded_issue/metadata_match; best-effort only, current source and compiled gates also checked"
+  },
+  "review": {
+    "status": "completed",
+    "result_ok": true,
+    "exit_code": 0,
+    "artifact_directory": "/tmp/review-mcp-run-mjyrjy8m",
+    "retained": "review.md",
+    "assessment": "No logic errors or authority bypasses found in reviewed bounded implementation; minor diagnostics/documentation notes.",
+    "dispositions": [
+      {
+        "finding": 1,
+        "action": "Retained Ruff canonical Python3.14 syntax. Repository explicitly requires >=3.14,<3.15 and target-version py314; case now explicitly documents3.14t and makes no older-interpreter claim."
+      },
+      {
+        "finding": 2,
+        "action": "Missing/mistyped accepted/prepared/manifest fields consistently raise Rejected before factories;6new zero-factory regressions pass."
+      },
+      {
+        "finding": 3,
+        "action": "Documented whole-manifest equality including unused entries; additive growth requires regeneration. Native cold-load rejection of unused-binding growth was manually verified."
+      },
+      {
+        "finding": 4,
+        "action": "Documented three recorded live erasure checkpoints and separate final pre-report erase."
+      },
+      {
+        "finding": 5,
+        "action": "Fixed bounded test-gate timeouts retained as acceptable research controls."
+      },
+      {
+        "finding": 6,
+        "action": "Documented that unclaimed permits need no recycling after producer implementation/receiver have joined."
+      }
+    ],
+    "post_review_changes": "Small envelope diagnostic guard,6regressions,cleanup comment and documentation. No second review requested; both full scoped gates plus quality checks rerun. Reviewer inspected code/evidence; executed gate results are local."
+  },
+  "source_sha256": {
+    "CHANGELOG.md": "b1f6ed5d9ee21d47b4dc363852cc311ed1594d0bb58ab26f35a3a455ff586ff0",
+    "ROADMAP.md": "205a8eabc691957353e9c5801492b1079faf5cfd9997795bb96c6c892d42e292",
+    "docs_design/models-strategy-trainer/pliron_candidate/.gitignore": "13e27c1653eea0cef66184b888c2088f36605a8f47225babd220e5b10778f037",
+    "docs_design/models-strategy-trainer/pliron_candidate/README.md": "bcddd5b14efe5e77163d1d02386a7417801b9b2b14d186b78263a18823129f1c",
+    "docs_design/models-strategy-trainer/pliron_candidate/__init__.py": "3bf1db39c7dd4174e9cc239d8f3278f9f3e37b24b3b2fd903a7fbc2bebf9ab73",
+    "docs_design/models-strategy-trainer/pliron_candidate/__main__.py": "dbba055168e8c507559586e556487a26134cb60c59ebd9bfdcb0c3f5e93c940c",
+    "docs_design/models-strategy-trainer/pliron_candidate/author.py": "2c2fffc5d21964b6d07664a80b98a98f45ddda7b0850c3816029a60317abed0f",
+    "docs_design/models-strategy-trainer/pliron_candidate/bridge.py": "ceaf610b3b7fdb793431a87143ee480f31e13350086cec60c32116438a919ff2",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition.py": "a2039194002699589ca341eafd5af741e9e35780e3db29cd9d5330311f6311a2",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_author.py": "ea1aa962fe5d09ed60420310d5774d43aaa3665b3c8f4d046822432e33bc8d77",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md": "26001dd19564059db3a36e1cad3e6107a1fd0623ca850c88ab1d0d1e38167783",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_conformance.py": "1e218d866e278d1a03dfebabb4e78c11c891390bce31be3ba0a38e66f9fcc138",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_demo.py": "5a7fffb32538bc70e8e97fdc6931bfa92063bfe951ee27123fd8ff5472e64bd5",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_runtime.py": "cf4b1822abeb83ca07b9beed31ca42461e2cdd28da7f59efe786b1f8e9f9d2a1",
+    "docs_design/models-strategy-trainer/pliron_candidate/evidence_composition/capture.py": "8b1635c42c796a3dd6a7c35a5fccf225035872b33b23e171e4acb594c6527d30",
+    "docs_design/models-strategy-trainer/pliron_candidate/evidence_composition/replay.py": "801073599e03f7182f495d426733b3cfe37bd212d26ba63b05e51a062b850f81",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.lock": "77b0a27c4deffcba7960dce670a025335b7dc15ea0650d4bdeb06745c8224a6c",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml": "d47a5552a2e0bceae39d3b0a8d6efe5f026121f6d3b5927692f5eb604f045b4e",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/bin/rmst-pliron-composition.rs": "a4cc176b4540add67ebd77b74bfbe0e9d196c8880e2d98339543e389fcda6032",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/composition/dialect.rs": "997f334af1ad877d7dbcb934605ab3d16057ff42753425c434d9a02be82d6ce7",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/composition/mod.rs": "fc3f650dfc2fc92c61b2f4bab71c0d955b3a692a56d5c8a5d23d3077258b556d",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/contract.rs": "908339c9bd6adeb9fce85e41e9f43d79e90242eb64024f0b82a23feb383fd921",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/dialect.rs": "e9a0422eb582be037b3f368edaf9e8ba87fb60151fd2bdabec9b71e0abe7cfd9",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/lib.rs": "5fa9b0bfa75d7ce86ed9610a2875ea66b9cce80e92904e5ec3b531381d49cb2b",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/main.rs": "806e72474653163ba8dee7231820b449c0916f33791cb0b062cc58e5b4abb08c",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/pair_extension.rs": "3d610d6d1d1e792a198cb3a1b89e065d32199e5e05d365b161eac5bac51e16d8",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/prepare.rs": "50f2d2846ae526b7d612bd96d60b642afb8cbf3a00fdc7a2303d3501f8b84f5d",
+    "docs_design/models-strategy-trainer/pliron_candidate/pair_extension.py": "41d8e419aa83e18a06d5fa61b0824790d10f275b1d0a1018d80ec343b8ee9afd",
+    "docs_design/models-strategy-trainer/pliron_candidate/requirements.txt": "9ccc4f02a87de9f236030ae3e2d37788c4c77c9250d63d23bbbd5565f4e7f91a",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_b.py": "1c9a77d245776898e6eeb01fb8ff5d2894f8356bec0283ddac7adac0438e1b1e",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_composition.py": "ce5ad21da99a93ae1740f52a4a4f903e69d76be86a31e11f9a5bce855c795cd2",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py": "dc22ad42942075e9e7c514ba7dd9d5edf25ca01e5215d698038b30d6c8d5a98e",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_extension.py": "568c1b2c02544f112c13489f51cdf8f84049a4092ad32716a9b70c5e32ddeb9c"
+  },
+  "artifact_sha256": {
+    "accepted.pliron": "9876bece91518960137abba3c6a7450da9d62965690dd177579f8d795d253ffb",
+    "artifact.json": "303dfa31e84199129c5b8bf2e023f4b6ab3057d527d35c95f1a67d73801f450d",
+    "bindings.json": "4c87b9ac4f098de43ff6da4d704eaab1c7213a7bcce2e22ebc973c8a8397b21e",
+    "capture_run.json": "9f7349022a022f7700686e59af889b13122308c374fe42fb19ba1418d1307051",
+    "investigations/isolated_existing_test.json": "810cf557a69760763be0124fd193c7cd3eca9d8b49959db8c9bf9de10ecdb2ce",
+    "investigations/legacy_before_adapter_fix.json": "11758a822f321e6e26d89b6c4263940d468dc5a44a247f330be894fec156ca64",
+    "investigations/mixed_process_failure.json": "d4a0b21b98f94719d675a65678db3c9ef36eaf2677550cc54d870b758f2579e9",
+    "investigations/overlay_dependency_failure.json": "0333fa6096bff01fb1cbdf50a1848451beab7945c94f0fdef5cc2c953af8a022",
+    "legacy_audit.json": "90e532988667f5e2226399237fae609c0562576876a1cf1dda38a05bca1bbd10",
+    "owner_tests.json": "9b5267244d2d2a495b47e7aa7d8345a7b4d6fbe5cbdc921cb7a3d0971f782189",
+    "prepared.pliron": "4cdaff45bbce3661c7161b1257df9bfdaa63b6c67613e1a7677014fc92637f48",
+    "replay.json": "d08b5c8b60775ad47068d270906fc1a81648e5f669f11f5264545331d7a9dae7",
+    "reports/cancel_failure.json": "beb077770075cf522d1cd2041204b8b305750e7146a89f49947cda00f950c6ad",
+    "reports/erased.json": "638edc8c84139393097ef37720142c1f927e8538cdf807012833f397cdfdc4a4",
+    "reports/evaluation_failure.json": "d14c60eac662eb8b271ea04e812055be0eeddb95fdb4b3682be6954430ecc3d8",
+    "reports/late.json": "d98468d12a9aeda30660d20f21f78df712ae1d0fc69b787432cf2c11c9182eca",
+    "reports/late_failure.json": "b3cb6c3e330edca3cd3152b13ba87ebff2604d86c8854375fe66f32abfd0970c",
+    "reports/partial_cancel.json": "9dd1498ee31af753c50b574ab8af6cda1b93b471e6ad3515fd46eee798b608cc",
+    "reports/pending_cancel.json": "fc1416387720e3180feec38b1abbbd7874626bd2eeab58ab36dfaba497970a27",
+    "reports/prefetched.json": "7c0a3f2dc3aed560f4bf4cf6957b9b05708fab0b82c55840e184912b507e071e",
+    "reports/stop_after.json": "c09c6ff3ee544be8f5a076c517128c1928f931ade8a3d397ecf96b9d7ad8c22e",
+    "reports/stop_before.json": "74537043b4f0befb8759890bc8efe2fdd679d83ac79dea825ceb091768c02944",
+    "reports/training_failure.json": "04a9b6cf2649d38d3891bb1346ef63838fd726c3d682633063a925aba43438e3",
+    "review.md": "e937597de9c59b23bc95a2e6ff9997fc56e404b2fe16a7740b5803b8955f96ff",
+    "torchfree_tests.json": "b02ec457a321279b8c559881937765d2ec7422696fb44026fdf42f638c97a3f3"
+  },
+  "packaging": {
+    "all_listed_sources_and_artifacts_normally_git_visible": true
+  },
+  "limits": [
+    "existing owner implementation reused, no independent Rust ownership implementation",
+    "one bounded CPU profile; broader parity and composition remain open",
+    "no mutable replacement, native numerical backend sharing, performance or durable recovery qualification",
+    "xDSL working baseline; final language/framework/runtime open"
+  ]
+}

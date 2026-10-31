@@ -1,6 +1,6 @@
-# Pliron 0.20.0: B and an independent local extension
+# Pliron 0.20.0: feedback, local extension and lifetime composition
 
-Research experiment · 30 October 2026 · `sd-scripts-syv.31.19`, `.31.20`
+Research experiments · 30–31 October 2026 · `sd-scripts-syv.31.19`, `.31.20`, `.31.22`
 
 This implements the **data-only feedback B case** with actual Pliron semantic
 and prepared operations. It screens a concrete alternative to the provisional
@@ -9,6 +9,14 @@ runtime implementation remain open. Production code, governing requirements,
 the user's IR report and the separate numerical backend are unchanged.
 The independent pair/frozen-resource extension below additionally tests shared
 semantic interfaces and an analysis that authorizes or declines local grouping.
+
+The separate [composition case](composition_case.md) adds independent production,
+two accumulation windows, a pending evaluator and separate consumer, producer
+and run settlement. It uses a new executable in the same pinned package and
+the existing owner engine. B's code and retained artifacts remain unchanged;
+its qualification record is historical. Current composition sources, doc changes
+and preservation checks are recorded in
+[evidence_composition/qualification.json](evidence_composition/qualification.json).
 
 The baseline [comparison](../candidate_comparison.md) defines the evidence
 boundaries. B selects `x = key + current_bias`, maps `2*x`, then `+1` inside a
@@ -281,8 +289,9 @@ The broader grouping policy is also project code. xDSL's earlier extension
 target deliberately retained scalar/schema/resource barriers; these different
 dispatch counts do not establish a framework performance advantage. Both cases
 use the same independent pair arithmetic and hidden-lane expectations. Keep
-xDSL as the working baseline. A bounded different-lifetime composition case is
-the next useful representation question if continuing this candidate; backend
-sharing still needs a named beneficiary. Matched costs, broad parity, in-process Python bindings,
+xDSL as the working baseline. The separate [composition case](composition_case.md)
+now tests pending requests and different producer/consumer lifetimes through the
+existing owners. Backend sharing still needs a named beneficiary. Matched costs,
+broad parity, in-process Python bindings,
 backend version convergence, GPU/distributed completion and durable restoration
 remain outside this slice.

@@ -1,0 +1,31 @@
+{
+  "accepted": [
+    "late",
+    "prefetched",
+    "late_failure",
+    "erased",
+    "stop_before",
+    "stop_after",
+    "cancel_failure",
+    "partial_cancel",
+    "pending_cancel",
+    "training_failure",
+    "evaluation_failure"
+  ],
+  "rejected_corruptions": [
+    "weight",
+    "epoch",
+    "cause",
+    "input",
+    "bound",
+    "group",
+    "physical",
+    "consumption",
+    "request_disposition"
+  ],
+  "assertions_enabled": true,
+  "gil_before": false,
+  "gil_after": false,
+  "torch_imported": false,
+  "xdsl_imported": false
+}

@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-10-31]
+
+### Added
+
+- **Pliron now represents a bounded different-lifetime composition** — an independent producer serves two accumulation windows and requested evaluation through one existing owner engine. Native pending-work, stop, access and settlement contracts survive cold verification; independent checks cover late/prefetched input, partial-window stop/cancel, physical draining and failure without selecting a production language or framework.
+
 ## [2026-10-30]
 
 ### Added

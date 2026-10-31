@@ -1,0 +1,28 @@
+{
+  "exit_code": 1,
+  "counts": {
+    "passed": 1196,
+    "failed": 3
+  },
+  "gil_before": false,
+  "gil_after": true,
+  "seconds": 27.58350118999806,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "xdsl": "0.74.0",
+  "args": [
+    "-ra",
+    "--ignore=tests/_deprecated",
+    "--noconftest",
+    "docs_design/models-strategy-trainer/execution_candidate",
+    "docs_design/models-strategy-trainer/xdsl_candidate",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+    "-q",
+    "-p",
+    "pytest_asyncio.plugin",
+    "--tb=short",
+    "--maxfail=3"
+  ],
+  "torch_imported": true,
+  "torch": "2.14.1+cu130",
+  "cuda_initialized": false
+}

@@ -1,0 +1,8 @@
+{
+  "exit_code": 0,
+  "gil_before": false,
+  "gil_after": true,
+  "seconds": 0.5989287039992632,
+  "composition_imported": false,
+  "purpose": "existing unchanged xDSL test in fresh process after standard-SGD/Triton import"
+}

@@ -1,0 +1,30 @@
+{
+  "bindings": {
+    "encode_v1": {
+      "completion": "physical_return_before_release",
+      "effect": "read_source",
+      "role": "produce",
+      "version": "1"
+    },
+    "measure_v1": {
+      "completion": "physical_validate_restore",
+      "effect": "protected_read",
+      "role": "evaluate",
+      "version": "1"
+    },
+    "objective_v1": {
+      "completion": "return_before_backward",
+      "effect": "build_loss",
+      "role": "objective",
+      "version": "1"
+    },
+    "scale_v1": {
+      "completion": "before_install",
+      "effect": "load",
+      "role": "model",
+      "version": "1"
+    }
+  },
+  "schema": 1,
+  "target": "existing-owner-composition-cpu-v1"
+}

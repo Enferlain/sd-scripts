@@ -1,0 +1,27 @@
+{
+  "exit_code": 1,
+  "counts": {
+    "passed": 1505,
+    "failed": 1
+  },
+  "gil_before": false,
+  "gil_after": true,
+  "seconds": 61.31403515599959,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "torch": "2.14.1+cu130",
+  "xdsl": "0.74.0",
+  "args": [
+    "-ra",
+    "--ignore=tests/_deprecated",
+    "--noconftest",
+    "docs_design/models-strategy-trainer/execution_candidate",
+    "docs_design/models-strategy-trainer/xdsl_candidate",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+    "-q",
+    "-p",
+    "pytest_asyncio.plugin",
+    "--tb=short"
+  ],
+  "cuda_initialized": false,
+  "purpose": "broader legacy audit; separate from GIL-disabled composition qualification"
+}

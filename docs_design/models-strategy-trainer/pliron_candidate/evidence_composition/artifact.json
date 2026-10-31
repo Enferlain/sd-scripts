@@ -1,0 +1,489 @@
+{
+  "accepted": "lc.run () [] [source_id: builtin.string \"run\", version: builtin.string \"1\", failure: builtin.string \"cancel_siblings_and_drain\"]: <() -> ()>\n{\n  ^activities_block1v1() !0:\n    enc_v0 = lc.model () [] [source_id: builtin.string \"encoder\", implementation: builtin.string \"scale_v1\", initial: builtin.string \"2.0\", treatment: builtin.string \"frozen\"]: <() -> (lc.model )> !1;\n    learn_v1 = lc.model () [] [source_id: builtin.string \"learner\", implementation: builtin.string \"scale_v1\", initial: builtin.string \"0.8\", treatment: builtin.string \"trainable\"]: <() -> (lc.model )> !2;\n    records_v3, producer_done_v4 = lc.producer (enc_v0, group_done_v5) [] [source_id: builtin.string \"producer\", implementation: builtin.string \"encode_v1\", horizon: builtin.string \"3\", ready: builtin.string \"2\", workers: builtin.string \"1\", remaining: builtin.string \"discard_unclaimed\", failure: builtin.string \"close_then_drain\"]: <(lc.model , lc.done ) -> (lc.stream , lc.done )> !3;\n    group_done_v5 = lc.group () [] [source_id: builtin.string \"consumers\", completion: builtin.string \"children_physically_settled\", pending: builtin.string \"include_requested\", failure: builtin.string \"cancel_siblings_and_drain\"]: <() -> (lc.done )>\n    {\n      ^consumers_block2v1() !4:\n        window_events_v6, training_done_v7 = lc.repeat (records_v3, learn_v1) [] [source_id: builtin.string \"training\", max_windows: builtin.string \"2\", admission: builtin.string \"policy_choice_before_first_claim\", stop: builtin.string \"finish_selected_window\"]: <(lc.stream , lc.model ) -> (lc.events , lc.done )>\n        {\n          ^window_block3v1(window_stream_v8: lc.stream , window_model_v9: lc.model ) !5:\n            r0_v10 = lc.take (window_stream_v8) [] [source_id: builtin.string \"training.take.0\", selection: builtin.string \"slot:0\", provenance: builtin.string \"actual_frozen_source\"]: <(lc.stream ) -> (lc.sample )> !6;\n            g0_v11 = lc.contribute (r0_v10, window_model_v9) [] [source_id: builtin.string \"training.objective.0\", implementation: builtin.string \"objective_v1\", normalization: builtin.string \"2\"]: <(lc.sample , lc.model ) -> (lc.gradient )> !7;\n            r1_v12 = lc.take (window_stream_v8) [] [source_id: builtin.string \"training.take.1\", selection: builtin.string \"slot:1\", provenance: builtin.string \"actual_frozen_source\"]: <(lc.stream ) -> (lc.sample )> !8;\n            g1_v13 = lc.contribute (r1_v12, window_model_v9, g0_v11) [] [source_id: builtin.string \"training.objective.1\", implementation: builtin.string \"objective_v1\", normalization: builtin.string \"2\"]: <(lc.sample , lc.model , lc.gradient ) -> (lc.gradient )> !9;\n            advanced_v14 = lc.advance (g1_v13, window_model_v9) [] [source_id: builtin.string \"training.advance\", parameter: builtin.string \"weight\", learning_rate: builtin.string \"0.01\", authority: builtin.string \"ordinary_owner\"]: <(lc.gradient , lc.model ) -> (lc.completion )> !10;\n            lc.window_end (advanced_v14) [] [source_id: builtin.string \"training.window_end\"]: <(lc.completion ) -> ()> !11\n        } !12;\n        due_v15 = lc.request (window_events_v6) [] [source_id: builtin.string \"request\", after_window: builtin.string \"2\", multiplicity: builtin.string \"once_per_matching_completion\", pending: builtin.string \"keeps_group_alive\", max_pending: builtin.string \"1\", cancellation: builtin.string \"cancel_or_unfulfilled\"]: <(lc.events ) -> (lc.request )> !13;\n        evaluation_done_v16 = lc.evaluator (due_v15, records_v3, learn_v1) [] [source_id: builtin.string \"evaluation\", completion: builtin.string \"physical_and_cleanup\"]: <(lc.request , lc.stream , lc.model ) -> (lc.done )>\n        {\n          ^measurement_block4v1(cause_v17: lc.request , evaluation_stream_v18: lc.stream , evaluation_model_v19: lc.model ) !14:\n            sample_v20 = lc.take (evaluation_stream_v18) [] [source_id: builtin.string \"evaluation.take\", selection: builtin.string \"after_trigger_members\", provenance: builtin.string \"actual_frozen_source\"]: <(lc.stream ) -> (lc.sample )> !15;\n            result_v21 = lc.read (sample_v20, evaluation_model_v19) [] [source_id: builtin.string \"evaluation.read\", implementation: builtin.string \"measure_v1\", state: builtin.string \"current_at_start\", mode: builtin.string \"evaluation\", completion: builtin.string \"physical_validate_restore\"]: <(lc.sample , lc.model ) -> (lc.measurement )> !16;\n            lc.evaluation_end (result_v21) [] [source_id: builtin.string \"evaluation.end\"]: <(lc.measurement ) -> ()> !17\n        } !18;\n        lc.settle (training_done_v7, evaluation_done_v16) [] [source_id: builtin.string \"consumers.settle\"]: <(lc.done , lc.done ) -> ()> !19\n    } !20;\n    lc.finish (group_done_v5, producer_done_v4) [] [source_id: builtin.string \"run.finish\"]: <(lc.done , lc.done ) -> ()> !21\n} !22\n\noutlined_attributes:\n!0 = @[<in-memory>: line: 2, column: 7], []\n!1 = @[<in-memory>: line: 3, column: 9], [builtin_given_names = builtin.given_names [enc]]\n!2 = @[<in-memory>: line: 3, column: 200], [builtin_given_names = builtin.given_names [learn]]\n!3 = @[<in-memory>: line: 3, column: 396], [builtin_given_names = builtin.given_names [records, producer_done]]\n!4 = @[<in-memory>: line: 4, column: 7], []\n!5 = @[<in-memory>: line: 6, column: 7], [builtin_given_names = builtin.given_names [window_stream, window_model]]\n!6 = @[<in-memory>: line: 7, column: 9], [builtin_given_names = builtin.given_names [r0]]\n!7 = @[<in-memory>: line: 7, column: 206], [builtin_given_names = builtin.given_names [g0]]\n!8 = @[<in-memory>: line: 7, column: 424], [builtin_given_names = builtin.given_names [r1]]\n!9 = @[<in-memory>: line: 7, column: 621], [builtin_given_names = builtin.given_names [g1]]\n!10 = @[<in-memory>: line: 7, column: 856], [builtin_given_names = builtin.given_names [advanced]]\n!11 = @[<in-memory>: line: 7, column: 1113], []\n!12 = @[<in-memory>: line: 5, column: 9], [builtin_given_names = builtin.given_names [window_events, training_done]]\n!13 = @[<in-memory>: line: 9, column: 9], [builtin_given_names = builtin.given_names [due]]\n!14 = @[<in-memory>: line: 11, column: 7], [builtin_given_names = builtin.given_names [cause, evaluation_stream, evaluation_model]]\n!15 = @[<in-memory>: line: 12, column: 9], [builtin_given_names = builtin.given_names [sample]]\n!16 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [result]]\n!17 = @[<in-memory>: line: 14, column: 9], []\n!18 = @[<in-memory>: line: 10, column: 9], [builtin_given_names = builtin.given_names [evaluation_done]]\n!19 = @[<in-memory>: line: 16, column: 9], []\n!20 = @[<in-memory>: line: 3, column: 762], [builtin_given_names = builtin.given_names [group_done]]\n!21 = @[<in-memory>: line: 17, column: 8], []\n!22 = @[<in-memory>: line: 1, column: 1], []\n",
+  "accepted_sha256": "9876bece91518960137abba3c6a7450da9d62965690dd177579f8d795d253ffb",
+  "manifest": {
+    "bindings": {
+      "encode_v1": {
+        "completion": "physical_return_before_release",
+        "effect": "read_source",
+        "role": "produce",
+        "version": "1"
+      },
+      "measure_v1": {
+        "completion": "physical_validate_restore",
+        "effect": "protected_read",
+        "role": "evaluate",
+        "version": "1"
+      },
+      "objective_v1": {
+        "completion": "return_before_backward",
+        "effect": "build_loss",
+        "role": "objective",
+        "version": "1"
+      },
+      "scale_v1": {
+        "completion": "before_install",
+        "effect": "load",
+        "role": "model",
+        "version": "1"
+      }
+    },
+    "schema": 1,
+    "target": "existing-owner-composition-cpu-v1"
+  },
+  "nodes": [
+    {
+      "attributes": {
+        "failure": "cancel_siblings_and_drain",
+        "source_id": "run",
+        "version": "1"
+      },
+      "id": "run",
+      "inputs": [],
+      "kind": "run",
+      "outputs": [],
+      "parent": ""
+    },
+    {
+      "attributes": {
+        "implementation": "scale_v1",
+        "initial": "2.0",
+        "source_id": "encoder",
+        "treatment": "frozen"
+      },
+      "id": "encoder",
+      "inputs": [],
+      "kind": "model",
+      "outputs": [
+        "lc.model"
+      ],
+      "parent": "run"
+    },
+    {
+      "attributes": {
+        "implementation": "scale_v1",
+        "initial": "0.8",
+        "source_id": "learner",
+        "treatment": "trainable"
+      },
+      "id": "learner",
+      "inputs": [],
+      "kind": "model",
+      "outputs": [
+        "lc.model"
+      ],
+      "parent": "run"
+    },
+    {
+      "attributes": {
+        "failure": "close_then_drain",
+        "horizon": "3",
+        "implementation": "encode_v1",
+        "ready": "2",
+        "remaining": "discard_unclaimed",
+        "source_id": "producer",
+        "workers": "1"
+      },
+      "id": "producer",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "encoder",
+          "type": "lc.model"
+        },
+        {
+          "result": 0,
+          "source": "consumers",
+          "type": "lc.done"
+        }
+      ],
+      "kind": "producer",
+      "outputs": [
+        "lc.stream",
+        "lc.done"
+      ],
+      "parent": "run"
+    },
+    {
+      "attributes": {
+        "completion": "children_physically_settled",
+        "failure": "cancel_siblings_and_drain",
+        "pending": "include_requested",
+        "source_id": "consumers"
+      },
+      "id": "consumers",
+      "inputs": [],
+      "kind": "group",
+      "outputs": [
+        "lc.done"
+      ],
+      "parent": "run"
+    },
+    {
+      "attributes": {
+        "admission": "policy_choice_before_first_claim",
+        "max_windows": "2",
+        "source_id": "training",
+        "stop": "finish_selected_window"
+      },
+      "id": "training",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "producer",
+          "type": "lc.stream"
+        },
+        {
+          "result": 0,
+          "source": "learner",
+          "type": "lc.model"
+        }
+      ],
+      "kind": "repeat",
+      "outputs": [
+        "lc.events",
+        "lc.done"
+      ],
+      "parent": "consumers"
+    },
+    {
+      "attributes": {
+        "provenance": "actual_frozen_source",
+        "selection": "slot:0",
+        "source_id": "training.take.0"
+      },
+      "id": "training.take.0",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "producer",
+          "type": "lc.stream"
+        }
+      ],
+      "kind": "take",
+      "outputs": [
+        "lc.sample"
+      ],
+      "parent": "training"
+    },
+    {
+      "attributes": {
+        "implementation": "objective_v1",
+        "normalization": "2",
+        "source_id": "training.objective.0"
+      },
+      "id": "training.objective.0",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "training.take.0",
+          "type": "lc.sample"
+        },
+        {
+          "result": 0,
+          "source": "learner",
+          "type": "lc.model"
+        }
+      ],
+      "kind": "contribute",
+      "outputs": [
+        "lc.gradient"
+      ],
+      "parent": "training"
+    },
+    {
+      "attributes": {
+        "provenance": "actual_frozen_source",
+        "selection": "slot:1",
+        "source_id": "training.take.1"
+      },
+      "id": "training.take.1",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "producer",
+          "type": "lc.stream"
+        }
+      ],
+      "kind": "take",
+      "outputs": [
+        "lc.sample"
+      ],
+      "parent": "training"
+    },
+    {
+      "attributes": {
+        "implementation": "objective_v1",
+        "normalization": "2",
+        "source_id": "training.objective.1"
+      },
+      "id": "training.objective.1",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "training.take.1",
+          "type": "lc.sample"
+        },
+        {
+          "result": 0,
+          "source": "learner",
+          "type": "lc.model"
+        },
+        {
+          "result": 0,
+          "source": "training.objective.0",
+          "type": "lc.gradient"
+        }
+      ],
+      "kind": "contribute",
+      "outputs": [
+        "lc.gradient"
+      ],
+      "parent": "training"
+    },
+    {
+      "attributes": {
+        "authority": "ordinary_owner",
+        "learning_rate": "0.01",
+        "parameter": "weight",
+        "source_id": "training.advance"
+      },
+      "id": "training.advance",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "training.objective.1",
+          "type": "lc.gradient"
+        },
+        {
+          "result": 0,
+          "source": "learner",
+          "type": "lc.model"
+        }
+      ],
+      "kind": "advance",
+      "outputs": [
+        "lc.completion"
+      ],
+      "parent": "training"
+    },
+    {
+      "attributes": {
+        "source_id": "training.window_end"
+      },
+      "id": "training.window_end",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "training.advance",
+          "type": "lc.completion"
+        }
+      ],
+      "kind": "window_end",
+      "outputs": [],
+      "parent": "training"
+    },
+    {
+      "attributes": {
+        "after_window": "2",
+        "cancellation": "cancel_or_unfulfilled",
+        "max_pending": "1",
+        "multiplicity": "once_per_matching_completion",
+        "pending": "keeps_group_alive",
+        "source_id": "request"
+      },
+      "id": "request",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "training",
+          "type": "lc.events"
+        }
+      ],
+      "kind": "request",
+      "outputs": [
+        "lc.request"
+      ],
+      "parent": "consumers"
+    },
+    {
+      "attributes": {
+        "completion": "physical_and_cleanup",
+        "source_id": "evaluation"
+      },
+      "id": "evaluation",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "request",
+          "type": "lc.request"
+        },
+        {
+          "result": 0,
+          "source": "producer",
+          "type": "lc.stream"
+        },
+        {
+          "result": 0,
+          "source": "learner",
+          "type": "lc.model"
+        }
+      ],
+      "kind": "evaluator",
+      "outputs": [
+        "lc.done"
+      ],
+      "parent": "consumers"
+    },
+    {
+      "attributes": {
+        "provenance": "actual_frozen_source",
+        "selection": "after_trigger_members",
+        "source_id": "evaluation.take"
+      },
+      "id": "evaluation.take",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "producer",
+          "type": "lc.stream"
+        }
+      ],
+      "kind": "take",
+      "outputs": [
+        "lc.sample"
+      ],
+      "parent": "evaluation"
+    },
+    {
+      "attributes": {
+        "completion": "physical_validate_restore",
+        "implementation": "measure_v1",
+        "mode": "evaluation",
+        "source_id": "evaluation.read",
+        "state": "current_at_start"
+      },
+      "id": "evaluation.read",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "evaluation.take",
+          "type": "lc.sample"
+        },
+        {
+          "result": 0,
+          "source": "learner",
+          "type": "lc.model"
+        }
+      ],
+      "kind": "read",
+      "outputs": [
+        "lc.measurement"
+      ],
+      "parent": "evaluation"
+    },
+    {
+      "attributes": {
+        "source_id": "evaluation.end"
+      },
+      "id": "evaluation.end",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "evaluation.read",
+          "type": "lc.measurement"
+        }
+      ],
+      "kind": "evaluation_end",
+      "outputs": [],
+      "parent": "evaluation"
+    },
+    {
+      "attributes": {
+        "source_id": "consumers.settle"
+      },
+      "id": "consumers.settle",
+      "inputs": [
+        {
+          "result": 1,
+          "source": "training",
+          "type": "lc.done"
+        },
+        {
+          "result": 0,
+          "source": "evaluation",
+          "type": "lc.done"
+        }
+      ],
+      "kind": "settle",
+      "outputs": [],
+      "parent": "consumers"
+    },
+    {
+      "attributes": {
+        "source_id": "run.finish"
+      },
+      "id": "run.finish",
+      "inputs": [
+        {
+          "result": 0,
+          "source": "consumers",
+          "type": "lc.done"
+        },
+        {
+          "result": 1,
+          "source": "producer",
+          "type": "lc.done"
+        }
+      ],
+      "kind": "finish",
+      "outputs": [],
+      "parent": "run"
+    }
+  ],
+  "pliron": "0.20.0",
+  "prepared": "lc_exec.plan () [] [binding_manifest: builtin.string \"{\\\"schema\\\":1,\\\"target\\\":\\\"existing-owner-composition-cpu-v1\\\",\\\"bindings\\\":{\\\"encode_v1\\\":{\\\"version\\\":\\\"1\\\",\\\"role\\\":\\\"produce\\\",\\\"effect\\\":\\\"read_source\\\",\\\"completion\\\":\\\"physical_return_before_release\\\"},\\\"measure_v1\\\":{\\\"version\\\":\\\"1\\\",\\\"role\\\":\\\"evaluate\\\",\\\"effect\\\":\\\"protected_read\\\",\\\"completion\\\":\\\"physical_validate_restore\\\"},\\\"objective_v1\\\":{\\\"version\\\":\\\"1\\\",\\\"role\\\":\\\"objective\\\",\\\"effect\\\":\\\"build_loss\\\",\\\"completion\\\":\\\"return_before_backward\\\"},\\\"scale_v1\\\":{\\\"version\\\":\\\"1\\\",\\\"role\\\":\\\"model\\\",\\\"effect\\\":\\\"load\\\",\\\"completion\\\":\\\"before_install\\\"}}}\", completion: builtin.string \"group_then_producer_then_run\", schema: builtin.string \"1\", target: builtin.string \"existing-owner-composition-cpu-v1\"]: <() -> ()>\n{\n  ^block5v1():\n    lc.run () [] [source_id: builtin.string \"run\", version: builtin.string \"1\", failure: builtin.string \"cancel_siblings_and_drain\"]: <() -> ()>\n    {\n      ^activities_block1v1_block1v1() !0:\n        enc_v0 = lc.model () [] [source_id: builtin.string \"encoder\", implementation: builtin.string \"scale_v1\", initial: builtin.string \"2.0\", treatment: builtin.string \"frozen\"]: <() -> (lc.model )> !1;\n        learn_v1 = lc.model () [] [source_id: builtin.string \"learner\", implementation: builtin.string \"scale_v1\", initial: builtin.string \"0.8\", treatment: builtin.string \"trainable\"]: <() -> (lc.model )> !2;\n        records_v3, producer_done_v4 = lc.producer (enc_v0, group_done_v5) [] [source_id: builtin.string \"producer\", implementation: builtin.string \"encode_v1\", horizon: builtin.string \"3\", ready: builtin.string \"2\", workers: builtin.string \"1\", remaining: builtin.string \"discard_unclaimed\", failure: builtin.string \"close_then_drain\"]: <(lc.model , lc.done ) -> (lc.stream , lc.done )> !3;\n        group_done_v5 = lc.group () [] [source_id: builtin.string \"consumers\", completion: builtin.string \"children_physically_settled\", pending: builtin.string \"include_requested\", failure: builtin.string \"cancel_siblings_and_drain\"]: <() -> (lc.done )>\n        {\n          ^consumers_block2v1_block2v1() !4:\n            window_events_v6, training_done_v7 = lc.repeat (records_v3, learn_v1) [] [source_id: builtin.string \"training\", max_windows: builtin.string \"2\", admission: builtin.string \"policy_choice_before_first_claim\", stop: builtin.string \"finish_selected_window\"]: <(lc.stream , lc.model ) -> (lc.events , lc.done )>\n            {\n              ^window_block3v1_block3v1(window_stream_v8: lc.stream , window_model_v9: lc.model ) !5:\n                r0_v10 = lc.take (window_stream_v8) [] [source_id: builtin.string \"training.take.0\", selection: builtin.string \"slot:0\", provenance: builtin.string \"actual_frozen_source\"]: <(lc.stream ) -> (lc.sample )> !6;\n                g0_v11 = lc.contribute (r0_v10, window_model_v9) [] [source_id: builtin.string \"training.objective.0\", implementation: builtin.string \"objective_v1\", normalization: builtin.string \"2\"]: <(lc.sample , lc.model ) -> (lc.gradient )> !7;\n                r1_v12 = lc.take (window_stream_v8) [] [source_id: builtin.string \"training.take.1\", selection: builtin.string \"slot:1\", provenance: builtin.string \"actual_frozen_source\"]: <(lc.stream ) -> (lc.sample )> !8;\n                g1_v13 = lc.contribute (r1_v12, window_model_v9, g0_v11) [] [source_id: builtin.string \"training.objective.1\", implementation: builtin.string \"objective_v1\", normalization: builtin.string \"2\"]: <(lc.sample , lc.model , lc.gradient ) -> (lc.gradient )> !9;\n                advanced_v14 = lc.advance (g1_v13, window_model_v9) [] [source_id: builtin.string \"training.advance\", parameter: builtin.string \"weight\", learning_rate: builtin.string \"0.01\", authority: builtin.string \"ordinary_owner\"]: <(lc.gradient , lc.model ) -> (lc.completion )> !10;\n                lc.window_end (advanced_v14) [] [source_id: builtin.string \"training.window_end\"]: <(lc.completion ) -> ()> !11\n            } !12;\n            due_v15 = lc.request (window_events_v6) [] [source_id: builtin.string \"request\", after_window: builtin.string \"2\", multiplicity: builtin.string \"once_per_matching_completion\", pending: builtin.string \"keeps_group_alive\", max_pending: builtin.string \"1\", cancellation: builtin.string \"cancel_or_unfulfilled\"]: <(lc.events ) -> (lc.request )> !13;\n            evaluation_done_v16 = lc.evaluator (due_v15, records_v3, learn_v1) [] [source_id: builtin.string \"evaluation\", completion: builtin.string \"physical_and_cleanup\"]: <(lc.request , lc.stream , lc.model ) -> (lc.done )>\n            {\n              ^measurement_block4v1_block4v1(cause_v17: lc.request , evaluation_stream_v18: lc.stream , evaluation_model_v19: lc.model ) !14:\n                sample_v20 = lc.take (evaluation_stream_v18) [] [source_id: builtin.string \"evaluation.take\", selection: builtin.string \"after_trigger_members\", provenance: builtin.string \"actual_frozen_source\"]: <(lc.stream ) -> (lc.sample )> !15;\n                result_v21 = lc.read (sample_v20, evaluation_model_v19) [] [source_id: builtin.string \"evaluation.read\", implementation: builtin.string \"measure_v1\", state: builtin.string \"current_at_start\", mode: builtin.string \"evaluation\", completion: builtin.string \"physical_validate_restore\"]: <(lc.sample , lc.model ) -> (lc.measurement )> !16;\n                lc.evaluation_end (result_v21) [] [source_id: builtin.string \"evaluation.end\"]: <(lc.measurement ) -> ()> !17\n            } !18;\n            lc.settle (training_done_v7, evaluation_done_v16) [] [source_id: builtin.string \"consumers.settle\"]: <(lc.done , lc.done ) -> ()> !19\n        } !20;\n        lc.finish (group_done_v5, producer_done_v4) [] [source_id: builtin.string \"run.finish\"]: <(lc.done , lc.done ) -> ()> !21\n    } !22\n}\n\n{\n  ^block6v1():\n    lc_exec.scope () [] [failure: builtin.string \"cancel_siblings_and_drain\", kind: builtin.string \"run\", origin: builtin.string \"run\", parent: builtin.string \"\", source_id: builtin.string \"run\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.call () [] [completion: builtin.string \"before_install\", effect: builtin.string \"load\", origin: builtin.string \"encoder\", role: builtin.string \"model\", symbol: builtin.string \"scale_v1\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.call () [] [completion: builtin.string \"before_install\", effect: builtin.string \"load\", origin: builtin.string \"learner\", role: builtin.string \"model\", symbol: builtin.string \"scale_v1\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.scope () [] [failure: builtin.string \"close_then_drain\", horizon: builtin.string \"3\", implementation: builtin.string \"encode_v1\", kind: builtin.string \"producer\", origin: builtin.string \"producer\", parent: builtin.string \"run\", ready: builtin.string \"2\", remaining: builtin.string \"discard_unclaimed\", source_id: builtin.string \"producer\", workers: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.call () [] [completion: builtin.string \"physical_return_before_release\", effect: builtin.string \"read_source\", origin: builtin.string \"producer\", role: builtin.string \"produce\", symbol: builtin.string \"encode_v1\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.access () [] [mode: builtin.string \"read_source\", origin: builtin.string \"producer\", participant: builtin.string \"encoder\", through: builtin.string \"physical_return\"]: <() -> ()>;\n    lc_exec.link () [] [failure: builtin.string \"enclosing_cancel_then_physical_drain\", relation: builtin.string \"normal_group_end_requests_stop\", run_completion: builtin.string \"producer_and_group_settled\", source: builtin.string \"consumers\", target: builtin.string \"producer\"]: <() -> ()>;\n    lc_exec.port () [] [channel: builtin.string \"producer.slot.0\", identity: builtin.string \"actual_record_and_source\", producer: builtin.string \"producer\", ready_budget: builtin.string \"aggregate_provider_budget\", role: builtin.string \"slot:0\", settlement: builtin.string \"actual_use_then_notification\"]: <() -> ()>;\n    lc_exec.port () [] [channel: builtin.string \"producer.slot.1\", identity: builtin.string \"actual_record_and_source\", producer: builtin.string \"producer\", ready_budget: builtin.string \"aggregate_provider_budget\", role: builtin.string \"slot:1\", settlement: builtin.string \"actual_use_then_notification\"]: <() -> ()>;\n    lc_exec.port () [] [channel: builtin.string \"producer.evaluation\", identity: builtin.string \"actual_record_and_source\", producer: builtin.string \"producer\", ready_budget: builtin.string \"aggregate_provider_budget\", role: builtin.string \"evaluation\", settlement: builtin.string \"actual_use_then_notification\"]: <() -> ()>;\n    lc_exec.port () [] [channel: builtin.string \"producer.unused\", identity: builtin.string \"actual_record_and_source\", producer: builtin.string \"producer\", ready_budget: builtin.string \"aggregate_provider_budget\", role: builtin.string \"unused\", settlement: builtin.string \"actual_use_then_notification\"]: <() -> ()>;\n    lc_exec.scope () [] [completion: builtin.string \"children_physically_settled\", failure: builtin.string \"cancel_siblings_and_drain\", kind: builtin.string \"group\", origin: builtin.string \"consumers\", parent: builtin.string \"run\", pending: builtin.string \"include_requested\", source_id: builtin.string \"consumers\"]: <() -> ()>;\n    lc_exec.scope () [] [admission: builtin.string \"policy_choice_before_first_claim\", kind: builtin.string \"repeat\", max_windows: builtin.string \"2\", origin: builtin.string \"training\", parent: builtin.string \"consumers\", source_id: builtin.string \"training\", stop: builtin.string \"finish_selected_window\"]: <() -> ()>;\n    lc_exec.call () [] [completion: builtin.string \"return_before_backward\", effect: builtin.string \"build_loss\", origin: builtin.string \"training.objective.0\", role: builtin.string \"objective\", symbol: builtin.string \"objective_v1\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.access () [] [mode: builtin.string \"read_gradient\", origin: builtin.string \"training.objective.0\", participant: builtin.string \"learner\", through: builtin.string \"backward\"]: <() -> ()>;\n    lc_exec.call () [] [completion: builtin.string \"return_before_backward\", effect: builtin.string \"build_loss\", origin: builtin.string \"training.objective.1\", role: builtin.string \"objective\", symbol: builtin.string \"objective_v1\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.access () [] [mode: builtin.string \"read_gradient\", origin: builtin.string \"training.objective.1\", participant: builtin.string \"learner\", through: builtin.string \"backward\"]: <() -> ()>;\n    lc_exec.access () [] [mode: builtin.string \"write\", origin: builtin.string \"training.advance\", participant: builtin.string \"learner\", through: builtin.string \"update_outcome\"]: <() -> ()>;\n    lc_exec.request () [] [after_window: builtin.string \"2\", cancellation: builtin.string \"cancel_or_unfulfilled\", max_pending: builtin.string \"1\", multiplicity: builtin.string \"once_per_matching_completion\", origin: builtin.string \"request\", pending: builtin.string \"keeps_group_alive\", source: builtin.string \"training\", source_id: builtin.string \"request\"]: <() -> ()>;\n    lc_exec.scope () [] [completion: builtin.string \"physical_and_cleanup\", kind: builtin.string \"evaluator\", origin: builtin.string \"evaluation\", parent: builtin.string \"consumers\", source_id: builtin.string \"evaluation\"]: <() -> ()>;\n    lc_exec.call () [] [completion: builtin.string \"physical_validate_restore\", effect: builtin.string \"protected_read\", origin: builtin.string \"evaluation.read\", role: builtin.string \"evaluate\", symbol: builtin.string \"measure_v1\", version: builtin.string \"1\"]: <() -> ()>;\n    lc_exec.access () [] [mode: builtin.string \"read_evaluation\", origin: builtin.string \"evaluation.read\", participant: builtin.string \"learner\", through: builtin.string \"physical_and_restore\"]: <() -> ()>\n}\n\noutlined_attributes:\n!0 = @[<in-memory>: line: 2, column: 7], []\n!1 = @[<in-memory>: line: 3, column: 9], [builtin_given_names = builtin.given_names [enc]]\n!2 = @[<in-memory>: line: 3, column: 200], [builtin_given_names = builtin.given_names [learn]]\n!3 = @[<in-memory>: line: 3, column: 396], [builtin_given_names = builtin.given_names [records, producer_done]]\n!4 = @[<in-memory>: line: 4, column: 7], []\n!5 = @[<in-memory>: line: 6, column: 7], [builtin_given_names = builtin.given_names [window_stream, window_model]]\n!6 = @[<in-memory>: line: 7, column: 9], [builtin_given_names = builtin.given_names [r0]]\n!7 = @[<in-memory>: line: 7, column: 206], [builtin_given_names = builtin.given_names [g0]]\n!8 = @[<in-memory>: line: 7, column: 424], [builtin_given_names = builtin.given_names [r1]]\n!9 = @[<in-memory>: line: 7, column: 621], [builtin_given_names = builtin.given_names [g1]]\n!10 = @[<in-memory>: line: 7, column: 856], [builtin_given_names = builtin.given_names [advanced]]\n!11 = @[<in-memory>: line: 7, column: 1113], []\n!12 = @[<in-memory>: line: 5, column: 9], [builtin_given_names = builtin.given_names [window_events, training_done]]\n!13 = @[<in-memory>: line: 9, column: 9], [builtin_given_names = builtin.given_names [due]]\n!14 = @[<in-memory>: line: 11, column: 7], [builtin_given_names = builtin.given_names [cause, evaluation_stream, evaluation_model]]\n!15 = @[<in-memory>: line: 12, column: 9], [builtin_given_names = builtin.given_names [sample]]\n!16 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [result]]\n!17 = @[<in-memory>: line: 14, column: 9], []\n!18 = @[<in-memory>: line: 10, column: 9], [builtin_given_names = builtin.given_names [evaluation_done]]\n!19 = @[<in-memory>: line: 16, column: 9], []\n!20 = @[<in-memory>: line: 3, column: 762], [builtin_given_names = builtin.given_names [group_done]]\n!21 = @[<in-memory>: line: 17, column: 8], []\n!22 = @[<in-memory>: line: 1, column: 1], []\n",
+  "profile": {
+    "after_window": 2,
+    "calls": {
+      "encode": "encode_v1",
+      "measure": "measure_v1",
+      "objective": "objective_v1"
+    },
+    "encoder": "encoder",
+    "evaluation": "evaluation",
+    "evaluation_port": "producer.evaluation",
+    "group": "consumers",
+    "horizon": 3,
+    "learner": "learner",
+    "learning_rate": 0.01,
+    "members": 2,
+    "models": [
+      {
+        "id": "encoder",
+        "implementation": "scale_v1",
+        "initial": 2.0,
+        "trainable": false
+      },
+      {
+        "id": "learner",
+        "implementation": "scale_v1",
+        "initial": 0.8,
+        "trainable": true
+      }
+    ],
+    "ports": [
+      "producer.slot.0",
+      "producer.slot.1"
+    ],
+    "producer": "producer",
+    "ready": 2,
+    "run": "run",
+    "training": "training",
+    "unused_port": "producer.unused",
+    "windows": 2,
+    "workers": 1
+  },
+  "schema": 1,
+  "target": "existing-owner-composition-cpu-v1"
+}

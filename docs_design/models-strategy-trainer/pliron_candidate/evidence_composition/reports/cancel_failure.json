@@ -1,0 +1,735 @@
+{
+  "schema": 1,
+  "status": "cancelled",
+  "errors": [
+    {
+      "type": "BaseExceptionGroup",
+      "message": "unhandled errors in a TaskGroup (1 sub-exception)"
+    },
+    {
+      "type": "BaseExceptionGroup",
+      "message": "Producer interruption and cleanup failure (2 sub-exceptions)"
+    },
+    {
+      "type": "CancelledError",
+      "message": ""
+    },
+    {
+      "type": "ExceptionGroup",
+      "message": "unhandled errors in a TaskGroup (1 sub-exception)"
+    },
+    {
+      "type": "PhysicalFailed",
+      "message": "physical production failure 6"
+    },
+    {
+      "type": "RuntimeError",
+      "message": "physical production failure 6"
+    },
+    {
+      "type": "CancelledError",
+      "message": ""
+    }
+  ],
+  "weight": 0.6350000500679016,
+  "steps": 2,
+  "pending": false,
+  "training_mode": true,
+  "gradients_enabled": true,
+  "windows": [
+    {
+      "window": 0,
+      "weight": 0.7700000405311584,
+      "epoch": 1,
+      "inputs": [
+        {
+          "channel": "producer.slot.0",
+          "key": 0,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "channel": "producer.slot.1",
+          "key": 0,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        }
+      ]
+    },
+    {
+      "window": 1,
+      "weight": 0.6350000500679016,
+      "epoch": 2,
+      "inputs": [
+        {
+          "channel": "producer.slot.0",
+          "key": 1,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        },
+        {
+          "channel": "producer.slot.1",
+          "key": 1,
+          "sources": [
+            [
+              "encoder",
+              1,
+              0
+            ]
+          ]
+        }
+      ]
+    }
+  ],
+  "contributions": [
+    {
+      "key": 0,
+      "window": 0,
+      "x": 2.0,
+      "target": 1.0,
+      "weight": 0.800000011920929,
+      "epoch": 0,
+      "loss": 0.09000000357627869
+    },
+    {
+      "key": 1,
+      "window": 0,
+      "x": 4.0,
+      "target": 2.0,
+      "weight": 0.800000011920929,
+      "epoch": 0,
+      "loss": 0.36000001430511475
+    },
+    {
+      "key": 2,
+      "window": 1,
+      "x": 6.0,
+      "target": 3.0,
+      "weight": 0.7700000405311584,
+      "epoch": 1,
+      "loss": 0.6561002731323242
+    },
+    {
+      "key": 3,
+      "window": 1,
+      "x": 8.0,
+      "target": 4.0,
+      "weight": 0.7700000405311584,
+      "epoch": 1,
+      "loss": 1.1664003133773804
+    }
+  ],
+  "selected_windows": [
+    0,
+    1
+  ],
+  "acquired": {
+    "0": [
+      0,
+      1
+    ],
+    "1": [
+      2,
+      3
+    ]
+  },
+  "evaluation": {
+    "cause": {
+      "source": "training",
+      "window": 1,
+      "position": 2
+    },
+    "key": 4,
+    "epoch": 2,
+    "weight": 0.6350000500679016,
+    "inputs": [
+      {
+        "channel": "producer.slot.0",
+        "key": 1,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "channel": "producer.slot.1",
+        "key": 1,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "channel": "producer.evaluation",
+        "key": 1,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "returned": true,
+    "physical_done": true,
+    "prediction": 6.350000381469727,
+    "loss": 0.9112505149842036,
+    "evaluation_mode": true,
+    "gradients": false,
+    "physical_entered": true
+  },
+  "evaluation_completed": true,
+  "request": {
+    "cause": {
+      "source": "training",
+      "window": 1,
+      "position": 2
+    },
+    "disposition": "completed"
+  },
+  "source": {
+    "cursor": 7,
+    "active": {},
+    "physical_active": [],
+    "terminal": {
+      "0": "consumed",
+      "1": "consumed",
+      "2": "consumed",
+      "3": "consumed",
+      "4": "consumed",
+      "5": "discarded",
+      "6": "failed"
+    },
+    "high_water": 3,
+    "ready_high_water": 1,
+    "products": [
+      {
+        "key": 0,
+        "value": 2.0,
+        "channel": "producer.slot.0",
+        "address": 0,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "key": 1,
+        "value": 4.0,
+        "channel": "producer.slot.1",
+        "address": 0,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "key": 2,
+        "value": 6.0,
+        "channel": "producer.slot.0",
+        "address": 1,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "key": 3,
+        "value": 8.0,
+        "channel": "producer.slot.1",
+        "address": 1,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "key": 4,
+        "value": 10.0,
+        "channel": "producer.evaluation",
+        "address": 1,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      },
+      {
+        "key": 5,
+        "value": 12.0,
+        "channel": "producer.unused",
+        "address": 5,
+        "sources": [
+          [
+            "encoder",
+            1,
+            0
+          ]
+        ]
+      }
+    ],
+    "uses": [
+      {
+        "key": 0,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      },
+      {
+        "key": 1,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      },
+      {
+        "key": 2,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      },
+      {
+        "key": 3,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      },
+      {
+        "key": 4,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      },
+      {
+        "key": 5,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      },
+      {
+        "key": 6,
+        "epoch": 0,
+        "physical_done": true,
+        "entered": true
+      }
+    ],
+    "cleanup_complete": true
+  },
+  "scope_clocks": {
+    "training": 27,
+    "evaluation": 40,
+    "consumers": 42,
+    "producer": 49,
+    "run": 50
+  },
+  "normal_scopes": [
+    "consumers",
+    "evaluation",
+    "training"
+  ],
+  "events": [
+    {
+      "clock": 1,
+      "kind": "selected",
+      "key": 0,
+      "outstanding": 1
+    },
+    {
+      "clock": 2,
+      "kind": "window_selected",
+      "window": 0
+    },
+    {
+      "clock": 3,
+      "kind": "producer_physical_end",
+      "key": 0,
+      "entered": true
+    },
+    {
+      "clock": 4,
+      "kind": "published",
+      "key": 0,
+      "ready": 1
+    },
+    {
+      "clock": 5,
+      "kind": "selected",
+      "key": 1,
+      "outstanding": 2
+    },
+    {
+      "clock": 6,
+      "kind": "claimed",
+      "key": 0,
+      "outstanding": 2
+    },
+    {
+      "clock": 7,
+      "kind": "consumed",
+      "key": 0,
+      "outstanding": 1
+    },
+    {
+      "clock": 8,
+      "kind": "producer_physical_end",
+      "key": 1,
+      "entered": true
+    },
+    {
+      "clock": 9,
+      "kind": "published",
+      "key": 1,
+      "ready": 1
+    },
+    {
+      "clock": 10,
+      "kind": "selected",
+      "key": 2,
+      "outstanding": 2
+    },
+    {
+      "clock": 11,
+      "kind": "window_completed",
+      "window": 0
+    },
+    {
+      "clock": 12,
+      "kind": "claimed",
+      "key": 1,
+      "outstanding": 2
+    },
+    {
+      "clock": 13,
+      "kind": "consumed",
+      "key": 1,
+      "outstanding": 1
+    },
+    {
+      "clock": 14,
+      "kind": "producer_physical_end",
+      "key": 2,
+      "entered": true
+    },
+    {
+      "clock": 15,
+      "kind": "published",
+      "key": 2,
+      "ready": 1
+    },
+    {
+      "clock": 16,
+      "kind": "selected",
+      "key": 3,
+      "outstanding": 2
+    },
+    {
+      "clock": 17,
+      "kind": "window_selected",
+      "window": 1
+    },
+    {
+      "clock": 18,
+      "kind": "claimed",
+      "key": 2,
+      "outstanding": 2
+    },
+    {
+      "clock": 19,
+      "kind": "consumed",
+      "key": 2,
+      "outstanding": 1
+    },
+    {
+      "clock": 20,
+      "kind": "producer_physical_end",
+      "key": 3,
+      "entered": true
+    },
+    {
+      "clock": 21,
+      "kind": "published",
+      "key": 3,
+      "ready": 1
+    },
+    {
+      "clock": 22,
+      "kind": "selected",
+      "key": 4,
+      "outstanding": 2
+    },
+    {
+      "clock": 23,
+      "kind": "window_completed",
+      "window": 1
+    },
+    {
+      "clock": 24,
+      "kind": "claimed",
+      "key": 3,
+      "outstanding": 2
+    },
+    {
+      "clock": 25,
+      "kind": "consumed",
+      "key": 3,
+      "outstanding": 1
+    },
+    {
+      "clock": 26,
+      "kind": "evaluation_requested",
+      "source": "training",
+      "window": 1,
+      "position": 2
+    },
+    {
+      "clock": 27,
+      "kind": "scope_settled",
+      "source": "training",
+      "normal": true
+    },
+    {
+      "clock": 28,
+      "kind": "pending_request_witness",
+      "producer_live": true,
+      "group_live": true
+    },
+    {
+      "clock": 29,
+      "kind": "producer_physical_end",
+      "key": 4,
+      "entered": true
+    },
+    {
+      "clock": 30,
+      "kind": "published",
+      "key": 4,
+      "ready": 1
+    },
+    {
+      "clock": 31,
+      "kind": "selected",
+      "key": 5,
+      "outstanding": 2
+    },
+    {
+      "clock": 32,
+      "kind": "evaluation_entered",
+      "key": 4
+    },
+    {
+      "clock": 33,
+      "kind": "claimed",
+      "key": 4,
+      "outstanding": 2
+    },
+    {
+      "clock": 34,
+      "kind": "producer_physical_end",
+      "key": 5,
+      "entered": true
+    },
+    {
+      "clock": 35,
+      "kind": "published",
+      "key": 5,
+      "ready": 1
+    },
+    {
+      "clock": 36,
+      "kind": "selected",
+      "key": 6,
+      "outstanding": 3
+    },
+    {
+      "clock": 37,
+      "kind": "aggregate_bound_witness",
+      "active": [
+        4,
+        5,
+        6
+      ]
+    },
+    {
+      "clock": 38,
+      "kind": "evaluation_physical_end"
+    },
+    {
+      "clock": 39,
+      "kind": "evaluation_completed"
+    },
+    {
+      "clock": 40,
+      "kind": "scope_settled",
+      "source": "evaluation",
+      "normal": true
+    },
+    {
+      "clock": 41,
+      "kind": "consumed",
+      "key": 4,
+      "outstanding": 2
+    },
+    {
+      "clock": 42,
+      "kind": "scope_settled",
+      "source": "consumers",
+      "normal": true
+    },
+    {
+      "clock": 43,
+      "kind": "shutdown_witness",
+      "producer_physical_live": true,
+      "protected": true,
+      "producer_stopped": true,
+      "run_live": true
+    },
+    {
+      "clock": 44,
+      "kind": "producer_physical_end",
+      "key": 6,
+      "entered": true
+    },
+    {
+      "clock": 45,
+      "kind": "producer_cleanup_begin",
+      "normal": true
+    },
+    {
+      "clock": 46,
+      "kind": "disposed",
+      "key": 5,
+      "disposition": "discarded"
+    },
+    {
+      "clock": 47,
+      "kind": "disposed",
+      "key": 6,
+      "disposition": "failed"
+    },
+    {
+      "clock": 48,
+      "kind": "producer_cleanup_end"
+    },
+    {
+      "clock": 49,
+      "kind": "scope_settled",
+      "source": "producer",
+      "normal": false
+    },
+    {
+      "clock": 50,
+      "kind": "scope_settled",
+      "source": "run",
+      "normal": false
+    },
+    {
+      "clock": 51,
+      "kind": "run_settled",
+      "normal": false
+    }
+  ],
+  "unit_outcomes": [
+    {
+      "invocation": 1,
+      "contribution": "ready",
+      "optimizer": "returned",
+      "reset": "returned",
+      "inputs": [
+        {
+          "channel": "producer.slot.0",
+          "key": 0
+        }
+      ]
+    },
+    {
+      "invocation": 2,
+      "contribution": "ready",
+      "optimizer": "returned",
+      "reset": "returned",
+      "inputs": [
+        {
+          "channel": "producer.slot.0",
+          "key": 0
+        },
+        {
+          "channel": "producer.slot.1",
+          "key": 0
+        }
+      ]
+    },
+    {
+      "invocation": 4,
+      "contribution": "ready",
+      "optimizer": "returned",
+      "reset": "returned",
+      "inputs": [
+        {
+          "channel": "producer.slot.0",
+          "key": 1
+        }
+      ]
+    },
+    {
+      "invocation": 5,
+      "contribution": "ready",
+      "optimizer": "returned",
+      "reset": "returned",
+      "inputs": [
+        {
+          "channel": "producer.slot.0",
+          "key": 1
+        },
+        {
+          "channel": "producer.slot.1",
+          "key": 1
+        }
+      ]
+    }
+  ],
+  "remaining": {
+    "producer.slot.0": [],
+    "producer.slot.1": [],
+    "producer.evaluation": [],
+    "producer.unused": []
+  },
+  "closed": true,
+  "released": true,
+  "diagnostics": 130,
+  "archive_erasure_points": [],
+  "failure_inputs": []
+}

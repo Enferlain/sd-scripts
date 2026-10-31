@@ -9,8 +9,8 @@ provisional working baseline; further comparison should test a concrete
 architectural or engineering advantage. Language design, authoring constructs,
 final framework and implementations remain open; experimental dialects and
 owner APIs do not establish those choices. Shared correspondence checks protect
-readiness, execution and dependent effects without prescribing preparation order. New
-composition pressure, broader parity and matched costs remain later comparisons.
+readiness, execution and dependent effects without prescribing preparation order.
+Broader composition pressure, parity and matched costs remain later comparisons.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip
@@ -20,9 +20,14 @@ bridge and the backend's separate 0.19.0 pin leave native sharing unproven.
 The independent payload/resource extension now tests shared typed contracts and
 resource-aware grouping (`sd-scripts-syv.31.20`), including a valid opaque-effect
 case where grouping is declined and diagnostic checks across preparation/cold
-loading. It reuses the same scalar target and pair oracle. Different-lifetime
-composition, owner integration and broader parity remain later comparisons;
-xDSL remains the provisional working baseline.
+loading. It reuses the same scalar target and pair oracle. The subsequent
+[different-lifetime composition](docs_design/models-strategy-trainer/pliron_candidate/composition_case.md)
+uses one existing owner engine for independent production, bounded accumulation,
+pending evaluation and separate group/producer/run settlement (`sd-scripts-syv.31.22`).
+Native lifetime/access recipes and cold correspondence govern that handoff;
+physical draining and independent expectations remain runtime/qualification work.
+Broader composition/parity, native numerical sharing and matched costs remain
+open; xDSL stays the provisional working baseline.
 External-review corrections under `sd-scripts-syv.31.21` require complete native
 document consumption and restore normal Git inclusion of the dependency file.
 
