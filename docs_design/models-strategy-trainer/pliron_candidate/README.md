@@ -22,9 +22,12 @@ The matched [C authority case](grant_case.md) adds typed delegated phases,
 restoration/handback claims and retained advancement in a separate native
 executable. Its independent verifier and prepared correspondence reuse the same
 existing owner target as xDSL C, extracted into [grant_target.py](../grant_target.py).
-Its [qualification](evidence_grant/qualification.json) records current C sources
-and gates; the older B/extension/composition records remain historical. Resource
-grouping alignment and the A/mixed ports remain open.
+Its [qualification](evidence_grant/qualification.json) records that C milestone's
+sources and gates; the older B/extension/composition records remain historical.
+The subsequent [matched grouping case](../grouping_comparison.md) brings xDSL
+to the same intended typed unary/frozen-read policy. New native mutation probes
+exercise resource/effect invalidation and then cold-verify the updated contracts;
+Pliron's existing grouping implementation is unchanged. A/mixed ports remain open.
 
 The baseline [comparison](../candidate_comparison.md) defines the evidence
 boundaries. B selects `x = key + current_bias`, maps `2*x`, then `+1` inside a

@@ -1,0 +1,664 @@
+{
+  "schema": 1,
+  "bead": "sd-scripts-syv.31.25.4",
+  "controls": [
+    {
+      "label": "xdsl-frozen-unfused",
+      "artifact": "cases/xdsl-frozen-unfused/artifact.json",
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack"
+        ],
+        [
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "project-owned dependency snapshots",
+        "resource_analysis": {
+          "reads": [
+            {
+              "symbol": "pair_coefficients",
+              "access": "read_frozen",
+              "version": "1",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684"
+            }
+          ],
+          "unknown_sources": [],
+          "decisions": [
+            {
+              "origin": "data.double",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "data.offset",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "pair.pack",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<!pairing.vector<2 : i64>>"
+            },
+            {
+              "origin": "pair.first",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<!pairing.vector<2 : i64>>",
+              "output": "!wf.flow<\"record\">"
+            }
+          ]
+        },
+        "observations": [
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack"
+              ],
+              [
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 1
+          },
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack"
+              ],
+              [
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 1
+          }
+        ]
+      }
+    },
+    {
+      "label": "xdsl-frozen-fused",
+      "artifact": "cases/xdsl-frozen-fused/artifact.json",
+      "groups": [
+        [
+          "data.double",
+          "data.offset",
+          "pair.pack",
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "project-owned dependency snapshots",
+        "resource_analysis": {
+          "reads": [
+            {
+              "symbol": "pair_coefficients",
+              "access": "read_frozen",
+              "version": "1",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684"
+            }
+          ],
+          "unknown_sources": [],
+          "decisions": [
+            {
+              "origin": "data.double",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "data.offset",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "pair.pack",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<!pairing.vector<2 : i64>>"
+            },
+            {
+              "origin": "pair.first",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<!pairing.vector<2 : i64>>",
+              "output": "!wf.flow<\"record\">"
+            }
+          ]
+        },
+        "observations": [
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack"
+              ],
+              [
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 1
+          },
+          {
+            "groups": [
+              [
+                "data.double",
+                "data.offset",
+                "pair.pack",
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 2
+          }
+        ]
+      }
+    },
+    {
+      "label": "xdsl-opaque-unfused",
+      "artifact": "cases/xdsl-opaque-unfused/artifact.json",
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack"
+        ],
+        [
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "project-owned dependency snapshots",
+        "resource_analysis": {
+          "reads": [
+            {
+              "symbol": "pair_coefficients",
+              "access": "read_frozen",
+              "version": "1",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684"
+            }
+          ],
+          "unknown_sources": [
+            "data.offset"
+          ],
+          "decisions": [
+            {
+              "origin": "data.double",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "data.offset",
+              "groupable": false,
+              "reason": "unknown resource access/effect",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "pair.pack",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<!pairing.vector<2 : i64>>"
+            },
+            {
+              "origin": "pair.first",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<!pairing.vector<2 : i64>>",
+              "output": "!wf.flow<\"record\">"
+            }
+          ]
+        },
+        "observations": [
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack"
+              ],
+              [
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 1
+          },
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack"
+              ],
+              [
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 1
+          }
+        ]
+      }
+    },
+    {
+      "label": "xdsl-opaque-fused",
+      "artifact": "cases/xdsl-opaque-fused/artifact.json",
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack",
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "project-owned dependency snapshots",
+        "resource_analysis": {
+          "reads": [
+            {
+              "symbol": "pair_coefficients",
+              "access": "read_frozen",
+              "version": "1",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684"
+            }
+          ],
+          "unknown_sources": [
+            "data.offset"
+          ],
+          "decisions": [
+            {
+              "origin": "data.double",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "data.offset",
+              "groupable": false,
+              "reason": "unknown resource access/effect",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<\"record\">"
+            },
+            {
+              "origin": "pair.pack",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<\"record\">",
+              "output": "!wf.flow<!pairing.vector<2 : i64>>"
+            },
+            {
+              "origin": "pair.first",
+              "groupable": true,
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve each guard/outcome/completion",
+              "input": "!wf.flow<!pairing.vector<2 : i64>>",
+              "output": "!wf.flow<\"record\">"
+            }
+          ]
+        },
+        "observations": [
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack"
+              ],
+              [
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 1
+          },
+          {
+            "groups": [
+              [
+                "data.double"
+              ],
+              [
+                "data.offset"
+              ],
+              [
+                "pair.pack",
+                "pair.first"
+              ]
+            ],
+            "resource_computations": 1,
+            "dispatch_computations": 2
+          }
+        ]
+      }
+    },
+    {
+      "label": "pliron-frozen-unfused",
+      "artifact": "cases/pliron-frozen-unfused/artifact.json",
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack"
+        ],
+        [
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "Pliron AnalysisManager/Passes",
+        "resource_analysis": {
+          "computations": 1,
+          "decisions": [
+            {
+              "groupable": true,
+              "origin": "data.double",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "data.offset",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.pack",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.first",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            }
+          ],
+          "reads": [
+            {
+              "access": "read_frozen",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+              "symbol": "pair_coefficients",
+              "version": "1"
+            }
+          ],
+          "unknown_sources": []
+        },
+        "observations": [
+          [
+            4,
+            1,
+            1
+          ],
+          [
+            4,
+            1,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "label": "pliron-frozen-fused",
+      "artifact": "cases/pliron-frozen-fused/artifact.json",
+      "groups": [
+        [
+          "data.double",
+          "data.offset",
+          "pair.pack",
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "Pliron AnalysisManager/Passes",
+        "resource_analysis": {
+          "computations": 1,
+          "decisions": [
+            {
+              "groupable": true,
+              "origin": "data.double",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "data.offset",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.pack",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.first",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            }
+          ],
+          "reads": [
+            {
+              "access": "read_frozen",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+              "symbol": "pair_coefficients",
+              "version": "1"
+            }
+          ],
+          "unknown_sources": []
+        },
+        "observations": [
+          [
+            4,
+            1,
+            1
+          ],
+          [
+            1,
+            2,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "label": "pliron-opaque-unfused",
+      "artifact": "cases/pliron-opaque-unfused/artifact.json",
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack"
+        ],
+        [
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "Pliron AnalysisManager/Passes",
+        "resource_analysis": {
+          "computations": 1,
+          "decisions": [
+            {
+              "groupable": true,
+              "origin": "data.double",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": false,
+              "origin": "data.offset",
+              "reason": "target scalar-async-cpu-v1 declines grouping: unknown resource access/effect may_effect"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.pack",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.first",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            }
+          ],
+          "reads": [
+            {
+              "access": "read_frozen",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+              "symbol": "pair_coefficients",
+              "version": "1"
+            }
+          ],
+          "unknown_sources": [
+            "data.offset"
+          ]
+        },
+        "observations": [
+          [
+            4,
+            1,
+            1
+          ],
+          [
+            4,
+            1,
+            1
+          ]
+        ]
+      }
+    },
+    {
+      "label": "pliron-opaque-fused",
+      "artifact": "cases/pliron-opaque-fused/artifact.json",
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack",
+          "pair.first"
+        ]
+      ],
+      "analysis": {
+        "cache": "Pliron AnalysisManager/Passes",
+        "resource_analysis": {
+          "computations": 1,
+          "decisions": [
+            {
+              "groupable": true,
+              "origin": "data.double",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": false,
+              "origin": "data.offset",
+              "reason": "target scalar-async-cpu-v1 declines grouping: unknown resource access/effect may_effect"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.pack",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.first",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            }
+          ],
+          "reads": [
+            {
+              "access": "read_frozen",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+              "symbol": "pair_coefficients",
+              "version": "1"
+            }
+          ],
+          "unknown_sources": [
+            "data.offset"
+          ]
+        },
+        "observations": [
+          [
+            4,
+            1,
+            1
+          ],
+          [
+            3,
+            2,
+            1
+          ]
+        ]
+      }
+    }
+  ],
+  "reports": 18,
+  "gil_before": false,
+  "gil_after": false,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "torch_imported": false,
+  "limit": "Correctness/grouping observations only; counts are not a framework performance result."
+}

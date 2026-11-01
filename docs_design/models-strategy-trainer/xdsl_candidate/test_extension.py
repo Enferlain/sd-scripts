@@ -43,11 +43,11 @@ async def test_extension_uses_common_workflow_and_local_interfaces(fuse) -> None
     report = asdict((await execute(prepared)).report)
     check_extension(report)
     assert prepared.local.source_groups == (
-        (("data.double", "data.offset"), ("pair.pack",), ("pair.first",))
+        (("data.double", "data.offset", "pair.pack", "pair.first"),)
         if fuse
         else (("data.double",), ("data.offset",), ("pair.pack",), ("pair.first",))
     )
-    assert report["local_dispatches"] == len(report["tickets"]) * (3 if fuse else 4)
+    assert report["local_dispatches"] == len(report["tickets"]) * (1 if fuse else 4)
     metadata = json.loads(prepared.manifest)
     resource = next(item for item in metadata["local_contracts"] if item["origin"] == "pair.pack")["resources"]
     assert resource == [{"symbol": USE.symbol, "access": "read_frozen", "version": "1", "digest": COEFFICIENTS.digest}]
@@ -134,7 +134,7 @@ def test_positive_new_schema_can_be_accepted_before_target_codec_support() -> No
         "source",
         "missing",
         "duplicate",
-        "illegal_fusion",
+        "nested_fusion",
     ],
 )
 def test_decoded_local_contract_corruption_precedes_lowering(case, monkeypatch) -> None:
@@ -170,6 +170,8 @@ def test_decoded_local_contract_corruption_precedes_lowering(case, monkeypatch) 
         elif case == "duplicate":
             root.body.block.add_op(signature.clone())
         else:
+            # These adjacent typed stages are eligible now. Wrapping them
+            # inside the existing four-stage group is an unsupported nesting.
             pack = next(op for op in root.walk() if isinstance(op, CallOp) and op.origin.data == "pair.pack")
             first = next(op for op in root.walk() if isinstance(op, CallOp) and op.origin.data == "pair.first")
             block = pack.parent_block()

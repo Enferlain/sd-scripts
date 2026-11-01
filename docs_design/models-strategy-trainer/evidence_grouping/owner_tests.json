@@ -1,0 +1,30 @@
+{
+  "exit_code": 0,
+  "counts": {
+    "passed": 706
+  },
+  "gil_before": false,
+  "gil_after": false,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "xdsl": "0.74.0",
+  "args": [
+    "-ra",
+    "--ignore=tests/_deprecated",
+    "--ignore=tests/_deprecated",
+    "--noconftest",
+    "docs_design/models-strategy-trainer/xdsl_candidate",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_grant_runtime.py",
+    "-q",
+    "-p",
+    "pytest_asyncio.plugin",
+    "--tb=short",
+    "--maxfail=3"
+  ],
+  "seconds": 85.61988514599943,
+  "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+  "torch_imported": true,
+  "output": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 30%]\n........................................................................ [ 40%]\n........................................................................ [ 50%]\n........................................................................ [ 61%]\n........................................................................ [ 71%]\n........................................................................ [ 81%]\n........................................................................ [ 91%]\n..........................................................               [100%]\n706 passed in 85.40s (0:01:25)\n",
+  "torch": "2.14.1+cu130",
+  "cuda_initialized": false
+}

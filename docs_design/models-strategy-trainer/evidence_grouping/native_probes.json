@@ -1,0 +1,131 @@
+{
+  "exit_code": 0,
+  "command": [
+    "cargo",
+    "test",
+    "--locked",
+    "--manifest-path",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml",
+    "--lib",
+    "--",
+    "--nocapture"
+  ],
+  "purpose": "Retain actual native semantic-change/preservation witnesses; all-target native gate already passed.",
+  "probes": [
+    {
+      "change": "resource_version",
+      "cold_verified_groups": 1,
+      "observations": [
+        [
+          4,
+          1,
+          1
+        ],
+        [
+          4,
+          2,
+          2
+        ],
+        [
+          1,
+          3,
+          2
+        ]
+      ],
+      "resource_analysis": {
+        "computations": 2,
+        "decisions": [
+          {
+            "groupable": true,
+            "origin": "data.double",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          },
+          {
+            "groupable": true,
+            "origin": "data.offset",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          },
+          {
+            "groupable": true,
+            "origin": "pair.pack",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          },
+          {
+            "groupable": true,
+            "origin": "pair.first",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          }
+        ],
+        "reads": [
+          {
+            "access": "read_frozen",
+            "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+            "symbol": "pair_coefficients",
+            "version": "2"
+          }
+        ],
+        "unknown_sources": []
+      },
+      "resource_computations": 2
+    },
+    {
+      "change": "opaque_effect",
+      "cold_verified_groups": 3,
+      "observations": [
+        [
+          4,
+          1,
+          1
+        ],
+        [
+          4,
+          2,
+          2
+        ],
+        [
+          3,
+          3,
+          2
+        ]
+      ],
+      "resource_analysis": {
+        "computations": 2,
+        "decisions": [
+          {
+            "groupable": true,
+            "origin": "data.double",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          },
+          {
+            "groupable": false,
+            "origin": "data.offset",
+            "reason": "target scalar-async-cpu-v1 declines grouping: unknown resource access/effect may_effect"
+          },
+          {
+            "groupable": true,
+            "origin": "pair.pack",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          },
+          {
+            "groupable": true,
+            "origin": "pair.first",
+            "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+          }
+        ],
+        "reads": [
+          {
+            "access": "read_frozen",
+            "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+            "symbol": "pair_coefficients",
+            "version": "1"
+          }
+        ],
+        "unknown_sources": [
+          "data.offset"
+        ]
+      },
+      "resource_computations": 2
+    }
+  ],
+  "captured_output": "\nrunning 3 tests\ntest prepare::tests::partial_known_reads_do_not_hide_unknown_effects ... ok\nRESOURCE_CHANGE_PROBE {\"change\":\"resource_version\",\"cold_verified_groups\":1,\"observations\":[[4,1,1],[4,2,2],[1,3,2]],\"resource_analysis\":{\"computations\":2,\"decisions\":[{\"groupable\":true,\"origin\":\"data.double\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"},{\"groupable\":true,\"origin\":\"data.offset\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"},{\"groupable\":true,\"origin\":\"pair.pack\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"},{\"groupable\":true,\"origin\":\"pair.first\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"}],\"reads\":[{\"access\":\"read_frozen\",\"digest\":\"49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684\",\"symbol\":\"pair_coefficients\",\"version\":\"2\"}],\"unknown_sources\":[]},\"resource_computations\":2}\nRESOURCE_CHANGE_PROBE {\"change\":\"opaque_effect\",\"cold_verified_groups\":3,\"observations\":[[4,1,1],[4,2,2],[3,3,2]],\"resource_analysis\":{\"computations\":2,\"decisions\":[{\"groupable\":true,\"origin\":\"data.double\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"},{\"groupable\":false,\"origin\":\"data.offset\",\"reason\":\"target scalar-async-cpu-v1 declines grouping: unknown resource access/effect may_effect\"},{\"groupable\":true,\"origin\":\"pair.pack\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"},{\"groupable\":true,\"origin\":\"pair.first\",\"reason\":\"ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion\"}],\"reads\":[{\"access\":\"read_frozen\",\"digest\":\"49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684\",\"symbol\":\"pair_coefficients\",\"version\":\"1\"}],\"unknown_sources\":[\"data.offset\"]},\"resource_computations\":2}\ntest prepare::tests::semantic_resource_change_invalidates_stability ... ok\ntest prepare::tests::semantic_effect_change_invalidates_legality ... ok\n\ntest result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s\n\n    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.04s\n     Running unittests src/lib.rs (/tmp/sd-scripts-pliron-b-target/debug/deps/rmst_pliron_b-aadc1c1135b3c1d2)\n"
+}

@@ -1,0 +1,49 @@
+{
+  "accepted": [
+    "xdsl-frozen-unfused",
+    "xdsl-frozen-fused",
+    "xdsl-opaque-unfused",
+    "xdsl-opaque-fused",
+    "xdsl-invalid_output",
+    "xdsl-domain",
+    "xdsl-undeclared",
+    "xdsl-physical",
+    "pliron-frozen-unfused",
+    "pliron-frozen-fused",
+    "pliron-opaque-unfused",
+    "pliron-opaque-fused",
+    "pliron-invalid_output",
+    "pliron-domain",
+    "pliron-undeclared",
+    "pliron-physical"
+  ],
+  "rejected_wrong_computations": [
+    "xdsl-hidden_lane",
+    "pliron-hidden_lane"
+  ],
+  "rejected_observation_corruptions": [
+    "xdsl/payload",
+    "xdsl/origin",
+    "xdsl/physical",
+    "xdsl/missing_leaf",
+    "xdsl/feedback",
+    "xdsl/dispatch",
+    "xdsl/relabel",
+    "xdsl/early_release",
+    "xdsl/lost_physical_obligation",
+    "pliron/payload",
+    "pliron/origin",
+    "pliron/physical",
+    "pliron/missing_leaf",
+    "pliron/feedback",
+    "pliron/dispatch",
+    "pliron/relabel",
+    "pliron/early_release",
+    "pliron/lost_physical_obligation"
+  ],
+  "gil_before": false,
+  "gil_after": false,
+  "torch_imported": false,
+  "xdsl_imported": false,
+  "runtime_imported": false
+}

@@ -40,7 +40,7 @@ from .dialects import (
     integer,
     parse,
 )
-from .fusion import FusionError, groups as local_groups, rewrite as fuse_plan
+from .fusion import FusionError, GroupingEvidence, LocalAnalyses, groups as local_groups, rewrite as fuse_plan
 from .local_runtime import LocalProgram, Stage, compile_local
 from .local_contract import LocalTransform, ResourceUse, TransparentLocal
 from .payloads import DEFAULT_OUTCOMES, INTEGER, FrozenResource, PayloadCodec, PayloadContract, resolve_local
@@ -310,6 +310,7 @@ class Prepared:
     capacity: int
     local: LocalProgram
     local_contracts: Mapping[str, PayloadContract] = field(default_factory=dict)
+    local_analysis: GroupingEvidence | None = None
 
 
 class BindingDescription(Protocol):
@@ -585,8 +586,11 @@ def prepare(
         ]
     )
     plan.verify()
+    analyses = LocalAnalyses()
+    analyses.observe(plan, sources)
     if fuse:
-        plan = fuse_plan(plan, sources)
+        plan = fuse_plan(plan, sources, analyses=analyses)
+    analyses.observe(plan, sources)
     if saved_text is not None and (not isinstance(saved_text, str) or not saved_text):
         raise NotReady("saved prepared document must be nonempty text")
     text = dump(plan) if saved_text is None else saved_text
@@ -629,7 +633,7 @@ def prepare(
         if not operations or not all(isinstance(op, (CallOp, FusedOp)) for op in operations):
             raise NotReady(f"prepared {role}: nonempty call chain required")
         try:
-            groups = local_groups(operations, sources)
+            groups = local_groups(operations, sources, analyses=analyses if role == "producer" else None)
         except FusionError as error:
             raise NotReady(f"prepared {role}: {error}") from error
         calls = [op for group in groups for op in group]
@@ -697,4 +701,5 @@ def prepare(
         root.capacity.value.data,
         compile_local(tuple(tuple(Stage(call.origin, lowered[call.origin]) for call in group) for group in selected_groups["producer"])),
         MappingProxyType({source: resolution.contract for source, resolution in local_resolutions.items()}),
+        analyses.evidence(),
     )

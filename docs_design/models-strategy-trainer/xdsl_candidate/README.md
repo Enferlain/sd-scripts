@@ -16,9 +16,9 @@ The subsequent [matched lifetime case](lifetime_case.md) represents pending
 requests and separate consumer/producer/run settlement in xDSL, using the existing
 adapter and owner engine without Pliron IR machinery. Paired B controls and a
 valid opaque-offset variant start the [matched comparison](../matched_comparison.md).
-The [Pliron C port](../pliron_candidate/grant_case.md) now supplies reciprocal
-authority representation; resource-policy alignment and Pliron A/mixed remain
-later tasks.
+The [Pliron C port](../pliron_candidate/grant_case.md) supplies reciprocal
+authority representation. [Matched grouping](../grouping_comparison.md) now
+aligns resource policy and analysis checks; Pliron A/mixed remain later tasks.
 
 Earlier combined qualification: **471 research tests pass** with the GIL
 disabled before and after the full run; the Torch-free environment passes
@@ -652,8 +652,12 @@ unsupported bindings and illegal fusion reject during preparation. Historical
 manifests remain historical snapshots and are rejected if they differ from the
 current realization; this is not a stable artifact-compatibility promise.
 
-The unchanged fusion eligibility logic fuses the original pure scalar pair and
-keeps both resource-bearing pack and unfamiliar-schema unpack as barriers.
+At that extension milestone, fusion kept resource-bearing pack and unfamiliar
+input-schema unpack as barriers. The subsequent [matched grouping milestone](../grouping_comparison.md)
+uses a resource-use/stability summary: compatible typed unary stages with known
+pure or pinned frozen-read effects now group across both schema transitions.
+The four stages become one group; an executable opaque offset instead leaves
+three groups. Rewriting and cold group checks consult the same policy.
 Grouped/un-grouped execution preserves all six call facts per completed ticket.
 The two existing scalar owner adapters explicitly reject accepted unsupported
 local schemas during preparation; they do not silently acquire this new ABI.

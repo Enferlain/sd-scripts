@@ -1126,6 +1126,177 @@ pub fn load(accepted: &str, prepared: &str, manifest: Manifest) -> Checked<Artif
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pliron::irbuild::IRStatus;
+
+    fn source(ctx: &Context, op: Ptr<Operation>, id: &str) -> Option<Ptr<Operation>> {
+        if attr(ctx, op, "source_id").is_ok_and(|found| found == id) {
+            return Some(op);
+        }
+        for region in op.deref(ctx).regions() {
+            for block in region.deref(ctx).iter(ctx) {
+                for child in block.deref(ctx).iter(ctx) {
+                    if let Some(found) = source(ctx, child, id) {
+                        return Some(found);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    // A real semantic edit during preparation must invalidate cached legality.
+    // Update the corresponding call/header claims too, so the resulting plan
+    // can cold-verify against the changed accepted program and binding manifest.
+    struct ContractChange {
+        resource: bool,
+        manifest: Manifest,
+    }
+    impl Pass for ContractChange {
+        fn name(&self) -> &str {
+            "change_local_semantic_contract"
+        }
+        fn run(
+            &mut self,
+            plan: Ptr<Operation>,
+            ctx: &mut Context,
+            _analyses: &mut AnalysisManager,
+        ) -> IrResult<PassResult> {
+            let semantic = children(ctx, plan, 0).unwrap()[0];
+            let (id, key, value) = if self.resource {
+                ("pair.pack", "resource_version", "2")
+            } else {
+                ("data.offset", "effect", "may_effect")
+            };
+            set_attrs(
+                ctx,
+                source(ctx, semantic, id).unwrap(),
+                pairs(&[(key, value)]),
+            );
+            let meaning = meaning(ctx, semantic).unwrap();
+            check_manifest(&self.manifest, &meaning).unwrap();
+            set_attrs(ctx, plan, plan_attrs(ctx, semantic, meaning.horizon, 1));
+            for chain in children(ctx, plan, 1).unwrap() {
+                if !is::<ChainOp>(ctx, chain) {
+                    continue;
+                }
+                let expected = if attr(ctx, chain, "role").unwrap() == "producer" {
+                    &meaning.producer
+                } else {
+                    &meaning.consumer
+                };
+                for (call, required) in children(ctx, chain, 0).unwrap().iter().zip(expected) {
+                    set_attrs(ctx, *call, call_attrs(required, &self.manifest));
+                }
+            }
+            verify_operation(plan, ctx).unwrap();
+            let mut result = PassResult::default();
+            result.ir_changed = IRStatus::Changed;
+            // No preservation claim: both source and resource semantics changed.
+            Ok(result)
+        }
+    }
+
+    fn changed_contract(resource: bool) {
+        let saved: serde_json::Value = serde_json::from_str(include_str!(
+            "../../evidence_extension/unfused/artifact.json"
+        ))
+        .unwrap();
+        let mut manifest: Manifest = serde_json::from_value(saved["manifest"].clone()).unwrap();
+        if resource {
+            manifest
+                .resources
+                .get_mut("pair_coefficients")
+                .unwrap()
+                .version = "2".into();
+            manifest
+                .bindings
+                .get_mut("pack_pair_v1")
+                .unwrap()
+                .resources
+                .as_mut()
+                .unwrap()[0]
+                .version = "2".into();
+        } else {
+            let offset = manifest.bindings.get_mut("offset_v1").unwrap();
+            offset.effect = "may_effect".into();
+            offset.resources = None;
+        }
+        let ctx = &mut Context::new();
+        let plan = parse(ctx, saved["prepared"].as_str().unwrap()).unwrap();
+        let mut analyses = AnalysisManager::default();
+        let before = analyses
+            .get_analysis::<ResourceAnalysis>(plan, ctx)
+            .unwrap()
+            .0
+            .clone();
+        assert!(before.permits("data.offset"));
+        let mut pipeline = Passes::default();
+        pipeline.add_pass(Observe);
+        pipeline.add_pass(ContractChange {
+            resource,
+            manifest: manifest.clone(),
+        });
+        pipeline.add_pass(Observe);
+        pipeline.add_pass(FusionPass);
+        pipeline.add_pass(Observe);
+        pipeline.run(plan, ctx, &mut analyses).unwrap();
+        let mut after = analyses
+            .get_analysis::<ResourceAnalysis>(plan, ctx)
+            .unwrap()
+            .0
+            .clone();
+        after.computations = count(&analyses, &RESOURCE_COMPUTATIONS);
+        assert_eq!(count(&analyses, &RESOURCE_COMPUTATIONS), 2);
+        assert_eq!(count(&analyses, &SOURCE_COMPUTATIONS), 2);
+        assert_eq!(after.permits("data.offset"), resource);
+        assert_eq!(after.reads[0].version, if resource { "2" } else { "1" });
+        assert_eq!(
+            after.unknown_sources,
+            if resource {
+                vec![]
+            } else {
+                vec!["data.offset".to_string()]
+            }
+        );
+        let expected_groups = if resource { 1 } else { 3 };
+        let observations = analyses.pm_data().state().custom_state[&OBSERVATIONS]
+            .downcast_ref::<Vec<(usize, usize, usize)>>()
+            .unwrap();
+        assert_eq!(
+            *observations,
+            vec![(4, 1, 1), (4, 2, 2), (expected_groups, 3, 2)]
+        );
+        let semantic = children(ctx, plan, 0).unwrap()[0];
+        let text = plan.deref(ctx).disp(ctx).to_string();
+        // Export the finished plan first. A standalone semantic print needs
+        // its own outlined attributes, which the printer emits at a root.
+        semantic.unlink(ctx);
+        let accepted = semantic.deref(ctx).disp(ctx).to_string();
+        let cold = load(&accepted, &text, manifest).unwrap();
+        assert_eq!(cold.producer.len(), expected_groups);
+        assert_eq!(cold.resource_analysis.reads, after.reads);
+        println!(
+            "RESOURCE_CHANGE_PROBE {}",
+            serde_json::json!({
+                "change": if resource { "resource_version" } else { "opaque_effect" },
+                "observations": observations,
+                "resource_computations": count(&analyses, &RESOURCE_COMPUTATIONS),
+                "resource_analysis": after,
+                "cold_verified_groups": cold.producer.len()
+            })
+        );
+    }
+
+    #[test]
+    fn semantic_effect_change_invalidates_legality() {
+        changed_contract(false);
+    }
+
+    #[test]
+    fn semantic_resource_change_invalidates_stability() {
+        changed_contract(true);
+    }
+
     #[test]
     fn partial_known_reads_do_not_hide_unknown_effects() {
         let read = ResourceUse {

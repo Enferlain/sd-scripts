@@ -1,0 +1,443 @@
+{
+  "schema": 1,
+  "date": "2026-11-01",
+  "bead": "sd-scripts-syv.31.25.4",
+  "base_commit": "4558da99880983af8419bd144e9254589a5847ee",
+  "scope": "Match typed unary/pinned frozen-read grouping across xDSL and Pliron; real resource/effect analysis invalidation, cold legality and preserved stage guards. No A/mixed port, performance measurement or adoption.",
+  "pins": {
+    "xdsl": "0.74.0",
+    "pliron": "=0.20.0",
+    "python": "3.14t"
+  },
+  "prior_external_review": {
+    "input": "User reported no actionable external review input on committed result through4558da99 and authorized continuation.",
+    "qualification": "No full external report/provider/rerun detail supplied. Historical C review-mcp HTTP429 remains failed; user assessment is separate."
+  },
+  "new_tests": {
+    "python_matched": 21,
+    "native_semantic_mutation": 2,
+    "total": 23
+  },
+  "python_gates": {
+    "torchfree_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "skipped": 6,
+        "passed": 660
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/pliron_candidate",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "seconds": 47.65146087600442,
+      "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+      "torch_imported": false,
+      "output": "........................................................................ [ 10%]\n........................................................................ [ 21%]\n........................................................................ [ 32%]\n........................................................................ [ 43%]\n........................................................................ [ 54%]\n........................................................................ [ 65%]\n........................................................................ [ 76%]\n........................................................................ [ 87%]\n........................................................................ [ 98%]\n............                                                             [100%]\n=========================== short test summary info ============================\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py:24: composition owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_grant_runtime.py:22: C owner target requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_grant_runtime.py:29: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_lifetime_runtime.py:20: lifetime owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_mixed_runtime.py:25: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_model_runtime.py:29: could not import 'torch': No module named 'torch'\n660 passed, 6 skipped in 47.45s\n"
+    },
+    "owner_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "passed": 706
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+        "docs_design/models-strategy-trainer/pliron_candidate/test_grant_runtime.py",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "seconds": 85.61988514599943,
+      "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+      "torch_imported": true,
+      "output": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 30%]\n........................................................................ [ 40%]\n........................................................................ [ 50%]\n........................................................................ [ 61%]\n........................................................................ [ 71%]\n........................................................................ [ 81%]\n........................................................................ [ 91%]\n..........................................................               [100%]\n706 passed in 85.40s (0:01:25)\n",
+      "torch": "2.14.1+cu130",
+      "cuda_initialized": false
+    }
+  },
+  "gate_scope": "Torch-free and owner scopes overlap and must not be added. Existing optional owner tests skipped only in the Torch-free process. Owner scope excludes pure Pliron B/extension tests that require Torch to be absent.",
+  "quality": {
+    "native_all_targets": "pass: cargo test --locked --manifest-path docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml --all-targets -- --nocapture;3native unit tests,other binaries0; allPython/native fixture locked builds pass",
+    "native_clippy": "pass: cargo clippy --locked --manifest-path docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml --all-targets -- -D warnings",
+    "native_format": "pass: cargo fmt --manifest-path docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml -- --check",
+    "ruff_check": "pass: evidence_grouping and five changed/new xDSL Python files",
+    "ruff_format": "pass:7Python files, historical Markdown snapshots excluded",
+    "ty": "pass: same scope with --python /tmp/sd-scripts-pliron-composition-owner-env/bin/python --extra-search-path docs_design/models-strategy-trainer",
+    "git_diff_check": "pass",
+    "environment": "Reused existing Torch-free/owner environments, no installs or GIL override. Owner gate reports no CUDA initialization."
+  },
+  "capture": {
+    "schema": 1,
+    "bead": "sd-scripts-syv.31.25.4",
+    "reports": 18,
+    "gil_before": false,
+    "gil_after": false,
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "torch_imported": false,
+    "limit": "Correctness/grouping observations only; counts are not a framework performance result.",
+    "controls_file": "capture_run.json (eight actual variant receipts with analysis observations)"
+  },
+  "independent_replay": {
+    "accepted": [
+      "xdsl-frozen-unfused",
+      "xdsl-frozen-fused",
+      "xdsl-opaque-unfused",
+      "xdsl-opaque-fused",
+      "xdsl-invalid_output",
+      "xdsl-domain",
+      "xdsl-undeclared",
+      "xdsl-physical",
+      "pliron-frozen-unfused",
+      "pliron-frozen-fused",
+      "pliron-opaque-unfused",
+      "pliron-opaque-fused",
+      "pliron-invalid_output",
+      "pliron-domain",
+      "pliron-undeclared",
+      "pliron-physical"
+    ],
+    "rejected_wrong_computations": [
+      "xdsl-hidden_lane",
+      "pliron-hidden_lane"
+    ],
+    "rejected_observation_corruptions": [
+      "xdsl/payload",
+      "xdsl/origin",
+      "xdsl/physical",
+      "xdsl/missing_leaf",
+      "xdsl/feedback",
+      "xdsl/dispatch",
+      "xdsl/relabel",
+      "xdsl/early_release",
+      "xdsl/lost_physical_obligation",
+      "pliron/payload",
+      "pliron/origin",
+      "pliron/physical",
+      "pliron/missing_leaf",
+      "pliron/feedback",
+      "pliron/dispatch",
+      "pliron/relabel",
+      "pliron/early_release",
+      "pliron/lost_physical_obligation"
+    ],
+    "gil_before": false,
+    "gil_after": false,
+    "torch_imported": false,
+    "xdsl_imported": false,
+    "runtime_imported": false
+  },
+  "native_mutation_probes": {
+    "exit_code": 0,
+    "command": [
+      "cargo",
+      "test",
+      "--locked",
+      "--manifest-path",
+      "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml",
+      "--lib",
+      "--",
+      "--nocapture"
+    ],
+    "purpose": "Retain actual native semantic-change/preservation witnesses; all-target native gate already passed.",
+    "probes": [
+      {
+        "change": "resource_version",
+        "cold_verified_groups": 1,
+        "observations": [
+          [
+            4,
+            1,
+            1
+          ],
+          [
+            4,
+            2,
+            2
+          ],
+          [
+            1,
+            3,
+            2
+          ]
+        ],
+        "resource_analysis": {
+          "computations": 2,
+          "decisions": [
+            {
+              "groupable": true,
+              "origin": "data.double",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "data.offset",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.pack",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.first",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            }
+          ],
+          "reads": [
+            {
+              "access": "read_frozen",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+              "symbol": "pair_coefficients",
+              "version": "2"
+            }
+          ],
+          "unknown_sources": []
+        },
+        "resource_computations": 2
+      },
+      {
+        "change": "opaque_effect",
+        "cold_verified_groups": 3,
+        "observations": [
+          [
+            4,
+            1,
+            1
+          ],
+          [
+            4,
+            2,
+            2
+          ],
+          [
+            3,
+            3,
+            2
+          ]
+        ],
+        "resource_analysis": {
+          "computations": 2,
+          "decisions": [
+            {
+              "groupable": true,
+              "origin": "data.double",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": false,
+              "origin": "data.offset",
+              "reason": "target scalar-async-cpu-v1 declines grouping: unknown resource access/effect may_effect"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.pack",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            },
+            {
+              "groupable": true,
+              "origin": "pair.first",
+              "reason": "ordered unary schemas; frozen snapshots pinned; preserve every guard/outcome/completion"
+            }
+          ],
+          "reads": [
+            {
+              "access": "read_frozen",
+              "digest": "49a64717d5d4cb19952e6eac2946415cf6879adacf9908e7d872332d32c6e684",
+              "symbol": "pair_coefficients",
+              "version": "1"
+            }
+          ],
+          "unknown_sources": [
+            "data.offset"
+          ]
+        },
+        "resource_computations": 2
+      }
+    ]
+  },
+  "analysis_mechanisms": {
+    "xdsl": "Project-owned per-preparation full dependency snapshots cache source/resource eligibility and dispatch-group structure separately. Grouping preserves the resource key; valid effect/version/digest edits recompute it. Framework pattern walker/rewriter supplies actual IR transformation, not this cache.",
+    "pliron": "Existing framework AnalysisManager/Passes cache/invalidate. New test pass updates semantic and prepared/header/binding contracts, declares no preservation, and recomputes resource/source. Subsequent FusionPass preserves resource/source and invalidates dispatch. Native core grouping code unchanged.",
+    "cold_boundary": "Both use fresh verified source/contracts, never serialized analysis output, before factories. New forged group claims preserve valid leaf bindings but cross the executable opaque offset.",
+    "interpretation": "Counters establish chosen transformations and cache reuse/invalidation; not performance or equivalent framework contribution."
+  },
+  "preservation": {
+    "historical_artifact_hashes_verified": {
+      "pliron_candidate/evidence/qualification.json": 41,
+      "pliron_candidate/evidence_composition/qualification.json": 25,
+      "evidence_matched/qualification.json": 35,
+      "pliron_candidate/evidence_grant/qualification.json": 35
+    },
+    "original_candidate_tracked_files_unchanged": 45,
+    "protected_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+    "native_manifest_and_lock_unchanged": true,
+    "production_governing_spec_changes": [],
+    "native_production_change": "none: native/src/prepare.rs diff only adds cfg(test) probes; native grouping/ABI remain unchanged",
+    "historical_qualification_sources": "Older source hashes remain tied to their own milestones. This record hashes current grouping sources, without rewriting older qualifications."
+  },
+  "graph": {
+    "project": "home-imi-Projects-sd-scripts",
+    "tier": 2,
+    "generation_at_initial_search": "2026-11-01T17:26:41Z",
+    "coverage_generation": "2026-11-01T18:08:40Z",
+    "coverage": "First7pluslater11relied paths no_recorded_issue/metadata_match, no remaining pages. Source fallback for missing extension.py graph path found actual pair_extension.py, then graph searched/covered.",
+    "trace": "fusion.rewrite has prepare,model_adapter,mixed_adapter callers plus C no-op/fusion regression callers. Native pass internals and dynamic extension/bridge code directly verified.",
+    "limitation": "Best effort, not exhaustive. Exact installed pinned xDSL passes.py and Pliron0.20.0 pass.rs/cloning.rs read for APIs and attribution.",
+    "final_coverage": {
+      "generation": "2026-11-01T19:27:27Z",
+      "paths": 8,
+      "status": "All changed/new Python and Rust code paths checked: no_recorded_issue and metadata_match, no remaining pages. Best effort, not completeness."
+    }
+  },
+  "development_corrections": [
+    "Initial focused gate:80pass/1fail from the superseded three-group extension expectation; updated to required one group, then81pass. Nested-fusion corruption case renamed to reflect that pack/first are now individually eligible.",
+    "Initial native mutation probe printed a still-nested semantic op without root outlined attributes; corrected standalone export after saving the full prepared document. Both valid changed documents now cold-verify.",
+    "Initial replay expected an integer diagnostic count; actual scalar observations retain an empty list. Checker corrected, raw reports unchanged.",
+    "Ruff precedence/pairwise/raw-regex findings corrected before final checks.",
+    "Raw native log matched the root ignore rule; preserved its exact output inside the committed native_probes.json instead of leaving a referenced ignored artifact."
+  ],
+  "review": {
+    "status": "failed",
+    "provider": "review-mcp",
+    "model": "glm-5.3",
+    "diff_target": "HEAD",
+    "diff_base_commit": "4558da99880983af8419bd144e9254589a5847ee",
+    "result_ok": false,
+    "artifact_directory": "/tmp/review-mcp-run-qvs52avv",
+    "result_file": "review.md",
+    "status_file": "review_status.json",
+    "provider_error": "HTTP429: 5-hour usage limit reached; reset string2026-11-02 03:29:49, timezone unspecified",
+    "duration_seconds": 9.271775007247925,
+    "claims": "Explicit provider failure, no assessment/approval. Local executed gates/replay are separate. No alternate provider or subagent review attempted."
+  },
+  "local_links": {
+    "checked": 93,
+    "missing": []
+  },
+  "limits": [
+    "Shared existing scalar runtime/guard compiler and independent oracles; not a second ownership implementation.",
+    "Immutable snapshots/cooperative Python completion only; no mutable-resource authority, security isolation or GPU qualification.",
+    "No SSA result replacement or numerical tensor IR.",
+    "Pliron B bridge incidentally imports xDSL codec/data definitions; fresh children disable xDSL IR entry points. xDSL children block Pliron imports.",
+    "No matched costs or preference decision; xDSL remains provisional baseline. Pliron A/mixed and evidence/decision tasks remain open."
+  ],
+  "source_sha256": {
+    "CHANGELOG.md": "53d527870e0f461fc57c0fdf07258be3ea24d8773dad58972e952ac1a5df7b0c",
+    "ROADMAP.md": "88742d469fac302e805a97dc4f38ae6034a58324f95b080704e65dd6c1c5503b",
+    "docs_design/models-strategy-trainer/matched_comparison.md": "9a2111e724fba33da3fca83a16ff7b83bc01a9d0e332021da42fa0c887c59722",
+    "docs_design/models-strategy-trainer/comparison_fixtures.json": "e1560dc7d913ec6833d34ac76d34ebac5c76bdc4d9db7f81f8e34c034d3ece4f",
+    "docs_design/models-strategy-trainer/grouping_comparison.md": "6d50c224cd54af2f4e534f44f5a0fceda1ce79d6fbd458432c4956a63e870653",
+    "docs_design/models-strategy-trainer/xdsl_candidate/fusion.py": "ebf7e1083bd1b90af833e6f24e8edaae46992ac1040ae493901188068ca284f5",
+    "docs_design/models-strategy-trainer/xdsl_candidate/prepare.py": "f8124fb502f28ede4488cd9f07700d91b7149bb74e5b99b59e559c81835b843a",
+    "docs_design/models-strategy-trainer/xdsl_candidate/local_contract.py": "ccb54913fca48229955fe3e68a13b3a2481487a78204e283fac4e329e1beeb83",
+    "docs_design/models-strategy-trainer/xdsl_candidate/payloads.py": "e726641b34a88cf10443bcbb0a1da69cfba7a25671c87df31d22624f5a0fbc45",
+    "docs_design/models-strategy-trainer/xdsl_candidate/local_runtime.py": "c938b853e6827c1a10c97ff66e2c29b3778b86fba70e6edf01567b665255bd72",
+    "docs_design/models-strategy-trainer/xdsl_candidate/pair_extension.py": "fb9b8636604e9139fa3a618b88caae15c4aed2479bbc7315b0ff8772bd67405b",
+    "docs_design/models-strategy-trainer/xdsl_candidate/test_extension.py": "c25eedce2c87c7ea069c3f13b8e29fda4e89314b9d19932c10e5c25a426132a1",
+    "docs_design/models-strategy-trainer/xdsl_candidate/test_fusion.py": "6d2c84100b76a2f4a813335b8f31e617ffa9069be5529d8602deca3c4097a4bb",
+    "docs_design/models-strategy-trainer/xdsl_candidate/test_grouping_comparison.py": "0e6fba8d1b9ff046c3bd0dc05915f042f78435fb94543dd94aca7343310d508d",
+    "docs_design/models-strategy-trainer/xdsl_candidate/extension_conformance.py": "6b31e02af2223f33efff7015e49612c7b60d9d1d4b39fc006e17c6957d465f5e",
+    "docs_design/models-strategy-trainer/xdsl_candidate/conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "docs_design/models-strategy-trainer/xdsl_candidate/README.md": "c771806fef746c8d039c85969d7d7f153d3780920957432ce31cdc6441dba483",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/prepare.rs": "d0215269f4711aa867979b3ed39849e8974d277571975aa1539b307c0f564449",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/contract.rs": "908339c9bd6adeb9fce85e41e9f43d79e90242eb64024f0b82a23feb383fd921",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml": "d47a5552a2e0bceae39d3b0a8d6efe5f026121f6d3b5927692f5eb604f045b4e",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.lock": "77b0a27c4deffcba7960dce670a025335b7dc15ea0650d4bdeb06745c8224a6c",
+    "docs_design/models-strategy-trainer/pliron_candidate/pair_extension.py": "41d8e419aa83e18a06d5fa61b0824790d10f275b1d0a1018d80ec343b8ee9afd",
+    "docs_design/models-strategy-trainer/pliron_candidate/bridge.py": "ceaf610b3b7fdb793431a87143ee480f31e13350086cec60c32116438a919ff2",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_extension.py": "568c1b2c02544f112c13489f51cdf8f84049a4092ad32716a9b70c5e32ddeb9c",
+    "docs_design/models-strategy-trainer/pliron_candidate/README.md": "a0eb1bb1c3f5d2700936995386b56cf947334f79bcfb7b4c5a3b6343bb10fbba",
+    "docs_design/models-strategy-trainer/evidence_grouping/capture.py": "7bec4f6b40ce1aea50bb65d0188eabf377be00d1415c336985f0189584bb22ea",
+    "docs_design/models-strategy-trainer/evidence_grouping/replay.py": "d41c2155e20f6e6e8dfef0db650a51fda6128656787e3042b85395812a8c8459"
+  },
+  "artifact_sha256": {
+    "capture_run.json": "c88b4651f549b4534c4af809240662029a3893b73636cfdb211618bb66aeeefb",
+    "cases/pliron-frozen-fused/artifact.json": "16a9866fe6f6e5ebbaf8e8d17336ab3142d9d743fa289e7a864060004a18d9ef",
+    "cases/pliron-frozen-unfused/artifact.json": "61a282662f1b89b76db715bb6b9aa1cd805ff6df831fd294c42b014d8f433538",
+    "cases/pliron-opaque-fused/artifact.json": "41200b8338a013a2d3ba7d32baef259342d28fee189e96777c1146048980a512",
+    "cases/pliron-opaque-unfused/artifact.json": "419a318b7132a94a9c8b5a504a680591912022796e7e90a92f962613dd12da30",
+    "cases/xdsl-frozen-fused/artifact.json": "5ee37645e8520e9ae1dba58fdda547a16c7140d8dd7d14fed082dfc05303fc92",
+    "cases/xdsl-frozen-unfused/artifact.json": "a687cd6a5e044a752667058b7317082fd9f8008552abf07bbde5ad3f5d9cc558",
+    "cases/xdsl-opaque-fused/artifact.json": "9e58475ea188386a965f575d61a345fcebbd72fad6f5b8ebdcbcdfcde855baea",
+    "cases/xdsl-opaque-unfused/artifact.json": "1264f0af81492b3d1df993e2b19a10afdea8e7efa41d55e7cea3ee5735ffaa52",
+    "native_probes.json": "c7d0251f0364f6837be73e0d382ecbfbe1ece4589fdcc0949cc0497b018e0c1e",
+    "owner_tests.json": "ffd850636a6787a43495a274e38abf7dff2788025d5ccaa9e8cabd5448ce76f7",
+    "replay.json": "f25d1f3fc10cbda34ce9c34d2fd9b157c5d1350254dd817c55438a85ca0e7f8c",
+    "reports.json": "ed17b39164476a5c4c051937519dc129c1546bb9855fd263437a5030ab77480a",
+    "torchfree_tests.json": "311def55c3dcd24a706c5febcd5d402568fdf2822df1600e49d92af5994e5ce0",
+    "review.md": "3f7f7798f4ddbb17c8e36e3bf4c822052ba29bc3686b7a45dd6f626ea3fab3ad",
+    "review_status.json": "a693f88a24b874d30d42b12e4dfe87f5b35c6e651d112ec03901f1ebf7a98a19",
+    "review_sol.md": "51203c4e75725df923797fa7848497409a075bb80f86c0531e6b8fd47b90ccaf"
+  },
+  "changes_after_gates": [
+    "Documented and retained explicit failed provider review; source-hash refresh reflects that documentation only. No implementation/test edits followed final scoped gates.",
+    "User-authorized GPT-6.1 Sol medium read-only fallback review completed without actionable findings; retained review and documentation only, no implementation changes."
+  ],
+  "fallback_review": {
+    "status": "completed_no_actionable_findings",
+    "authorization": "User requested GPT-6.1 Sol medium when review-mcp does not work.",
+    "provider": "native collaboration",
+    "task": "/root/grouping_review_sol",
+    "model": "gpt-6.1-sol",
+    "reasoning_effort": "medium",
+    "diff_target": "HEAD",
+    "diff_base_commit": "4558da99880983af8419bd144e9254589a5847ee",
+    "result_file": "review_sol.md",
+    "findings": [],
+    "implementation_changes_required": false,
+    "independent_validation": {
+      "focused_python": {
+        "passed": 102,
+        "seconds": 6.41,
+        "files": [
+          "xdsl_candidate/test_grouping_comparison.py",
+          "xdsl_candidate/test_extension.py",
+          "xdsl_candidate/test_fusion.py"
+        ]
+      },
+      "native_lib_tests": {
+        "passed": 3
+      },
+      "retained_replay": {
+        "truthful_accepted": 16,
+        "wrong_computations_rejected": 2,
+        "observation_corruptions_rejected": 18,
+        "gil_before": false,
+        "gil_after": false,
+        "frameworks_and_runtime_unimported": true,
+        "result_identical_without_writing": true
+      },
+      "graph_coverage": {
+        "paths": 15,
+        "status": "no_recorded_issue/metadata_match",
+        "remaining_pages": false
+      },
+      "review_input_source_artifact_hashes": "all matched against review inputs; later documentation/evidence updates are parent-verified"
+    },
+    "limits": "Read-only bounded review and focused reruns; no repetition of full660/706gates or fresh evidence capture. Earlier review-mcp failure remains failed."
+  }
+}

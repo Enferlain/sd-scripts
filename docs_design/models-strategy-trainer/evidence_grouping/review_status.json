@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "pid": 6247,
+  "started_at": 1793561255.601458,
+  "cwd": "/home/imi/Projects/sd-scripts",
+  "state": "failed",
+  "result_available": true,
+  "request": {
+    "entrypoint": "mcp",
+    "workspace": "/home/imi/Projects/sd-scripts",
+    "diff_target": "HEAD",
+    "context_files": [
+      "AGENTS.md",
+      "docs_design/models-strategy-trainer/matched_comparison.md",
+      "docs_design/models-strategy-trainer/grouping_comparison.md",
+      "docs_design/models-strategy-trainer/evidence_grouping/qualification.json"
+    ],
+    "focus_files": [
+      "docs_design/models-strategy-trainer/xdsl_candidate/fusion.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/prepare.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/pair_extension.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/test_extension.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/test_grouping_comparison.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/native/src/prepare.rs",
+      "docs_design/models-strategy-trainer/evidence_grouping/capture.py",
+      "docs_design/models-strategy-trainer/evidence_grouping/replay.py"
+    ],
+    "task_description": "Review matched grouping milestone sd-scripts-syv.31.25.4 only, staged against HEAD4558da99. xDSL now derives resource-use/stability decisions through LocalTransform/TransparentLocal, allows compatible unary schema changes and pinned frozen reads/domain outcomes, and uses that same summary for actual PatternRewriteWalker grouping and decoded cold group legality. Per-preparation project-owned LocalAnalyses dependency snapshots cache resource decisions/dispatch groups; explicitly NOT a framework analysis manager or speed claim. Four-map extension must group4to1; valid opaque OFFSET executes unfused first, then groups3 with pack/first; forged cold group across offset with fake analysis metadata rejects before factory. Inspect cache keys, full correspondence/boundary checks and regressions for per-stage guards/outcomes/physical completion. Pliron production policy unchanged: diff only cfg(test) real semantic effect/resource-version mutation passes, updating prepared/header/installed binding claims, framework invalidation followed by fusion preserving summary, and cold verification of both resulting artifacts. Existing scalar runtime/guard compiler/oracles unchanged.21new Python tests+2native tests. Final full declared gates660Torch-free+6optional owner skips and706owner pass,GILfalse before/after;native all-target tests/Clippy/fmt,Ruff,ty pass.18actual reports:16truthful reports accepted by import-independent replay,2real hidden-lane errors rejected plus18observation corruptions.8normal artifacts. Prior report/45original owner files/pins/136historical artifacts unchanged. No A/mixed port, SSA result replacement, native backend sharing, language/framework adoption or performance inference. Review source/correctness/evidence claims; raw report/artifact JSON is retained evidence, not independent machinery.",
+    "model": null,
+    "reasoning_effort": null
+  },
+  "result_ok": false,
+  "chars": 145,
+  "exit_code": 1,
+  "finished_at": 1793561264.873233
+}

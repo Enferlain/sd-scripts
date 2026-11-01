@@ -87,12 +87,22 @@ async def first_lane(value):
     return value[0]
 
 
-def extension_registry() -> Registry:
+def extension_registry(*, opaque: bool = False, effects: list[int] | None = None) -> Registry:
     base = registry()
+    bindings = dict(base.bindings)
+    if opaque:
+
+        async def offset(value):
+            if effects is not None:
+                effects.append(value)
+            await asyncio.sleep(0)
+            return value + 1
+
+        bindings["offset_v1"] = replace(bindings["offset_v1"], effect="may_effect", invoke=offset)
     return replace(
         base,
         name="independent-pair-fixture-v1",
-        bindings=dict(base.bindings)
+        bindings=bindings
         | {
             "pack_pair_v1": Binding(
                 "1",
@@ -118,8 +128,11 @@ def extension_registry() -> Registry:
     )
 
 
-def build_extension() -> ModuleOp:
-    module = build()
+def build_extension(*, opaque: bool = False, horizon: int = 2) -> ModuleOp:
+    module = build(horizon=horizon)
+    if opaque:
+        offset = next(op for op in module.walk() if isinstance(op, MapOp) and op.source_id.data == "data.offset")
+        offset.properties["effect"] = StringAttr("may_effect")
     nested = next(op for op in module.walk() if isinstance(op, LocalOp))
     yield_op = nested.body.block.last_op
     assert isinstance(yield_op, YieldOp)
