@@ -1,0 +1,1526 @@
+{
+  "calls-i0.8-plain": {
+    "kind": "normal",
+    "initial": 0.8,
+    "clip": null,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5840000510215759,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "calls-i0.8-clip": {
+    "kind": "normal",
+    "initial": 0.8,
+    "clip": 1.0,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.75,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "calls-i0.6-plain": {
+    "kind": "normal",
+    "initial": 0.6,
+    "clip": null,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.6000000238418579,
+        "selected_end_weight": 0.6000000238418579,
+        "selected_gradient": 1.4400005340576172,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.527999997138977,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "calls-i0.6-clip": {
+    "kind": "normal",
+    "initial": 0.6,
+    "clip": 1.0,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.6000000238418579,
+        "selected_end_weight": 0.6000000238418579,
+        "selected_gradient": 1.4400005340576172,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5500000715255737,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "inline-i0.8-plain": {
+    "kind": "normal",
+    "initial": 0.8,
+    "clip": null,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5840000510215759,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "inline-i0.8-clip": {
+    "kind": "normal",
+    "initial": 0.8,
+    "clip": 1.0,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.75,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "inline-i0.6-plain": {
+    "kind": "normal",
+    "initial": 0.6,
+    "clip": null,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.6000000238418579,
+        "selected_end_weight": 0.6000000238418579,
+        "selected_gradient": 1.4400005340576172,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.527999997138977,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "inline-i0.6-clip": {
+    "kind": "normal",
+    "initial": 0.6,
+    "clip": 1.0,
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.6000000238418579,
+        "selected_end_weight": 0.6000000238418579,
+        "selected_gradient": 1.4400005340576172,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5500000715255737,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "restored_raises": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (failed after restoring)"
+        },
+        {
+          "type": "RuntimeError",
+          "message": "failed after restoring"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": 4.319999694824219,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "incomplete": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (Incomplete two-pass handback)"
+        },
+        {
+          "type": "NotReady",
+          "message": "Incomplete two-pass handback"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 1.0399999618530273,
+        "selected_gradient": 2.4000000953674316,
+        "restored": false,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          }
+        ]
+      },
+      "final_weight": 1.0399999618530273,
+      "final_gradient": 2.4000000953674316,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "missing_gradient": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (No final gradient to hand back)"
+        },
+        {
+          "type": "NotReady",
+          "message": "No final gradient to hand back"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": null,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": null,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "edited_after_restore": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (Current view was not restored)"
+        },
+        {
+          "type": "NotReady",
+          "message": "Current view was not restored"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.9000000357627869,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.9000000357627869,
+      "final_gradient": 4.319999694824219,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "phase_order": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (Unsupported restoration phase)"
+        },
+        {
+          "type": "NotReady",
+          "message": "Unsupported restoration phase"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": null,
+        "restored": false,
+        "phases": []
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": null,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "final_advance": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure ('GrantedAccess' object has no attribute 'advance')"
+        },
+        {
+          "type": "AttributeError",
+          "message": "'GrantedAccess' object has no attribute 'advance'"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": null,
+        "restored": false,
+        "phases": []
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": null,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "unverified_no_history": {
+    "kind": "unverified",
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (restored but not handed back)"
+        },
+        {
+          "type": "RuntimeError",
+          "message": "restored but not handed back"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": 4.319999694824219,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "physical-cancel0-fail0": {
+    "kind": "physical",
+    "cancel": false,
+    "fail": false,
+    "witness": {
+      "writer_held": true,
+      "pending_without_token": true,
+      "steps_before_return": 0,
+      "active_workers": 1,
+      "run_live": true
+    },
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5840000510215759,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "physical-cancel0-fail1": {
+    "kind": "physical",
+    "cancel": false,
+    "fail": true,
+    "witness": {
+      "writer_held": true,
+      "pending_without_token": true,
+      "steps_before_return": 0,
+      "active_workers": 1,
+      "run_live": true
+    },
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (physical grant failed after restoration)"
+        },
+        {
+          "type": "PhysicalFailed",
+          "message": "physical grant failed after restoration"
+        },
+        {
+          "type": "RuntimeError",
+          "message": "physical grant failed after restoration"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": 4.319999694824219,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "physical-cancel1-fail0": {
+    "kind": "physical",
+    "cancel": true,
+    "fail": false,
+    "witness": {
+      "writer_held": true,
+      "pending_without_token": true,
+      "steps_before_return": 0,
+      "active_workers": 1,
+      "run_live": true,
+      "stop_seen": true
+    },
+    "report": {
+      "status": "cancelled",
+      "errors": [
+        {
+          "type": "CancelledError",
+          "message": ""
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": 4.319999694824219,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "physical-cancel1-fail1": {
+    "kind": "physical",
+    "cancel": true,
+    "fail": true,
+    "witness": {
+      "writer_held": true,
+      "pending_without_token": true,
+      "steps_before_return": 0,
+      "active_workers": 1,
+      "run_live": true,
+      "stop_seen": true
+    },
+    "report": {
+      "status": "cancelled",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "selected-two-pass: post-invocation failure (physical grant failed after restoration)"
+        },
+        {
+          "type": "PhysicalFailed",
+          "message": "physical grant failed after restoration"
+        },
+        {
+          "type": "RuntimeError",
+          "message": "physical grant failed after restoration"
+        },
+        {
+          "type": "CancelledError",
+          "message": ""
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": false,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": 4.319999694824219,
+      "epoch": 0,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "unverified_grant",
+          "optimizer": "not_attempted",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": null,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": false,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "partial_optimizer": {
+    "kind": "partial",
+    "phase": "optimizer",
+    "retry_rejected": true,
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "retained-final-step: post-invocation failure (retained failure after effects)"
+        },
+        {
+          "type": "RuntimeError",
+          "message": "retained failure after effects"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5840000510215759,
+      "final_gradient": 4.319999694824219,
+      "epoch": 1,
+      "steps": 0,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "uncertain",
+          "reset": "not_attempted",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": true,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "partial_reset": {
+    "kind": "partial",
+    "phase": "reset",
+    "retry_rejected": true,
+    "report": {
+      "status": "failed",
+      "errors": [
+        {
+          "type": "WorkFailed",
+          "message": "retained-final-step: post-invocation failure (retained failure after effects)"
+        },
+        {
+          "type": "RuntimeError",
+          "message": "retained failure after effects"
+        }
+      ],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.5840000510215759,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "uncertain",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": true,
+      "handback_verified": true,
+      "unusable": [
+        "model"
+      ],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "wrong_optimizer_calls": {
+    "kind": "wrong_computation",
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  },
+  "wrong_optimizer_inline": {
+    "kind": "wrong_computation",
+    "report": {
+      "status": "stopped",
+      "errors": [],
+      "selected": {
+        "entered": true,
+        "selected_returned": true,
+        "initial_weight": 0.800000011920929,
+        "selected_end_weight": 0.800000011920929,
+        "selected_gradient": 4.319999694824219,
+        "restored": true,
+        "phases": [
+          {
+            "phase": "backward",
+            "origin": "phase.0.backward"
+          },
+          {
+            "phase": "temporary_edit",
+            "origin": "phase.1.temporary_edit"
+          },
+          {
+            "phase": "intermediate_reset",
+            "origin": "phase.2.intermediate_reset"
+          },
+          {
+            "phase": "backward",
+            "origin": "phase.3.backward"
+          },
+          {
+            "phase": "restore",
+            "origin": "phase.4.restore"
+          }
+        ]
+      },
+      "final_weight": 0.800000011920929,
+      "final_gradient": null,
+      "epoch": 2,
+      "steps": 1,
+      "unit_outcomes": [
+        {
+          "contribution": "granted_ready",
+          "optimizer": "returned",
+          "reset": "returned",
+          "invocation": 1,
+          "advance_invocation": 1,
+          "work": [
+            "grant-session",
+            "selected-two-pass"
+          ],
+          "input_count": 0
+        }
+      ],
+      "pending": false,
+      "handback_verified": true,
+      "unusable": [],
+      "released": true,
+      "diagnostics": 0
+    }
+  }
+}

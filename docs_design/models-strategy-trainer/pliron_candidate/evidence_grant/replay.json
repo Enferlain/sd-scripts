@@ -1,0 +1,49 @@
+{
+  "accepted": [
+    "calls-i0.8-plain",
+    "calls-i0.8-clip",
+    "calls-i0.6-plain",
+    "calls-i0.6-clip",
+    "inline-i0.8-plain",
+    "inline-i0.8-clip",
+    "inline-i0.6-plain",
+    "inline-i0.6-clip",
+    "restored_raises",
+    "incomplete",
+    "missing_gradient",
+    "edited_after_restore",
+    "phase_order",
+    "final_advance",
+    "unverified_no_history",
+    "physical-cancel0-fail0",
+    "physical-cancel0-fail1",
+    "physical-cancel1-fail0",
+    "physical-cancel1-fail1",
+    "partial_optimizer",
+    "partial_reset"
+  ],
+  "rejected_wrong_computations": [
+    "wrong_optimizer_calls",
+    "wrong_optimizer_inline"
+  ],
+  "rejected_observation_corruptions": [
+    "gradient",
+    "weight",
+    "phase",
+    "origin",
+    "handback",
+    "step",
+    "optimizer",
+    "reset",
+    "pending",
+    "epoch",
+    "partial_optimizer",
+    "partial_reset"
+  ],
+  "assertions_enabled": true,
+  "gil_before": false,
+  "gil_after": false,
+  "torch_imported": false,
+  "xdsl_imported": false,
+  "runtime_imported": false
+}

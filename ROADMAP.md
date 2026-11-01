@@ -21,8 +21,13 @@ B live/cold, failure/progress/drain and valid opaque-offset controls. The
 [xDSL lifetime port](docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md)
 independently verifies pending work, admission, protected use and completion,
 then reuses the existing composition adapter/owner engine (`sd-scripts-syv.31.25.1`,
-`.31.25.2`). This supplies reciprocal lifetime representation evidence; Pliron C,
-transformation alignment, A/mixed, matched costs and a decision remain open.
+`.31.25.2`). The subsequent
+[Pliron C port](docs_design/models-strategy-trainer/pliron_candidate/grant_case.md)
+independently verifies typed delegated phases, handback claims and retained
+advancement, then reuses the same existing owner target (`.31.25.3`). Both C
+frontends validate saved prepared documents before model factories. This supplies
+reciprocal lifetime and authority representation evidence; transformation
+alignment, A/mixed, matched costs and a decision remain open.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip

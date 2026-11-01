@@ -395,3 +395,72 @@ demo.main()
     check_c(result["report"], clip_norm=1.0)
     assert result["accepted_digest"] == prepared.accepted.digest
     assert (tmp_path / "loaded" / "prepared.mlir").read_text() == prepared.text
+
+
+@pytest.mark.parametrize("optimized", [False, True])
+@pytest.mark.parametrize("lowering", ["calls", "inline"])
+def test_saved_prepared_cold_load_with_author_disabled(tmp_path, optimized, lowering) -> None:
+    prepared = prepare_grant(accept_grant(build_grant(clip_norm=1.0)), lowering=lowering)
+    saved = tmp_path / "saved.json"
+    saved.write_text(json.dumps({"accepted": prepared.accepted.text, "prepared": prepared.text, "manifest": json.loads(prepared.manifest)}))
+    script = r"""
+import asyncio,importlib,importlib.abc,json,sys
+from pathlib import Path
+sys.path.insert(0,sys.argv[1]);before=sys._is_gil_enabled()
+class NoPliron(importlib.abc.MetaPathFinder):
+ def find_spec(self,fullname,path=None,target=None):
+  if '.pliron_candidate' in fullname:raise RuntimeError('Pliron imported by xDSL C')
+sys.meta_path.insert(0,NoPliron())
+p='docs_design.models-strategy-trainer.xdsl_candidate'
+def forbidden(*a,**k):raise RuntimeError('author used by saved C path')
+contract=importlib.import_module(p+'.grant_contract');contract.build_grant=forbidden
+adapter=importlib.import_module(p+'.grant_adapter');data=json.loads(Path(sys.argv[2]).read_text())
+accepted=contract.accept_grant(importlib.import_module(p+'.grant_dialect').parse_grant(data['accepted']))
+prepared=adapter.prepare_grant(accepted,lowering=sys.argv[3],saved_text=data['prepared'],saved_manifest=data['manifest'])
+report=asyncio.run(prepared.publish().run())
+print(json.dumps({'report':report,'gil_before':before,'gil_after':sys._is_gil_enabled(),'optimized':not __debug__,'same_prepared':prepared.text==data['prepared']}))
+"""
+    result = subprocess.run(
+        [
+            sys.executable,
+            *(["-O"] if optimized else []),
+            "-c",
+            script,
+            str(Path(__file__).resolve().parents[3]),
+            str(saved),
+            lowering,
+        ],
+        cwd="/tmp",
+        capture_output=True,
+        text=True,
+        timeout=60,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    observed = json.loads(result.stdout)
+    assert observed["optimized"] is optimized and observed["same_prepared"]
+    assert observed["gil_before"] is False and observed["gil_after"] is False
+    check_c(observed["report"], clip_norm=1.0)
+
+
+@pytest.mark.parametrize("case", ["prepared", "manifest", "extra_root"])
+def test_saved_claims_reject_before_model_factory(case) -> None:
+    accepted = accept_grant(build_grant())
+    selected = grant_registry()
+    prepared = prepare_grant(accepted, selected)
+    bindings, calls = dict(selected.bindings), []
+    original = bindings["scale_v1"]
+    bindings["scale_v1"] = replace(original, invoke=lambda *args: calls.append(args) or original.invoke(*args))
+    manifest = json.loads(prepared.manifest)
+    saved = prepared.text
+    if case == "prepared":
+        saved = saved.replace(adapter.COMPLETION, "restoration_is_sufficient")
+    elif case == "manifest":
+        manifest["bindings"][0]["version"] = "changed"
+    else:
+        module = parse_grant(saved)
+        module.body.block.add_op(CallOp(properties=dict(next(op for op in module.walk() if isinstance(op, CallOp)).properties)))
+        saved = dump(module)
+    with pytest.raises(NotReady):
+        prepare_grant(accepted, DomainRegistry(selected.name, bindings), saved_text=saved, saved_manifest=manifest)
+    assert not calls

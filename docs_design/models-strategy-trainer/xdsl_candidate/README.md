@@ -16,7 +16,9 @@ The subsequent [matched lifetime case](lifetime_case.md) represents pending
 requests and separate consumer/producer/run settlement in xDSL, using the existing
 adapter and owner engine without Pliron IR machinery. Paired B controls and a
 valid opaque-offset variant start the [matched comparison](../matched_comparison.md).
-Resource-policy alignment and Pliron's owner-case ports remain later tasks.
+The [Pliron C port](../pliron_candidate/grant_case.md) now supplies reciprocal
+authority representation; resource-policy alignment and Pliron A/mixed remain
+later tasks.
 
 Earlier combined qualification: **471 research tests pass** with the GIL
 disabled before and after the full run; the Torch-free environment passes
@@ -358,8 +360,21 @@ uv run --no-sync --with-requirements docs_design/models-strategy-trainer/xdsl_ca
   python -m docs_design.models-strategy-trainer.xdsl_candidate.grant_demo --dump-dir /tmp/xdsl-c
 uv run --no-sync --with-requirements docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt \
   python -m docs_design.models-strategy-trainer.xdsl_candidate.grant_demo \
-  --load /tmp/xdsl-c/accepted.mlir --manifest /tmp/xdsl-c/bindings.json
+  --load /tmp/xdsl-c/accepted.mlir --prepared /tmp/xdsl-c/prepared.mlir \
+  --manifest /tmp/xdsl-c/bindings.json
 ```
+
+The matched C port extracts this existing owner-facing target into
+[grant_target.py](../grant_target.py). The two frontends independently verify
+their own IR and saved prepared correspondence before calling it; no shared
+executable graph precedes their IR. `prepare_grant` additionally accepts
+`saved_text`/`saved_manifest`, and the CLI above validates both before model
+factories. Complete expected-plan structural equivalence supplements the existing
+source/binding/protocol checks. Fresh normal and `python -O` children reconstruct
+both owner lowerings with authoring disabled. This is shared owner-runtime
+evidence, rather than a second implementation of authority services. The older
+C qualification below remains historical; current sources/gates are recorded in
+[Pliron C qualification](../pliron_candidate/evidence_grant/qualification.json).
 
 C strengthens the representation case: a nonstandard numerical region and its
 retained owner obligations are inspectable, typed and reconstructable without

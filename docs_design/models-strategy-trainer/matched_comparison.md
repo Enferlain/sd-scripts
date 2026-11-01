@@ -34,9 +34,11 @@ and rerun of the affected comparison, rather than an unnoticed environment drift
 The [frozen descriptive fixtures](comparison_fixtures.json) and
 [first implementation slice](xdsl_candidate/lifetime_case.md) now record control
 setup and the xDSL lifetime port (`.31.25.1`, `.31.25.2`). The table above is the
-starting-point inventory; current evidence is kept in that implementation record.
-The remaining ports, resource grouping alignment, measurements and decision are
-still outstanding.
+starting-point inventory. The subsequent [Pliron C record](pliron_candidate/grant_case.md)
+adds independent authority representation/preparation and persisted-plan checks
+for both C frontends (`.31.25.3`). These two implementation records retain current
+evidence. A/mixed ports, resource grouping alignment, measurements and the decision
+are still outstanding.
 
 Both candidates may reuse the selected numerical implementations, existing owner
 engine, state/grant/optimization services, physical workers, fixtures and

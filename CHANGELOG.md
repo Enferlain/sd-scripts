@@ -14,6 +14,7 @@ Rules:
 
 ### Added
 
+- **Pliron C adds reciprocal authority representation to the comparison** — actual typed phase and handback chains, independent native preparation and cold correspondence reuse the existing grant/optimization owners and selected numerical callable. Both C frontends validate saved plans before model factories; independent arithmetic, unverified restoration, physical cancellation/drain and partial retained outcomes are checked. Grouping alignment and the A/mixed ports remain open.
 - **Matched controls and an xDSL lifetime port begin the framework comparison** — descriptive fixtures freeze the six existing meanings; live/cold B and valid opaque-offset controls use both candidates, while independent xDSL lifetime verification/preparation reuses the existing owner target. Pending evaluation, partial admission, physical failure/drain and cold correspondence are checked; the remaining ports and grouping alignment stay open.
 - **The next xDSL/Pliron comparison has a bounded research plan** — six existing case meanings, reciprocal coverage work, aligned frozen-resource grouping, independent correctness gates and separate machinery/integration/cost evidence lead to a decision record. This preparation leaves language design open and starts no implementation ports.
 

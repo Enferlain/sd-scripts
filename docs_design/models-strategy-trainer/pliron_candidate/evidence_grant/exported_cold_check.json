@@ -1,0 +1,17 @@
+{
+  "variants": [
+    "calls-i0.6-clip",
+    "calls-i0.6-plain",
+    "calls-i0.8-clip",
+    "calls-i0.8-plain",
+    "inline-i0.6-clip",
+    "inline-i0.6-plain",
+    "inline-i0.8-clip",
+    "inline-i0.8-plain"
+  ],
+  "raw_exported_documents": true,
+  "gil_before": false,
+  "gil_after": false,
+  "torch_imported": false,
+  "xdsl_imported": false
+}

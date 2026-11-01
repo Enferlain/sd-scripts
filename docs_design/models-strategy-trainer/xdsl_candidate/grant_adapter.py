@@ -6,25 +6,25 @@ facts below have no authority and are never used to decide grant readiness.
 
 from __future__ import annotations
 
-import asyncio
-import inspect
+import importlib
 import json
-from collections import deque
-from dataclasses import asdict, dataclass, field, replace
-from types import MappingProxyType
+from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any, Literal
 
-import torch
 from xdsl.dialects.builtin import ArrayAttr, ModuleOp, StringAttr, SymbolRefAttr
 from xdsl.ir import Block, Region
 
 from .dialects import CallOp, PlanOp, SessionOp, dump
 from .grant_contract import PROFILE, accept_grant
 from .grant_dialect import AdvanceGrantedOp, GrantOp, PhaseOp, parse_grant
-from .model_adapter import DomainBinding, DomainRegistry, backend, causes, examples, graph, scale
+from .model_adapter import DomainBinding, DomainRegistry
 from .model_contract import one
 from .model_dialect import ModelOp, RecipeOp
 from .prepare import Accepted, NotReady, origin, ref
+
+owner_target = importlib.import_module("docs_design.models-strategy-trainer.grant_target")
+backend, examples, graph, torch = owner_target.backend, owner_target.examples, owner_target.graph, owner_target.torch
 
 TARGET_C = "candidate-grant-cpu-v1"
 COMPLETION = "physical_return_then_owner_handback_verification"
@@ -34,27 +34,18 @@ PROTOCOL = "offered profile -> scoped execution -> restored/current/final-gradie
 def grant_registry() -> DomainRegistry:
     # Extract only the maintained numerical callable. The old authored Run is
     # discarded; our backend topology is generated from prepared xDSL below.
-    selected = examples.two_pass().root.work[0].implementation
+    functions = owner_target.functions()
     return DomainRegistry(
         "grant-fixtures-v1",
         {
-            "scale_v1": DomainBinding("model", "load", "1", scale),
-            "two_pass_v1": DomainBinding("grant", "scoped_write", "1", selected),
+            "scale_v1": DomainBinding("model", "load", "1", functions["scale_v1"]),
+            "two_pass_v1": DomainBinding("grant", "scoped_write", "1", functions["two_pass_v1"]),
         },
     )
 
 
-@dataclass
-class GrantFacts:
-    """Test observations; live grant/unit owners remain authoritative."""
-
-    entered: bool = False
-    selected_returned: bool = False
-    initial_weight: float | None = None
-    selected_end_weight: float | None = None
-    selected_gradient: float | None = None
-    restored: bool = False
-    phases: list[dict[str, Any]] = field(default_factory=list)
+GrantFacts = owner_target.GrantFacts
+GrantRun = owner_target.GrantRun
 
 
 @dataclass
@@ -73,77 +64,6 @@ class PreparedGrant:
         return GrantRun(self, ready, backend.Engine(ready))
 
 
-@dataclass
-class GrantRun:
-    prepared: PreparedGrant
-    ready: Any
-    engine: Any
-    last_report: dict[str, Any] | None = None
-    started: bool = False
-    interrupted: bool = False
-
-    async def run(self) -> dict[str, Any]:
-        if self.started:
-            raise RuntimeError("grant run has one owner lifetime")
-        self.started = True
-        task = asyncio.current_task()
-        cancellations = task.cancelling() if task is not None else 0
-        failure: BaseException | None = None
-        try:
-            await self.engine.run()
-        except BaseException as error:
-            failure = error
-            self.interrupted = isinstance(error, asyncio.CancelledError) or (task is not None and task.cancelling() > cancellations)
-        self.last_report = self.report(failure)
-        if failure is not None and self.interrupted:
-            raise failure
-        return self.last_report
-
-    def report(self, failure: BaseException | None = None) -> dict[str, Any]:
-        failure = failure or self.engine.failure
-        state = self.ready.state
-        assert state.image is not None
-        runtime = state.image.units[self.prepared.unit]
-        parameter = state.image.bindings[self.prepared.model].model.get_parameter(self.prepared.parameter)
-        evidence = {record.invocation: record for record in (*runtime.outcomes, *runtime.active_outcomes.values())}
-        records = [
-            {
-                "contribution": item.contribution,
-                "optimizer": item.optimizer,
-                "reset": item.reset,
-                "invocation": item.invocation,
-                "advance_invocation": item.advancement_invocation,
-                "work": item.work,
-                "input_count": len(item.input_handoffs),
-            }
-            for item in evidence.values()
-        ]
-        return {
-            "status": "stopped"
-            if state.completed
-            else "cancelled"
-            if self.interrupted or isinstance(failure, asyncio.CancelledError)
-            else "failed",
-            "errors": [{"type": type(item).__name__, "message": str(item)} for item in causes(failure)],
-            "selected": asdict(self.prepared.facts),
-            "final_weight": float(parameter.detach()),
-            "final_gradient": None if parameter.grad is None else float(parameter.grad.detach()),
-            "epoch": state.numerical_epochs[self.prepared.model],
-            "steps": runtime.steps,
-            "unit_outcomes": records,
-            "pending": runtime.unfinished,
-            "handback_verified": bool(records) and all(item["contribution"] == "granted_ready" for item in records),
-            "unusable": sorted(state.unusable),
-            "released": not state.running
-            and not state.readers
-            and not state.writers
-            and not state.state_locks
-            and not state.active_producers
-            and not state.active_retentions,
-            "diagnostics": len(state.trace),
-        }
-
-
 def prepare_grant(
     accepted: Accepted,
     registry: DomainRegistry | None = None,
@@ -152,6 +72,8 @@ def prepare_grant(
     lowering: Literal["calls", "inline"] = "calls",
     history_limit: int = 256,
     target: str = TARGET_C,
+    saved_text: str | None = None,
+    saved_manifest: Mapping[str, Any] | None = None,
 ) -> PreparedGrant:
     registry = registry or grant_registry()
     module = parse_grant(accepted.text)
@@ -202,7 +124,9 @@ def prepare_grant(
         ]
     )
     plan.verify()
-    text = dump(plan)
+    if saved_text is not None and (not isinstance(saved_text, str) or not saved_text):
+        raise NotReady("prepared grant document must be nonempty text")
+    text = dump(plan) if saved_text is None else saved_text
     try:
         decoded = parse_grant(text)
         decoded.verify()
@@ -251,82 +175,46 @@ def prepare_grant(
         raise NotReady("prepared grant bindings lost source correspondence")
     if grant.profile.data != PROFILE:
         raise NotReady("unsupported concrete grant profile")
+    if not plan.is_structurally_equivalent(decoded):
+        raise NotReady("prepared grant document differs from the complete expected recipe")
     model_name, unit_name = ref(model.entity), ref(grant.unit)
     phases = tuple((op.source_id.data, op.phase.data) for op in grant.body.block.ops if isinstance(op, PhaseOp))
-    facts = GrantFacts()
-    selected = resolved[origin(grant)].invoke
-
-    async def observed(access: Any, models: Any) -> None:
-        parameter = models[model_name].get_parameter(advance.parameter.data)
-        facts.entered = True
-        facts.initial_weight = float(parameter.detach())
-        try:
-            # "model" is the maintained numerical binding's declared role,
-            # independent of the semantic participant's actual entity symbol.
-            result = selected(access, MappingProxyType({"model": models[model_name]}))
-            if inspect.isawaitable(result):
-                await result
-            facts.selected_returned = True
-        finally:
-            # ABI: selected execution must join all private physical work before
-            # returning/raising. These observations certify no handback themselves.
-            facts.selected_end_weight = float(parameter.detach())
-            facts.selected_gradient = None if parameter.grad is None else float(parameter.grad.detach())
-            facts.restored = access.restored
-            facts.phases = [
-                {"phase": phase, "origin": phases[index][0] if index < len(phases) and phase == phases[index][1] else None}
-                for index, phase in enumerate(access.phases)
-            ]
-
-    base = examples.scale(model_name, model.initial.value.data)
-    loader = resolved[origin(model)].invoke
-
-    def verify(concrete: Any) -> None:
-        base.verify(concrete)
-        parameter = concrete.get_parameter(advance.parameter.data)
-        if (
-            parameter.device.type != "cpu"
-            or parameter.dtype != torch.float32
-            or not parameter.requires_grad
-            or not bool(torch.isfinite(parameter))
-        ):
-            raise ValueError("C scalar target requires finite trainable CPU float32 state")
-
-    participant = replace(base, load=lambda: loader(model.initial.value.data, True), verify=verify)
-    clip = advance.clip_norm.value.data if advance.clip_norm is not None else None
-    filing = graph.Run(
-        graph.Block(
-            session.source_id.data,
-            (
-                graph.TwoPass(grant.source_id.data, observed, (), unit_name, "verified-handback", (graph.Use(model_name, "write"),)),
-                graph.Advance(advance.source_id.data, "verified-handback", (unit_name,)),
-            ),
-        ),
-        (participant,),
-        (graph.Unit(unit_name, ((model_name, advance.parameter.data),), learning_rate=advance.learning_rate.value.data, clip_norm=clip),),
-    )
+    prepared_manifest = {
+        "schema": 1,
+        "abi": TARGET_C,
+        "profile": PROFILE,
+        "registry": registry.name,
+        "model_role": {"model": model_name},
+        "bindings": manifest,
+    }
+    if saved_manifest is not None and saved_manifest != prepared_manifest:
+        raise NotReady("binding manifest differs from installed grant registry")
     try:
-        checked = graph.Contract(two_pass=offered).accept(filing)
-        attempt = backend.prepare(checked, lowering=lowering)
+        materialized = owner_target.lower(
+            owner_target.GrantSpec(
+                session.source_id.data,
+                model_name,
+                unit_name,
+                advance.parameter.data,
+                model.initial.value.data,
+                advance.learning_rate.value.data,
+                advance.clip_norm.value.data if advance.clip_norm is not None else None,
+                grant.source_id.data,
+                advance.source_id.data,
+                phases,
+            ),
+            {"model": resolved[origin(model)].invoke, "grant": resolved[origin(grant)].invoke},
+            offered=offered,
+            lowering=lowering,
+            history_limit=history_limit,
+        )
     except Exception as error:
         raise NotReady(f"{session.source_id.data}: grant owner realization: {error}") from error
-    attempt.state.trace = deque(maxlen=history_limit)
+    facts, attempt = materialized.facts, materialized.attempt
     return PreparedGrant(
         accepted,
         text,
-        json.dumps(
-            {
-                "schema": 1,
-                "abi": TARGET_C,
-                "profile": PROFILE,
-                "registry": registry.name,
-                "model_role": {"model": model_name},
-                "bindings": manifest,
-            },
-            sort_keys=True,
-            indent=2,
-        )
-        + "\n",
+        json.dumps(prepared_manifest, sort_keys=True, indent=2) + "\n",
         attempt,
         facts,
         model_name,

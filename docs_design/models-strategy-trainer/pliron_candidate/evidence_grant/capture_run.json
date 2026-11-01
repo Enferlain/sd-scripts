@@ -1,0 +1,32 @@
+{
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "gil_before": false,
+  "gil_after": false,
+  "xdsl_imported": false,
+  "reports": 23,
+  "cases": {
+    "calls-i0.8-plain": "stopped",
+    "calls-i0.8-clip": "stopped",
+    "calls-i0.6-plain": "stopped",
+    "calls-i0.6-clip": "stopped",
+    "inline-i0.8-plain": "stopped",
+    "inline-i0.8-clip": "stopped",
+    "inline-i0.6-plain": "stopped",
+    "inline-i0.6-clip": "stopped",
+    "restored_raises": "failed",
+    "incomplete": "failed",
+    "missing_gradient": "failed",
+    "edited_after_restore": "failed",
+    "phase_order": "failed",
+    "final_advance": "failed",
+    "unverified_no_history": "failed",
+    "physical-cancel0-fail0": "stopped",
+    "physical-cancel0-fail1": "failed",
+    "physical-cancel1-fail0": "cancelled",
+    "physical-cancel1-fail1": "cancelled",
+    "partial_optimizer": "failed",
+    "partial_reset": "failed",
+    "wrong_optimizer_calls": "stopped",
+    "wrong_optimizer_inline": "stopped"
+  }
+}

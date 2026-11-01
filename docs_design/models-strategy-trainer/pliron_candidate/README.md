@@ -1,6 +1,6 @@
-# Pliron 0.20.0: feedback, local extension and lifetime composition
+# Pliron 0.20.0: feedback, extension, lifetime and authority
 
-Research experiments · 30–31 October 2026 · `sd-scripts-syv.31.19`, `.31.20`, `.31.22`
+Research experiments · 30 October–1 November 2026 · `sd-scripts-syv.31.19`, `.31.20`, `.31.22`, `.31.25.3`
 
 This implements the **data-only feedback B case** with actual Pliron semantic
 and prepared operations. It screens a concrete alternative to the provisional
@@ -17,6 +17,14 @@ the existing owner engine. B's code and retained artifacts remain unchanged;
 its qualification record is historical. Current composition sources, doc changes
 and preservation checks are recorded in
 [evidence_composition/qualification.json](evidence_composition/qualification.json).
+
+The matched [C authority case](grant_case.md) adds typed delegated phases,
+restoration/handback claims and retained advancement in a separate native
+executable. Its independent verifier and prepared correspondence reuse the same
+existing owner target as xDSL C, extracted into [grant_target.py](../grant_target.py).
+Its [qualification](evidence_grant/qualification.json) records current C sources
+and gates; the older B/extension/composition records remain historical. Resource
+grouping alignment and the A/mixed ports remain open.
 
 The baseline [comparison](../candidate_comparison.md) defines the evidence
 boundaries. B selects `x = key + current_bias`, maps `2*x`, then `+1` inside a

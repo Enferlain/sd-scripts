@@ -1,0 +1,36 @@
+ga.session () [] [source_id: builtin.string "grant-session", version: builtin.string "1", failure: builtin.string "drain_entered_preserve_uncertain"]: <() -> ()>
+{
+  ^scope_block1v1() !0:
+    model_v0 = ga.model () [] [source_id: builtin.string "model.binding", participant: builtin.string "model", initial: builtin.string "0.8", treatment: builtin.string "trainable", implementation: builtin.string "scale_v1"]: <() -> (ga.model )> !1;
+    unit_v1 = ga.unit (model_v0) [] [source_id: builtin.string "owner.weights", unit: builtin.string "weights", parameter: builtin.string "weight"]: <(ga.model ) -> (ga.unit )> !2;
+    profile_v2 = ga.offer () [] [source_id: builtin.string "owner.profile", profile: builtin.string "restored-two-pass-v1", delegated: builtin.string "backward,temporary_edit,intermediate_reset,restore", retained: builtin.string "clipping,final_advancement,final_reset"]: <() -> (ga.profile )> !3;
+    handback_v3 = ga.execute (model_v0, unit_v1, profile_v2) [] [source_id: builtin.string "selected-two-pass", implementation: builtin.string "two_pass_v1", completion: builtin.string "physical_return_then_owner_handback_verification", handback: builtin.string "restored_current_final_gradient_then_owner_verifies"]: <(ga.model , ga.unit , ga.profile ) -> (ga.handback )>
+    {
+      ^selected_block2v1(access_v4: ga.access ) !4:
+        p0_v5 = ga.phase (access_v4) [] [source_id: builtin.string "phase.0.backward", phase: builtin.string "backward"]: <(ga.access ) -> (ga.access )> !5;
+        p1_v6 = ga.phase (p0_v5) [] [source_id: builtin.string "phase.1.temporary_edit", phase: builtin.string "temporary_edit"]: <(ga.access ) -> (ga.access )> !6;
+        p2_v7 = ga.phase (p1_v6) [] [source_id: builtin.string "phase.2.intermediate_reset", phase: builtin.string "intermediate_reset"]: <(ga.access ) -> (ga.access )> !7;
+        p3_v8 = ga.phase (p2_v7) [] [source_id: builtin.string "phase.3.backward", phase: builtin.string "backward"]: <(ga.access ) -> (ga.access )> !8;
+        p4_v9 = ga.phase (p3_v8) [] [source_id: builtin.string "phase.4.restore", phase: builtin.string "restore"]: <(ga.access ) -> (ga.access )> !9;
+        ga.yield (p4_v9) [] [source_id: builtin.string "selected.handback"]: <(ga.access ) -> ()> !10
+    } !11;
+    advanced_v10 = ga.advance (handback_v3, unit_v1) [] [source_id: builtin.string "retained-final-step", learning_rate: builtin.string "0.05", clip_norm: builtin.string "1.0", authority: builtin.string "retained_owner_only"]: <(ga.handback , ga.unit ) -> (ga.done )> !12;
+    ga.finish (advanced_v10) [] [source_id: builtin.string "grant.finish"]: <(ga.done ) -> ()> !13
+} !14
+
+outlined_attributes:
+!0 = @[<in-memory>: line: 2, column: 3], []
+!1 = @[<in-memory>: line: 3, column: 5], [builtin_given_names = builtin.given_names [model]]
+!2 = @[<in-memory>: line: 4, column: 5], [builtin_given_names = builtin.given_names [unit]]
+!3 = @[<in-memory>: line: 5, column: 5], [builtin_given_names = builtin.given_names [profile]]
+!4 = @[<in-memory>: line: 7, column: 7], [builtin_given_names = builtin.given_names [access]]
+!5 = @[<in-memory>: line: 8, column: 9], [builtin_given_names = builtin.given_names [p0]]
+!6 = @[<in-memory>: line: 8, column: 148], [builtin_given_names = builtin.given_names [p1]]
+!7 = @[<in-memory>: line: 8, column: 295], [builtin_given_names = builtin.given_names [p2]]
+!8 = @[<in-memory>: line: 8, column: 450], [builtin_given_names = builtin.given_names [p3]]
+!9 = @[<in-memory>: line: 8, column: 585], [builtin_given_names = builtin.given_names [p4]]
+!10 = @[<in-memory>: line: 8, column: 718], []
+!11 = @[<in-memory>: line: 6, column: 5], [builtin_given_names = builtin.given_names [handback]]
+!12 = @[<in-memory>: line: 10, column: 5], [builtin_given_names = builtin.given_names [advanced]]
+!13 = @[<in-memory>: line: 11, column: 5], []
+!14 = @[<in-memory>: line: 1, column: 1], []

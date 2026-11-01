@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "pid": 6247,
+  "started_at": 1793553738.7364323,
+  "cwd": "/home/imi/Projects/sd-scripts",
+  "state": "failed",
+  "result_available": true,
+  "request": {
+    "entrypoint": "mcp",
+    "workspace": "/home/imi/Projects/sd-scripts",
+    "diff_target": "HEAD",
+    "context_files": [
+      "AGENTS.md",
+      "docs_design/models-strategy-trainer/matched_comparison.md",
+      "docs_design/models-strategy-trainer/comparison_fixtures.json",
+      "docs_design/models-strategy-trainer/pliron_candidate/grant_case.md",
+      "docs_design/models-strategy-trainer/pliron_candidate/evidence_grant/qualification.json"
+    ],
+    "focus_files": [
+      "docs_design/models-strategy-trainer/pliron_candidate/native/src/grant/dialect.rs",
+      "docs_design/models-strategy-trainer/pliron_candidate/native/src/grant/mod.rs",
+      "docs_design/models-strategy-trainer/pliron_candidate/native/src/bin/rmst-pliron-grant.rs",
+      "docs_design/models-strategy-trainer/pliron_candidate/grant.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/grant_author.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/grant_demo.py",
+      "docs_design/models-strategy-trainer/grant_target.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/grant_adapter.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/grant_demo.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/test_grant.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/test_grant_runtime.py",
+      "docs_design/models-strategy-trainer/xdsl_candidate/test_grant_runtime.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/evidence_grant/capture.py",
+      "docs_design/models-strategy-trainer/pliron_candidate/evidence_grant/replay.py"
+    ],
+    "task_description": "Review only the matched C milestone sd-scripts-syv.31.25.3 against HEAD 7386bba3 (new implementation files are staged). Independent real Pliron 0.20.0 typed model/unit/profile/access/handback/done operations and SSACFG regions; fixed authority protocol, native prepared construction and full cold correspondence. Existing xDSL C owner-facing logic extracted to a shared post-verification target, never a common graph before either frontend's IR; owners/numerical callable unchanged. Both frontends now cold-validate saved prepared text/manifest before model factories. Check runtime authority cannot derive from static handback or restoration alone, association/source/binding completeness, unknown executable structure, malformed envelopes, no effects from invalid claims, cancellation/physical-drain and uncertain retained outcomes. Assess tests/oracle independence and evidence claims. Local final gates: 639 Torch-free+6 optional module skips;685 owner;GIL disabled before/after;native locked build/test/Clippy/fmt,Ruff,ty pass.21 truthful reports replay;2actual no-op-optimizer computations+12corruptions rejected. Eight normal artifacts. Root report, production and original45owner files untouched. Grouping alignment,A/mixed,costs and adoption remain outside this milestone. Distinguish actionable correctness findings from optional generalization; no second ownership implementation or performance claim is intended.",
+    "model": null,
+    "reasoning_effort": null
+  },
+  "result_ok": false,
+  "chars": 145,
+  "exit_code": 1,
+  "finished_at": 1793553748.1979694
+}

@@ -23,20 +23,25 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--load", type=Path)
     parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--prepared", type=Path)
     parser.add_argument("--dump-dir", type=Path)
     parser.add_argument("--clip-norm", type=float)
     options = parser.parse_args()
     if options.load and options.clip_norm is not None:
         parser.error("--clip-norm authors a new document; loaded IR supplies its own clipping bound")
+    if options.prepared and not options.load:
+        parser.error("--prepared requires the corresponding --load accepted document")
     started = perf_counter()
     module = parse_grant(options.load.read_text()) if options.load else build_grant(clip_norm=options.clip_norm)
     accepted = accept_grant(module)
     accept_seconds = perf_counter() - started
     started = perf_counter()
-    prepared = prepare_grant(accepted)
+    prepared = prepare_grant(
+        accepted,
+        saved_text=options.prepared.read_text() if options.prepared else None,
+        saved_manifest=json.loads(options.manifest.read_text()) if options.manifest else None,
+    )
     prepare_seconds = perf_counter() - started
-    if options.manifest and json.loads(options.manifest.read_text()) != json.loads(prepared.manifest):
-        raise ValueError("binding manifest differs from installed grant registry")
     started = perf_counter()
     report = asyncio.run(prepared.publish().run())
     execute_seconds = perf_counter() - started
