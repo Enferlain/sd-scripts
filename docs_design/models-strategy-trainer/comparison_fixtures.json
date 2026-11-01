@@ -1,0 +1,67 @@
+{
+  "schema": 1,
+  "scope": "Research fixture parameters and observable expectations; not an executable graph, language grammar, prepared plan or production ABI.",
+  "base_commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+  "pins": {"xdsl": "0.74.0", "pliron": "=0.20.0", "python": "3.14t"},
+  "cases": {
+    "B": {
+      "keys_start": 0, "selection": "key + applied_bias", "initial_bias": 0,
+      "arithmetic": ["2*x", "x+1", "x*x", "acknowledged publication"],
+      "feedback": "score % 5 after publication acknowledgement",
+      "aggregate_horizon": 2, "mailbox_capacity": 1, "stop_after_acknowledgements": 4,
+      "extra_admitted_tickets": "permitted; settle with truthful terminal outcomes",
+      "oracle": "xdsl_candidate/conformance.py:check_b"
+    },
+    "A": {
+      "samples": [1, 2, 4, 5], "excluded": [3, 6], "windows": [[1, 2], [4, 5]],
+      "left": "2*k+1", "right": "frozen encoder 1.5*k/4", "target": "k/2",
+      "initial_weight": 0.8, "loss": "(w*(left+right)-target)^2/2",
+      "gradient_aggregation": "sum two contributions", "learning_rate": 0.05,
+      "evaluation_trigger": {"window": 0, "position": 1}, "permitted_evaluation_epochs": [1, 2],
+      "rejected_join": "claims neither member; preserve earlier pending contribution",
+      "oracle": "xdsl_candidate/model_conformance.py:check_a,check_admission_failure"
+    },
+    "C": {
+      "initial_weight": 0.8, "loss": "(2*w-1)^2", "temporary_edit_scale": 0.1,
+      "phases": ["backward", "temporary_edit", "intermediate_reset", "backward", "restore"],
+      "retained_learning_rate": 0.05, "clip_norm_variants": [null, 1.0],
+      "unclipped": {"first_gradient": 2.4, "temporary_weight": 1.04, "second_gradient": 4.32, "final_weight": 0.584},
+      "handback": "restoration alone never authorizes retained advancement",
+      "oracle": "xdsl_candidate/grant_conformance.py:reference,check_c,check_unverified"
+    },
+    "mixed": {
+      "initial_weight": 0.8, "learning_windows": 3, "contributions_per_window": 1, "learning_rate": 0.001,
+      "selection": "v=key+applied_bias", "left": "2*v+1", "right": "protected production_epoch weight*v/4",
+      "target": "v/2", "loss": "(admission_weight*(left+right)-target)^2/2",
+      "feedback": "int(abs(returned_weight)*10)%5 after update",
+      "exclusion": "after revision zero, exclude keys divisible by four",
+      "aggregate_horizon": 3, "capacity_per_input_port": 1, "stop": "explicit checkpoint after three returned updates",
+      "production_epoch": "observe actual protected epoch; do not assume latest admission state",
+      "oracle": "xdsl_candidate/mixed_conformance.py:check_mixed"
+    },
+    "extension": {
+      "base": "B", "coefficients": [1, 2], "typed_payload": "(v,2*v)", "return": "first lane",
+      "resource": "versioned immutable frozen read; full identity/digest retained", "domain_failure": "negative_input",
+      "opaque_variant": "ordinary offset declares may_effect; frozen pack keeps read_frozen",
+      "prerequisite": "successful unfused execution before forged grouping rejection",
+      "required_policy_after_alignment": {
+        "frozen": [["double", "offset", "pack", "first"]],
+        "opaque_offset": [["double"], ["offset"], ["pack", "first"]]
+      },
+      "current_policy": "different; alignment remains sd-scripts-syv.31.25.4",
+      "oracle": "xdsl_candidate/extension_conformance.py:check_extension"
+    },
+    "lifetime": {
+      "encoder_coefficient": 2, "keys_start": 0, "x": "2*(key+1)", "target": "key+1",
+      "initial_weight": 0.8, "windows": [[0, 1], [2, 3]], "per_member_loss": "(w*x-target)^2/4",
+      "gradient_aggregation": "mean of two raw gradients", "learning_rate": 0.01,
+      "weights": [0.77, 0.635], "evaluation_cause_members": [2, 3], "evaluation_input": 4,
+      "evaluation_epoch": 2, "prediction": 6.35, "evaluation_loss": 0.91125,
+      "aggregate_horizon": 3, "aggregate_ready_capacity": 2, "physical_producer_workers": 1,
+      "late_and_prefetched": "both permitted; pending request extends consumer-group lifetime",
+      "shutdown": "consumer group settles and requests producer stop; run waits for group and producer",
+      "stop_scopes": "orderly child stop finishes admitted window; root cancellation may leave pending request unfulfilled",
+      "oracle": "pliron_candidate/composition_conformance.py:check"
+    }
+  }
+}

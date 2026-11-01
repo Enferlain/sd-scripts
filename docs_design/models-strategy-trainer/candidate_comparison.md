@@ -21,6 +21,16 @@ supplies proposals and experiment criteria. This assessment neither promotes the
 report's grammar sketches nor changes governing requirements. It also does not
 select custom infrastructure as a required destination.
 
+The subsequent Pliron experiments now cover B, an independent payload/frozen
+resource extension and different-lifetime composition. The next
+[matched-comparison plan](matched_comparison.md) fixes six existing case meanings,
+the remaining ports, common transformation legality and a decision endpoint.
+The original/xDSL inventory and its dated verification below remain historical;
+neither their test totals nor the newer Pliron totals establish matched coverage.
+The subsequent [control setup and xDSL lifetime port](xdsl_candidate/lifetime_case.md)
+begin that plan with reciprocal representation evidence, retaining shared runtime
+mechanics and separate independent checks. The broader comparison remains open.
+
 ## Decisions that must remain separate
 
 | Question | Current position | Still open |
@@ -163,17 +173,16 @@ workflows. Use the same case meanings to assess the proposed advantage, and
 identify where representations, analyses or construction would actually be
 shared rather than inferring an advantage from implementation language alone.
 
-A small existing case can establish the alternative's structural fit before
-committing to A/C/mixed owner integration or a full deep dive. It need not
-reproduce xDSL's dialect syntax.
-
-Use the proposed new whole-workflow composition case only as a later common
-pressure test for promising candidates. Broader original-candidate parity and
-matched cost measurements also remain later work. A final framework decision should
-consider semantic fit, generic infrastructure actually reused, missing custom
-analyses and machinery-development ergonomics together. The working baseline is
-xDSL; the final framework choice, language design and implementations remain
-unselected.
+The bounded Pliron screening has since supplied that structural-fit evidence;
+its [local extension](pliron_candidate/README.md) and
+[lifetime case](pliron_candidate/composition_case.md) justify a matched comparison.
+The [next milestone](matched_comparison.md) closes coverage gaps using existing
+case meanings, aligns resource-aware grouping, and measures machinery and
+integration before recording a recommendation. It does not require either
+candidate to reproduce the other's syntax or prepared representation.
+Broader original-candidate parity remains outside that bounded milestone.
+The working baseline is xDSL; language design and final implementations remain
+open while the framework comparison proceeds toward its explicit endpoint.
 
 ## Verification boundaries
 

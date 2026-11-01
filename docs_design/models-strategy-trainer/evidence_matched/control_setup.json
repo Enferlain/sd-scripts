@@ -1,0 +1,148 @@
+{
+  "schema": 1,
+  "bead": "sd-scripts-syv.31.25.1",
+  "gil_before": false,
+  "gil_after": false,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "torch_imported": false,
+  "fixture_sha256": "e1560dc7d913ec6833d34ac76d34ebac5c76bdc4d9db7f81f8e34c034d3ece4f",
+  "controls": [
+    {
+      "framework": "xdsl",
+      "variant": "plain",
+      "horizon": 2,
+      "capacity": 1,
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ]
+      ],
+      "status": "stopped",
+      "tickets": 6,
+      "opaque_effects": [],
+      "artifact": "controls/xdsl/plain/artifact.json",
+      "report": "controls/xdsl/plain/report.json"
+    },
+    {
+      "framework": "xdsl",
+      "variant": "fused",
+      "horizon": 2,
+      "capacity": 1,
+      "groups": [
+        [
+          "data.double",
+          "data.offset"
+        ]
+      ],
+      "status": "stopped",
+      "tickets": 6,
+      "opaque_effects": [],
+      "artifact": "controls/xdsl/fused/artifact.json",
+      "report": "controls/xdsl/fused/report.json"
+    },
+    {
+      "framework": "xdsl",
+      "variant": "opaque_unfused",
+      "horizon": 2,
+      "capacity": 1,
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack"
+        ],
+        [
+          "pair.first"
+        ]
+      ],
+      "status": "stopped",
+      "tickets": 6,
+      "opaque_effects": [
+        0,
+        2,
+        6,
+        14,
+        16,
+        10
+      ],
+      "artifact": "controls/xdsl/opaque_unfused/artifact.json",
+      "report": "controls/xdsl/opaque_unfused/report.json"
+    },
+    {
+      "framework": "pliron",
+      "variant": "plain",
+      "horizon": 2,
+      "capacity": 1,
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ]
+      ],
+      "status": "stopped",
+      "tickets": 6,
+      "opaque_effects": [],
+      "artifact": "controls/pliron/plain/artifact.json",
+      "report": "controls/pliron/plain/report.json"
+    },
+    {
+      "framework": "pliron",
+      "variant": "fused",
+      "horizon": 2,
+      "capacity": 1,
+      "groups": [
+        [
+          "data.double",
+          "data.offset"
+        ]
+      ],
+      "status": "stopped",
+      "tickets": 6,
+      "opaque_effects": [],
+      "artifact": "controls/pliron/fused/artifact.json",
+      "report": "controls/pliron/fused/report.json"
+    },
+    {
+      "framework": "pliron",
+      "variant": "opaque_unfused",
+      "horizon": 2,
+      "capacity": 1,
+      "groups": [
+        [
+          "data.double"
+        ],
+        [
+          "data.offset"
+        ],
+        [
+          "pair.pack"
+        ],
+        [
+          "pair.first"
+        ]
+      ],
+      "status": "stopped",
+      "tickets": 6,
+      "opaque_effects": [
+        0,
+        2,
+        6,
+        14,
+        16,
+        10
+      ],
+      "artifact": "controls/pliron/opaque_unfused/artifact.json",
+      "report": "controls/pliron/opaque_unfused/report.json"
+    }
+  ],
+  "limits": "Live/cold controls only, not full matched coverage, transformation alignment or performance measurement. Negative controls and physical progress/drain gates are in test_matched_controls.py and the retained test result."
+}

@@ -1,0 +1,562 @@
+{
+  "schema": 1,
+  "date": "2026-11-01",
+  "beads": [
+    "sd-scripts-syv.31.25.1",
+    "sd-scripts-syv.31.25.2"
+  ],
+  "base_commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+  "scope": "Matched B control setup, valid opaque-offset variant and independent xDSL lifetime IR/preparation/cold loading. No later Pliron ports or grouping alignment.",
+  "pins": {
+    "xdsl": "0.74.0",
+    "pliron": "=0.20.0",
+    "python": "3.14t"
+  },
+  "new_tests": {
+    "control_setup": 30,
+    "lifetime_documents": 56,
+    "lifetime_owners": 29,
+    "total": 115
+  },
+  "gates": {
+    "torchfree_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "skipped": 5,
+        "passed": 589
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/pliron_candidate",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "seconds": 37.0587129059968,
+      "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+      "torch_imported": false,
+      "output": "........................................................................ [ 12%]\n........................................................................ [ 24%]\n........................................................................ [ 36%]\n........................................................................ [ 48%]\n........................................................................ [ 61%]\n........................................................................ [ 73%]\n........................................................................ [ 85%]\n........................................................................ [ 97%]\n.............                                                            [100%]\n=========================== short test summary info ============================\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py:24: composition owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_grant_runtime.py:29: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_lifetime_runtime.py:20: lifetime owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_mixed_runtime.py:25: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_model_runtime.py:29: could not import 'torch': No module named 'torch'\n589 passed, 5 skipped in 36.90s\n"
+    },
+    "owner_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "passed": 623
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "seconds": 56.08238245300163,
+      "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+      "torch_imported": true,
+      "output": "........................................................................ [ 11%]\n........................................................................ [ 23%]\n........................................................................ [ 34%]\n........................................................................ [ 46%]\n........................................................................ [ 57%]\n........................................................................ [ 69%]\n........................................................................ [ 80%]\n........................................................................ [ 92%]\n...............................................                          [100%]\n623 passed in 55.82s\n",
+      "torch": "2.14.1+cu130",
+      "cuda_initialized": false
+    }
+  },
+  "quality": {
+    "ruff_check": true,
+    "python_source_format": true,
+    "ty": true,
+    "git_diff_check": true,
+    "format_scope": "Historical Markdown generated-backend snapshots excluded. Initial broad format check reported two unchanged historical snapshots; all Python-source formatting passes.",
+    "packaging": "All25 source and35 artifact paths plus qualification.json normally Git-visible; no ignored qualified files."
+  },
+  "control_setup": {
+    "schema": 1,
+    "bead": "sd-scripts-syv.31.25.1",
+    "gil_before": false,
+    "gil_after": false,
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "torch_imported": false,
+    "fixture_sha256": "e1560dc7d913ec6833d34ac76d34ebac5c76bdc4d9db7f81f8e34c034d3ece4f",
+    "controls": [
+      {
+        "framework": "xdsl",
+        "variant": "plain",
+        "horizon": 2,
+        "capacity": 1,
+        "groups": [
+          [
+            "data.double"
+          ],
+          [
+            "data.offset"
+          ]
+        ],
+        "status": "stopped",
+        "tickets": 6,
+        "opaque_effects": [],
+        "artifact": "controls/xdsl/plain/artifact.json",
+        "report": "controls/xdsl/plain/report.json"
+      },
+      {
+        "framework": "xdsl",
+        "variant": "fused",
+        "horizon": 2,
+        "capacity": 1,
+        "groups": [
+          [
+            "data.double",
+            "data.offset"
+          ]
+        ],
+        "status": "stopped",
+        "tickets": 6,
+        "opaque_effects": [],
+        "artifact": "controls/xdsl/fused/artifact.json",
+        "report": "controls/xdsl/fused/report.json"
+      },
+      {
+        "framework": "xdsl",
+        "variant": "opaque_unfused",
+        "horizon": 2,
+        "capacity": 1,
+        "groups": [
+          [
+            "data.double"
+          ],
+          [
+            "data.offset"
+          ],
+          [
+            "pair.pack"
+          ],
+          [
+            "pair.first"
+          ]
+        ],
+        "status": "stopped",
+        "tickets": 6,
+        "opaque_effects": [
+          0,
+          2,
+          6,
+          14,
+          16,
+          10
+        ],
+        "artifact": "controls/xdsl/opaque_unfused/artifact.json",
+        "report": "controls/xdsl/opaque_unfused/report.json"
+      },
+      {
+        "framework": "pliron",
+        "variant": "plain",
+        "horizon": 2,
+        "capacity": 1,
+        "groups": [
+          [
+            "data.double"
+          ],
+          [
+            "data.offset"
+          ]
+        ],
+        "status": "stopped",
+        "tickets": 6,
+        "opaque_effects": [],
+        "artifact": "controls/pliron/plain/artifact.json",
+        "report": "controls/pliron/plain/report.json"
+      },
+      {
+        "framework": "pliron",
+        "variant": "fused",
+        "horizon": 2,
+        "capacity": 1,
+        "groups": [
+          [
+            "data.double",
+            "data.offset"
+          ]
+        ],
+        "status": "stopped",
+        "tickets": 6,
+        "opaque_effects": [],
+        "artifact": "controls/pliron/fused/artifact.json",
+        "report": "controls/pliron/fused/report.json"
+      },
+      {
+        "framework": "pliron",
+        "variant": "opaque_unfused",
+        "horizon": 2,
+        "capacity": 1,
+        "groups": [
+          [
+            "data.double"
+          ],
+          [
+            "data.offset"
+          ],
+          [
+            "pair.pack"
+          ],
+          [
+            "pair.first"
+          ]
+        ],
+        "status": "stopped",
+        "tickets": 6,
+        "opaque_effects": [
+          0,
+          2,
+          6,
+          14,
+          16,
+          10
+        ],
+        "artifact": "controls/pliron/opaque_unfused/artifact.json",
+        "report": "controls/pliron/opaque_unfused/report.json"
+      }
+    ],
+    "limits": "Live/cold controls only, not full matched coverage, transformation alignment or performance measurement. Negative controls and physical progress/drain gates are in test_matched_controls.py and the retained test result."
+  },
+  "lifetime_capture": {
+    "gil_before": false,
+    "gil_after": false,
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "reports": {
+      "late": {
+        "status": "stopped",
+        "steps": 2,
+        "released": true
+      },
+      "prefetched": {
+        "status": "stopped",
+        "steps": 2,
+        "released": true
+      },
+      "late_failure": {
+        "status": "failed",
+        "steps": 2,
+        "released": true
+      },
+      "cancel_failure": {
+        "status": "cancelled",
+        "steps": 2,
+        "released": true
+      },
+      "erased": {
+        "status": "stopped",
+        "steps": 2,
+        "released": true
+      },
+      "stop_before": {
+        "status": "stopped",
+        "steps": 1,
+        "released": true
+      },
+      "stop_after": {
+        "status": "stopped",
+        "steps": 2,
+        "released": true
+      },
+      "training_failure": {
+        "status": "failed",
+        "steps": 1,
+        "released": true
+      },
+      "evaluation_failure": {
+        "status": "failed",
+        "steps": 2,
+        "released": true
+      },
+      "partial_cancel": {
+        "status": "cancelled",
+        "steps": 1,
+        "released": true
+      },
+      "pending_cancel": {
+        "status": "cancelled",
+        "steps": 2,
+        "released": true
+      }
+    }
+  },
+  "independent_replay": {
+    "accepted": [
+      "xdsl/plain",
+      "xdsl/fused",
+      "xdsl/opaque_unfused",
+      "pliron/plain",
+      "pliron/fused",
+      "pliron/opaque_unfused",
+      "lifetime/late",
+      "lifetime/prefetched",
+      "lifetime/late_failure",
+      "lifetime/erased",
+      "lifetime/stop_before",
+      "lifetime/stop_after",
+      "lifetime/cancel_failure",
+      "lifetime/partial_cancel",
+      "lifetime/pending_cancel",
+      "lifetime/training_failure",
+      "lifetime/evaluation_failure"
+    ],
+    "rejected_corruptions": [
+      "xdsl/plain",
+      "xdsl/fused",
+      "xdsl/opaque_unfused",
+      "pliron/plain",
+      "pliron/fused",
+      "pliron/opaque_unfused",
+      "lifetime/weight",
+      "lifetime/epoch",
+      "lifetime/cause",
+      "lifetime/input",
+      "lifetime/bound",
+      "lifetime/group",
+      "lifetime/physical",
+      "lifetime/consumption",
+      "lifetime/request_disposition"
+    ],
+    "assertions_enabled": true,
+    "gil_before": false,
+    "gil_after": false,
+    "torch_imported": false,
+    "xdsl_imported": false,
+    "boundary": "Saved observations only; not live execution or artifact compatibility."
+  },
+  "shared_capture_compatibility": {
+    "reports": 11,
+    "pliron": "0.20.0",
+    "gil_before": false,
+    "gil_after": false,
+    "existing_wrapper_compatibility": true,
+    "archived_artifacts_rewritten": false
+  },
+  "review": {
+    "status": "completed",
+    "result_ok": true,
+    "exit_code": 0,
+    "artifact_directory": "/tmp/review-mcp-run-1icpksc1",
+    "retained": "review.md",
+    "assessment": "No blocking correctness, authority or liveness bypass. Review inspected source/evidence, not an independent rerun of local gates.",
+    "dispositions": [
+      {
+        "finding": 1,
+        "action": "Added direct dependency-contract tests: structurally valid property-only and operand-only changes return inequivalent; documented comparator property/operand/block-argument guarantees as load-bearing."
+      },
+      {
+        "finding": 2,
+        "action": "Added explicit artifact field allow-list; retained profile/hash/nodes as named non-authoritative observations. Unknown execution-like fields reject before factories; regression checks added."
+      },
+      {
+        "finding": 3,
+        "action": "Capture helper now documents default-named fixture scope and points renamed frontends to pressure/check(prefix=...) tests."
+      },
+      {
+        "finding": 4,
+        "action": "Intentionally retain semantic acceptance versus selected-target multiplicity distinction. one() rejects unsupported target shape before effects; no semantic one-producer/group prohibition added."
+      },
+      {
+        "finding": 5,
+        "action": "Added four fresh B saved-plan child cases: fused/unfused times normal/optimized. Disable both author builders and Pliron request/accept/prepare/load; normal parent checks independent B oracle and actual GIL state."
+      },
+      {
+        "finding": 6,
+        "action": "Retained research policy numeric conversion. Positive/finite values and exact selected-target bounds are enforced; imposing a production lexical grammar is outside this slice."
+      },
+      {
+        "finding": 7,
+        "action": "Added comment identifying two-slot target pin before recipe zip; demo remains explicitly an execution/pressure driver."
+      }
+    ],
+    "followup_review": "Not requested: local envelope guard, tests and comments; full affected quality gates rerun after corrections."
+  },
+  "plan_review": "Earlier provider attempt failed HTTP429. User-supplied external assessment of plan was separate, checked attached Markdown hashes but did not independently rerun replay; requested clarifications applied.",
+  "limits": [
+    "One existing owner engine and composition adapter reused, not an independent runtime.",
+    "No production language, framework, numerical backend, general composition or performance decision.",
+    "Resource grouping alignment, Pliron C/A/mixed, matched evidence/costs and decision remain open.",
+    "Legacy combined-suite progress witness sd-scripts-syv.31.23 remains open; current declared gates isolate the legacy optimizer import path and observe GIL disabled.",
+    "Physical failure injection can produce existing CPython shielded-future diagnostics while supervised physical work settles."
+  ],
+  "preservation": {
+    "old_artifact_hashes_verified": {
+      "pliron_candidate/evidence/qualification.json": 41,
+      "pliron_candidate/evidence_composition/qualification.json": 25
+    },
+    "original_candidate_tracked_files_unchanged": 45,
+    "protected_report_sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+    "production_and_governing_changes": [],
+    "pliron_native_changes": []
+  },
+  "source_sha256": {
+    "CHANGELOG.md": "8b83501e4c4a67f5f9e9ca497a0c567792e7ded829ba5b0e6356873c4fa1d087",
+    "ROADMAP.md": "355d3e9df637b1ec5b7f9bc5d77a7f1e104020c2121335c32d8e10f221b38240",
+    "docs_design/models-strategy-trainer/matched_comparison.md": "b209582aa86c25512693bd13744aef88ec37c823836bbe6394a9d9ad2328fadf",
+    "docs_design/models-strategy-trainer/matched_comparison_preparation.json": "0179bd3620b39f25109a3a2f52dae0e2224a13ebfc078906fa254bfc85915cfd",
+    "docs_design/models-strategy-trainer/comparison_fixtures.json": "e1560dc7d913ec6833d34ac76d34ebac5c76bdc4d9db7f81f8e34c034d3ece4f",
+    "docs_design/models-strategy-trainer/candidate_comparison.md": "3ba36817efd1391892771f1a5b4220101f1b913471792e0f9d721192db577122",
+    "docs_design/models-strategy-trainer/xdsl_candidate/README.md": "aa8136a4bd3fc3f5ab517ea268cd36cfcdeaf61b64b55d93a78c16d7e428694e",
+    "docs_design/models-strategy-trainer/xdsl_candidate/prepare.py": "e1336f50bb7b7f833ac68f8b61e5049232097de48e2da73c58bf0d8f7b3b239e",
+    "docs_design/models-strategy-trainer/pliron_candidate/evidence_composition/capture.py": "b51e0e356ca35f52211bf247f09cc1e059d7b40b7805f7926b3e06da3c470130",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition.py": "a2039194002699589ca341eafd5af741e9e35780e3db29cd9d5330311f6311a2",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_runtime.py": "b37cc70c13eedcae8b03c45fd2db3c0289d5f7e9470f8646cdecacb15c748a9b",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_demo.py": "5a7fffb32538bc70e8e97fdc6931bfa92063bfe951ee27123fd8ff5472e64bd5",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_conformance.py": "1e218d866e278d1a03dfebabb4e78c11c891390bce31be3ba0a38e66f9fcc138",
+    "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md": "9f4c0160b83ecb7e076b26d37a36b773025ead814cfcf54a41482dc192a5dfad",
+    "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_author.py": "2f3603c61ea2744ae462ff52fd9d56555853e7009645b3bed7d47a4c6d5820de",
+    "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_ir.py": "9cc1705efc3c95e019f3210e21532f2cba139502491b94895f8a3bc728427c29",
+    "docs_design/models-strategy-trainer/xdsl_candidate/lifetime.py": "f7f653ad5fe0c331fa2ae66cdb70054d9f38719e4a16a32e5a241e9ee66f73ed",
+    "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_demo.py": "db709839a549ae7b12553578ab8f8d07019ae24a1424caaa892653faa6d0d806",
+    "docs_design/models-strategy-trainer/xdsl_candidate/test_lifetime.py": "67c516b8df50deb116f10165a82cf4cdcbfdd42627df4812fcffe90decf4250e",
+    "docs_design/models-strategy-trainer/xdsl_candidate/test_lifetime_runtime.py": "509d860c97e729a7b34d20106344c57afc7dd59aac810b280ddd78168622f035",
+    "docs_design/models-strategy-trainer/xdsl_candidate/test_matched_controls.py": "d608defabaf24ba225e42cb14c40ef1fffcf3b154596a078b381f8714477b21d",
+    "docs_design/models-strategy-trainer/evidence_matched/capture_lifetime.py": "678622e115cf99493b30b60abccfebb142a0ccb02fc5b122342b58494fb723b7",
+    "docs_design/models-strategy-trainer/evidence_matched/capture_controls.py": "399c4bcf2aa72b31b99fb69e8bfbec3bb7ae53ac7c9d54ae325e0501f37549ad",
+    "docs_design/models-strategy-trainer/evidence_matched/replay.py": "54355f6e5150fe8843a3bfba422688ad2d6a66c28349e52709750d7366a44986",
+    "docs_design/models-strategy-trainer/evidence_matched/capture_checks.py": "96d446524a2cb5cbcb097a2e0675d46103d447c42e51a24a218298c0b711e1bf"
+  },
+  "artifact_sha256": {
+    "pre_review_torchfree_tests.json": "1e1f94d0f34ab661005dadaa12aa622a51c70d8875f6dbfe997926b01bfaf77b",
+    "review.md": "e4d4c13198a4da7a82eebf01526d9c0ae0f5e3f757607409b24199b96e74dcbe",
+    "control_setup.json": "fe377feef6817025ec9482d8d4ca6ef4758a287ce7ca7439a7d144bb39528032",
+    "torchfree_tests.json": "0f85852504b5354b4294d1f593ad51a5cc78647c6de95c73adc7883633f7ead0",
+    "replay.json": "740044e06d59df17eedbf79833f7aaeaaa838f6f46288e2fb515e976dbe44f9a",
+    "owner_tests.json": "2ec69832b5c224551c2a0e46f07f26ef394aa0e8551f0825238152c4f0c52a92",
+    "capture_compatibility.json": "f7f8b66e6eb71f24107c2601cf89f3f8f81c4a4c5dbc8fdd2c3867d29d61dddb",
+    "pre_review_owner_tests.json": "14e0b28e46a82064fa3d2ad4d6b51281ff4b892bdd04081d022f55d2896b9efa",
+    "lifetime_xdsl/capture_run.json": "58fdf45f577204808606723c2a0e9f40acf46ee01221bf14354a065faf7ee8f1",
+    "lifetime_xdsl/accepted.mlir": "76180e5d0ad4864892197bb964dc02dff066d5d504608049c104a94cfcf83263",
+    "lifetime_xdsl/artifact.json": "ebe506f2379193867537b76e7a8f2c37b083f60277b787f36ddf8dcad380e7da",
+    "lifetime_xdsl/prepared.mlir": "34d4fa846d9643d061af5a3eda909b1a36d80d199d70bbdde7c2766cd440848d",
+    "controls/pliron/fused/report.json": "e1965c2d751e2118cb1478540b970d41d30056e6d407873cb26eee8fe818a739",
+    "controls/pliron/fused/artifact.json": "dde2d8c51e0eec082421391d1e991f6540ee8169ee24571a34e93bc544501b44",
+    "controls/pliron/plain/report.json": "7454da77e164b38549763724bd8dd5f0a60f60f6ef145662e65e28d4047f0597",
+    "controls/pliron/plain/artifact.json": "b8c2c0b9f70233d53842d8fb3c7f725b9a6f22dff91f2c3fe57fe3423e6c4031",
+    "controls/pliron/opaque_unfused/report.json": "6041c258424adef0ad8000935e45d68869a3b10527e1f5c35a40749dfbec9896",
+    "controls/pliron/opaque_unfused/artifact.json": "419a318b7132a94a9c8b5a504a680591912022796e7e90a92f962613dd12da30",
+    "controls/xdsl/fused/report.json": "e1965c2d751e2118cb1478540b970d41d30056e6d407873cb26eee8fe818a739",
+    "controls/xdsl/fused/artifact.json": "3b9e1eaba791881e8fbed8abc6037cea4e52e295abc9cdcb493fb703c0a03f72",
+    "controls/xdsl/plain/report.json": "7454da77e164b38549763724bd8dd5f0a60f60f6ef145662e65e28d4047f0597",
+    "controls/xdsl/plain/artifact.json": "fa563f98778a4094dbfc8e5871549d7207bd97c79745d7ebb985ea71ea9b4e38",
+    "controls/xdsl/opaque_unfused/report.json": "6041c258424adef0ad8000935e45d68869a3b10527e1f5c35a40749dfbec9896",
+    "controls/xdsl/opaque_unfused/artifact.json": "af889a21c17d5a1c9363b52360ea9c56ca6be40233c0d8f6393571b5eb330f58",
+    "lifetime_xdsl/reports/stop_after.json": "439d703ad90a9d10e2d72ffc4b9f6d7711f5513ab79b4c5523edfacd2bd72a01",
+    "lifetime_xdsl/reports/evaluation_failure.json": "d14c60eac662eb8b271ea04e812055be0eeddb95fdb4b3682be6954430ecc3d8",
+    "lifetime_xdsl/reports/late.json": "d98468d12a9aeda30660d20f21f78df712ae1d0fc69b787432cf2c11c9182eca",
+    "lifetime_xdsl/reports/late_failure.json": "b3cb6c3e330edca3cd3152b13ba87ebff2604d86c8854375fe66f32abfd0970c",
+    "lifetime_xdsl/reports/partial_cancel.json": "4126cb9267833ed1ba0f0eaf5359193d66507296723f23ea1828e7c06ce8abe6",
+    "lifetime_xdsl/reports/prefetched.json": "7c0a3f2dc3aed560f4bf4cf6957b9b05708fab0b82c55840e184912b507e071e",
+    "lifetime_xdsl/reports/erased.json": "638edc8c84139393097ef37720142c1f927e8538cdf807012833f397cdfdc4a4",
+    "lifetime_xdsl/reports/pending_cancel.json": "fc1416387720e3180feec38b1abbbd7874626bd2eeab58ab36dfaba497970a27",
+    "lifetime_xdsl/reports/cancel_failure.json": "beb077770075cf522d1cd2041204b8b305750e7146a89f49947cda00f950c6ad",
+    "lifetime_xdsl/reports/training_failure.json": "04a9b6cf2649d38d3891bb1346ef63838fd726c3d682633063a925aba43438e3",
+    "lifetime_xdsl/reports/stop_before.json": "74537043b4f0befb8759890bc8efe2fdd679d83ac79dea825ceb091768c02944"
+  },
+  "local_links": {
+    "checked": 85,
+    "missing": []
+  },
+  "graph": {
+    "tier": 2,
+    "project": "home-imi-Projects-sd-scripts",
+    "reused_source_generation": "2026-11-01T14:10:55Z",
+    "reused_source_paths": 13,
+    "new_source_generation": "2026-11-01T14:46:56Z",
+    "new_source_paths": 13,
+    "coverage": "Each check reported no_recorded_issue, metadata_match and no further page. Best-effort only, not completeness proof; material source was directly inspected."
+  },
+  "changes_after_gates": "No subsequent runtime behavior changes. Only final documentation/evidence updates after post-review gates.",
+  "public_cli_probe": {
+    "command": "/tmp/sd-scripts-pliron-composition-owner-env/bin/python -m docs_design.models-strategy-trainer.xdsl_candidate.lifetime_demo --load docs_design/models-strategy-trainer/evidence_matched/lifetime_xdsl/artifact.json --mode prefetched --dump-dir /tmp/sd-scripts-matched-cold-cli",
+    "exit_code": 0,
+    "report_summary": {
+      "status": "stopped",
+      "weight": 0.6350000500679016,
+      "steps": 2,
+      "released": true
+    },
+    "evaluation_epoch": 2,
+    "oracle": "normal CLI invokes independent composition checker"
+  },
+  "development_corrections": [
+    "Initial use of generic DictionaryAttr was rejected by installed xDSL0.74.0; declarations now use the installed API and trait checks constrain policy values.",
+    "Pytest loads the candidate as a top-level package; cross-candidate shared binding imports now use the repository-qualified namespace.",
+    "Initial two-call native forge lacked a separator and the strict expected-legality test failed on a parse diagnostic. Fixed the test syntax; both valid unfused variants now execute and the native forge specifically reports data.offset as ineligible."
+  ],
+  "pre_review_gates": {
+    "torchfree_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "skipped": 5,
+        "passed": 582
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/pliron_candidate",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "seconds": 37.24128402499991,
+      "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+      "torch_imported": false,
+      "output": "........................................................................ [ 12%]\n........................................................................ [ 24%]\n........................................................................ [ 37%]\n........................................................................ [ 49%]\n........................................................................ [ 61%]\n........................................................................ [ 74%]\n........................................................................ [ 86%]\n........................................................................ [ 98%]\n......                                                                   [100%]\n=========================== short test summary info ============================\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py:24: composition owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_grant_runtime.py:29: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_lifetime_runtime.py:20: lifetime owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_mixed_runtime.py:25: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_model_runtime.py:29: could not import 'torch': No module named 'torch'\n582 passed, 5 skipped in 37.07s\n"
+    },
+    "owner_tests.json": {
+      "exit_code": 0,
+      "counts": {
+        "passed": 615
+      },
+      "gil_before": false,
+      "gil_after": false,
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "xdsl": "0.74.0",
+      "args": [
+        "-ra",
+        "--ignore=tests/_deprecated",
+        "--ignore=tests/_deprecated",
+        "--noconftest",
+        "docs_design/models-strategy-trainer/xdsl_candidate",
+        "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+        "-q",
+        "-p",
+        "pytest_asyncio.plugin",
+        "--tb=short",
+        "--maxfail=3"
+      ],
+      "seconds": 58.07746807700096,
+      "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+      "torch_imported": true,
+      "output": "........................................................................ [ 11%]\n........................................................................ [ 23%]\n........................................................................ [ 35%]\n........................................................................ [ 46%]\n........................................................................ [ 58%]\n........................................................................ [ 70%]\n........................................................................ [ 81%]\n........................................................................ [ 93%]\n.......................................                                  [100%]\n615 passed in 57.81s\n",
+      "torch": "2.14.1+cu130",
+      "cuda_initialized": false
+    }
+  },
+  "post_review_gates": "Both full declared gates passed after the envelope/comparator/B-child corrections:589+5skips Torch-free and623owner; GILfalse throughout. Ruff/ty/Python-source format and diff checks pass."
+}

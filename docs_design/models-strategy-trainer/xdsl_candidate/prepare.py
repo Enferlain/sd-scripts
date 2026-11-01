@@ -459,7 +459,16 @@ def check_scalar_recipes(
             raise NotReady(f"prepared plan: {kind.name} source/protocol differs")
 
 
-def prepare(accepted: Accepted, registry: Registry, *, capacity: int = 1, target: str = TARGET, fuse: bool = False) -> Prepared:
+def prepare(
+    accepted: Accepted,
+    registry: Registry,
+    *,
+    capacity: int = 1,
+    target: str = TARGET,
+    fuse: bool = False,
+    saved_text: str | None = None,
+    saved_manifest: Mapping[str, Any] | None = None,
+) -> Prepared:
     # Recheck the snapshot at this public boundary; no mutable author object.
     try:
         module = parse(accepted.text, extensions=registry.dialects) if registry.dialects else parse(accepted.text)
@@ -578,7 +587,9 @@ def prepare(accepted: Accepted, registry: Registry, *, capacity: int = 1, target
     plan.verify()
     if fuse:
         plan = fuse_plan(plan, sources)
-    text = dump(plan)
+    if saved_text is not None and (not isinstance(saved_text, str) or not saved_text):
+        raise NotReady("saved prepared document must be nonempty text")
+    text = dump(plan) if saved_text is None else saved_text
     # Derive runtime dispatch tables from the emitted prepared xDSL itself.
     try:
         loaded = parse(text, extensions=registry.dialects) if registry.dialects else parse(text)
@@ -644,6 +655,34 @@ def prepare(accepted: Accepted, registry: Registry, *, capacity: int = 1, target
         selected_groups[role] = tuple(tuple(by_origin[call.origin.data] for call in group) for group in groups)
     if set(resolved) != {"producer", "consumer"}:
         raise NotReady("prepared plan: producer and consumer chains required")
+    prepared_manifest = {
+        "schema": 2,
+        "abi": "scalar-async-v1",
+        "registry": registry.name,
+        "bindings": manifest,
+        "local_contracts": [
+            {
+                "origin": item.origin.data,
+                "input_codec": item.input_codec.data,
+                "output_codec": item.output_codec.data,
+                "resources": [
+                    {name: value.data for name, value in row.data.items() if isinstance(value, StringAttr)} for row in item.resources
+                ],
+                "outcomes": [name.data for name in item.outcomes],
+            }
+            for item in signatures
+        ],
+        **(
+            {
+                "local_lowering": "fused-v1" if any(len(group) > 1 for group in selected_groups["producer"]) else "unfused-v1",
+                "fused_groups": sum(len(group) > 1 for group in selected_groups["producer"]),
+            }
+            if fuse
+            else {}
+        ),
+    }
+    if saved_manifest is not None and saved_manifest != prepared_manifest:
+        raise NotReady("saved prepared binding manifest differs from installed contracts")
     try:
         lowered = {source: resolution.lower() for source, resolution in local_resolutions.items()}
     except Exception as error:
@@ -651,38 +690,7 @@ def prepare(accepted: Accepted, registry: Registry, *, capacity: int = 1, target
     return Prepared(
         accepted,
         text,
-        json.dumps(
-            {
-                "schema": 2,
-                "abi": "scalar-async-v1",
-                "registry": registry.name,
-                "bindings": manifest,
-                "local_contracts": [
-                    {
-                        "origin": item.origin.data,
-                        "input_codec": item.input_codec.data,
-                        "output_codec": item.output_codec.data,
-                        "resources": [
-                            {name: value.data for name, value in row.data.items() if isinstance(value, StringAttr)}
-                            for row in item.resources
-                        ],
-                        "outcomes": [name.data for name in item.outcomes],
-                    }
-                    for item in signatures
-                ],
-                **(
-                    {
-                        "local_lowering": "fused-v1" if any(len(group) > 1 for group in selected_groups["producer"]) else "unfused-v1",
-                        "fused_groups": sum(len(group) > 1 for group in selected_groups["producer"]),
-                    }
-                    if fuse
-                    else {}
-                ),
-            },
-            sort_keys=True,
-            indent=2,
-        )
-        + "\n",
+        json.dumps(prepared_manifest, sort_keys=True, indent=2) + "\n",
         resolved["consumer"][0],
         resolved["consumer"][1],
         root.horizon.value.data,

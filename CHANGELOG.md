@@ -10,6 +10,13 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-01]
+
+### Added
+
+- **Matched controls and an xDSL lifetime port begin the framework comparison** — descriptive fixtures freeze the six existing meanings; live/cold B and valid opaque-offset controls use both candidates, while independent xDSL lifetime verification/preparation reuses the existing owner target. Pending evaluation, partial admission, physical failure/drain and cold correspondence are checked; the remaining ports and grouping alignment stay open.
+- **The next xDSL/Pliron comparison has a bounded research plan** — six existing case meanings, reciprocal coverage work, aligned frozen-resource grouping, independent correctness gates and separate machinery/integration/cost evidence lead to a decision record. This preparation leaves language design open and starts no implementation ports.
+
 ## [2026-10-31]
 
 ### Added

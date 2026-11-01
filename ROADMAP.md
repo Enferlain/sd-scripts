@@ -10,7 +10,19 @@ architectural or engineering advantage. Language design, authoring constructs,
 final framework and implementations remain open; experimental dialects and
 owner APIs do not establish those choices. Shared correspondence checks protect
 readiness, execution and dependent effects without prescribing preparation order.
-Broader composition pressure, parity and matched costs remain later comparisons.
+The next [matched comparison](docs_design/models-strategy-trainer/matched_comparison.md)
+fixes the six existing cases, common transformation policy, machinery/diagnostic
+evidence and matched phase costs, ending with a framework recommendation and
+reversal conditions. Preparation does not establish the missing ports or a
+complete language.
+
+The first matched slice now freezes the descriptive fixtures and executes paired
+B live/cold, failure/progress/drain and valid opaque-offset controls. The
+[xDSL lifetime port](docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md)
+independently verifies pending work, admission, protected use and completion,
+then reuses the existing composition adapter/owner engine (`sd-scripts-syv.31.25.1`,
+`.31.25.2`). This supplies reciprocal lifetime representation evidence; Pliron C,
+transformation alignment, A/mixed, matched costs and a decision remain open.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip

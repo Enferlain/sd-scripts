@@ -12,7 +12,13 @@ adds bounded training/evaluation evidence, and [C's granted authority](#c-offere
 checks a selected two-pass region. The [local fusion comparison](#local-data-fusion)
 now tests one conservative transformation of prepared dispatch.
 
-Latest combined qualification: **471 research tests pass** with the GIL
+The subsequent [matched lifetime case](lifetime_case.md) represents pending
+requests and separate consumer/producer/run settlement in xDSL, using the existing
+adapter and owner engine without Pliron IR machinery. Paired B controls and a
+valid opaque-offset variant start the [matched comparison](../matched_comparison.md).
+Resource-policy alignment and Pliron's owner-case ports remain later tasks.
+
+Earlier combined qualification: **471 research tests pass** with the GIL
 disabled before and after the full run; the Torch-free environment passes
 **261 tests** with three optional backend modules skipped. Four milestone
 reviews and the returning-filter/contract correction review approved the work;

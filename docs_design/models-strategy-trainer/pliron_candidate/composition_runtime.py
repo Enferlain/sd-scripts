@@ -323,7 +323,7 @@ class CompositionRun:
 
 
 def lower(spec: Mapping[str, Any], implementations: Mapping[str, Callable[..., Any]], controls: Controls | None = None) -> CompositionRun:
-    """Consume the native-verified target projection; all scheduling is existing."""
+    """Consume a verified target projection; all scheduling is existing."""
 
     def snapshot(value: Any) -> Any:
         if isinstance(value, Mapping):

@@ -1,0 +1,159 @@
+{
+  "schema": 1,
+  "date": "2026-11-01",
+  "bead": "sd-scripts-syv.31.24",
+  "milestone": "sd-scripts-syv.31.25",
+  "base_commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+  "scope": "Preparation documents and Beads only; missing ports, policy alignment, matched measurements and decision are not implemented.",
+  "runtime_tests": "Not rerun: no runtime/oracle/target implementation changes. Replay below checks independent expectations against retained observations, not live execution or new matched coverage.",
+  "local_links": {
+    "checked": 35,
+    "missing": []
+  },
+  "inventory_replay": {
+    "oracle_modules_imported": 6,
+    "saved_reports_checked": [
+      "evidence/report.json",
+      "evidence_a/report.json",
+      "evidence_c/report.json",
+      "evidence_fusion/reports.json:unfused",
+      "evidence_fusion/reports.json:fused",
+      "evidence_mixed/unfused/report.json",
+      "evidence_extension/unfused/report.json",
+      "evidence_mixed/fused/report.json",
+      "evidence_extension/fused/report.json"
+    ],
+    "original_adaptive_reference_checked": true,
+    "deliberate_corruptions_rejected": [
+      "original numerical result",
+      "B returned arithmetic",
+      "A input association",
+      "C verified handback",
+      "mixed feedback provenance",
+      "extension hidden pair lane"
+    ],
+    "runtime_and_framework_imports_blocked": true,
+    "assertions_enabled": true,
+    "gil_enabled": false,
+    "driver_source": "candidate_comparison_evidence.json:oracle_reuse.driver (unchanged)"
+  },
+  "lifetime_replay": {
+    "accepted": [
+      "late",
+      "prefetched",
+      "late_failure",
+      "erased",
+      "stop_before",
+      "stop_after",
+      "cancel_failure",
+      "partial_cancel",
+      "pending_cancel",
+      "training_failure",
+      "evaluation_failure"
+    ],
+    "rejected_corruptions": [
+      "weight",
+      "epoch",
+      "cause",
+      "input",
+      "bound",
+      "group",
+      "physical",
+      "consumption",
+      "request_disposition"
+    ],
+    "assertions_enabled": true,
+    "gil_before": false,
+    "gil_after": false,
+    "torch_imported": false,
+    "xdsl_imported": false,
+    "driver_source": "pliron_candidate/evidence_composition/replay.py; only replay.json output write suppressed to preserve historical evidence"
+  },
+  "git_diff_check": {
+    "exit_code": 0
+  },
+  "source_sha256": {
+    "CHANGELOG.md": "8b83501e4c4a67f5f9e9ca497a0c567792e7ded829ba5b0e6356873c4fa1d087",
+    "ROADMAP.md": "355d3e9df637b1ec5b7f9bc5d77a7f1e104020c2121335c32d8e10f221b38240",
+    "docs_design/models-strategy-trainer/candidate_comparison.md": "3ba36817efd1391892771f1a5b4220101f1b913471792e0f9d721192db577122",
+    "docs_design/models-strategy-trainer/matched_comparison.md": "b209582aa86c25512693bd13744aef88ec37c823836bbe6394a9d9ad2328fadf",
+    "docs_design/models-strategy-trainer/xdsl_candidate/conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "docs_design/models-strategy-trainer/xdsl_candidate/model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+    "docs_design/models-strategy-trainer/xdsl_candidate/grant_conformance.py": "6157b8c9337c08ddb9dbbd4d892ed4166cfe04e8882a2368f64ea25ec4746dd9",
+    "docs_design/models-strategy-trainer/xdsl_candidate/mixed_conformance.py": "64e83fd1e7666e5ab4f577924659e758aa14e3040ab0ecd63e69f3df3b56942b",
+    "docs_design/models-strategy-trainer/xdsl_candidate/extension_conformance.py": "6b31e02af2223f33efff7015e49612c7b60d9d1d4b39fc006e17c6957d465f5e",
+    "docs_design/models-strategy-trainer/xdsl_candidate/local_contract.py": "ccb54913fca48229955fe3e68a13b3a2481487a78204e283fac4e329e1beeb83",
+    "docs_design/models-strategy-trainer/xdsl_candidate/fusion.py": "f6b04e5c804736ff14efbacc1656950d4d04c24afe6beb861e418986194c5464",
+    "docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt": "cb1c078a33754de0142cef15c14f6e247ef859aace7998b6196013a4d2687774",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md": "26001dd19564059db3a36e1cad3e6107a1fd0623ca850c88ab1d0d1e38167783",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_conformance.py": "1e218d866e278d1a03dfebabb4e78c11c891390bce31be3ba0a38e66f9fcc138",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/prepare.rs": "50f2d2846ae526b7d612bd96d60b642afb8cbf3a00fdc7a2303d3501f8b84f5d",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml": "d47a5552a2e0bceae39d3b0a8d6efe5f026121f6d3b5927692f5eb604f045b4e",
+    "docs_design/models-strategy-trainer/pliron_candidate/evidence_composition/replay.py": "801073599e03f7182f495d426733b3cfe37bd212d26ba63b05e51a062b850f81",
+    "docs_design/models-strategy-trainer/candidate_comparison_evidence.json": "ed525a42a1ca7dc4e2e4b6b1995b90c357d5f2cb1e4d6e598197c36aa172992c"
+  },
+  "graph": {
+    "tier": 2,
+    "project": "home-imi-Projects-sd-scripts",
+    "generation": "2026-10-31T13:16:41Z",
+    "coverage": "13 directly relied-on inventory/oracle/transformation paths: no_recorded_issue, metadata_match, no additional page; best-effort only. Source snippets and direct source reads checked material claims.",
+    "additional_coverage": {
+      "generation": "2026-11-01T13:03:00Z",
+      "path_count": 10,
+      "result": "no_recorded_issue and metadata_match; no additional page; supplementary instruction, documentation, fixture-test and manifest paths. Best-effort, not exhaustive coverage."
+    }
+  },
+  "review": {
+    "status": "failed",
+    "result_ok": false,
+    "exit_code": 1,
+    "artifact_directory": "/tmp/review-mcp-run-cvycevtc",
+    "output": "Error calling model 'glm-5.3' API during analysis: Error code: 429 - Usage limit reached for 5 hour. Your limit will reset at 2026-11-01 22:04:55\n",
+    "approval_obtained": false,
+    "boundary": "Provider failure during analysis; no independent assessment supplied. No fallback agent was requested or spawned."
+  },
+  "scope_check": {
+    "modified": [
+      "CHANGELOG.md",
+      "ROADMAP.md",
+      "docs_design/models-strategy-trainer/candidate_comparison.md"
+    ],
+    "new": [
+      "docs_design/models-strategy-trainer/matched_comparison.md",
+      "docs_design/models-strategy-trainer/matched_comparison_preparation.json"
+    ],
+    "implementation_changes": false,
+    "commit_created": false
+  },
+  "external_assessment": {
+    "date": "2026-11-01",
+    "source": "user-supplied external review in conversation",
+    "outcome": "Proceed after two small clarifications; control setup and xDSL lifetime port authorized without another planning phase.",
+    "clarifications": [
+      "Scope: stateful, heterogeneous data and model workflows.",
+      "Use valid opaque offset, keep frozen pack contract, require successful unfused execution before forged barrier-crossing rejection."
+    ],
+    "verification_claim": "Attached Markdown hashes matched preparation JSON; recorded replay was not independently rerun."
+  },
+  "original_preparation_source_sha256": {
+    "CHANGELOG.md": "0a392354b41a7f8755eb2723334e3388aa1eb1ab4c8d4f1d984bf43b72267e0f",
+    "ROADMAP.md": "209c32fb3d73019e4f80fe7fb4d3caac92add0726c250105ca059e67cdf51e5f",
+    "docs_design/models-strategy-trainer/candidate_comparison.md": "e18511e25d418b6b5b01610a003ab73dee41da2b374e356136808bfae0161194",
+    "docs_design/models-strategy-trainer/matched_comparison.md": "2f323721ac01b7ef7ec7199c5630a6329cddfc4fe8d53e701d98dd7b406ab137",
+    "docs_design/models-strategy-trainer/xdsl_candidate/conformance.py": "7870969681b009a965780e8648d94a8299ce205efa876611daf32de0ca3c7174",
+    "docs_design/models-strategy-trainer/xdsl_candidate/model_conformance.py": "8586c1befdfca0c6f19f727ba9593c8bdf2826554b999dc76f34b47bf5090179",
+    "docs_design/models-strategy-trainer/xdsl_candidate/grant_conformance.py": "6157b8c9337c08ddb9dbbd4d892ed4166cfe04e8882a2368f64ea25ec4746dd9",
+    "docs_design/models-strategy-trainer/xdsl_candidate/mixed_conformance.py": "64e83fd1e7666e5ab4f577924659e758aa14e3040ab0ecd63e69f3df3b56942b",
+    "docs_design/models-strategy-trainer/xdsl_candidate/extension_conformance.py": "6b31e02af2223f33efff7015e49612c7b60d9d1d4b39fc006e17c6957d465f5e",
+    "docs_design/models-strategy-trainer/xdsl_candidate/local_contract.py": "ccb54913fca48229955fe3e68a13b3a2481487a78204e283fac4e329e1beeb83",
+    "docs_design/models-strategy-trainer/xdsl_candidate/fusion.py": "f6b04e5c804736ff14efbacc1656950d4d04c24afe6beb861e418986194c5464",
+    "docs_design/models-strategy-trainer/xdsl_candidate/requirements.txt": "cb1c078a33754de0142cef15c14f6e247ef859aace7998b6196013a4d2687774",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md": "26001dd19564059db3a36e1cad3e6107a1fd0623ca850c88ab1d0d1e38167783",
+    "docs_design/models-strategy-trainer/pliron_candidate/composition_conformance.py": "1e218d866e278d1a03dfebabb4e78c11c891390bce31be3ba0a38e66f9fcc138",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/src/prepare.rs": "50f2d2846ae526b7d612bd96d60b642afb8cbf3a00fdc7a2303d3501f8b84f5d",
+    "docs_design/models-strategy-trainer/pliron_candidate/native/Cargo.toml": "d47a5552a2e0bceae39d3b0a8d6efe5f026121f6d3b5927692f5eb604f045b4e",
+    "docs_design/models-strategy-trainer/pliron_candidate/evidence_composition/replay.py": "801073599e03f7182f495d426733b3cfe37bd212d26ba63b05e51a062b850f81",
+    "docs_design/models-strategy-trainer/candidate_comparison_evidence.json": "ed525a42a1ca7dc4e2e4b6b1995b90c357d5f2cb1e4d6e598197c36aa172992c"
+  },
+  "revision_boundary": "Original checks and failed provider review concern the preparation phase. original_preparation_source_sha256 preserves the externally assessed snapshot; source_sha256 records current source/doc bytes after requested clarifications. Current implementation qualification is evidence_matched/qualification.json."
+}

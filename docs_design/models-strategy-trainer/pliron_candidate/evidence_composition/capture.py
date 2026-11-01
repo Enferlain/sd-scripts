@@ -19,11 +19,20 @@ PREFIX = "docs_design.models-strategy-trainer.pliron_candidate"
 async def capture(binary: Path) -> tuple[dict[str, Any], dict[str, Any]]:
     api = importlib.import_module(PREFIX + ".composition")
     author = importlib.import_module(PREFIX + ".composition_author")
+    native = api.CompositionNative(binary)
+    artifact = native.prepare(native.accept(author.build()))
+    return artifact, await capture_cases(native, artifact)
+
+
+async def capture_cases(native: Any, artifact: dict[str, Any]) -> dict[str, Any]:
+    """Common owner witnesses for default-named fixture artifacts only.
+
+    Renamed frontends use pressure/check(prefix=...) in their independent tests.
+    No candidate's IR verification or preparation is shared by these witnesses.
+    """
     runtime = importlib.import_module(PREFIX + ".composition_runtime")
     driver = importlib.import_module(PREFIX + ".composition_demo")
     oracle = importlib.import_module(PREFIX + ".composition_conformance")
-    native = api.CompositionNative(binary)
-    artifact = native.prepare(native.accept(author.build()))
     reports = {}
     for name, options in {
         "late": {},
@@ -84,7 +93,7 @@ async def capture(binary: Path) -> tuple[dict[str, Any], dict[str, Any]]:
             if not task.done():
                 task.cancel()
                 await asyncio.gather(task, return_exceptions=True)
-    return artifact, reports
+    return reports
 
 
 def save(output: Path, artifact: dict[str, Any], reports: dict[str, Any]) -> None:

@@ -1,0 +1,62 @@
+{
+  "gil_before": false,
+  "gil_after": false,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "reports": {
+    "late": {
+      "status": "stopped",
+      "steps": 2,
+      "released": true
+    },
+    "prefetched": {
+      "status": "stopped",
+      "steps": 2,
+      "released": true
+    },
+    "late_failure": {
+      "status": "failed",
+      "steps": 2,
+      "released": true
+    },
+    "cancel_failure": {
+      "status": "cancelled",
+      "steps": 2,
+      "released": true
+    },
+    "erased": {
+      "status": "stopped",
+      "steps": 2,
+      "released": true
+    },
+    "stop_before": {
+      "status": "stopped",
+      "steps": 1,
+      "released": true
+    },
+    "stop_after": {
+      "status": "stopped",
+      "steps": 2,
+      "released": true
+    },
+    "training_failure": {
+      "status": "failed",
+      "steps": 1,
+      "released": true
+    },
+    "evaluation_failure": {
+      "status": "failed",
+      "steps": 2,
+      "released": true
+    },
+    "partial_cancel": {
+      "status": "cancelled",
+      "steps": 1,
+      "released": true
+    },
+    "pending_cancel": {
+      "status": "cancelled",
+      "steps": 2,
+      "released": true
+    }
+  }
+}
