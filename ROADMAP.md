@@ -33,8 +33,11 @@ resource-summary preservation/invalidation (`.31.25.4`). The subsequent
 [Pliron A port](docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md)
 independently represents correlated samples, retained two-contribution windows
 and requested current-state evaluation (`.31.25.5`), reusing the existing owner
-target after native verification. Mixed ownership, matched costs and a decision
-remain open.
+target after native verification. The [Pliron mixed port](docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md)
+connects independent producer/repeat lifetimes, actual production epochs and
+producer-owned feedback (`.31.25.6`) through the shared owner target. The six
+case meanings now have reciprocal representations; matched diagnostics, costs
+and a decision remain open.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip

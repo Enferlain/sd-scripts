@@ -1,0 +1,12 @@
+{
+  "variants": [
+    "calls-f0",
+    "calls-f1",
+    "inline-f0",
+    "inline-f1"
+  ],
+  "gil_before": false,
+  "gil_after": false,
+  "torch_imported": false,
+  "xdsl_imported": false
+}

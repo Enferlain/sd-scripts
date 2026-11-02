@@ -40,8 +40,10 @@ for both C frontends (`.31.25.3`). The [grouping comparison](grouping_comparison
 now aligns typed unary/frozen-read legality and analysis preservation/invalidation
 (`.31.25.4`). The [Pliron A record](pliron_candidate/correlation_case.md) now adds
 independent correlation/accumulation representation and cold checks (`.31.25.5`).
-These implementation records retain current evidence. The mixed port,
-measurements and the decision are still outstanding.
+The [Pliron mixed record](pliron_candidate/mixed_case.md) adds independent
+feedback/model representation and cold checks (`.31.25.6`). These implementation
+records retain current evidence. Matched diagnostics, measurements and the
+decision are still outstanding.
 
 Both candidates may reuse the selected numerical implementations, existing owner
 engine, state/grant/optimization services, physical workers, fixtures and

@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-02]
+
+### Added
+
+- **Pliron mixed workflows now connect feedback and changing model state** — typed producer/repeat regions, policy acknowledgements, protected production snapshots and checkpoint/drain dependencies independently prepare for the existing owner engine. Both frontends check saved plans before factories; numerical reconstruction, archive erasure, bounded exclusion progress and physical failure/cancellation controls pass. Matched diagnostics, costs and the final substrate decision remain open.
+
 ## [2026-11-01]
 
 ### Added

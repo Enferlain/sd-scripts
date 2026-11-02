@@ -36,7 +36,13 @@ verified preparation feeds the shared [owner target](../model_target.py),
 extracted from xDSL A; neither frontend uses the other's IR validation. Current
 sources, cold checks and failure witnesses are in
 [evidence_correlation/qualification.json](evidence_correlation/qualification.json).
-The mixed port, matched costs and framework decision remain open.
+The subsequent [mixed case](mixed_case.md) connects producer-owned policy,
+protected reads of the changing learner, atomic correlated admission, ordinary
+advancement, feedback and separate checkpoint/producer settlement. Its native
+verification and preparation feed the shared [mixed owner target](../mixed_target.py)
+after complete saved-plan checks. Current evidence is in
+[evidence_mixed/qualification.json](evidence_mixed/qualification.json).
+Matched diagnostics, costs and the framework decision remain open.
 
 The baseline [comparison](../candidate_comparison.md) defines the evidence
 boundaries. B selects `x = key + current_bias`, maps `2*x`, then `+1` inside a

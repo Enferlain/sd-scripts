@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import importlib
 import json
 import platform
 import sys
@@ -16,46 +17,29 @@ from .mixed_contract import accept_mixed, build_mixed
 from .mixed_dialect import parse_mixed
 
 
-async def exercise(prepared):
-    if prepared.controls.block_key != 6:
-        raise ValueError("mixed pressure driver requires block_key=6")
-    run = prepared.publish()
-    task = asyncio.create_task(run.run())
-    controls = prepared.controls
-    try:
-        async with asyncio.timeout(10):
-            while not (prepared.bridge.checkpoint.is_set() and controls.entered.is_set()):
-                if task.done():
-                    return await task
-                await asyncio.sleep(0.001)
-            source = run.ready.state.owners["mixed.source"]
-            while not (len(source.updates) == 3 and any(item["key"] == 5 and item["returned"] is None for item in source.products)):
-                await asyncio.sleep(0.001)
-        run.stop()
-        # Let cancellation reach the selected Worker before physical release.
-        while not run.ready.state.feeds["mixed.left"].closed:
-            await asyncio.sleep(0)
-        assert not task.done() and run.ready.state.readers, "owner released a live model read"
-        controls.release.set()
-        return await asyncio.wait_for(task, 10)
-    finally:
-        controls.release.set()
-        if not task.done():
-            task.cancel()
-            await asyncio.gather(task, return_exceptions=True)
+exercise = importlib.import_module("docs_design.models-strategy-trainer.mixed_target").exercise
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--load", type=Path)
     parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--prepared", type=Path)
+    parser.add_argument("--lowering", choices=("calls", "inline"), default="calls")
     parser.add_argument("--dump-dir", type=Path)
     parser.add_argument("--fuse", action="store_true")
     options = parser.parse_args()
+    if options.prepared and not options.load:
+        parser.error("--prepared requires --load")
     accepted = accept_mixed(parse_mixed(options.load.read_text()) if options.load else build_mixed())
-    prepared = prepare_mixed(accepted, fuse=options.fuse, controls=MixedControls(block_key=6))
-    if options.manifest and json.loads(options.manifest.read_text()) != json.loads(prepared.manifest):
-        raise ValueError("installed mixed binding manifest differs")
+    prepared = prepare_mixed(
+        accepted,
+        fuse=options.fuse,
+        controls=MixedControls(block_key=6),
+        lowering=options.lowering,
+        saved_text=options.prepared.read_text() if options.prepared else None,
+        saved_manifest=json.loads(options.manifest.read_text()) if options.manifest else None,
+    )
     report = asyncio.run(exercise(prepared))
     check_mixed(report)
     result = {

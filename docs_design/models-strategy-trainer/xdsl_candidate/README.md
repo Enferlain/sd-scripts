@@ -19,8 +19,9 @@ valid opaque-offset variant start the [matched comparison](../matched_comparison
 The [Pliron C port](../pliron_candidate/grant_case.md) supplies reciprocal
 authority representation. [Matched grouping](../grouping_comparison.md) now
 aligns resource policy and analysis checks. The [Pliron A port](../pliron_candidate/correlation_case.md)
-now supplies reciprocal correlation/accumulation representation; mixed remains
-a later task.
+now supplies reciprocal correlation/accumulation representation. The
+[Pliron mixed port](../pliron_candidate/mixed_case.md) now adds reciprocal
+feedback/model representation. Matched diagnostics, costs and a decision remain.
 
 Earlier combined qualification: **471 research tests pass** with the GIL
 disabled before and after the full run; the Torch-free environment passes

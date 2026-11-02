@@ -1,0 +1,32 @@
+{
+  "exit_code": 0,
+  "counts": {
+    "passed": 861
+  },
+  "gil_before": false,
+  "gil_after": false,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "xdsl": "0.74.0",
+  "args": [
+    "-ra",
+    "--ignore=tests/_deprecated",
+    "--ignore=tests/_deprecated",
+    "--noconftest",
+    "docs_design/models-strategy-trainer/xdsl_candidate",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_grant_runtime.py",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_correlation_runtime.py",
+    "docs_design/models-strategy-trainer/pliron_candidate/test_mixed_runtime.py",
+    "-q",
+    "-p",
+    "pytest_asyncio.plugin",
+    "--tb=short",
+    "--maxfail=3"
+  ],
+  "seconds": 186.33895768000002,
+  "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+  "torch_imported": true,
+  "output": "........................................................................ [  8%]\n........................................................................ [ 16%]\n........................................................................ [ 25%]\n........................................................................ [ 33%]\n........................................................................ [ 41%]\n........................................................................ [ 50%]\n........................................................................ [ 58%]\n........................................................................ [ 66%]\n........................................................................ [ 75%]\n........................................................................ [ 83%]\n........................................................................ [ 91%]\n.....................................................................    [100%]\n861 passed in 186.10s (0:03:06)\n",
+  "torch": "2.14.1+cu130",
+  "cuda_initialized": false
+}
