@@ -21,17 +21,23 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--load", type=Path)
     parser.add_argument("--manifest", type=Path)
+    parser.add_argument("--prepared", type=Path)
     parser.add_argument("--dump-dir", type=Path)
     parser.add_argument("--fuse", action="store_true")
     options = parser.parse_args()
+    if options.prepared and not options.load:
+        parser.error("--prepared requires the corresponding --load accepted document")
     started = perf_counter()
     accepted = accept_model(parse_model(options.load.read_text()) if options.load else build_model())
     accepted_seconds = perf_counter() - started
     started = perf_counter()
-    prepared = prepare_model(accepted, fuse=options.fuse)
+    prepared = prepare_model(
+        accepted,
+        fuse=options.fuse,
+        saved_text=options.prepared.read_text() if options.prepared else None,
+        saved_manifest=json.loads(options.manifest.read_text()) if options.manifest else None,
+    )
     prepared_seconds = perf_counter() - started
-    if options.manifest and json.loads(options.manifest.read_text()) != json.loads(prepared.manifest):
-        raise ValueError("binding manifest differs from installed model registry")
     started = perf_counter()
     report = asyncio.run(prepared.publish().run())
     execute_seconds = perf_counter() - started

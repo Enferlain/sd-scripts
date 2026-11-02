@@ -18,7 +18,9 @@ adapter and owner engine without Pliron IR machinery. Paired B controls and a
 valid opaque-offset variant start the [matched comparison](../matched_comparison.md).
 The [Pliron C port](../pliron_candidate/grant_case.md) supplies reciprocal
 authority representation. [Matched grouping](../grouping_comparison.md) now
-aligns resource policy and analysis checks; Pliron A/mixed remain later tasks.
+aligns resource policy and analysis checks. The [Pliron A port](../pliron_candidate/correlation_case.md)
+now supplies reciprocal correlation/accumulation representation; mixed remains
+a later task.
 
 Earlier combined qualification: **471 research tests pass** with the GIL
 disabled before and after the full run; the Torch-free environment passes

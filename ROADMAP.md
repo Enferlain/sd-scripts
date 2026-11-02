@@ -29,8 +29,12 @@ frontends validate saved prepared documents before model factories. This supplie
 reciprocal lifetime and authority representation evidence. The subsequent
 [grouping alignment](docs_design/models-strategy-trainer/grouping_comparison.md)
 matches typed unary/frozen-read legality, an executable opaque barrier and
-resource-summary preservation/invalidation (`.31.25.4`). A/mixed ports, matched
-costs and a decision remain open.
+resource-summary preservation/invalidation (`.31.25.4`). The subsequent
+[Pliron A port](docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md)
+independently represents correlated samples, retained two-contribution windows
+and requested current-state evaluation (`.31.25.5`), reusing the existing owner
+target after native verification. Mixed ownership, matched costs and a decision
+remain open.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip

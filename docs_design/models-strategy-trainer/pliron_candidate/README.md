@@ -27,7 +27,16 @@ sources and gates; the older B/extension/composition records remain historical.
 The subsequent [matched grouping case](../grouping_comparison.md) brings xDSL
 to the same intended typed unary/frozen-read policy. New native mutation probes
 exercise resource/effect invalidation and then cold-verify the updated contracts;
-Pliron's existing grouping implementation is unchanged. A/mixed ports remain open.
+Pliron's existing grouping implementation is unchanged.
+
+The subsequent [A correlation/accumulation case](correlation_case.md) adds native
+typed stream, model/unit, gradient and request dependencies, with the existing
+scalar/local operation vocabulary reused in nested regions. Its independently
+verified preparation feeds the shared [owner target](../model_target.py),
+extracted from xDSL A; neither frontend uses the other's IR validation. Current
+sources, cold checks and failure witnesses are in
+[evidence_correlation/qualification.json](evidence_correlation/qualification.json).
+The mixed port, matched costs and framework decision remain open.
 
 The baseline [comparison](../candidate_comparison.md) defines the evidence
 boundaries. B selects `x = key + current_bias`, maps `2*x`, then `+1` inside a

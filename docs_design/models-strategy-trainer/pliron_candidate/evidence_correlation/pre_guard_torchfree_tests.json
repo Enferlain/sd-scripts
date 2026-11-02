@@ -1,0 +1,28 @@
+{
+  "exit_code": 0,
+  "counts": {
+    "skipped": 7,
+    "passed": 719
+  },
+  "gil_before": false,
+  "gil_after": false,
+  "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+  "xdsl": "0.74.0",
+  "args": [
+    "-ra",
+    "--ignore=tests/_deprecated",
+    "--ignore=tests/_deprecated",
+    "--noconftest",
+    "docs_design/models-strategy-trainer/pliron_candidate",
+    "docs_design/models-strategy-trainer/xdsl_candidate",
+    "-q",
+    "-p",
+    "pytest_asyncio.plugin",
+    "--tb=short",
+    "--maxfail=3"
+  ],
+  "seconds": 61.97685099999944,
+  "duration_scope": "quality gate elapsed time; not matched framework performance evidence",
+  "torch_imported": false,
+  "output": "........................................................................ [ 10%]\n........................................................................ [ 20%]\n........................................................................ [ 30%]\n........................................................................ [ 40%]\n........................................................................ [ 50%]\n........................................................................ [ 60%]\n........................................................................ [ 70%]\n........................................................................ [ 80%]\n........................................................................ [ 90%]\n.......................................................................  [100%]\n=========================== short test summary info ============================\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_composition_runtime.py:24: composition owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_correlation_runtime.py:23: A owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/pliron_candidate/test_grant_runtime.py:22: C owner target requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_grant_runtime.py:29: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_lifetime_runtime.py:20: lifetime owner case requires optional Torch\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_mixed_runtime.py:25: could not import 'torch': No module named 'torch'\nSKIPPED [1] docs_design/models-strategy-trainer/xdsl_candidate/test_model_runtime.py:29: could not import 'torch': No module named 'torch'\n719 passed, 7 skipped in 61.72s (0:01:01)\n"
+}

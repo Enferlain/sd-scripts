@@ -1,0 +1,17 @@
+{
+  "variants": [
+    "calls-f0-w0",
+    "calls-f0-w1",
+    "calls-f1-w0",
+    "calls-f1-w1",
+    "inline-f0-w0",
+    "inline-f0-w1",
+    "inline-f1-w0",
+    "inline-f1-w1"
+  ],
+  "gil_before": false,
+  "gil_after": false,
+  "torch_imported": false,
+  "xdsl_imported": false,
+  "current_native_validation": "passed after final map-contract guard repair; captured numerical code/runtime unchanged"
+}
