@@ -1,0 +1,16 @@
+{
+  "actual_errors": 16,
+  "provenance_fields": [
+    "cpu_model",
+    "native_binary_directory",
+    "native_binary_sha256",
+    "native_lock_sha256",
+    "native_manifest_sha256",
+    "rust_env",
+    "rustc",
+    "source_sha256"
+  ],
+  "native_binary_count": 5,
+  "original_diagnostic_data_unchanged": true,
+  "scope": "Post-review CLI behavior check to separate /tmp output; not a replacement for historical diagnostics or timing data."
+}

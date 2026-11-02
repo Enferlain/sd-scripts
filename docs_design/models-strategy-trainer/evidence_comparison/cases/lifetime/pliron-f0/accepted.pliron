@@ -1,0 +1,56 @@
+lc.run () [] [source_id: builtin.string "run", version: builtin.string "1", failure: builtin.string "cancel_siblings_and_drain"]: <() -> ()>
+{
+  ^activities_block1v1() !0:
+    enc_v0 = lc.model () [] [source_id: builtin.string "encoder", implementation: builtin.string "scale_v1", initial: builtin.string "2.0", treatment: builtin.string "frozen"]: <() -> (lc.model )> !1;
+    learn_v1 = lc.model () [] [source_id: builtin.string "learner", implementation: builtin.string "scale_v1", initial: builtin.string "0.8", treatment: builtin.string "trainable"]: <() -> (lc.model )> !2;
+    records_v3, producer_done_v4 = lc.producer (enc_v0, group_done_v5) [] [source_id: builtin.string "producer", implementation: builtin.string "encode_v1", horizon: builtin.string "3", ready: builtin.string "2", workers: builtin.string "1", remaining: builtin.string "discard_unclaimed", failure: builtin.string "close_then_drain"]: <(lc.model , lc.done ) -> (lc.stream , lc.done )> !3;
+    group_done_v5 = lc.group () [] [source_id: builtin.string "consumers", completion: builtin.string "children_physically_settled", pending: builtin.string "include_requested", failure: builtin.string "cancel_siblings_and_drain"]: <() -> (lc.done )>
+    {
+      ^consumers_block2v1() !4:
+        window_events_v6, training_done_v7 = lc.repeat (records_v3, learn_v1) [] [source_id: builtin.string "training", max_windows: builtin.string "2", admission: builtin.string "policy_choice_before_first_claim", stop: builtin.string "finish_selected_window"]: <(lc.stream , lc.model ) -> (lc.events , lc.done )>
+        {
+          ^window_block3v1(window_stream_v8: lc.stream , window_model_v9: lc.model ) !5:
+            r0_v10 = lc.take (window_stream_v8) [] [source_id: builtin.string "training.take.0", selection: builtin.string "slot:0", provenance: builtin.string "actual_frozen_source"]: <(lc.stream ) -> (lc.sample )> !6;
+            g0_v11 = lc.contribute (r0_v10, window_model_v9) [] [source_id: builtin.string "training.objective.0", implementation: builtin.string "objective_v1", normalization: builtin.string "2"]: <(lc.sample , lc.model ) -> (lc.gradient )> !7;
+            r1_v12 = lc.take (window_stream_v8) [] [source_id: builtin.string "training.take.1", selection: builtin.string "slot:1", provenance: builtin.string "actual_frozen_source"]: <(lc.stream ) -> (lc.sample )> !8;
+            g1_v13 = lc.contribute (r1_v12, window_model_v9, g0_v11) [] [source_id: builtin.string "training.objective.1", implementation: builtin.string "objective_v1", normalization: builtin.string "2"]: <(lc.sample , lc.model , lc.gradient ) -> (lc.gradient )> !9;
+            advanced_v14 = lc.advance (g1_v13, window_model_v9) [] [source_id: builtin.string "training.advance", parameter: builtin.string "weight", learning_rate: builtin.string "0.01", authority: builtin.string "ordinary_owner"]: <(lc.gradient , lc.model ) -> (lc.completion )> !10;
+            lc.window_end (advanced_v14) [] [source_id: builtin.string "training.window_end"]: <(lc.completion ) -> ()> !11
+        } !12;
+        due_v15 = lc.request (window_events_v6) [] [source_id: builtin.string "request", after_window: builtin.string "2", multiplicity: builtin.string "once_per_matching_completion", pending: builtin.string "keeps_group_alive", max_pending: builtin.string "1", cancellation: builtin.string "cancel_or_unfulfilled"]: <(lc.events ) -> (lc.request )> !13;
+        evaluation_done_v16 = lc.evaluator (due_v15, records_v3, learn_v1) [] [source_id: builtin.string "evaluation", completion: builtin.string "physical_and_cleanup"]: <(lc.request , lc.stream , lc.model ) -> (lc.done )>
+        {
+          ^measurement_block4v1(cause_v17: lc.request , evaluation_stream_v18: lc.stream , evaluation_model_v19: lc.model ) !14:
+            sample_v20 = lc.take (evaluation_stream_v18) [] [source_id: builtin.string "evaluation.take", selection: builtin.string "after_trigger_members", provenance: builtin.string "actual_frozen_source"]: <(lc.stream ) -> (lc.sample )> !15;
+            result_v21 = lc.read (sample_v20, evaluation_model_v19) [] [source_id: builtin.string "evaluation.read", implementation: builtin.string "measure_v1", state: builtin.string "current_at_start", mode: builtin.string "evaluation", completion: builtin.string "physical_validate_restore"]: <(lc.sample , lc.model ) -> (lc.measurement )> !16;
+            lc.evaluation_end (result_v21) [] [source_id: builtin.string "evaluation.end"]: <(lc.measurement ) -> ()> !17
+        } !18;
+        lc.settle (training_done_v7, evaluation_done_v16) [] [source_id: builtin.string "consumers.settle"]: <(lc.done , lc.done ) -> ()> !19
+    } !20;
+    lc.finish (group_done_v5, producer_done_v4) [] [source_id: builtin.string "run.finish"]: <(lc.done , lc.done ) -> ()> !21
+} !22
+
+outlined_attributes:
+!0 = @[<in-memory>: line: 2, column: 7], []
+!1 = @[<in-memory>: line: 3, column: 9], [builtin_given_names = builtin.given_names [enc]]
+!2 = @[<in-memory>: line: 3, column: 200], [builtin_given_names = builtin.given_names [learn]]
+!3 = @[<in-memory>: line: 3, column: 396], [builtin_given_names = builtin.given_names [records, producer_done]]
+!4 = @[<in-memory>: line: 4, column: 7], []
+!5 = @[<in-memory>: line: 6, column: 7], [builtin_given_names = builtin.given_names [window_stream, window_model]]
+!6 = @[<in-memory>: line: 7, column: 9], [builtin_given_names = builtin.given_names [r0]]
+!7 = @[<in-memory>: line: 7, column: 206], [builtin_given_names = builtin.given_names [g0]]
+!8 = @[<in-memory>: line: 7, column: 424], [builtin_given_names = builtin.given_names [r1]]
+!9 = @[<in-memory>: line: 7, column: 621], [builtin_given_names = builtin.given_names [g1]]
+!10 = @[<in-memory>: line: 7, column: 856], [builtin_given_names = builtin.given_names [advanced]]
+!11 = @[<in-memory>: line: 7, column: 1113], []
+!12 = @[<in-memory>: line: 5, column: 9], [builtin_given_names = builtin.given_names [window_events, training_done]]
+!13 = @[<in-memory>: line: 9, column: 9], [builtin_given_names = builtin.given_names [due]]
+!14 = @[<in-memory>: line: 11, column: 7], [builtin_given_names = builtin.given_names [cause, evaluation_stream, evaluation_model]]
+!15 = @[<in-memory>: line: 12, column: 9], [builtin_given_names = builtin.given_names [sample]]
+!16 = @[<in-memory>: line: 13, column: 9], [builtin_given_names = builtin.given_names [result]]
+!17 = @[<in-memory>: line: 14, column: 9], []
+!18 = @[<in-memory>: line: 10, column: 9], [builtin_given_names = builtin.given_names [evaluation_done]]
+!19 = @[<in-memory>: line: 16, column: 9], []
+!20 = @[<in-memory>: line: 3, column: 762], [builtin_given_names = builtin.given_names [group_done]]
+!21 = @[<in-memory>: line: 17, column: 8], []
+!22 = @[<in-memory>: line: 1, column: 1], []

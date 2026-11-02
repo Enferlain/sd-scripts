@@ -42,8 +42,10 @@ now aligns typed unary/frozen-read legality and analysis preservation/invalidati
 independent correlation/accumulation representation and cold checks (`.31.25.5`).
 The [Pliron mixed record](pliron_candidate/mixed_case.md) adds independent
 feedback/model representation and cold checks (`.31.25.6`). These implementation
-records retain current evidence. Matched diagnostics, measurements and the
-decision are still outstanding.
+records retain current evidence. The [machinery evidence](machinery_comparison.md)
+now records the matched inventories, diagnostic sample and phase/process
+observations (`.31.25.7`), including the retained endpoint qualification correction.
+The decision remains outstanding.
 
 Both candidates may reuse the selected numerical implementations, existing owner
 engine, state/grant/optimization services, physical workers, fixtures and

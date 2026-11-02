@@ -1,0 +1,66 @@
+{
+  "rows": [
+    {
+      "case": "B",
+      "framework": "xdsl",
+      "status": "passed"
+    },
+    {
+      "case": "B",
+      "framework": "pliron",
+      "status": "passed"
+    },
+    {
+      "case": "extension",
+      "framework": "xdsl",
+      "status": "passed"
+    },
+    {
+      "case": "extension",
+      "framework": "pliron",
+      "status": "passed"
+    },
+    {
+      "case": "A",
+      "framework": "xdsl",
+      "status": "passed"
+    },
+    {
+      "case": "A",
+      "framework": "pliron",
+      "status": "passed"
+    },
+    {
+      "case": "C",
+      "framework": "xdsl",
+      "status": "passed"
+    },
+    {
+      "case": "C",
+      "framework": "pliron",
+      "status": "passed"
+    },
+    {
+      "case": "mixed",
+      "framework": "xdsl",
+      "status": "passed"
+    },
+    {
+      "case": "mixed",
+      "framework": "pliron",
+      "status": "passed"
+    },
+    {
+      "case": "lifetime",
+      "framework": "xdsl",
+      "status": "passed"
+    },
+    {
+      "case": "lifetime",
+      "framework": "pliron",
+      "status": "passed"
+    }
+  ],
+  "gil_after": false,
+  "scope": "Constructor type-flow and immediate callback capture cleanup; no performance resampling."
+}

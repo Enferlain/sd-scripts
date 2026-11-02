@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "bead": "sd-scripts-syv.31.25.7",
+  "frozen_before_measurement": true,
+  "cases": [
+    "B",
+    "extension",
+    "A",
+    "C",
+    "mixed"
+  ],
+  "warmups": 3,
+  "measured_pairs": 20,
+  "fresh_starts_per_candidate_case": 10,
+  "endpoint": "Actual natural author -> accept -> prepare -> execute; reuse returned prepared target for xDSL and native B/extension. Native owner targets need their existing materialize/cold call; lifetime retains original valid natural samples.",
+  "difference_from_v1": "V1 end_to_end and fresh measurements retain a forced cold reconstruction. No rows discarded or reused as natural hot-path evidence for these5cases. New endpoint is not a rerun for favorable timing.",
+  "inherited": "Same protocol.json case meanings,rewrite variants,thread/cache/GIL/Rust profile and failure policy; alternating candidate order. Do not infer optimization gains by subtracting different endpoints."
+}

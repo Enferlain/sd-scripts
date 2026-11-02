@@ -14,6 +14,7 @@ Rules:
 
 ### Added
 
+- **Matched machinery evidence now covers all six xDSL/Pliron cases** — source-linked framework/domain inventories, paired diagnostics and release-build CPU observations retain actual API boundaries, native request/serialization spans, process costs and separate peak-memory definitions. Collector corrections and failed probes remain recorded; the substrate recommendation is a separate task.
 - **Pliron mixed workflows now connect feedback and changing model state** — typed producer/repeat regions, policy acknowledgements, protected production snapshots and checkpoint/drain dependencies independently prepare for the existing owner engine. Both frontends check saved plans before factories; numerical reconstruction, archive erasure, bounded exclusion progress and physical failure/cancellation controls pass. Matched diagnostics, costs and the final substrate decision remain open.
 
 ## [2026-11-01]

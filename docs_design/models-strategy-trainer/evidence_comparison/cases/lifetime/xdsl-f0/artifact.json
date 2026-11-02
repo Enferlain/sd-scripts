@@ -1,0 +1,79 @@
+{
+  "schema": 1,
+  "framework": "xdsl",
+  "target": "existing-owner-composition-cpu-v1",
+  "accepted": "\"builtin.module\"() ({\n  \"life.run\"() <{source_id = \"run\", policy = {version = \"1\", failure = \"cancel_siblings_and_drain\"}}> ({\n    %0 = \"life.model\"() <{source_id = \"encoder\", policy = {implementation = \"scale_v1\", initial = \"2.0\", treatment = \"frozen\"}}> : () -> !life.model\n    %1 = \"life.model\"() <{source_id = \"learner\", policy = {implementation = \"scale_v1\", initial = \"0.8\", treatment = \"trainable\"}}> : () -> !life.model\n    %2, %3 = \"life.producer\"(%0, %4) <{source_id = \"producer\", policy = {implementation = \"encode_v1\", horizon = \"3\", ready = \"2\", workers = \"1\", remaining = \"discard_unclaimed\", failure = \"close_then_drain\"}}> : (!life.model, !life.done) -> (!life.stream, !life.done)\n    %4 = \"life.group\"() <{source_id = \"consumers\", policy = {completion = \"children_physically_settled\", pending = \"include_requested\", failure = \"cancel_siblings_and_drain\"}}> ({\n      %5, %6 = \"life.repeat\"(%2, %1) <{source_id = \"training\", policy = {max_windows = \"2\", admission = \"policy_choice_before_first_claim\", stop = \"finish_selected_window\"}}> ({\n      ^bb0(%7: !life.stream, %8: !life.model):\n        %9 = \"life.take\"(%7) <{source_id = \"training.take.0\", policy = {selection = \"slot:0\", provenance = \"actual_frozen_source\"}}> : (!life.stream) -> !life.sample\n        %10 = \"life.contribute\"(%9, %8) <{source_id = \"training.objective.0\", policy = {implementation = \"objective_v1\", normalization = \"2\"}}> : (!life.sample, !life.model) -> !life.gradient\n        %11 = \"life.take\"(%7) <{source_id = \"training.take.1\", policy = {selection = \"slot:1\", provenance = \"actual_frozen_source\"}}> : (!life.stream) -> !life.sample\n        %12 = \"life.contribute\"(%11, %8, %10) <{source_id = \"training.objective.1\", policy = {implementation = \"objective_v1\", normalization = \"2\"}}> : (!life.sample, !life.model, !life.gradient) -> !life.gradient\n        %13 = \"life.advance\"(%12, %8) <{source_id = \"training.advance\", policy = {parameter = \"weight\", learning_rate = \"0.01\", authority = \"ordinary_owner\"}}> : (!life.gradient, !life.model) -> !life.completion\n        \"life.window_end\"(%13) <{source_id = \"training.window_end\", policy = {}}> : (!life.completion) -> ()\n      }) : (!life.stream, !life.model) -> (!life.events, !life.done)\n      %7 = \"life.request\"(%5) <{source_id = \"request\", policy = {after_window = \"2\", multiplicity = \"once_per_matching_completion\", pending = \"keeps_group_alive\", max_pending = \"1\", cancellation = \"cancel_or_unfulfilled\"}}> : (!life.events) -> !life.request\n      %8 = \"life.evaluator\"(%7, %2, %1) <{source_id = \"evaluation\", policy = {completion = \"physical_and_cleanup\"}}> ({\n      ^bb0(%9: !life.request, %10: !life.stream, %11: !life.model):\n        %12 = \"life.take\"(%10) <{source_id = \"evaluation.take\", policy = {selection = \"after_trigger_members\", provenance = \"actual_frozen_source\"}}> : (!life.stream) -> !life.sample\n        %13 = \"life.read\"(%12, %11) <{source_id = \"evaluation.read\", policy = {implementation = \"measure_v1\", state = \"current_at_start\", mode = \"evaluation\", completion = \"physical_validate_restore\"}}> : (!life.sample, !life.model) -> !life.measurement\n        \"life.evaluation_end\"(%13) <{source_id = \"evaluation.end\", policy = {}}> : (!life.measurement) -> ()\n      }) : (!life.request, !life.stream, !life.model) -> !life.done\n      \"life.settle\"(%6, %8) <{source_id = \"consumers.settle\", policy = {}}> : (!life.done, !life.done) -> ()\n    }) : () -> !life.done\n    \"life.finish\"(%4, %3) <{source_id = \"run.finish\", policy = {}}> : (!life.done, !life.done) -> ()\n  }) : () -> ()\n}) : () -> ()",
+  "prepared": "\"builtin.module\"() ({\n  \"life_exec.plan\"() <{schema = \"1\", target = \"existing-owner-composition-cpu-v1\", manifest = \"{\\22bindings\\22:{\\22encode_v1\\22:{\\22completion\\22:\\22physical_return_before_release\\22,\\22effect\\22:\\22read_source\\22,\\22role\\22:\\22produce\\22,\\22version\\22:\\221\\22},\\22measure_v1\\22:{\\22completion\\22:\\22physical_validate_restore\\22,\\22effect\\22:\\22protected_read\\22,\\22role\\22:\\22evaluate\\22,\\22version\\22:\\221\\22},\\22objective_v1\\22:{\\22completion\\22:\\22return_before_backward\\22,\\22effect\\22:\\22build_loss\\22,\\22role\\22:\\22objective\\22,\\22version\\22:\\221\\22},\\22scale_v1\\22:{\\22completion\\22:\\22before_install\\22,\\22effect\\22:\\22load\\22,\\22role\\22:\\22model\\22,\\22version\\22:\\221\\22}},\\22schema\\22:1,\\22target\\22:\\22existing-owner-composition-cpu-v1\\22}\"}> ({\n    \"life.run\"() <{source_id = \"run\", policy = {version = \"1\", failure = \"cancel_siblings_and_drain\"}}> ({\n      %0 = \"life.model\"() <{source_id = \"encoder\", policy = {implementation = \"scale_v1\", initial = \"2.0\", treatment = \"frozen\"}}> : () -> !life.model\n      %1 = \"life.model\"() <{source_id = \"learner\", policy = {implementation = \"scale_v1\", initial = \"0.8\", treatment = \"trainable\"}}> : () -> !life.model\n      %2, %3 = \"life.producer\"(%0, %4) <{source_id = \"producer\", policy = {implementation = \"encode_v1\", horizon = \"3\", ready = \"2\", workers = \"1\", remaining = \"discard_unclaimed\", failure = \"close_then_drain\"}}> : (!life.model, !life.done) -> (!life.stream, !life.done)\n      %4 = \"life.group\"() <{source_id = \"consumers\", policy = {completion = \"children_physically_settled\", pending = \"include_requested\", failure = \"cancel_siblings_and_drain\"}}> ({\n        %5, %6 = \"life.repeat\"(%2, %1) <{source_id = \"training\", policy = {max_windows = \"2\", admission = \"policy_choice_before_first_claim\", stop = \"finish_selected_window\"}}> ({\n        ^bb0(%7: !life.stream, %8: !life.model):\n          %9 = \"life.take\"(%7) <{source_id = \"training.take.0\", policy = {selection = \"slot:0\", provenance = \"actual_frozen_source\"}}> : (!life.stream) -> !life.sample\n          %10 = \"life.contribute\"(%9, %8) <{source_id = \"training.objective.0\", policy = {implementation = \"objective_v1\", normalization = \"2\"}}> : (!life.sample, !life.model) -> !life.gradient\n          %11 = \"life.take\"(%7) <{source_id = \"training.take.1\", policy = {selection = \"slot:1\", provenance = \"actual_frozen_source\"}}> : (!life.stream) -> !life.sample\n          %12 = \"life.contribute\"(%11, %8, %10) <{source_id = \"training.objective.1\", policy = {implementation = \"objective_v1\", normalization = \"2\"}}> : (!life.sample, !life.model, !life.gradient) -> !life.gradient\n          %13 = \"life.advance\"(%12, %8) <{source_id = \"training.advance\", policy = {parameter = \"weight\", learning_rate = \"0.01\", authority = \"ordinary_owner\"}}> : (!life.gradient, !life.model) -> !life.completion\n          \"life.window_end\"(%13) <{source_id = \"training.window_end\", policy = {}}> : (!life.completion) -> ()\n        }) : (!life.stream, !life.model) -> (!life.events, !life.done)\n        %7 = \"life.request\"(%5) <{source_id = \"request\", policy = {after_window = \"2\", multiplicity = \"once_per_matching_completion\", pending = \"keeps_group_alive\", max_pending = \"1\", cancellation = \"cancel_or_unfulfilled\"}}> : (!life.events) -> !life.request\n        %8 = \"life.evaluator\"(%7, %2, %1) <{source_id = \"evaluation\", policy = {completion = \"physical_and_cleanup\"}}> ({\n        ^bb0(%9: !life.request, %10: !life.stream, %11: !life.model):\n          %12 = \"life.take\"(%10) <{source_id = \"evaluation.take\", policy = {selection = \"after_trigger_members\", provenance = \"actual_frozen_source\"}}> : (!life.stream) -> !life.sample\n          %13 = \"life.read\"(%12, %11) <{source_id = \"evaluation.read\", policy = {implementation = \"measure_v1\", state = \"current_at_start\", mode = \"evaluation\", completion = \"physical_validate_restore\"}}> : (!life.sample, !life.model) -> !life.measurement\n          \"life.evaluation_end\"(%13) <{source_id = \"evaluation.end\", policy = {}}> : (!life.measurement) -> ()\n        }) : (!life.request, !life.stream, !life.model) -> !life.done\n        \"life.settle\"(%6, %8) <{source_id = \"consumers.settle\", policy = {}}> : (!life.done, !life.done) -> ()\n      }) : () -> !life.done\n      \"life.finish\"(%4, %3) <{source_id = \"run.finish\", policy = {}}> : (!life.done, !life.done) -> ()\n    }) : () -> ()\n  }, {\n    \"life_exec.declaration\"() <{role = \"scope\", values = {origin = \"run\", parent = \"\", kind = \"life.run\", version = \"1\", failure = \"cancel_siblings_and_drain\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"call\", values = {origin = \"encoder\", symbol = \"scale_v1\", version = \"1\", binding_role = \"model\", effect = \"load\", completion = \"before_install\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"call\", values = {origin = \"learner\", symbol = \"scale_v1\", version = \"1\", binding_role = \"model\", effect = \"load\", completion = \"before_install\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"scope\", values = {origin = \"producer\", parent = \"run\", kind = \"life.producer\", implementation = \"encode_v1\", horizon = \"3\", ready = \"2\", workers = \"1\", remaining = \"discard_unclaimed\", failure = \"close_then_drain\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"call\", values = {origin = \"producer\", symbol = \"encode_v1\", version = \"1\", binding_role = \"produce\", effect = \"read_source\", completion = \"physical_return_before_release\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"access\", values = {origin = \"producer\", participant = \"encoder\", mode = \"read_source\", through = \"physical_return\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"stop_link\", values = {source = \"consumers\", target = \"producer\", relation = \"normal_group_end_requests_stop\", failure = \"enclosing_cancel_then_physical_drain\", run_completion = \"producer_and_group_settled\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"port\", values = {producer = \"producer\", port_role = \"slot:0\", channel = \"producer.slot.0\", identity = \"actual_record_and_source\", ready_budget = \"aggregate_provider_budget\", settlement = \"actual_use_then_notification\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"port\", values = {producer = \"producer\", port_role = \"slot:1\", channel = \"producer.slot.1\", identity = \"actual_record_and_source\", ready_budget = \"aggregate_provider_budget\", settlement = \"actual_use_then_notification\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"port\", values = {producer = \"producer\", port_role = \"evaluation\", channel = \"producer.evaluation\", identity = \"actual_record_and_source\", ready_budget = \"aggregate_provider_budget\", settlement = \"actual_use_then_notification\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"port\", values = {producer = \"producer\", port_role = \"unused\", channel = \"producer.unused\", identity = \"actual_record_and_source\", ready_budget = \"aggregate_provider_budget\", settlement = \"actual_use_then_notification\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"scope\", values = {origin = \"consumers\", parent = \"run\", kind = \"life.group\", completion = \"children_physically_settled\", pending = \"include_requested\", failure = \"cancel_siblings_and_drain\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"scope\", values = {origin = \"training\", parent = \"consumers\", kind = \"life.repeat\", max_windows = \"2\", admission = \"policy_choice_before_first_claim\", stop = \"finish_selected_window\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"call\", values = {origin = \"training.objective.0\", symbol = \"objective_v1\", version = \"1\", binding_role = \"objective\", effect = \"build_loss\", completion = \"return_before_backward\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"access\", values = {origin = \"training.objective.0\", participant = \"learner\", mode = \"read_gradient\", through = \"backward\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"call\", values = {origin = \"training.objective.1\", symbol = \"objective_v1\", version = \"1\", binding_role = \"objective\", effect = \"build_loss\", completion = \"return_before_backward\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"access\", values = {origin = \"training.objective.1\", participant = \"learner\", mode = \"read_gradient\", through = \"backward\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"access\", values = {origin = \"training.advance\", participant = \"learner\", mode = \"write\", through = \"update_outcome\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"request\", values = {origin = \"request\", source = \"training\", after_window = \"2\", multiplicity = \"once_per_matching_completion\", pending = \"keeps_group_alive\", max_pending = \"1\", cancellation = \"cancel_or_unfulfilled\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"scope\", values = {origin = \"evaluation\", parent = \"consumers\", kind = \"life.evaluator\", completion = \"physical_and_cleanup\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"call\", values = {origin = \"evaluation.read\", symbol = \"measure_v1\", version = \"1\", binding_role = \"evaluate\", effect = \"protected_read\", completion = \"physical_validate_restore\"}}> : () -> ()\n    \"life_exec.declaration\"() <{role = \"access\", values = {origin = \"evaluation.read\", participant = \"learner\", mode = \"read_evaluation\", through = \"physical_and_restore\"}}> : () -> ()\n  }) : () -> ()\n}) : () -> ()",
+  "accepted_sha256": "edf93303f2a0aff2b99746e85acb35741af9fef764a96ddec4405dbd99977e89",
+  "manifest": {
+    "schema": 1,
+    "target": "existing-owner-composition-cpu-v1",
+    "bindings": {
+      "scale_v1": {
+        "version": "1",
+        "role": "model",
+        "effect": "load",
+        "completion": "before_install"
+      },
+      "encode_v1": {
+        "version": "1",
+        "role": "produce",
+        "effect": "read_source",
+        "completion": "physical_return_before_release"
+      },
+      "objective_v1": {
+        "version": "1",
+        "role": "objective",
+        "effect": "build_loss",
+        "completion": "return_before_backward"
+      },
+      "measure_v1": {
+        "version": "1",
+        "role": "evaluate",
+        "effect": "protected_read",
+        "completion": "physical_validate_restore"
+      }
+    }
+  },
+  "profile": {
+    "run": "run",
+    "producer": "producer",
+    "group": "consumers",
+    "training": "training",
+    "evaluation": "evaluation",
+    "encoder": "encoder",
+    "learner": "learner",
+    "horizon": 3,
+    "ready": 2,
+    "workers": 1,
+    "members": 2,
+    "windows": 2,
+    "after_window": 2,
+    "learning_rate": 0.01,
+    "ports": [
+      "producer.slot.0",
+      "producer.slot.1"
+    ],
+    "evaluation_port": "producer.evaluation",
+    "unused_port": "producer.unused",
+    "models": [
+      {
+        "id": "encoder",
+        "initial": 2.0,
+        "trainable": false,
+        "implementation": "scale_v1"
+      },
+      {
+        "id": "learner",
+        "initial": 0.8,
+        "trainable": true,
+        "implementation": "scale_v1"
+      }
+    ],
+    "calls": {
+      "encode": "encode_v1",
+      "objective": "objective_v1",
+      "measure": "measure_v1"
+    }
+  }
+}

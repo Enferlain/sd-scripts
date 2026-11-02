@@ -36,8 +36,10 @@ and requested current-state evaluation (`.31.25.5`), reusing the existing owner
 target after native verification. The [Pliron mixed port](docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md)
 connects independent producer/repeat lifetimes, actual production epochs and
 producer-owned feedback (`.31.25.6`) through the shared owner target. The six
-case meanings now have reciprocal representations; matched diagnostics, costs
-and a decision remain open.
+case meanings now have reciprocal representations. The [matched machinery record](docs_design/models-strategy-trainer/machinery_comparison.md)
+collects source-linked boundaries, diagnostics and bounded phase/process costs
+(`.31.25.7`); the substrate recommendation and reversal conditions remain the
+next task.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip

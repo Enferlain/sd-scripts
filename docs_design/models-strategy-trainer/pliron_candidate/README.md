@@ -42,7 +42,10 @@ advancement, feedback and separate checkpoint/producer settlement. Its native
 verification and preparation feed the shared [mixed owner target](../mixed_target.py)
 after complete saved-plan checks. Current evidence is in
 [evidence_mixed/qualification.json](evidence_mixed/qualification.json).
-Matched diagnostics, costs and the framework decision remain open.
+The [matched machinery record](../machinery_comparison.md) now supplies inventories,
+paired diagnostics and bounded release-build phase/process observations. It keeps
+shared runtime authority, differing API boundaries and collector corrections
+explicit. The framework decision remains a separate next task.
 
 The baseline [comparison](../candidate_comparison.md) defines the evidence
 boundaries. B selects `x = key + current_bias`, maps `2*x`, then `+1` inside a

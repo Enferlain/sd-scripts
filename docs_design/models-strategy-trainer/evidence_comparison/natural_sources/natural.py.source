@@ -1,0 +1,137 @@
+"""Collect the separately frozen natural endpoint without replacing v1 samples."""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import importlib
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from time import perf_counter_ns
+
+from .measure import PREFIX, ROOT, metadata, summary, threads
+
+
+def worker(args, protocol, base):
+    api = importlib.import_module(PREFIX + ".cases")
+    start = perf_counter_ns()
+    frameworks = [args.framework] if args.fresh else ["xdsl", "pliron"]
+    cases = {f: api.Case(args.case, f, args.binaries, measured=True) for f in frameworks}
+    threads()
+    imports = perf_counter_ns() - start
+    rows = []
+    warm = []
+    for fuse in [False] if args.fresh else base["rewrite"][args.case]:
+        for index in range(1 if args.fresh else protocol["warmups"] + protocol["measured_pairs"]):
+            order = frameworks if index % 2 == 0 else frameworks[::-1]
+            for framework in order:
+                candidate = cases[framework]
+                api.NATIVE_EVENTS.clear()
+                start = perf_counter_ns()
+                report = candidate.natural_invocation(fuse)
+                elapsed = perf_counter_ns() - start
+                candidate.check(report)
+                if sys._is_gil_enabled():
+                    raise RuntimeError("GIL enabled")
+                row = {
+                    "case": args.case,
+                    "framework": framework,
+                    "fuse": fuse,
+                    "phase": "natural",
+                    "index": index - protocol["warmups"],
+                    "status": "passed",
+                    "elapsed_ns": elapsed,
+                    "native": list(api.NATIVE_EVENTS),
+                }
+                (warm if not args.fresh and index < protocol["warmups"] else rows).append(row)
+    return {"rows": rows, "warmups": warm, "import_and_setup_ns": imports, "metadata": metadata()}
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--binaries", type=Path, required=True)
+    parser.add_argument("--worker", action="store_true")
+    parser.add_argument("--case")
+    parser.add_argument("--fresh", action="store_true")
+    parser.add_argument("--framework")
+    args = parser.parse_args()
+    protocol = json.loads((ROOT / "endpoint_protocol.json").read_text())
+    base = json.loads((ROOT / "protocol.json").read_text())
+    if args.worker:
+        print(json.dumps(worker(args, protocol, base)))
+        return
+    path = ROOT / "natural_measurements.json"
+    if path.exists():
+        raise RuntimeError("refusing to overwrite natural endpoint measurements")
+    env = os.environ | {
+        "OMP_NUM_THREADS": "1",
+        "MKL_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "PYTHONHASHSEED": "0",
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+    }
+    data = {
+        "protocol_sha256": hashlib.sha256((ROOT / "endpoint_protocol.json").read_bytes()).hexdigest(),
+        "source_sha256": {
+            name: hashlib.sha256((ROOT / name).read_bytes()).hexdigest() for name in ("cases.py", "measure.py", "natural.py")
+        },
+        "warm": [],
+        "fresh": [],
+        "failures": [],
+    }
+    for case in protocol["cases"]:
+        python = (
+            "/tmp/sd-scripts-xdsl-b-env/bin/python"
+            if case in ("B", "extension")
+            else "/tmp/sd-scripts-pliron-composition-owner-env/bin/python"
+        )
+        command = [python, "-m", PREFIX + ".natural", "--worker", "--case", case, "--binaries", str(args.binaries)]
+        start = perf_counter_ns()
+        p = subprocess.run(command, env=env, capture_output=True, text=True, timeout=180, check=False)
+        entry = {"case": case, "command": command, "exit_code": p.returncode, "wall_ns": perf_counter_ns() - start, "stderr": p.stderr}
+        try:
+            entry["result"] = json.loads(p.stdout)
+        except ValueError:
+            entry["stdout"] = p.stdout
+        data["warm"].append(entry)
+        if p.returncode or "result" not in entry:
+            data["failures"].append(entry)
+        print("natural warm", case, p.returncode, flush=True)
+        for index in range(protocol["fresh_starts_per_candidate_case"]):
+            for framework in ["xdsl", "pliron"] if index % 2 == 0 else ["pliron", "xdsl"]:
+                cmd = [*command, "--fresh", "--framework", framework]
+                start = perf_counter_ns()
+                p = subprocess.run(cmd, env=env, capture_output=True, text=True, timeout=60, check=False)
+                entry = {
+                    "case": case,
+                    "framework": framework,
+                    "fuse": False,
+                    "phase": "fresh_natural",
+                    "index": index,
+                    "elapsed_ns": perf_counter_ns() - start,
+                    "status": "passed" if p.returncode == 0 else "failed",
+                    "exit_code": p.returncode,
+                    "stderr": p.stderr,
+                    "command": cmd,
+                }
+                try:
+                    entry["result"] = json.loads(p.stdout)
+                except ValueError:
+                    entry.update(status="failed", stdout=p.stdout)
+                data["fresh"].append(entry)
+                if entry["status"] == "failed":
+                    data["failures"].append(entry)
+        path.write_text(json.dumps(data, indent=2) + "\n")
+        print("natural fresh", case, "completed", flush=True)
+    rows = [row for entry in data["warm"] for row in entry.get("result", {}).get("rows", [])] + data["fresh"]
+    data["summary"] = summary(rows)
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    if data["failures"]:
+        raise RuntimeError("natural endpoint failures retained; no resampling")
+
+
+if __name__ == "__main__":
+    main()

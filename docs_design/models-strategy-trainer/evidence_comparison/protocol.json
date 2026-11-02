@@ -1,0 +1,96 @@
+{
+  "schema": 1,
+  "bead": "sd-scripts-syv.31.25.7",
+  "frozen_before_measurement": true,
+  "base_commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+  "cases": [
+    "B",
+    "extension",
+    "A",
+    "C",
+    "mixed",
+    "lifetime"
+  ],
+  "warmups": 3,
+  "measured_pairs": 20,
+  "fresh_starts_per_candidate_case": 10,
+  "order": "alternate xdsl/pliron by repetition; single sequential CPU driver; no simultaneous timed candidates",
+  "rewrite": {
+    "B": [
+      false,
+      true
+    ],
+    "extension": [
+      false,
+      true
+    ],
+    "A": [
+      false,
+      true
+    ],
+    "C": [
+      false
+    ],
+    "mixed": [
+      false,
+      true
+    ],
+    "lifetime": [
+      false
+    ]
+  },
+  "phases": [
+    "author",
+    "accept",
+    "prepare",
+    "artifact_json_roundtrip",
+    "cold",
+    "materialize",
+    "end_to_end"
+  ],
+  "definitions": {
+    "author": "xDSL fixture IR construction; Pliron fixture text construction. Different current authoring boundaries explicitly retained.",
+    "accept": "Existing acceptance API, including its canonical serialization/reparse. Native total is current one-request CLI boundary.",
+    "prepare": "Existing preparation API; xDSL A/C/mixed includes owner realization, B/extension includes local lowering; lifetime IR-only. Native IR requests exclude Python target materialization.",
+    "artifact_json_roundtrip": "json.dumps+json.loads of whole artifact; not framework IR allocation or isolated IR print/parse.",
+    "cold": "Existing raw saved-document verification API. xDSL A/C/mixed/B/extension includes target realization/local lowering; lifetime IR-only.",
+    "materialize": "Existing Python materialization API; xDSL coupled cases repeats cold/preparation. Pliron includes a fresh native load round trip plus Python realization. Not factory-only.",
+    "end_to_end": "Author, accept, prepare, Python materialization when needed, execute existing workflow and report. Independent oracle runs outside timer on every completed execution.",
+    "native_request_body_ns": "Opt-in Instant span around existing run(): stdin read, request deserialization, accept/prepare/load and response JSON-value construction; excludes process startup and stdout serialization. Fresh native process on each request, never called warm native in-process.",
+    "native_serialize_ns": "Serialize the Rust Result outcome envelope holding the response JSON value; telemetry wrapping, stdout flush and VmHWM read excluded. This is an opt-in profiling boundary, not isolated normal CLI serialization.",
+    "parent_json_encode_decode_ns": "Measured within current process bridge, separately from total subprocess elapsed; no subtraction used to infer process startup or intrinsic framework costs.",
+    "fresh_process": "Parent wall time across spawn/import/full end-to-end primary unfused case/exit; worker records import phase and full operation separately. Native CLI cost stays included.",
+    "peak_memory": "Linux parent ru_maxrss KiB and each native child /proc/self/status VmHWM KiB, separately. Not added, not simultaneous total, not retained IR allocation."
+  },
+  "unmeasured": [
+    "isolated IR parse/print for every API (bundled within actual accept/cold)",
+    "retained IR allocation",
+    "OS/native process startup alone",
+    "factory-only cost (coupled APIs)",
+    "GPU/distributed throughput/native numerical execution"
+  ],
+  "policy": {
+    "owner_lowering": "calls",
+    "C_clip_norm": null,
+    "lifetime": "late input pressure control",
+    "mixed": "checkpoint3,block_key6,aggregate3,ports1",
+    "B_extension": "stop_after4,horizon2,capacity1,diagnostic_limit0",
+    "threads": 1,
+    "pythonhashseed": "0",
+    "gc": "enabled; gc.collect once between phases, never timed",
+    "caches": "existing imports warmed; fresh contexts/owners per preparation; OS caches unflushed; each native request spawns a new process",
+    "pins": {
+      "xdsl": "0.74.0",
+      "pliron": "=0.20.0"
+    },
+    "rust_profile": "release(default opt-level3; build observation separate)",
+    "gil": "observe ordinary imports; never force off"
+  },
+  "failure_policy": "Persist every attempted sample, command, stdout/stderr and exception. No resampling, silent retries or favorable subset. Failed correctness blocks affected interpretation.",
+  "legacy_progress": "Record current isolated GIL-disabled xDSL/native returning-filter feedback checks and import state. Legacy combined-suite .31.23 remains open; do not claim root cause fixed.",
+  "api_boundaries": {
+    "B_extension": "prepare and cold use public APIs that include local binding/resource lowering on both frontends; native core body is also instrumented inside the CLI. materialize repeats cold in both.",
+    "A_C_mixed": "xDSL prepare/cold include owner realization; Pliron prepare/cold are native requests, materialize includes another native cold validation plus owner realization. No subtraction claims pure IR costs.",
+    "lifetime": "prepare/cold independently validate IR; materialize includes cold validation and shared owner realization on both. End-to-end uses the existing late-input pressure driver, including its materialization."
+  }
+}

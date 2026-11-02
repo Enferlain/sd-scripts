@@ -1,0 +1,19 @@
+{
+  "timing": "Post-collection audit before review-fix rebuilds",
+  "native_binary_sha256": {
+    "rmst-pliron-mixed": "476227612d351f2916c9c36b3a7e4d4221d4b5103592312a222e260a7822dd42",
+    "rmst-pliron-correlation": "b9067ae8c1d249e31ed1efb29a5e03a746241ec4dad671ca75dc0e0c75a1ba51",
+    "rmst-pliron-grant": "868b6557ce60d9f6812af927fbb8ccad17ba8f226fdfb395b5ca6fb3a73b4645",
+    "rmst-pliron-composition": "a47710c961c85a7a2e5a4681534fd6e3c9db290c324e7567fdc060264497548f",
+    "rmst-pliron-b": "2f2c598fa9e826d22a793d7cf3c809d65079006dc131d39c689ec87891603e22"
+  },
+  "matches_phase_collection": true,
+  "rustc": "rustc 1.99.1 (58cf8f9c3 2026-10-13)",
+  "cpu_model": "AMD Ryzen 9 3950X 16-Core Processor",
+  "rust_env": {
+    "RUSTFLAGS": null,
+    "CARGO_ENCODED_RUSTFLAGS": null,
+    "CARGO_PROFILE_RELEASE_OPT_LEVEL": null
+  },
+  "limit": "This audit does not prove binary/toolchain identity at the earlier natural or diagnostic collection time; those cohorts did not capture their own metadata. No backfill or resampling."
+}

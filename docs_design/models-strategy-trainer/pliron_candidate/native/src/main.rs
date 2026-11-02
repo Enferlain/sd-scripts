@@ -45,6 +45,9 @@ fn run() -> Result<serde_json::Value, String> {
     }
 }
 fn main() {
+    if rmst_pliron_b::measurement::enabled() {
+        return rmst_pliron_b::measurement::run(run);
+    }
     match run() {
         Ok(output) => println!("{}", serde_json::to_string(&output).unwrap()),
         Err(error) => {

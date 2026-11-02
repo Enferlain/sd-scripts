@@ -1,0 +1,1523 @@
+{
+  "schema": 1,
+  "raw_sha256": "6abc623b2d9c8384887fce8557c0a82f13ee7bcbce0d1488256e47139ef094d6",
+  "repeated_samples": 2800,
+  "warmup_samples": 420,
+  "fresh_processes": 120,
+  "process_failures": 0,
+  "sample_failures": 0,
+  "summary": {
+    "B|pliron|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 29122.0,
+      "iqr_ns": 9447.5
+    },
+    "B|xdsl|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 490895.0,
+      "iqr_ns": 45247.25
+    },
+    "B|pliron|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 3713083.5,
+      "iqr_ns": 385025.5
+    },
+    "B|xdsl|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1575241.5,
+      "iqr_ns": 257119.0
+    },
+    "B|pliron|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5339789.0,
+      "iqr_ns": 474684.5
+    },
+    "B|xdsl|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 12080677.0,
+      "iqr_ns": 567503.5
+    },
+    "B|pliron|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 93266.0,
+      "iqr_ns": 12531.75
+    },
+    "B|xdsl|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 42413.0,
+      "iqr_ns": 4459.25
+    },
+    "B|pliron|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4688865.5,
+      "iqr_ns": 626710.5
+    },
+    "B|xdsl|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 11610084.0,
+      "iqr_ns": 852849.5
+    },
+    "B|pliron|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4598555.5,
+      "iqr_ns": 233316.75
+    },
+    "B|xdsl|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 11210831.0,
+      "iqr_ns": 1224880.5
+    },
+    "B|pliron|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 14283726.0,
+      "iqr_ns": 1080299.25
+    },
+    "B|xdsl|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 26263437.0,
+      "iqr_ns": 1224315.25
+    },
+    "B|pliron|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 29977.0,
+      "iqr_ns": 8307.5
+    },
+    "B|xdsl|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 514351.5,
+      "iqr_ns": 57103.5
+    },
+    "B|pliron|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 3862912.5,
+      "iqr_ns": 316292.25
+    },
+    "B|xdsl|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1527736.5,
+      "iqr_ns": 127780.75
+    },
+    "B|pliron|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5509535.0,
+      "iqr_ns": 526710.5
+    },
+    "B|xdsl|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 14041785.5,
+      "iqr_ns": 3646592.75
+    },
+    "B|pliron|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 90225.5,
+      "iqr_ns": 1804.5
+    },
+    "B|xdsl|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 41782.5,
+      "iqr_ns": 2543.5
+    },
+    "B|pliron|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4858980.0,
+      "iqr_ns": 535683.75
+    },
+    "B|xdsl|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 12659293.5,
+      "iqr_ns": 857370.75
+    },
+    "B|pliron|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4737381.5,
+      "iqr_ns": 431272.75
+    },
+    "B|xdsl|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 12499242.0,
+      "iqr_ns": 1520651.75
+    },
+    "B|pliron|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 14639662.5,
+      "iqr_ns": 1026727.0
+    },
+    "B|xdsl|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 29881501.5,
+      "iqr_ns": 4953088.25
+    },
+    "extension|pliron|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 37247.5,
+      "iqr_ns": 8705.0
+    },
+    "extension|xdsl|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 597714.5,
+      "iqr_ns": 48728.25
+    },
+    "extension|pliron|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4322111.0,
+      "iqr_ns": 443761.25
+    },
+    "extension|xdsl|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1826499.0,
+      "iqr_ns": 240300.75
+    },
+    "extension|pliron|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5998540.5,
+      "iqr_ns": 275511.75
+    },
+    "extension|xdsl|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 15773423.5,
+      "iqr_ns": 627311.5
+    },
+    "extension|pliron|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 127257.5,
+      "iqr_ns": 5251.75
+    },
+    "extension|xdsl|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 58333.5,
+      "iqr_ns": 4393.0
+    },
+    "extension|pliron|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4920851.0,
+      "iqr_ns": 504905.75
+    },
+    "extension|xdsl|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 14260723.5,
+      "iqr_ns": 674403.75
+    },
+    "extension|pliron|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4874236.0,
+      "iqr_ns": 391441.5
+    },
+    "extension|xdsl|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 14073950.5,
+      "iqr_ns": 658226.25
+    },
+    "extension|pliron|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 16243878.5,
+      "iqr_ns": 433895.0
+    },
+    "extension|xdsl|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 33380888.5,
+      "iqr_ns": 1682908.25
+    },
+    "extension|pliron|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 40367.0,
+      "iqr_ns": 9951.0
+    },
+    "extension|xdsl|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 603290.0,
+      "iqr_ns": 33297.0
+    },
+    "extension|pliron|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4190356.0,
+      "iqr_ns": 662131.75
+    },
+    "extension|xdsl|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1876806.0,
+      "iqr_ns": 416115.75
+    },
+    "extension|pliron|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 6468851.0,
+      "iqr_ns": 444576.5
+    },
+    "extension|xdsl|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 18708553.5,
+      "iqr_ns": 2981872.0
+    },
+    "extension|pliron|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 132582.5,
+      "iqr_ns": 9971.0
+    },
+    "extension|xdsl|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 61899.0,
+      "iqr_ns": 8297.75
+    },
+    "extension|pliron|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5279792.5,
+      "iqr_ns": 1281081.25
+    },
+    "extension|xdsl|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 17530976.0,
+      "iqr_ns": 10144194.5
+    },
+    "extension|pliron|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 9564220.0,
+      "iqr_ns": 5575534.0
+    },
+    "extension|xdsl|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 26408597.5,
+      "iqr_ns": 13135473.5
+    },
+    "extension|pliron|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 17682539.5,
+      "iqr_ns": 5393717.5
+    },
+    "extension|xdsl|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 44385358.5,
+      "iqr_ns": 17633628.5
+    },
+    "A|pliron|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 49848.0,
+      "iqr_ns": 12803.5
+    },
+    "A|xdsl|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 943617.0,
+      "iqr_ns": 85951.0
+    },
+    "A|pliron|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4723080.0,
+      "iqr_ns": 374580.75
+    },
+    "A|xdsl|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 2951949.5,
+      "iqr_ns": 248224.5
+    },
+    "A|pliron|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5885265.5,
+      "iqr_ns": 350320.75
+    },
+    "A|xdsl|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 33130135.5,
+      "iqr_ns": 755965.25
+    },
+    "A|pliron|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 130808.0,
+      "iqr_ns": 19726.0
+    },
+    "A|xdsl|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 66599.0,
+      "iqr_ns": 6197.5
+    },
+    "A|pliron|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 7671149.0,
+      "iqr_ns": 505299.5
+    },
+    "A|xdsl|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 31969152.0,
+      "iqr_ns": 6181022.75
+    },
+    "A|pliron|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 9328641.0,
+      "iqr_ns": 507640.25
+    },
+    "A|xdsl|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 31332527.5,
+      "iqr_ns": 3747939.0
+    },
+    "A|pliron|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 27444439.5,
+      "iqr_ns": 2264983.0
+    },
+    "A|xdsl|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 78102394.5,
+      "iqr_ns": 5736198.75
+    },
+    "A|pliron|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 51928.0,
+      "iqr_ns": 10543.25
+    },
+    "A|xdsl|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 899164.0,
+      "iqr_ns": 34901.5
+    },
+    "A|pliron|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4676107.0,
+      "iqr_ns": 449094.0
+    },
+    "A|xdsl|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 2977855.5,
+      "iqr_ns": 256461.5
+    },
+    "A|pliron|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 7210519.5,
+      "iqr_ns": 1575286.5
+    },
+    "A|xdsl|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 54918686.5,
+      "iqr_ns": 18524228.75
+    },
+    "A|pliron|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 166075.0,
+      "iqr_ns": 19243.5
+    },
+    "A|xdsl|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 91855.5,
+      "iqr_ns": 7713.5
+    },
+    "A|pliron|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 13519066.5,
+      "iqr_ns": 9659272.75
+    },
+    "A|xdsl|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 62098571.0,
+      "iqr_ns": 29380343.75
+    },
+    "A|pliron|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 10377309.0,
+      "iqr_ns": 4824349.5
+    },
+    "A|xdsl|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 40210569.0,
+      "iqr_ns": 15720390.0
+    },
+    "A|pliron|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 29048370.0,
+      "iqr_ns": 2604430.5
+    },
+    "A|xdsl|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 86484328.5,
+      "iqr_ns": 11927639.25
+    },
+    "C|pliron|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 51128.0,
+      "iqr_ns": 17587.0
+    },
+    "C|xdsl|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 602406.0,
+      "iqr_ns": 77874.25
+    },
+    "C|pliron|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4891178.5,
+      "iqr_ns": 332459.25
+    },
+    "C|xdsl|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1518524.5,
+      "iqr_ns": 190997.0
+    },
+    "C|pliron|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5644349.5,
+      "iqr_ns": 493874.75
+    },
+    "C|xdsl|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 18802128.5,
+      "iqr_ns": 3452276.25
+    },
+    "C|pliron|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 92090.0,
+      "iqr_ns": 8627.75
+    },
+    "C|xdsl|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 40207.5,
+      "iqr_ns": 6192.75
+    },
+    "C|pliron|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 7138290.5,
+      "iqr_ns": 800069.25
+    },
+    "C|xdsl|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 17207074.5,
+      "iqr_ns": 2447237.75
+    },
+    "C|pliron|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 7822855.0,
+      "iqr_ns": 795301.25
+    },
+    "C|xdsl|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 16893678.0,
+      "iqr_ns": 6367619.0
+    },
+    "C|pliron|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 19307746.5,
+      "iqr_ns": 2450377.25
+    },
+    "C|xdsl|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 38033528.5,
+      "iqr_ns": 23551851.0
+    },
+    "mixed|pliron|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 72524.0,
+      "iqr_ns": 40364.75
+    },
+    "mixed|xdsl|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1583652.0,
+      "iqr_ns": 336022.25
+    },
+    "mixed|pliron|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5451432.0,
+      "iqr_ns": 332214.75
+    },
+    "mixed|xdsl|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 3143068.5,
+      "iqr_ns": 501793.0
+    },
+    "mixed|pliron|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 6394271.5,
+      "iqr_ns": 429743.25
+    },
+    "mixed|xdsl|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 31279571.0,
+      "iqr_ns": 1067905.5
+    },
+    "mixed|pliron|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 148568.0,
+      "iqr_ns": 10192.75
+    },
+    "mixed|xdsl|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 73289.0,
+      "iqr_ns": 5931.0
+    },
+    "mixed|pliron|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 8669620.5,
+      "iqr_ns": 541446.0
+    },
+    "mixed|xdsl|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 29295155.5,
+      "iqr_ns": 2066139.5
+    },
+    "mixed|pliron|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 9828913.0,
+      "iqr_ns": 357650.25
+    },
+    "mixed|xdsl|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 28938126.0,
+      "iqr_ns": 1233469.25
+    },
+    "mixed|pliron|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 35522983.5,
+      "iqr_ns": 9712371.0
+    },
+    "mixed|xdsl|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 87330550.5,
+      "iqr_ns": 21216665.25
+    },
+    "mixed|pliron|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 91886.0,
+      "iqr_ns": 41557.75
+    },
+    "mixed|xdsl|True|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 1972914.5,
+      "iqr_ns": 206834.75
+    },
+    "mixed|pliron|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 6670190.5,
+      "iqr_ns": 1292258.0
+    },
+    "mixed|xdsl|True|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4578114.5,
+      "iqr_ns": 2662436.0
+    },
+    "mixed|pliron|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 7312578.5,
+      "iqr_ns": 2177365.75
+    },
+    "mixed|xdsl|True|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 42533663.5,
+      "iqr_ns": 12759182.25
+    },
+    "mixed|pliron|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 150359.0,
+      "iqr_ns": 19320.75
+    },
+    "mixed|xdsl|True|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 72379.0,
+      "iqr_ns": 7045.0
+    },
+    "mixed|pliron|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 9349822.0,
+      "iqr_ns": 1155823.25
+    },
+    "mixed|xdsl|True|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 36592386.5,
+      "iqr_ns": 4436988.5
+    },
+    "mixed|pliron|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 11919053.0,
+      "iqr_ns": 1460168.0
+    },
+    "mixed|xdsl|True|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 42369505.5,
+      "iqr_ns": 16092931.0
+    },
+    "mixed|pliron|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 34391216.5,
+      "iqr_ns": 4335099.0
+    },
+    "mixed|xdsl|True|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 92050153.0,
+      "iqr_ns": 9816266.5
+    },
+    "lifetime|pliron|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 56098.0,
+      "iqr_ns": 10673.5
+    },
+    "lifetime|xdsl|False|author": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 408049.0,
+      "iqr_ns": 54403.0
+    },
+    "lifetime|pliron|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 4825116.5,
+      "iqr_ns": 420317.0
+    },
+    "lifetime|xdsl|False|accept": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 16604351.5,
+      "iqr_ns": 613383.75
+    },
+    "lifetime|pliron|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 5803051.5,
+      "iqr_ns": 279381.5
+    },
+    "lifetime|xdsl|False|prepare": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 25592666.0,
+      "iqr_ns": 919917.5
+    },
+    "lifetime|pliron|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 212007.0,
+      "iqr_ns": 33767.5
+    },
+    "lifetime|xdsl|False|artifact_json_roundtrip": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 101071.0,
+      "iqr_ns": 25478.0
+    },
+    "lifetime|pliron|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 8857118.5,
+      "iqr_ns": 6892097.75
+    },
+    "lifetime|xdsl|False|cold": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 60882485.5,
+      "iqr_ns": 24110656.0
+    },
+    "lifetime|pliron|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 11011554.0,
+      "iqr_ns": 5298386.0
+    },
+    "lifetime|xdsl|False|materialize": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 63776119.0,
+      "iqr_ns": 25665851.0
+    },
+    "lifetime|pliron|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 33429517.0,
+      "iqr_ns": 2209350.0
+    },
+    "lifetime|xdsl|False|end_to_end": {
+      "attempted": 20,
+      "passed": 20,
+      "failed": 0,
+      "median_ns": 112611713.5,
+      "iqr_ns": 14670441.5
+    },
+    "B|xdsl|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 345788370.5,
+      "iqr_ns": 155414821.75
+    },
+    "B|pliron|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 321683830.0,
+      "iqr_ns": 28447794.75
+    },
+    "extension|xdsl|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 324974749.0,
+      "iqr_ns": 29878383.25
+    },
+    "extension|pliron|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 341169132.0,
+      "iqr_ns": 68455141.5
+    },
+    "A|xdsl|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2800240349.5,
+      "iqr_ns": 90499408.5
+    },
+    "A|pliron|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2670183170.5,
+      "iqr_ns": 259236481.0
+    },
+    "C|xdsl|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2777157214.0,
+      "iqr_ns": 291585190.0
+    },
+    "C|pliron|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2680730823.0,
+      "iqr_ns": 225809115.75
+    },
+    "mixed|xdsl|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2911088839.5,
+      "iqr_ns": 71627046.75
+    },
+    "mixed|pliron|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2772614671.0,
+      "iqr_ns": 167647769.0
+    },
+    "lifetime|xdsl|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2932701101.0,
+      "iqr_ns": 163274626.75
+    },
+    "lifetime|pliron|False|fresh_process": {
+      "attempted": 10,
+      "passed": 10,
+      "failed": 0,
+      "median_ns": 2824191096.5,
+      "iqr_ns": 136572293.5
+    }
+  },
+  "native_request_body": {
+    "B": {
+      "accept|native_request_body_ns": {
+        "median": 1746851.5,
+        "samples": 20
+      },
+      "accept|native_serialize_ns": {
+        "median": 6490.5,
+        "samples": 20
+      },
+      "accept|parent_json_encode_ns": {
+        "median": 16521.0,
+        "samples": 20
+      },
+      "accept|parent_json_decode_ns": {
+        "median": 27501.5,
+        "samples": 20
+      },
+      "accept|subprocess_wall_ns": {
+        "median": 3652661.0,
+        "samples": 20
+      },
+      "prepare|native_request_body_ns": {
+        "median": 2872942.0,
+        "samples": 20
+      },
+      "prepare|native_serialize_ns": {
+        "median": 22606.0,
+        "samples": 20
+      },
+      "prepare|parent_json_encode_ns": {
+        "median": 25027.0,
+        "samples": 20
+      },
+      "prepare|parent_json_decode_ns": {
+        "median": 93671.0,
+        "samples": 20
+      },
+      "prepare|subprocess_wall_ns": {
+        "median": 5055192.0,
+        "samples": 20
+      },
+      "cold|native_request_body_ns": {
+        "median": 2027970.0,
+        "samples": 20
+      },
+      "cold|native_serialize_ns": {
+        "median": 24616.0,
+        "samples": 20
+      },
+      "cold|parent_json_encode_ns": {
+        "median": 46517.5,
+        "samples": 20
+      },
+      "cold|parent_json_decode_ns": {
+        "median": 96781.0,
+        "samples": 20
+      },
+      "cold|subprocess_wall_ns": {
+        "median": 4381532.0,
+        "samples": 20
+      }
+    },
+    "extension": {
+      "accept|native_request_body_ns": {
+        "median": 2109394.5,
+        "samples": 20
+      },
+      "accept|native_serialize_ns": {
+        "median": 7915.5,
+        "samples": 20
+      },
+      "accept|parent_json_encode_ns": {
+        "median": 18476.0,
+        "samples": 20
+      },
+      "accept|parent_json_decode_ns": {
+        "median": 30912.0,
+        "samples": 20
+      },
+      "accept|subprocess_wall_ns": {
+        "median": 4254701.0,
+        "samples": 20
+      },
+      "prepare|native_request_body_ns": {
+        "median": 3445884.0,
+        "samples": 20
+      },
+      "prepare|native_serialize_ns": {
+        "median": 33722.0,
+        "samples": 20
+      },
+      "prepare|parent_json_encode_ns": {
+        "median": 30662.0,
+        "samples": 20
+      },
+      "prepare|parent_json_decode_ns": {
+        "median": 119252.0,
+        "samples": 20
+      },
+      "prepare|subprocess_wall_ns": {
+        "median": 5703841.0,
+        "samples": 20
+      },
+      "cold|native_request_body_ns": {
+        "median": 2389120.5,
+        "samples": 20
+      },
+      "cold|native_serialize_ns": {
+        "median": 29796.5,
+        "samples": 20
+      },
+      "cold|parent_json_encode_ns": {
+        "median": 56973.5,
+        "samples": 20
+      },
+      "cold|parent_json_decode_ns": {
+        "median": 117196.5,
+        "samples": 20
+      },
+      "cold|subprocess_wall_ns": {
+        "median": 4574380.0,
+        "samples": 20
+      }
+    },
+    "A": {
+      "accept|native_request_body_ns": {
+        "median": 2542118.5,
+        "samples": 20
+      },
+      "accept|native_serialize_ns": {
+        "median": 7686.0,
+        "samples": 20
+      },
+      "accept|parent_json_encode_ns": {
+        "median": 20881.0,
+        "samples": 20
+      },
+      "accept|parent_json_decode_ns": {
+        "median": 36317.0,
+        "samples": 20
+      },
+      "accept|subprocess_wall_ns": {
+        "median": 4650630.5,
+        "samples": 20
+      },
+      "prepare|native_request_body_ns": {
+        "median": 3283149.5,
+        "samples": 20
+      },
+      "prepare|native_serialize_ns": {
+        "median": 55423.5,
+        "samples": 20
+      },
+      "prepare|parent_json_encode_ns": {
+        "median": 34337.0,
+        "samples": 20
+      },
+      "prepare|parent_json_decode_ns": {
+        "median": 109276.5,
+        "samples": 20
+      },
+      "prepare|subprocess_wall_ns": {
+        "median": 5707664.5,
+        "samples": 20
+      },
+      "cold|native_request_body_ns": {
+        "median": 4900945.5,
+        "samples": 20
+      },
+      "cold|native_serialize_ns": {
+        "median": 35827.0,
+        "samples": 20
+      },
+      "cold|parent_json_encode_ns": {
+        "median": 79770.0,
+        "samples": 20
+      },
+      "cold|parent_json_decode_ns": {
+        "median": 114207.0,
+        "samples": 20
+      },
+      "cold|subprocess_wall_ns": {
+        "median": 7351592.0,
+        "samples": 20
+      }
+    },
+    "C": {
+      "accept|native_request_body_ns": {
+        "median": 2231420.5,
+        "samples": 20
+      },
+      "accept|native_serialize_ns": {
+        "median": 6125.0,
+        "samples": 20
+      },
+      "accept|parent_json_encode_ns": {
+        "median": 19236.0,
+        "samples": 20
+      },
+      "accept|parent_json_decode_ns": {
+        "median": 33002.0,
+        "samples": 20
+      },
+      "accept|subprocess_wall_ns": {
+        "median": 4825594.5,
+        "samples": 20
+      },
+      "prepare|native_request_body_ns": {
+        "median": 2869560.0,
+        "samples": 20
+      },
+      "prepare|native_serialize_ns": {
+        "median": 38512.5,
+        "samples": 20
+      },
+      "prepare|parent_json_encode_ns": {
+        "median": 31067.0,
+        "samples": 20
+      },
+      "prepare|parent_json_decode_ns": {
+        "median": 95590.5,
+        "samples": 20
+      },
+      "prepare|subprocess_wall_ns": {
+        "median": 5457338.5,
+        "samples": 20
+      },
+      "cold|native_request_body_ns": {
+        "median": 4140755.5,
+        "samples": 20
+      },
+      "cold|native_serialize_ns": {
+        "median": 45163.0,
+        "samples": 20
+      },
+      "cold|parent_json_encode_ns": {
+        "median": 69184.5,
+        "samples": 20
+      },
+      "cold|parent_json_decode_ns": {
+        "median": 99630.0,
+        "samples": 20
+      },
+      "cold|subprocess_wall_ns": {
+        "median": 6865476.0,
+        "samples": 20
+      }
+    },
+    "mixed": {
+      "accept|native_request_body_ns": {
+        "median": 3166666.5,
+        "samples": 20
+      },
+      "accept|native_serialize_ns": {
+        "median": 9380.0,
+        "samples": 20
+      },
+      "accept|parent_json_encode_ns": {
+        "median": 24596.5,
+        "samples": 20
+      },
+      "accept|parent_json_decode_ns": {
+        "median": 37557.0,
+        "samples": 20
+      },
+      "accept|subprocess_wall_ns": {
+        "median": 5376560.0,
+        "samples": 20
+      },
+      "prepare|native_request_body_ns": {
+        "median": 3810929.5,
+        "samples": 20
+      },
+      "prepare|native_serialize_ns": {
+        "median": 62878.5,
+        "samples": 20
+      },
+      "prepare|parent_json_encode_ns": {
+        "median": 39147.0,
+        "samples": 20
+      },
+      "prepare|parent_json_decode_ns": {
+        "median": 111936.5,
+        "samples": 20
+      },
+      "prepare|subprocess_wall_ns": {
+        "median": 6198406.0,
+        "samples": 20
+      },
+      "cold|native_request_body_ns": {
+        "median": 5890355.5,
+        "samples": 20
+      },
+      "cold|native_serialize_ns": {
+        "median": 37047.0,
+        "samples": 20
+      },
+      "cold|parent_json_encode_ns": {
+        "median": 97650.0,
+        "samples": 20
+      },
+      "cold|parent_json_decode_ns": {
+        "median": 117321.0,
+        "samples": 20
+      },
+      "cold|subprocess_wall_ns": {
+        "median": 8358213.0,
+        "samples": 20
+      }
+    },
+    "lifetime": {
+      "accept|native_request_body_ns": {
+        "median": 2512596.0,
+        "samples": 20
+      },
+      "accept|native_serialize_ns": {
+        "median": 7875.5,
+        "samples": 20
+      },
+      "accept|parent_json_encode_ns": {
+        "median": 22756.0,
+        "samples": 20
+      },
+      "accept|parent_json_decode_ns": {
+        "median": 37042.0,
+        "samples": 20
+      },
+      "accept|subprocess_wall_ns": {
+        "median": 4700812.0,
+        "samples": 20
+      },
+      "prepare|native_request_body_ns": {
+        "median": 3069314.5,
+        "samples": 20
+      },
+      "prepare|native_serialize_ns": {
+        "median": 61088.0,
+        "samples": 20
+      },
+      "prepare|parent_json_encode_ns": {
+        "median": 38953.0,
+        "samples": 20
+      },
+      "prepare|parent_json_decode_ns": {
+        "median": 181910.5,
+        "samples": 20
+      },
+      "prepare|subprocess_wall_ns": {
+        "median": 5543271.0,
+        "samples": 20
+      },
+      "cold|native_request_body_ns": {
+        "median": 5338503.0,
+        "samples": 20
+      },
+      "cold|native_serialize_ns": {
+        "median": 90225.0,
+        "samples": 20
+      },
+      "cold|parent_json_encode_ns": {
+        "median": 84775.0,
+        "samples": 20
+      },
+      "cold|parent_json_decode_ns": {
+        "median": 232348.5,
+        "samples": 20
+      },
+      "cold|subprocess_wall_ns": {
+        "median": 8268989.0,
+        "samples": 20
+      }
+    }
+  },
+  "fresh_memory": {
+    "B": {
+      "xdsl": {
+        "parent_peak_kib_median": 40656.0,
+        "child_peak_kib_median": null,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      },
+      "pliron": {
+        "parent_peak_kib_median": 40400.0,
+        "child_peak_kib_median": 4730.0,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      }
+    },
+    "extension": {
+      "xdsl": {
+        "parent_peak_kib_median": 40656.0,
+        "child_peak_kib_median": null,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      },
+      "pliron": {
+        "parent_peak_kib_median": 40656.0,
+        "child_peak_kib_median": 4746.0,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      }
+    },
+    "A": {
+      "xdsl": {
+        "parent_peak_kib_median": 583944.0,
+        "child_peak_kib_median": null,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      },
+      "pliron": {
+        "parent_peak_kib_median": 582868.0,
+        "child_peak_kib_median": 4940.0,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      }
+    },
+    "C": {
+      "xdsl": {
+        "parent_peak_kib_median": 581924.0,
+        "child_peak_kib_median": null,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      },
+      "pliron": {
+        "parent_peak_kib_median": 580890.0,
+        "child_peak_kib_median": 4676.0,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      }
+    },
+    "mixed": {
+      "xdsl": {
+        "parent_peak_kib_median": 585092.0,
+        "child_peak_kib_median": null,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      },
+      "pliron": {
+        "parent_peak_kib_median": 584128.0,
+        "child_peak_kib_median": 5110.0,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      }
+    },
+    "lifetime": {
+      "xdsl": {
+        "parent_peak_kib_median": 583430.0,
+        "child_peak_kib_median": null,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      },
+      "pliron": {
+        "parent_peak_kib_median": 582426.0,
+        "child_peak_kib_median": 4962.0,
+        "definition": "Separate distributions of per-process peak RSS; never a simultaneous sum or retained IR allocation."
+      }
+    }
+  }
+}

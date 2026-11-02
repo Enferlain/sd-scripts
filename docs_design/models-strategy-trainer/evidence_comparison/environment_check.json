@@ -1,0 +1,8 @@
+{
+  "PYTHON_GIL": null,
+  "xoptions": {},
+  "gil_before_torch": false,
+  "gil_after_torch": false,
+  "cuda_initialized": false,
+  "note": "Ordinary-import environment audit after collection; child commands inherit this environment and never override the GIL."
+}

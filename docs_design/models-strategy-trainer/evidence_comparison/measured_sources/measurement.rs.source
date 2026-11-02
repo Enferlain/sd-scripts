@@ -1,0 +1,39 @@
+//! Opt-in request spans for the bounded comparison; default drivers are unchanged.
+use serde_json::{Value, json};
+use std::time::Instant;
+
+pub fn enabled() -> bool {
+    std::env::args().any(|arg| arg == "--measure")
+}
+
+pub fn run(request: impl FnOnce() -> Result<Value, String>) {
+    let start = Instant::now();
+    let result = request();
+    let request_ns = start.elapsed().as_nanos();
+    let start = Instant::now();
+    let encoded = serde_json::to_string(&result.as_ref().map_err(String::as_str));
+    let serialize_ns = start.elapsed().as_nanos();
+    let peak_kib = std::fs::read_to_string("/proc/self/status")
+        .ok()
+        .and_then(|text| {
+            text.lines().find_map(|line| {
+                line.strip_prefix("VmHWM:")?
+                    .split_whitespace()
+                    .next()?
+                    .parse::<u64>()
+                    .ok()
+            })
+        });
+    let timing = json!({"native_request_body_ns":request_ns,"native_serialize_ns":serialize_ns,"native_peak_rss_kib":peak_kib});
+    match (result, encoded) {
+        (Ok(_), Ok(encoded)) => println!("{{\"timing\":{timing},\"outcome\":{encoded}}}"),
+        (Err(error), _) => {
+            eprintln!("{}", json!({"error":error,"timing":timing}));
+            std::process::exit(2);
+        }
+        (_, Err(error)) => {
+            eprintln!("{}", json!({"error":error.to_string(),"timing":timing}));
+            std::process::exit(2);
+        }
+    }
+}
