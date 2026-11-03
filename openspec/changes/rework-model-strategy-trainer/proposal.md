@@ -45,7 +45,9 @@ notes.
 - Use xDSL as the working semantic/prepared IR substrate. Develop the first
   shared language slice through registered region, flow and resource contracts,
   normalization, lifecycle verification and contract-driven preparation for
-  model and data-only compositions. This bounded research supplies G5 evidence;
+  model and data-only compositions, specified by the new `workflow-composition`
+  capability and checked against an executable reference semantics. This
+  bounded research supplies G5 evidence;
   it does not adopt experimental APIs or select a numerical backend. Selected
   computational regions may later lower through a qualified MLIR boundary.
 
@@ -58,8 +60,15 @@ notes.
   and explicit standard/custom/extension conformance boundary.
 - `accepted-training-execution`: The accepted run arrangement, structured and
   imperative execution meanings, Trainer-retained authority, runtime inputs,
-  results, effects, failures, shared region contracts, pending-request and
-  settlement relationships, and the eventual step exchange.
+  results, effects, failures, and the eventual step exchange, composed from
+  the shared `workflow-composition` contracts.
+- `workflow-composition`: The shared language for stateful, heterogeneous data
+  and model work, of which training is one domain: region, flow, resource and
+  realization contracts; invocation, pending requests and settlement;
+  producer-stop coverage; a closed set of access modes including live shared
+  reads; version admission; affine item claims and region-scoped capabilities;
+  reproducibility, quiescence and rank-consistency declarations; and an
+  executable reference semantics that realizations conform to.
 - `run-participant-state`: Authority-scoped participant and relationship
   identities, bindings, routes, views, revisions, transitions, lineage, and
   scoped current-state projections.

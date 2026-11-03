@@ -33,13 +33,10 @@ The pre-OpenSpec records have different jobs. They are not interchangeable:
 | [Executable spike](../../../docs_design/models-strategy-trainer/executable_spike/) | Behavioral evidence for binding/preparation failure cases. Its class names and storage shapes are not a production prototype. |
 | [Original discussion](../../../docs_design/models-strategy-trainer/strategy_discussion.md) and [external discussion](../../../docs_design/models-strategy-trainer/strategy_discussion_external.md) | Raw historical context. External comments are opinions; neither transcript is a requirement source. |
 
-The supplied language proposal must be tracked unchanged at
-`research/xdsl_language_0_1_proposal.md` in the same eventual commit as this
-planning revision, with SHA-256
-`7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2`.
-That commit must include the report and resolve these links in its tracked
-tree; local links to an untracked input alone do not satisfy that commit check.
-Retaining the input does not accept its illustrative API.
+The language proposal stays unchanged as supplied research input. Where this
+design departs from or adds to it, D14's "Amendments to the language proposal"
+records the adopted rule; its provenance is tracked in bead
+`sd-scripts-syv.31.26`.
 
 #### Settled-source trace into this change
 
@@ -2600,7 +2597,7 @@ MLIR opportunity alone is not evidence that the whole architecture must change.
 #### Adopted shared contract boundary
 
 Use the [language proposal](research/xdsl_language_0_1_proposal.md), especially
-sections 2–5 and its small next slice, as the input for one shared language
+sections 2–5 and its small next slice, as amended below, as the input for one shared language
 mechanism. Adopt the semantic obligations below, rather than its illustrative
 class fields, operation spellings or full 0.1 catalogue.
 
@@ -2613,9 +2610,10 @@ and one fixture's exact operation counts cannot select whole-program validity.
 
 | Contract surface | Required information in this slice |
 | --- | --- |
-| Region | Entry arguments and captures; invocation sources; child protocol; admission and closure; required completion, interruption and settlement relationships |
-| Flow | Producer and consumer references; item/request association requirements; pending-product/disposition obligations; relationships needed to check producer-stop coverage |
-| Resource | Required projections/capabilities, permitted uses and captures, effect/authority envelope, last required use and supported transfer/release boundary |
+| Region | Entry arguments and captures; invocation sources; child protocol; admission and closure; required completion, interruption and settlement relationships; declared quiescence boundaries, or a declaration that none is supported |
+| Flow | Producer and consumer references; item/request association requirements; pending-product/disposition obligations; relationships needed to check producer-stop coverage; version admission policy over the actual production version |
+| Resource | Selected access realization from the closed set below and a separate freshness/version-selection policy; required projections/capabilities, permitted uses and captures, effect/authority envelope, last required use and supported transfer/release boundary |
+| Decision descriptor shared by region/flow/resource contracts | Reproducibility declaration for policies, admission rules and access modes; rank-consistency declaration for decisions that affect collective work; no separate conformance authority |
 | Realization | Installed implementation/contract requirements, supported protocol and target limits, prepared fragments and correspondence to semantic operations/obligations |
 
 The initial normalized descriptions cover once/sequence, parallel join, serial
@@ -2680,6 +2678,103 @@ Open total production is permitted with bounded live obligations and a supported
 control-progress contract. Fixture capacities and a particular selection quantum
 are parameters, not universal language constants.
 
+#### Amendments to the language proposal
+
+The following rules extend the research proposal. Each is cheap to fix in the
+contract algebra now and invasive to retrofit once operations and runtimes
+assume otherwise. The shared rules are normative in the `workflow-composition`
+capability; training composes them and adds only domain meaning.
+
+**Shared contracts are not training contracts.** Region, flow, settlement,
+access-mode, ownership, reproducibility, quiescence and rank-consistency rules
+live in `workflow-composition`. `accepted-training-execution` keeps units,
+windows, grants, derivative routing and other training-domain meanings. A
+data-only composition must be valid against `workflow-composition` alone.
+
+**Lifecycle semantics have an executable reference.** A deterministic,
+Torch-free reference interpreter over normalized IR defines each invocation
+protocol as a state machine over the proposal's control skeleton
+(created → pending → admitted → running → closing → settling → terminal), with
+the command/event protocol of proposal §2.1 as its transitions. Parent
+completion and settlement are computed from child states. Selected computations
+are replaced by declared stand-ins that honor their contracts and supply fixture
+values. The verifier and prepared runtimes are checked against it, including
+across systematically or randomly explored interleavings at suspension points.
+Neither the verifier nor a runtime is the sole definition of lifecycle
+correctness.
+Determinism is relative to explicitly supplied external completion, input and
+scheduling choices. The reference derives legal admissions and request
+obligations itself; a runtime's admitted-work trace is not the oracle's input.
+Comparison preserves owner-visible meaning while allowing private scheduling
+and bookkeeping differences.
+
+**Access realizations are a closed, versioned set.** No mode is implicit;
+every resource use selects a realization and states its freshness requirement
+separately. `current_at_start` is a version-selection policy, not a competing
+access realization: an evaluation can select both current-at-start freshness
+and protected live access.
+
+| Mode | Meaning | Evidence a target must establish |
+| --- | --- | --- |
+| `snapshot` | Read an immutable published version independently of later owner updates | Coherent publication, selected version identity, isolation and the snapshot's lifetime |
+| `protected_current` | Read live owner state while excluding incompatible updates over the required use extent | Atomic freshness/protection acquisition, physical-use completion with device ordering, and collective ordering when sharded |
+| `owner_update` | Mutation through the owning protocol | The owner's ordinary update protocol |
+| `grant(profile)` | Scoped delegated authority | The profile's phase and handback evidence |
+
+Snapshot selection names a published-version rule or current-at-start
+materialization; the latter requires atomically resolving and isolating that
+version before use. Protected live reads select current-at-start freshness;
+owner updates and grants carry their owning protocol's freshness requirements.
+Concurrent producer and update activities may progress between protected uses,
+but an incompatible mutation cannot race a protected use. A target rejects an
+unsupported realization/selection combination rather than substituting one.
+The existing owner engine's protected production epochs realize
+`protected_current`; snapshot realization is new work.
+
+**Flows declare version admission.** A flow whose products depend on versioned
+owner state declares exact-current, bounded-lag or any-with-provenance
+admission. Admission evaluates the version actually observed during production.
+A rejected product receives an explicit disposition, not a consumed outcome.
+The policy names each relevant owner/incarnation and version lineage, its lag
+metric, and the admission boundary at which comparison state is captured.
+The first target can use owner update ordinals within one lineage; an ordinal
+is not a global training clock. Products depending on several owners retain
+the required version map. Incomparable versions require an explicit policy
+disposition. Exact-current at admission does not promise freshness at later
+execution entry; a demand for that guarantee needs an atomic entry check under
+the corresponding resource-use contract.
+
+**Compositions report a reproducibility class.** Access modes, policies and
+admission rules declare whether their observable outcomes are
+schedule-independent given the same inputs, seeds and configuration.
+Verification derives a composition's class, names the operations that make it
+schedule-dependent, and reports unknown where a declaration is missing.
+A live read permits schedule dependence when writes can change its selected
+version; accepted ordering can establish a fixed version instead. Deterministic
+snapshot selection establishes only the version-selection part of the claim.
+Admission, input association, RNG and other decision contracts still contribute
+to the composition's class. State the assumptions and distinguish a proven
+schedule-independent result from possible schedule dependence or unknown.
+
+**Ownership is a type discipline.** Admitted item claims are affine: consumed,
+transferred, explicitly forked or given a disposition exactly once on every
+path. Scoped capabilities are region-scoped and cannot escape except through an
+accepted owner transfer. Both are checked from types and region contracts as
+one generic rule set, not as per-composition validators.
+
+**Quiescence and rank consistency are declared before they are realized.**
+Every maintained region contract declares where a consistent cut may be taken,
+or that none is supported; exact restoration and governed transitions use only
+declared boundaries. Every decision affecting collective work under a
+replicated target is declared replicated-deterministic or decided once and
+distributed. Tasks 6–9 record these declarations and reject claims that depend
+on boundaries or agreement they do not provide; implementing coordinated cuts and replicated execution is outside
+this slice. The first target is single-process, where rank consistency imposes
+no restriction.
+Rank-local randomness may feed a decision made once and distributed before
+dependent collective work. Rejection applies to decisions without the required
+agreement, not to the mere presence of a rank-local random draw.
+
 #### Compiler stages and implementation placement
 
 Keep accepted meaning, normalized descriptions, prepared recipes and runtime
@@ -2702,7 +2797,7 @@ Use an isolated research package at
 shared language construction/verification/lowering for multiple compositions;
 the existing `xdsl_candidate` and Pliron packages retain the bounded experiment
 evidence. Anticipated internal seams are `contracts.py`, `dialects.py`,
-`normalize.py`, `verify.py`, `prepare.py` and `target.py`, with fixtures,
+`normalize.py`, `reference.py`, `verify.py`, `prepare.py` and `target.py`, with fixtures,
 independent expectations, tests and a scope README. Task 5.5 still selects production
 placement and dependency direction; these research filenames are not public APIs.
 
@@ -2742,10 +2837,10 @@ Tasks 6–9 and Beads `sd-scripts-syv.31.26` provide evidence for tasks 5.3/5.4:
 
 | Milestone | Bead | Delivered boundary |
 | --- | --- | --- |
-| 6 | `sd-scripts-syv.31.26.2` | Typed contract descriptions, actual xDSL structure and normalization, with focused structural/capture/round-trip checks |
-| 7 | `sd-scripts-syv.31.26.3` | Shared pending-work/source-closure, stop-coverage, lifetime and capability verification with positive and rejected compositions |
-| 8 | `sd-scripts-syv.31.26.4` | Derived prepared setup and live/cold execution through existing owner services, with independent positive and targeted failure checks |
-| 9 | `sd-scripts-syv.31.26.5` | Integrated cancellation, late failure, archive-erasure and fresh-process qualification across the supported compositions |
+| 6 | `sd-scripts-syv.31.26.2` | Typed contract descriptions, including access-mode, version-admission, reproducibility, quiescence and rank-consistency fields; actual xDSL structure and normalization; the Torch-free reference lifecycle interpreter |
+| 7 | `sd-scripts-syv.31.26.3` | Shared pending-work/source-closure, stop-coverage and lifetime verification; ownership checked as affine claims and region-scoped capabilities; access-mode, admission and reproducibility-class checks; each verified against the reference |
+| 8 | `sd-scripts-syv.31.26.4` | Derived prepared setup and live/cold execution through existing owner services, realizing both `snapshot` and `protected_current` explicitly; runtime lifecycle facts compared differentially with the reference |
+| 9 | `sd-scripts-syv.31.26.5` | Integrated cancellation, late failure, archive-erasure and fresh-process qualification, with interleaving exploration against the reference across the supported compositions |
 
 Each milestone includes its own tests, scope documentation, relevant quality
 gates and required review before the next starts. Milestone 9 integrates prior

@@ -194,7 +194,7 @@ representation and code ownership of checking logic remain to be derived.
 
 #### Scenario: A maintained region supplies shared semantic contracts
 - **WHEN** supported compositions depend on a maintained region's boundary
-- **THEN** its registered definition MUST expose the invocation, capture, flow, resource, authority and settlement contracts required by those compositions
+- **THEN** its registered definition MUST expose the region, flow, resource and realization contracts that `workflow-composition` requires for those compositions
 - **AND** conformance MUST derive obligations from the actual accepted structure and those definitions rather than author assertions, saved summaries or a whole-case selector
 - **AND** this MUST NOT require every leaf computation to become a separate owner or expose its private mathematics
 
