@@ -89,6 +89,78 @@ workers, and backend scheduling private.
 - **THEN** its effects, completion, and dependent decisions MUST retain their accepted meaning
 - **AND** coordination MUST NOT force that work through an optimizer action or one universal run clock
 
+### Requirement: Maintained region contracts govern nested composition
+Maintained region definitions SHALL describe their invocation, capture,
+flow, resource, authority and lifecycle contracts. Parent conformance SHALL
+compose that knowledge over actual IR rather than case names, diagnostic
+histories or saved projections. Runtime invocation/request identities SHALL
+remain distinct from static operation origins.
+
+#### Scenario: A parent consumes a maintained child region contract
+- **WHEN** verification or preparation composes a maintained child region
+- **THEN** its registered definition MUST expose the required entry/yield types, capture mappings, invocation sources, admission/closure rules, child protocol, effects, resource/authority requirements, interruption and completion/settlement relationships
+- **AND** the applicable obligations MUST be derived from actual operations, regions and references
+
+#### Scenario: A handler body is invoked more than once
+- **WHEN** an accepted handler template receives distinct requests
+- **THEN** its changing arguments, locals and outstanding obligations MUST be associated with their distinct invocations
+- **AND** one static SSA definition or a reused item key MUST NOT merge those invocation identities
+
+#### Scenario: A data-only composition uses the common region contracts
+- **WHEN** maintained producer, consumer and control activities require no model or optimization work
+- **THEN** their hierarchy, admission, pending work, effects and settlement MUST remain representable through the same shared region contract meanings
+- **AND** no dummy model, optimizer or training clock may supply otherwise missing lifecycle semantics
+
+### Requirement: Requested work participates in enclosing settlement
+Accepted requests SHALL become enclosing obligations before handler admission.
+Contracts SHALL define request sources, closure, live bounds and dispositions.
+Parent settlement SHALL require the declared source closure and settlement or
+accepted transfer/disposition of pending/admitted requests, entered uses and
+cleanup. A handler template alone SHALL NOT imply an admitted invocation.
+
+#### Scenario: A requested evaluation waits for input after its driver ends
+- **WHEN** a completed driver has created an accepted evaluation request whose input is not yet admitted
+- **THEN** the enclosing consumer group MUST remain unsettled until that request and its required uses settle or receive an accepted disposition or transfer
+- **AND** absence of a currently executing consumer MUST NOT imply group completion
+
+#### Scenario: Completion creates a request while the parent checks settlement
+- **WHEN** a successful child boundary promises a request under the accepted contract
+- **THEN** the parent MUST NOT observe that completion for settlement before the request obligation or its accepted disposition is owned
+- **AND** waiting for request capacity MUST retain the emitting invocation's outstanding obligation
+
+#### Scenario: Orderly stop follows admission of work that promises a request
+- **WHEN** the selected orderly-stop contract permits an already admitted iteration to finish and that iteration promises a completion-generated request
+- **THEN** stop MUST preserve that request's registration and permitted completion
+- **AND** the iteration's admission MUST NOT be confused with readiness or acquisition of all its individual inputs
+
+#### Scenario: Run cancellation prevents a pending handler from executing
+- **WHEN** the accepted cancellation policy closes further handler admission
+- **THEN** every accepted pending request MUST retain its explicit unfulfilled/cancelled disposition rather than appear executed
+- **AND** entered physical uses and required cleanup MUST still settle with separately known failures and outcomes
+
+### Requirement: Completion-triggered producer stop covers consumer lifetimes
+Completion-triggered producer stop SHALL cover dependent consumer/request
+lifetimes or an accepted disposal/transfer rule. Consumer-group settlement MAY
+request stop without awaiting producer termination; run settlement SHALL
+account for both. Natural exhaustion, failure and cancellation SHALL retain
+their own dispositions. Known whole-lifetime cycles SHALL be checked separately
+from input waits and initialized feedback.
+
+#### Scenario: Training completion stops a producer still needed by evaluation
+- **WHEN** an authored completion-triggered stop uses training settlement while a permitted requested evaluator outside that lifetime closure can still need producer input
+- **THEN** conformance MUST reject the missing consumer/request coverage unless an explicit accepted disposal or transfer rule satisfies it
+- **AND** an operation name or a temporarily empty queue MUST NOT establish the missing coverage
+
+#### Scenario: Consumer settlement requests stop during physical production
+- **WHEN** the consumer group settles while an admitted producer call remains physically active
+- **THEN** the group MAY complete and request producer stop while the run waits for producer drain and product disposition
+- **AND** a completed evaluation result and a later producer failure MUST retain their separate outcomes
+
+#### Scenario: Feedback forms a cycle without a whole-lifetime wait cycle
+- **WHEN** a producer and consumer exchange feedback under accepted initialization, bounded-live-work and control-progress rules
+- **THEN** the data/control cycle MUST NOT be rejected solely as a whole-lifetime completion cycle
+- **AND** queue capacity alone MUST NOT be treated as proof of progress or termination
+
 ### Requirement: Equivalent execution preserves required interactions
 Prepared execution SHALL preserve the accepted input associations and admission,
 computation and gradients under the applicable numerical policy, dynamic
@@ -108,6 +180,16 @@ authority to selected computation.
 #### Scenario: Combined work loses a known partial outcome
 - **WHEN** a proposed lowering cannot preserve a known unit outcome or an accepted capability, transition, admission, or snapshot interaction
 - **THEN** that lowering MUST fail readiness for the accepted profile rather than substitute weaker completion or recovery semantics
+
+#### Scenario: A saved prepared claim omits an enclosing request obligation
+- **WHEN** normalization or cold loading presents a prepared claim inconsistent with the verified source, capture, binding, lifetime or request contracts
+- **THEN** that claim MUST NOT publish dependent readiness, authorize execution or permit effects depending on it
+- **AND** stored hashes and observation summaries MUST NOT stand in for semantic correspondence
+
+#### Scenario: A target cannot realize a semantically supported contract
+- **WHEN** target matching establishes that a supported region protocol or bound cannot be realized by the selected target
+- **THEN** the system MUST identify and reject that realization limitation at the earliest authoritative boundary
+- **AND** it MUST NOT omit required work, alter the semantic contract or claim execution readiness
 
 ### Requirement: Differentiated work preserves routing and numerical lifetime
 Where another accepted owner relies on it, the description SHALL preserve
@@ -460,6 +542,11 @@ protection, and this requirement SHALL NOT prescribe a particular lock.
 - **THEN** releasing access MUST NOT make dependent work usable before accepted recovery establishes valid state
 - **AND** known outcomes and primary and cleanup failures MUST remain available
 - **AND** withholding ordinary use MUST NOT prohibit authorized restoration or replacement needed for recovery
+
+#### Scenario: A scoped capability escapes through a result or nested capture
+- **WHEN** an authored yield or capture would outlive the protected scope without an accepted owner transfer retaining every required use
+- **THEN** conformance MUST reject that escape before the dependent use becomes executable
+- **AND** physical settlement of the producing call alone MUST NOT prove that a retained derivative or consumer use has ended
 
 ### Requirement: Conformance and execution cost are checked against accepted meaning
 Production acceptance SHALL cover materially different standard and granted

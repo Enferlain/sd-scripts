@@ -42,6 +42,12 @@ notes.
 - Carry the design forward through evidence-backed OpenSpec milestones before
   production migration. Creating the planning artifacts does not by itself
   satisfy the implementation-readiness gate.
+- Use xDSL as the working semantic/prepared IR substrate. Develop the first
+  shared language slice through registered region, flow and resource contracts,
+  normalization, lifecycle verification and contract-driven preparation for
+  model and data-only compositions. This bounded research supplies G5 evidence;
+  it does not adopt experimental APIs or select a numerical backend. Selected
+  computational regions may later lower through a qualified MLIR boundary.
 
 ## Capabilities
 
@@ -52,7 +58,8 @@ notes.
   and explicit standard/custom/extension conformance boundary.
 - `accepted-training-execution`: The accepted run arrangement, structured and
   imperative execution meanings, Trainer-retained authority, runtime inputs,
-  results, effects, failures, and the eventual step exchange.
+  results, effects, failures, shared region contracts, pending-request and
+  settlement relationships, and the eventual step exchange.
 - `run-participant-state`: Authority-scoped participant and relationship
   identities, bindings, routes, views, revisions, transitions, lineage, and
   scoped current-state projections.
@@ -125,3 +132,9 @@ research cases constrain the design before implementation. The active
 `expand-model-metadata-identity-and-structure` change overlaps identity,
 loading, provenance, and restoration concerns and must be reconciled rather
 than silently superseded.
+
+The next executable design evidence is the bounded xDSL language slice in
+`design.md` D14 and tasks 6–9, tracked by `sd-scripts-syv.31.26`. It remains under
+`docs_design/models-strategy-trainer/`, using existing owner services and
+independent expectations. Tasks 5.1–5.7 still govern the production types,
+placement, migration and implementation-readiness decision.

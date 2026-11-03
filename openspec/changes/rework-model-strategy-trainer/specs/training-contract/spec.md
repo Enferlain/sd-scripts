@@ -192,6 +192,12 @@ representation and code ownership of checking logic remain to be derived.
 - **THEN** strategy fulfillment MUST use the applicable shared conformance knowledge
 - **AND** it MUST NOT accept a bare author assertion or role/type inference as proof
 
+#### Scenario: A maintained region supplies shared semantic contracts
+- **WHEN** supported compositions depend on a maintained region's boundary
+- **THEN** its registered definition MUST expose the invocation, capture, flow, resource, authority and settlement contracts required by those compositions
+- **AND** conformance MUST derive obligations from the actual accepted structure and those definitions rather than author assertions, saved summaries or a whole-case selector
+- **AND** this MUST NOT require every leaf computation to become a separate owner or expose its private mathematics
+
 #### Scenario: Several strategies use the same supported coordination meaning
 - **WHEN** ordinary authored arrangements use an offered gradient, handoff, advancement, or ownership policy
 - **THEN** conformance MUST apply shared rules for that meaning
@@ -201,6 +207,16 @@ representation and code ownership of checking logic remain to be derived.
 - **WHEN** preparation fuses, partitions, or otherwise realizes selected work differently
 - **THEN** shared conformance MUST judge required owner-visible interactions, numerical and gradient policy, effects, outcomes, and recovery relationships
 - **AND** equal final values or nominal type compatibility alone MUST NOT certify equivalence
+
+#### Scenario: A supported composition is placed inside another supported scope
+- **WHEN** maintained activities are composed through a different permitted nesting or request relationship
+- **THEN** shared conformance MUST evaluate the actual region, flow, capture and lifetime contracts without selecting rules by fixture identity or exact operation count
+- **AND** any target-specific restriction MUST remain an explicit realization limitation rather than a silently weaker meaning
+
+#### Scenario: A callable is offered without the required region protocol
+- **WHEN** an implementation binding would introduce input admission, pending work or authority beyond the maintained operation's declared boundary
+- **THEN** fulfillment MUST reject that missing contract or require a supported semantic extension
+- **AND** registering the callable MUST NOT itself establish the missing lifecycle or authority meaning
 
 ### Requirement: Custom behavior uses an explicit conformance or extension path
 A custom implementation that preserves the active Trainer boundary SHALL file

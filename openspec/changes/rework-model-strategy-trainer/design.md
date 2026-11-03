@@ -11,7 +11,8 @@ Production tasks are added only after those gates have evidence, scenarios,
 and acceptance tests.
 
 A bounded, non-integrated executable experiment may inform G2/G3's choice of
-execution representation. It is design evidence, not a production migration
+execution representation and D14's language evidence for tasks 5.3/5.4. It is
+design evidence, not a production migration
 milestone or an accepted public API: the active Trainer and launcher must not
 consume it, and G5 decides which parts, if any, become production interfaces.
 This exception does not relax the production-readiness gate.
@@ -28,8 +29,17 @@ The pre-OpenSpec records have different jobs. They are not interchangeable:
 | [Implementation mapping](../../../docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md) | Source-backed current-to-target responsibility map and design dependency order. |
 | [Chronological notes](../../../docs_design/models-strategy-trainer/notes.md) | History. Later dated corrections supersede earlier positions. In particular, the accepted-run-arrangement correction supersedes the active-strategy topology. |
 | [Framework comparison](../../../docs_design/models-strategy-trainer/framework_pattern_comparison.md) | Subordinate prior art. It does not select this repository's ownership model. |
+| [xDSL language 0.1 proposal](research/xdsl_language_0_1_proposal.md) | Research input. D14 and the execution/contract deltas adopt the bounded shared-lifecycle decisions; its wider operation catalogue, identifiers and Python sketches are not accepted production APIs. |
 | [Executable spike](../../../docs_design/models-strategy-trainer/executable_spike/) | Behavioral evidence for binding/preparation failure cases. Its class names and storage shapes are not a production prototype. |
 | [Original discussion](../../../docs_design/models-strategy-trainer/strategy_discussion.md) and [external discussion](../../../docs_design/models-strategy-trainer/strategy_discussion_external.md) | Raw historical context. External comments are opinions; neither transcript is a requirement source. |
+
+The supplied language proposal must be tracked unchanged at
+`research/xdsl_language_0_1_proposal.md` in the same eventual commit as this
+planning revision, with SHA-256
+`7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2`.
+That commit must include the report and resolve these links in its tracked
+tree; local links to an untracked input alone do not satisfy that commit check.
+Retaining the input does not accept its illustrative API.
 
 #### Settled-source trace into this change
 
@@ -2538,6 +2548,221 @@ No milestone may maintain two canonical binding stores, preserve a renamed
 mode authority, or introduce an active-strategy callback contract that the next
 milestone immediately removes.
 
+### D14. xDSL is the working substrate for a bounded shared language slice
+
+#### Substrate decision and its evidence boundary
+
+On 2 November 2026 the user selected **xDSL as the working substrate for the
+system machinery**. Python authoring and ordinary composition of maintained
+operations are fixed premises for either candidate. This choice is about the
+machinery's representation, analysis, transformation and lowering capabilities,
+not authoring-language preference, setup convenience or user-written passes.
+
+The [matched machinery record](../../../docs_design/models-strategy-trainer/machinery_comparison.md)
+and [comparison plan](../../../docs_design/models-strategy-trainer/matched_comparison.md)
+provide the bounded six-case evidence. Both xDSL and Pliron represented those
+meanings with independent frontend verification/preparation. They reused the
+existing owner runtimes; neither implemented a second ownership system or
+established a general composition language. The recorded CPU observations and
+test totals do not establish an intrinsic framework ranking. Historical
+measurement/provenance qualifications and the unresolved legacy isolation issue
+`sd-scripts-syv.31.23` remain as recorded.
+
+xDSL supplies actual nested regions, typed def/use graphs, IRDL definitions,
+traits, verification, rewriting, reconstruction and pass organization. Its
+MLIR-aligned model and documented interchange offer a useful multi-level path:
+retain high-level workflow contracts while lowering eligible local regions into
+supported compiler representations. This is an architectural opportunity, not
+qualification of an MLIR numerical target or automatic availability of MLIR
+passes for custom workflow operations.
+
+Pliron remains a credible alternative. Its explicit graph/SSA region kinds,
+interface-driven conversion and managed analysis preservation/invalidation are
+concrete strengths. Those do not currently establish a capability advantage
+that outweighs the selected xDSL representation and lowering direction. Shared
+Rust dependencies with a numerical backend also require an actual reusable
+interface, analysis or artifact before they count as an integration advantage.
+
+The working baseline is xDSL 0.74.0, matching the retained experiments. Version
+changes require the affected structural, semantic and correspondence checks.
+The runtime, numerical backend, production module placement and public authoring
+API remain G5 decisions. In particular, this decision does not select Burn or
+require ordinary numerical work to leave its Python/PyTorch bindings.
+
+Reconsider the substrate if a required region/flow/resource contract cannot be
+represented or preserved by the chosen framework, if a required analysis or
+transformation is materially constrained by its structural facilities, or if
+another framework demonstrates relevant reusable machinery at our actual
+boundaries. State the specific obstruction and version, preserve the evidence,
+and bound that investigation first. A version-specific workaround or an unused
+MLIR opportunity alone is not evidence that the whole architecture must change.
+
+#### Adopted shared contract boundary
+
+Use the [language proposal](research/xdsl_language_0_1_proposal.md), especially
+sections 2–5 and its small next slice, as the input for one shared language
+mechanism. Adopt the semantic obligations below, rather than its illustrative
+class fields, operation spellings or full 0.1 catalogue.
+
+Maintained semantic definitions expose typed descriptions derived from the
+actual IR. They are shared knowledge used by verification, analysis,
+normalization and preparation. Ordinary authors select/wire these definitions;
+they do not supply validators or arbitrary scheduling callbacks. Registration
+may select an operation's semantic implementation; case names, source spellings
+and one fixture's exact operation counts cannot select whole-program validity.
+
+| Contract surface | Required information in this slice |
+| --- | --- |
+| Region | Entry arguments and captures; invocation sources; child protocol; admission and closure; required completion, interruption and settlement relationships |
+| Flow | Producer and consumer references; item/request association requirements; pending-product/disposition obligations; relationships needed to check producer-stop coverage |
+| Resource | Required projections/capabilities, permitted uses and captures, effect/authority envelope, last required use and supported transfer/release boundary |
+| Realization | Installed implementation/contract requirements, supported protocol and target limits, prepared fragments and correspondence to semantic operations/obligations |
+
+The initial normalized descriptions cover once/sequence, parallel join, serial
+repetition and requested-handler protocols, with explicit producer/control and
+access relationships. These describe static templates and their permitted
+runtime invocations; records, current model contents, queues, futures, mutable
+owner records and physical handles are not semantic IR objects. An ordinary
+leaf call does not need a new long-lived owner merely to participate.
+
+Finite choice, richer flow/cardinality operators, grants and governed transitions
+remain part of the broader design vocabulary. Tasks 6–9 implement only the
+protocols necessary for the first shared slice and its declared target. A valid
+contract that a target cannot realize must produce an explicit target/readiness
+limitation at the earliest authoritative boundary, not a weaker algorithm or a
+new language-wide restriction inferred from the fixture.
+
+#### Invocation, pending work and settlement rules
+
+An operation origin identifies a static definition. An invocation/request
+identity identifies one occurrence under an enclosing invocation. Neither a
+training step, model epoch nor an item key substitutes for that identity.
+Capture mappings explicitly connect enclosing values/references to the body's
+entry arguments; independent invocations do not share locals by convention.
+
+For the bounded protocols:
+
+- A sequence admits dependent work only after its declared successful child
+  boundary. The first target uses settled child success unless an explicit flow
+  relationship provides earlier availability.
+- A parallel consumer group joins its required drivers and requested work.
+  A handler template is not itself an admitted request. Its request sources
+  must close, and every accepted pending/admitted request and entered use must
+  settle or receive an accepted disposition/transfer before the group settles.
+- Acceptance of a request creates an enclosing ownership obligation before
+  handler execution admission. Waiting for input does not remove that debt.
+  Completion-generated requests are registered, or their accepted dispositions
+  become owned, before that completion becomes visible for parent settlement.
+  A bounded-capacity wait retains the emitting invocation's obligation.
+- Orderly stop follows the selected semantic admission boundary. Already
+  admitted work retains its promised completion-generated requests and may
+  finish them. Run cancellation can close broader admission, but pending work
+  then has an explicit cancelled/unfulfilled disposition; it is not reported
+  as executed. Required physical drain and cleanup continue.
+- A completion-triggered producer stop must cover the permitted consumer and
+  pending-request lifetime closure, unless an explicit disposal/transfer rule
+  makes the earlier boundary valid. Consumer-group settlement requests producer
+  stop without waiting for producer termination. Root settlement separately
+  waits for both. Natural exhaustion, failure and cancellation retain their
+  own accepted disposition policies.
+- A scoped capability/protected view cannot escape as an ordinary yielded value
+  or capture. All admitted uses retain protection through required physical
+  work, validation and cleanup, or through an explicitly supported transfer.
+  Detached products can outlive a scope only when their contract discharges or
+  transfers the remaining dependency. Settlement can coexist with failure and
+  does not establish restored resource usability.
+
+The verifier queries these relationships through registered contracts over
+actual regions, captures and references. It checks known whole-lifetime cycles
+separately from input waits and initialized stream feedback. It does not claim
+general deadlock freedom or termination of arbitrary selected computation.
+Open total production is permitted with bounded live obligations and a supported
+control-progress contract. Fixture capacities and a particular selection quantum
+are parameters, not universal language constants.
+
+#### Compiler stages and implementation placement
+
+Keep accepted meaning, normalized descriptions, prepared recipes and runtime
+instances distinct under the same revisioned run obligations. Normalization
+resolves explicit captures, expands maintained recipes and exposes request/stop
+relationships; it cannot invent input, lifecycle or authority meaning. Preserve
+the accepted document and origin ancestry. Semantic summaries and saved
+projections do not authorize execution independently of verified IR/contracts.
+
+Preparation consumes those checked relationships and installed bindings to
+derive inspectable fragments for the selected realization policy. Cold loading
+rechecks source coverage, captures/types, contracts, request/stop/access claims
+and policy correspondence before dependent readiness or effects. Legitimate
+pure construction or backend preparation before final verification remains
+permitted under D8; the old experiments' pre-factory rejection checks are not
+a universal construction order.
+
+Use an isolated research package at
+`docs_design/models-strategy-trainer/xdsl_language/`. Its recurring stage is
+shared language construction/verification/lowering for multiple compositions;
+the existing `xdsl_candidate` and Pliron packages retain the bounded experiment
+evidence. Anticipated internal seams are `contracts.py`, `dialects.py`,
+`normalize.py`, `verify.py`, `prepare.py` and `target.py`, with fixtures,
+independent expectations, tests and a scope README. Task 5.5 still selects production
+placement and dependency direction; these research filenames are not public APIs.
+
+The target reuses the original owner engine's structured primitives and
+protection/physical services. Existing composition math, bindings, gates and
+oracles can be reused; calling the current fixed-profile
+`pliron_candidate/composition_runtime.py` whole-case builder is not the new
+generic lowering. Domain bindings remain selected implementations. One shared
+core lowering may dispatch on registered semantic protocols, but may not return
+a preassembled whole-case graph or start another whole-run coordinator for the
+data-only control.
+
+Language-only construction/verification stays Torch-free. The existing owner
+target may retain its current Torch import dependency; record it rather than
+inventing a dummy model/optimizer for data-only meaning or claiming a new
+Torch-free runtime. Use the existing qualified environments, observe actual
+GIL state without forcing it, and preserve backend qualification limits.
+
+Definition-analysis validity, prepared-realization validity and compiled/data
+validity are distinct dependency systems. Ordinary numerical/state updates do
+not change the accepted definition merely because they create another runtime
+epoch. Binding/contract/structural changes invalidate affected dependent facts
+and realizations under the governing transition rules. Begin with conservative
+recomputation of inexpensive summaries rather than introducing a second cache
+authority.
+
+The selected MLIR direction is an explicit closed computational-island boundary
+with qualified types/ABI, numerical/effect/failure policy, source correspondence
+and physical completion. Design those contracts as needed; actual MLIR codegen,
+whole-run async lowering and a numerical-backend migration are outside tasks
+6–9. No generic purity/DCE inference may erase observable coordination,
+validation, requests or outcomes just because local arithmetic is pure.
+
+#### Bounded milestones and success criteria
+
+Tasks 6–9 and Beads `sd-scripts-syv.31.26` provide evidence for tasks 5.3/5.4:
+
+| Milestone | Bead | Delivered boundary |
+| --- | --- | --- |
+| 6 | `sd-scripts-syv.31.26.2` | Typed contract descriptions, actual xDSL structure and normalization, with focused structural/capture/round-trip checks |
+| 7 | `sd-scripts-syv.31.26.3` | Shared pending-work/source-closure, stop-coverage, lifetime and capability verification with positive and rejected compositions |
+| 8 | `sd-scripts-syv.31.26.4` | Derived prepared setup and live/cold execution through existing owner services, with independent positive and targeted failure checks |
+| 9 | `sd-scripts-syv.31.26.5` | Integrated cancellation, late failure, archive-erasure and fresh-process qualification across the supported compositions |
+
+Each milestone includes its own tests, scope documentation, relevant quality
+gates and required review before the next starts. Milestone 9 integrates prior
+checks; it does not defer earlier milestones' tests. Use the existing
+producer/driver/requested-evaluation meaning, a data-only producer/consumer
+control, and at least one valid rearrangement such as an extra consumer scope.
+The shared verifier/normalizer/preparer must handle that arrangement without a
+new whole-case rule. Retain invalid early-stop and capability-escape controls,
+actual independent numerical/causal facts, physical draining and distinct late
+failure outcomes. Diagnostic histories may be erased without changing execution.
+
+Failure to express the two domains through the shared protocol is evidence to
+revise that protocol, not permission to add case-name branches. This scope does
+not implement the full language 0.1 catalogue or freeze serial-request limits
+as the final language. Section 5's production-shape tasks and production apply
+remain separately gated even after this research completes.
+
 ## Representative Case Matrix
 
 No single maintained family defines the core. The design gates use the
@@ -3207,9 +3432,19 @@ duplicate custom-extension spellings and cosmetic error-type differences do
 not reopen this canonical-claim repair or introduce a new implementation task.
 G5 tasks remain unchecked and the main rework stays open. This bounded audit
 close-out permits the next production-shape design task; it does not satisfy
-G5.7 or authorize production apply, spec sync/archive, or a new runtime API.
+task 5.7 or authorize production apply, spec sync/archive, or a new runtime API.
 
 ### G5. Choose production shapes and traced migration milestones
+
+D14 records the working xDSL substrate choice. The bounded language milestones
+6–9 supply additional evidence for tasks 5.3/5.4 before those production choices
+are completed. Their research contract types and runtime adapters do not close
+G5 or become production interfaces by default.
+
+Tasks 5.1/5.2 can develop independently from the completed exchanges; the
+6–9 dependency applies to tasks 5.3/5.4, not every production-design task.
+Any independently developed shapes still require reconciliation with those
+choices before production placement and migration are finalized.
 
 Only after G1–G4, choose concrete authority/binding/preparation types, accepted
 arrangement/executable-run representation, authoring/strategy-check boundary,

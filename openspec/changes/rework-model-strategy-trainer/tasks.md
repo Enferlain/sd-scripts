@@ -1,11 +1,36 @@
-Production implementation is **not ready**. Sections 1–5 are the numbered
-OpenSpec design milestones required by `design.md` G1–G5. They change planning
-artifacts and evidence, including bounded non-integrated executable design
-experiments during G2/G3; they do not cut over the active Trainer. Exact production
-milestones are added in section 5
-after the exchanges, representative cases, overlap reconciliation, tests, and
-review gates are complete. OpenSpec artifact status does not override this
-boundary. Bead `sd-scripts-syv` remains the durable tracker.
+Production implementation is **not ready**. Sections 1–5 retain the numbered
+design tasks for `design.md` G1–G5. Sections 6–9 are the bounded, non-integrated
+xDSL language evidence authorized by D14; they do not cut over the active
+Trainer or complete the production-shape gate. Exact production migration
+milestones are still written by task 5.6 after the full G5 decisions and review.
+OpenSpec artifact status does not override that boundary.
+
+The next research execution order is **6 → 7 → 8 → 9**, supplying evidence for
+5.3/5.4. Those groups appear before section 5 below to follow that dependency;
+existing task IDs remain stable. Each group includes its own checks,
+documentation and required review before the next starts. Section 9 performs
+integration qualification, not tests deferred from sections 6–8. Production
+tasks 5.1–5.7 remain open until their full acceptance criteria are met.
+Tasks 5.1/5.2 may develop independently from the completed exchanges and must
+be reconciled with the later representation/contract choices; the ordering
+above does not introduce a new evidence dependency for those two tasks.
+
+Bead `sd-scripts-syv` remains the durable tracker. The substrate decision is
+`sd-scripts-syv.31.25.8`; planning is `sd-scripts-syv.31.26.1`; implementation
+groups 6–9 map respectively to `sd-scripts-syv.31.26.2`–`.5`. The
+[research proposal](research/xdsl_language_0_1_proposal.md) is input; D14 and the
+delta requirements define the adopted scope, not its full illustrative API.
+The eventual planning commit must include that unchanged research input at
+the linked path, under the provenance requirement in `design.md`.
+
+Validation baseline: OpenSpec 1.15.0 reports 53 long-requirement warnings in
+strict mode at committed `fe46bab` as well as this planning revision. Standard
+validation passes with zero errors and this update adds no findings. Bead
+`sd-scripts-syv.31.27` tracks the inherited cleanup; ordinary validation or
+this scoped comparison does not close task 5.7's full strict-readiness gate.
+Checked tasks such as 1.2 record milestone-time validation, not a fresh result
+under the current CLI and spec set; the baseline above governs current
+readiness and the inherited cleanup remains open.
 
 ## 1. Complete Carry-Forward And Contract Reconciliation
 
@@ -52,6 +77,29 @@ spec/review gate; checking either task does not close that gate.
 - [x] 4.4 Complete exact runtime restoration exchanges; verify Trainer/pipeline coordination and contributor-owned operation, capability, optimization, backend, and infrastructure state restore authority, participant, relationship, route, progress, and revisions distinctly from artifact loading, report an outcome independent from trained-product persistence, and use new execution-session identity without inventing new same-run participant incarnations.
 - [x] 4.5 Reconcile metadata and observability consumers with the completed runtime identities and results; verify neither system infers live identity, retains canonical bindings, or reconstructs topology from mode/strategy/Trainer compatibility fields.
 - [x] 4.6 Update capability, persistence, metadata, observability, adapter, and loaded-component deltas; validate strictly, obtain the required review, address findings, and close every overlap item recorded in milestone 1.
+
+## 6. Define Shared xDSL Region Contracts And Normalization
+
+- [ ] 6.1 Create the isolated `docs_design/models-strategy-trainer/xdsl_language/` research package with `contracts.py`, `dialects.py` and a scope README. Define typed registered region/flow/resource/realization descriptions and actual xDSL operations/types for the D14 protocols, explicit capture arguments, invocation sources and source origins. Verify structural/type/capture tests run in the existing Torch-free environment and descriptions come from actual IR rather than a prebuilt whole-case graph. Treat names and descriptor layouts as research interfaces.
+- [ ] 6.2 Add construction fixtures and `normalize.py` for the existing producer/driver/requested-evaluation meaning, a data-only producer/consumer control and one valid rearrangement such as an extra consumer scope. Verify the same normalization resolves explicit captures, request routing and producer-stop references across them; retain changing policy/iteration meaning, origin ancestry and contract versions. Parse/print accepted and normalized documents and verify real def/use correspondence without relying on text equality, hashes or fixture counts.
+- [ ] 6.3 Document the supported contract algebra and first-target limits alongside the tests. Run focused structural/normalization tests, relevant Ruff/format/ty and local-link checks, verify the current historical artifacts and user research reports are preserved, complete the required review and address findings before milestone 7. Do not claim executable readiness from this structural milestone.
+
+## 7. Verify Lifecycle Closure And Scoped Resource Use
+
+- [ ] 7.1 Implement `verify.py` using the registered contracts and normalized relationships for request-source closure, accepted pending obligations, completion-generated request registration and completion-triggered producer-stop coverage. Verify the lifetime composition, data-only control and alternative scope pass through the same rules, while training-only early stop and omitted pending-request coverage fail with source-attributed diagnostics. A handler template without a request must not create a fictional admitted invocation.
+- [ ] 7.2 Verify capture/ownership lifetime and known whole-lifetime dependencies: reject unsupported protected-view escape, invalid source/capture substitution and circular settlement; retain separately checked initialized feedback/input relationships. Include cases distinguishing orderly stop of admitted work from run cancellation and distinguish semantic incompatibility from target limitation at the earliest authoritative boundary. Verify normal completion does not certify physical settlement or resource usability by itself.
+- [ ] 7.3 Record each verifier obligation, the actual interface queries that establish it, deferred target/runtime evidence and expected rejection boundary. Run focused positive/corruption/diagnostic tests and applicable quality gates, complete the required review and address findings before milestone 8. The verifier must not depend on selected Python execution, saved observation lists or source names identifying a case.
+
+## 8. Derive Prepared Setup And Reuse Existing Owner Services
+
+- [ ] 8.1 Implement `prepare.py` and `target.py` deriving inspectable prepared fragments from verified normalized IR, installed contracts and an explicit realization policy. Lower supported registered protocols into the existing owner engine's structured primitives and protection/physical services. Reuse numerical bindings, gates and independent expectations from the existing cases, but not `pliron_candidate/composition_runtime.py` as a fixed whole-case builder. Verify both domains and the valid rearrangement use the same core path without a second whole-run coordinator or a dummy model/optimizer for data-only meaning.
+- [ ] 8.2 Execute positive programs and targeted request/protection/interruption controls through that path. Independently verify actual arithmetic, input/request cause associations, protected use epochs, parent/group/producer settlement and separate partial outcomes. Record the existing owner target's import dependencies and actual GIL state without forcing it; keep language-only verification Torch-free. Unsupported target bounds must fail explicitly rather than alter accepted meaning.
+- [ ] 8.3 Add detached accepted/normalized/prepared artifacts, source/obligation maps and binding/target manifests. Cold loading must derive and check source coverage, captures/types, binding versions, access/request/stop claims and selected-policy correspondence before dependent readiness or effects. Verify positive cold execution and forged-source/manifest/lifetime rejection, run the focused live/cold and failure gates, document the supported target and complete the required review before milestone 9. Do not impose pure-construction ordering as a universal production rule.
+
+## 9. Qualify The First Shared Language Slice
+
+- [ ] 9.1 Integrate the previously tested programs with late and prefetched input, pending requests, local stop versus root cancellation, bounded returning-exclusion progress where selected, held physical calls and late failure. Erase diagnostic histories and independently reconstruct actual owner-visible results and dispositions. Use fresh normal and optimized runtime children with authoring disabled and an assertion-enabled parent oracle; retain deliberate wrong-implementation and corrupted-claim controls. Verify a successful result and a later failure remain independent, with physical drain and protected-use obligations preserved.
+- [ ] 9.2 Retain source/report hashes, accepted/normalized/prepared artifacts, actual observations, failures, environment/import/GIL state and qualification limits in the research package. Run the relevant integrated regression and documentation checks, prove prior owner/experimental evidence and both user reports remain unchanged, complete the required review and address findings. Record which wider language 0.1 features and G5 production decisions remain unimplemented; update the Beads milestone without treating new test totals, old CPU timings or host witnesses as new performance/device qualification.
 
 ## 5. Choose Production Shapes And Write The Migration Plan
 
