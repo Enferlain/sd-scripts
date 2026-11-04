@@ -1,4 +1,4 @@
-# Shared xDSL language slice: milestones 6–8
+# Shared xDSL language slice: milestones 6–9
 
 This isolated package implements structural construction, normalization,
 shared semantic verification, an executable lifecycle reference and derived
@@ -11,7 +11,8 @@ protocols. The extra consumer scope is another composition of those definitions.
 **Normalization alone is not whole-lifetime acceptance or executable readiness.**
 [verify.py](verify.py) supplies the shared lifecycle/ownership verifier.
 [prepare.py](prepare.py) and [target.py](target.py) derive and execute the bounded
-owner target. Milestone 9 still qualifies integrated interruption/interleavings.
+owner target. [Qualification](qualification.md) exercises integrated interruption,
+history erasure, detached optimized execution and bounded interleavings.
 This package does not train a real model or select public APIs, a numerical
 backend or a production migration.
 
@@ -244,7 +245,7 @@ reverified normalized IR, installed contracts and matching realization policy.
 | --- | --- |
 | Root readiness and run | One `RunState`, installed image and `Engine`; no second root coordinator |
 | Parallel lifetime | `Lowering.scope(Together(...))` supplies TaskGroup failure/cancellation and joins |
-| Serial repetition | `Lowering.scope(Repeat(...))` supplies policy admission, iterations and completion; a returned choice commits the iteration, and locals/carries remain invocation-owned |
+| Serial repetition | `Lowering.scope(Repeat(...))` selects iterations and supplies completion; the prepared invocation guard admits a selected attempt, and locals/carries remain invocation-owned |
 | Requested activity | `Lowering.scope(Requested(...))` supplies serial request execution; the adapter registers completion debt before source terminal publication and bounds pending plus active work together |
 | Independent producer | `Lowering.scope(Producer(...))` supplies stop, cancellation, physical cleanup and port closure; the provider owns selection and bounded publication |
 | Local bodies and choice | Prepared local closures interpret actual SSA captures/results and finite choice; they do not create another scheduler |
@@ -306,7 +307,14 @@ shows that snapshot use permits an independent update while protected-current
 use excludes it. Version selection alone does not remove admission-related
 schedule dependence. Neither execution is replayed from the other's trace.
 
-This is not yet a complete stop-schedule equivalence claim. The reference can expose a created/pending repeat attempt rejected at its separate `admit` command (`stopped_unadmitted`); the native repeat commits admission when its policy returns a choice and may create no attempt at an earlier stop. The tested external stop is after admitted window entry in both executions. Aligning finer admission-gap choices and their attempt-only observations remains part of milestone 9. Producer run-ahead is explicitly classified; score, update and consumer facts permit no truncated surplus.
+The invocation admission guard now rechecks local stop after selection and before
+body entry. A real selected/pending second-window attempt can settle as
+`stopped_unadmitted`, matching the reference's separate admission command.
+Stopping after admission retains that window and its requested evaluation.
+Stopping before selection creates no attempt in either execution. Bounded
+producer run-ahead is classified separately; score, update and consumer facts
+permit no truncated surplus. Bounded interleavings establish these tested
+boundaries, not equivalence under every possible schedule.
 
 The existing owner target imports Torch, including its worker context and
 optimizer adapter. Language-only checks remain Torch-free. The target checks
@@ -315,9 +323,9 @@ changes: the qualified xDSL site directory is added to the existing project
 interpreter's search path. Record actual GIL state before imports and after
 checks, without forcing it. These CPU tests do not qualify GPU/device ordering,
 replicated execution, native-library concurrency generally or performance.
-Archive erasure, fresh optimized owner children and broader schedule exploration
-remain milestone 9; the earlier reference-only optimized children do not supply
-that target evidence.
+The [qualification record](qualification.md) adds owner-target history erasure,
+fresh normal/optimized children and seeded suspension checks. Earlier
+reference-only children remain separate evidence.
 
 ## Run the bounded checks
 
@@ -355,7 +363,7 @@ fresh normal/optimized children with authoring absent. Verifier controls include
 early stop, pending coverage, known cycles, actual capture remapping, claim
 duplication/branching/carry, capability escape, owner lifetime, access selection,
 multi-owner admission, missing decision metadata and unavailable cut/rank claims.
-Seeded schedules are
-bounded smoke checks; the integrated exploration/qualification gate remains
-milestone 9. Observe actual GIL state before/after imports and tests without
+Seeded schedules and the integrated controls qualify the explicitly bounded
+slice, with the limits in [qualification.md](qualification.md).
+Observe actual GIL state before/after imports and tests without
 forcing it. Interpreter and IR objects remain confined to their calling thread.

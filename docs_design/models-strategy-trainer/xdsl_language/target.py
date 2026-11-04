@@ -8,7 +8,7 @@ import json
 import threading
 
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from contextlib import asynccontextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field
@@ -110,6 +110,23 @@ class Controls:
     failures: dict[tuple[str, int], str] = field(default_factory=dict)
     before: dict[tuple[str, int], asyncio.Event] = field(default_factory=dict)
     reached: dict[tuple[str, int], asyncio.Event] = field(default_factory=dict)
+    checkpoint: Callable[[Point], Awaitable[None]] | None = None
+
+
+@dataclass(frozen=True)
+class Point:
+    source: str
+    invocation: Identity
+    phase: str
+    ordinal: int = 0
+
+
+@dataclass(frozen=True)
+class SourceReceipt:
+    source: str
+    invocation: Identity
+    status: str
+    cancel_requested: bool
 
 
 @dataclass
@@ -130,6 +147,7 @@ class Handler:
     name: str
     capacity: asyncio.BoundedSemaphore = field(default_factory=lambda: asyncio.BoundedSemaphore(1))
     pending: dict[int, Request] = field(default_factory=dict)
+    issued: dict[int, Request] = field(default_factory=dict)
     dispositions: dict[int, str] = field(default_factory=dict)
     next_ordinal: int = 0
     closed: set[str] = field(default_factory=set)
@@ -177,6 +195,7 @@ class Runtime:
         self.flow_names = {text(op, "sym_name"): f"flow/{i}" for i, op in enumerate(self.index.values()) if isinstance(op, StreamOp)}
         self.facts: list[Fact] = []
         self.outcomes: dict[Identity, Outcome] = {}
+        self._live: dict[Identity, Outcome] = {}
         self.ordinals: dict[tuple[Identity, str], int] = defaultdict(int)
         self.call_counts: dict[str, int] = defaultdict(int)
         self.entry_counts: dict[str, int] = defaultdict(int)
@@ -188,7 +207,7 @@ class Runtime:
         self.handlers: dict[tuple[Identity, str], Handler] = {}
         self.requests_changed = asyncio.Event()
         self.events: dict[tuple[Identity, str], asyncio.Event] = defaultdict(asyncio.Event)
-        self.closed_sources: dict[tuple[Identity, str], tuple[Identity, ...]] = {}
+        self.closed_sources: dict[tuple[Identity, str], tuple[SourceReceipt, ...]] = {}
         self.production_stops: dict[Identity, asyncio.Event] = {}
         self.stopped: set[str] = set()
         self.cancelled = False
@@ -325,8 +344,13 @@ class Runtime:
         return (*parent, (owner, ordinal))
 
     def _state(self, identity: Identity, state: State) -> None:
-        self.outcomes[identity].state = state
-        self._fact(self.outcomes[identity].owner, identity, "state", state)
+        outcome = self._live[identity]
+        outcome.state = state
+        self._fact(outcome.owner, identity, "state", state)
+
+    async def _checkpoint(self, op: Operation, identity: Identity, phase: str, ordinal: int = 0) -> None:
+        if self.controls.checkpoint is not None:
+            await self.controls.checkpoint(Point(origin(op), identity, phase, ordinal))
 
     def _scope(self, waiting: Operation, source: Operation, identity: Identity) -> Identity:
         common = origin(_common(waiting, source))
@@ -411,6 +435,7 @@ class Runtime:
         identity = self._identity(parent, origin(op))
         outcome = Outcome(origin(op), identity)
         self.outcomes[identity] = outcome
+        self._live[identity] = outcome
         protocol = Protocol.ONCE if isinstance(op, ProgramOp) else trait(op, RegionSemantics).protocol
         if body_args is not None:
             outcome.invocation_source = {
@@ -427,8 +452,13 @@ class Runtime:
         incoming = body_args if body_args is not None else args
         succeeded = False
         try:
+            await self._checkpoint(op, identity, "admit")
             if self.cancelled or self.failed:
                 raise asyncio.CancelledError("run closing prevents new invocation admission")
+            if body_args is not None and protocol == Protocol.REPEAT and self._is_stopped(op, identity):
+                outcome.status = "stopped_unadmitted"
+                count = number(op, "carry_count")
+                return body_args[-count:] if count else ()
             for phase in (State.ADMITTED, State.RUNNING):
                 self._state(identity, phase)
             tickets = [value for value in incoming if isinstance(value, Ticket)]
@@ -475,7 +505,7 @@ class Runtime:
                             origin(op), identity, "completion_request_disposed", symbol(request.properties["handler"]), outcome.status
                         )
                 if body_args is None:
-                    await self._close_source(op, identity)
+                    await self._close_source(op, identity, outcome)
             finally:
                 outcome.cleanup, outcome.cancel_requested = True, self.cancelled
                 outcome.stop_requested = self._is_stopped(op, identity)
@@ -492,6 +522,7 @@ class Runtime:
                     outcome.cancel_requested,
                     outcome.stop_requested,
                 )
+                del self._live[identity]
 
     def _compile(self, op: Operation):
         if isinstance(op, ProgramOp):
@@ -532,8 +563,17 @@ class Runtime:
                 source = self.symbols[symbol(op.properties["source"])]
                 target = self.symbols[symbol(op.properties["target"])]
                 await self._event(op, source, identity).wait()
+                await self._checkpoint(op, identity, "stop_after")
+                if self.cancelled or self.failed:
+                    raise asyncio.CancelledError("run closing supersedes completion-triggered stop")
                 source_key = self._scope(op, source, identity), text(source, "sym_name")
-                self._fact(origin(target), identity, "stop_requested", origin(source), self.closed_sources[source_key])
+                self._fact(
+                    origin(target),
+                    identity,
+                    "stop_requested",
+                    origin(source),
+                    tuple(receipt.invocation for receipt in self.closed_sources[source_key]),
+                )
                 self.events[self._scope(op, target, identity), "stop/" + text(target, "sym_name")].set()
                 return ()
             raise ExecutionError(f"unprepared leaf {op.name}")
@@ -583,6 +623,7 @@ class Runtime:
             return carries
         if protocol == Protocol.ACCESS:
             contract = trait(op, ResourceSemantics).describe(op)
+            await self._checkpoint(op, identity, "acquire")
             async with self._access(str(args[0]), contract.mode, contract.freshness, contract.version_selector) as cap:
                 self._fact(origin(op), identity, "protected_version", cap.version, contract.mode, contract.freshness)
                 for length in range(1, len(identity) + 1):
@@ -613,6 +654,14 @@ class Runtime:
                     if stop_event.is_set() or text(op, "sym_name") in self.stopped:
                         flow.capacity.release()
                         break
+                    try:
+                        await self._checkpoint(op, identity, "reserve", flow.next_key)
+                    except BaseException:
+                        flow.capacity.release()
+                        raise
+                    if stop_event.is_set() or text(op, "sym_name") in self.stopped:
+                        flow.capacity.release()
+                        break
                     key = flow.next_key
                     flow.next_key += 1
                     ticket = Ticket(stream, key, identity)
@@ -627,10 +676,22 @@ class Runtime:
                         if stop_event.is_set() or text(op, "sym_name") in self.stopped:
                             self._dispose(ticket, "discarded", identity)
                         else:
-                            await context.publish(stream, owners.Product(key, ticket, ()))
-                            self._fact(stream, identity, "published", key, ticket.versions)
-                    except BaseException:
-                        self._dispose(ticket, "cancelled" if self.cancelled else "discarded" if stop_event.is_set() else "failed", identity)
+                            await self._checkpoint(op, identity, "publish", ticket.key)
+                            if stop_event.is_set() or text(op, "sym_name") in self.stopped:
+                                self._dispose(ticket, "discarded", identity)
+                            else:
+                                await context.publish(stream, owners.Product(key, ticket, ()))
+                                self._fact(stream, identity, "published", key, ticket.versions)
+                    except BaseException as failed:
+                        interrupted = isinstance(failed, asyncio.CancelledError)
+                        disposition = (
+                            "cancelled"
+                            if interrupted and self.cancelled
+                            else "discarded"
+                            if interrupted and stop_event.is_set()
+                            else "failed"
+                        )
+                        self._dispose(ticket, disposition, identity)
                         raise
 
             async def cleanup(_context):
@@ -653,6 +714,10 @@ class Runtime:
                 self.owner.request_queues[slot.name].put_nowait(None)
 
             def request(completion):
+                registered = slot.issued.get(completion.key)
+                pending = slot.pending.get(completion.key)
+                if pending is not None and registered != pending:
+                    raise ExecutionError("request packet differs from the owned registration")
                 current = slot.pending.pop(completion.key, None)
                 if current is None:
                     if completion.key not in slot.dispositions:
@@ -708,6 +773,7 @@ class Runtime:
             self._unfulfilled(slot, request, cause)
             return
         slot.pending[ordinal] = request
+        slot.issued[ordinal] = request
         self.requests_changed.set()
         self._fact(origin(op), cause, "request_registered", request)
         self._fact(origin(slot.operation), cause, "request_pending", request)
@@ -715,6 +781,7 @@ class Runtime:
         self.owner.request_queues[slot.name].put_nowait((packet, None))
 
     def _unfulfilled(self, slot: Handler, request: Request, identity: Identity) -> None:
+        slot.issued[request.ordinal] = request
         disposition = "cancelled_unfulfilled" if self.cancelled else "unfulfilled_on_failure"
         slot.dispositions[request.ordinal] = disposition
         self._fact(origin(slot.operation), identity, "request_disposed", request, disposition)
@@ -733,13 +800,15 @@ class Runtime:
                     slot.capacity.release()
                     self.requests_changed.set()
 
-    async def _close_source(self, op: Operation, identity: Identity) -> None:
+    async def _close_source(self, op: Operation, identity: Identity, outcome: Outcome) -> None:
         if "sym_name" not in op.properties:
             return
         name = text(op, "sym_name")
         for waiting in self.index.values():
             if isinstance(waiting, StopAfterOp) and symbol(waiting.properties["source"]) == name:
-                self.closed_sources[self._scope(waiting, op, identity), name] = (identity,)
+                self.closed_sources[self._scope(waiting, op, identity), name] = (
+                    SourceReceipt(origin(op), identity, outcome.status, self.cancelled),
+                )
                 self._event(waiting, op, identity).set()
             region = waiting.get_trait(RegionSemantics)
             if region is not None and region.protocol == Protocol.REQUESTS and name in region.describe(waiting).request_sources:
@@ -839,6 +908,9 @@ class Runtime:
         ordinal = self.call_counts[origin(op)]
         self.call_counts[origin(op)] += 1
         key = origin(op), ordinal
+        await self._checkpoint(op, identity, "call_enter", ordinal)
+        if self.cancelled or self.failed:
+            raise asyncio.CancelledError("run closing prevents selected-call entry")
         self.controls.reached.setdefault(key, asyncio.Event()).set()
         if key in self.controls.before:
             await self.controls.before[key].wait()
@@ -875,6 +947,11 @@ class Runtime:
             )
             raise
         result = finished.value
+        interruption = finished.cancellation
+        try:
+            await self._checkpoint(op, identity, "call_complete", ordinal)
+        except asyncio.CancelledError as cancelled:
+            interruption = interruption or cancelled
         if not isinstance(result, Result):
             raise ExecutionError("binding returned an invalid completion envelope")
         for effect in result.effects:
@@ -922,14 +999,14 @@ class Runtime:
             self._fact(origin(op), identity, "validation_rejected", self.inputs.get(identity, ()), self.products.get(identity, ()))
             raise ExecutionError(f"{origin(op)}: binding output contract mismatch")
         self._fact(origin(op), identity, "validated", self.inputs.get(identity, ()), self.products.get(identity, ()))
-        if finished.cancellation is not None:
+        if interruption is not None:
             orderly_production = (
                 not self.cancelled
                 and not self.failed
                 and any(identity[: len(scope)] == scope and event.is_set() for scope, event in self.production_stops.items())
             )
             if not orderly_production:
-                raise finished.cancellation
+                raise interruption
         return deepcopy(result.values)
 
     async def _take(self, op: Operation, name: str, identity: Identity) -> Ticket:
@@ -941,6 +1018,7 @@ class Runtime:
         flow, feed = self.flows[name], self.state.feeds[name]
         contract = flow.declaration.get_trait(FlowSemantics).describe(flow.declaration)
         while True:
+            await self._checkpoint(op, identity, "take", entry_key[1])
             async with feed.changed:
                 await feed.changed.wait_for(lambda: bool(feed.ready) or feed.closed)
                 if self.cancelled or self.failed:
@@ -951,7 +1029,7 @@ class Runtime:
                     raise ExecutionError("input exhausted before required admission")
                 key = min(feed.ready)
                 ticket = feed.ready.pop(key).value
-                if ticket.disposition is not None:
+                if ticket.disposition is not None or key in flow.terminal:
                     feed.changed.notify_all()
                     continue
                 comparison = tuple(self._version(owner) for owner in contract.versions.owners)

@@ -1,0 +1,319 @@
+{
+  "children": [
+    {
+      "run": "corrupted-claim-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "corrupted-claim-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "data-only-normal-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "data-only-normal-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-held-cancel-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-held-cancel-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-held-failure-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-held-failure-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-late-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-late-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-late-producer-failure-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-late-producer-failure-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-normal-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-normal-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-orderly-after-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-orderly-after-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-orderly-before-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-orderly-before-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-pending-cancel-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-pending-cancel-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-prefetched-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "extra-scope-prefetched-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-held-cancel-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-held-cancel-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-held-failure-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-held-failure-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-late-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-late-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-late-producer-failure-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-late-producer-failure-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-normal-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-normal-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-orderly-after-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-orderly-after-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-orderly-before-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-orderly-before-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-pending-cancel-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-pending-cancel-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-prefetched-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "lifetime-prefetched-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "rejections-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "rejections-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "wrong-implementation-normal",
+      "optimized": false,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    },
+    {
+      "run": "wrong-implementation-optimized",
+      "optimized": true,
+      "gil_before": false,
+      "gil_after": false,
+      "imports": 1260
+    }
+  ],
+  "source_report_hashes_verified": 27,
+  "artifact_hashes_verified": 25,
+  "schedule_pairs_verified": 24,
+  "preserved_prior_files": 1562,
+  "validation_warnings": 53,
+  "strict_warning_list_unchanged": true,
+  "review": "returned and findings addressed"
+}

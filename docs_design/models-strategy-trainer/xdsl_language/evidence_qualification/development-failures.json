@@ -1,0 +1,36 @@
+{
+  "failures": [
+    {
+      "attempt": "first new fixture smoke",
+      "outcome": "KeyError consume.borrow",
+      "correction": "Borrow origin is consume.take.borrow; corrected authoring helper."
+    },
+    {
+      "attempt": "initial integrated pytest",
+      "outcome": "34 failed,10 passed; independent arithmetic checker erroneously used target7, expected0.955 instead of0.635",
+      "correction": "Parent oracle now uses target key+1 from fixture contract, with exact rational arithmetic."
+    },
+    {
+      "attempt": "next integrated pytest",
+      "outcome": "4 failed,40 passed; checker read top-level WorkFailed message without nested physical cause",
+      "correction": "Traverse retained failure envelopes and explicit cause/primary/cancellation fields; runtime failure was present."
+    },
+    {
+      "attempt": "first cold smoke",
+      "outcome": "KeyError policy after six positive fresh children; expected prepared key is target",
+      "evidence": "cold-smoke/",
+      "correction": "Forge target.workers in actual prepared layout; corrected smoke all10 verdicts pass."
+    },
+    {
+      "attempt": "post-review concurrent integrated owner gate",
+      "outcome": "308 passed,1 failed,4 setup errors; FileNotFoundError for vanished /tmp/pytest-of-imi/pytest-15, including child stdout destination created before the subprocess",
+      "evidence": [
+        "owner-post-review.log",
+        "owner-post-review.xml",
+        "owner-post-review-environment.json"
+      ],
+      "correction": "Use a dedicated --basetemp under this task receipt directory. No source, scheduling seed or assertions changed. Cause of shared directory removal not independently established."
+    }
+  ],
+  "note": "Development/harness failures retained separately from final qualification; no schedule resampling used to remove an unresolved failure."
+}

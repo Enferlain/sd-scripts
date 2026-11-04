@@ -1,0 +1,12 @@
+{
+  "corrupt": true,
+  "initial": {
+    "policy": 0,
+    "products": []
+  },
+  "mode": "normal",
+  "name": "data-only",
+  "prefix": "",
+  "seed": 7,
+  "wrong_score": true
+}

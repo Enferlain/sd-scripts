@@ -1,0 +1,16 @@
+{
+  "primary_review": "/tmp/review-mcp-run-r8deqgcp",
+  "assessment": "No runtime correctness defects; direct admission-gap fact verification required before completion.",
+  "addressed": {
+    "F1": "Four non-erased before/after-admission comparisons plus direct state/status/outcome-shape assertions for both arrangements.",
+    "F2": "Require exact expected zero-versus-one arithmetic mismatch in both negative-control paths; save its message.",
+    "F3": "Document full fact comparisons versus state/owner pressure witnesses precisely.",
+    "F4": "Snapshot every detached input document and deliberate forgery before cold execution and verify unchanged bytes at end; specify package-Python/report scope."
+  },
+  "self_audit": [
+    "Disable artificial checkpoint suspensions in returning-exclusion mode.",
+    "Independently verify all selected-ticket dispositions and surviving/withheld model usability after cancellation/physical failure."
+  ],
+  "core_target_changed_after_review": false,
+  "verification": "All50 focused tests;313 integrated owner tests;319 Torch-free tests with2 expected skips;44 fresh children and24 schedule pairs pass. Core target unchanged after review."
+}

@@ -14,6 +14,7 @@ Rules:
 
 ### Added
 
+- **The first shared xDSL slice gains integrated qualification** — seeded reference comparisons, explicit owned results after history erasure, local-stop/cancellation and late physical-failure controls, and fresh normal/optimized cold runs retain independent negative controls and exact evidence. The CPU owner target and production/language limits remain explicit.
 - **Shared xDSL workflows now derive prepared owner execution** — detached artifacts and recomputed cold correspondence drive model, data-only and rearranged compositions through the existing owner engine. Explicit snapshots, protected current access and actual-version admission retain request, physical-drain and partial-update evidence; production integration and broader schedule qualification remain open.
 
 ## [2026-11-03]

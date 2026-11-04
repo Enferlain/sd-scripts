@@ -1,0 +1,8 @@
+{
+  "initial": {
+    "policy": 0
+  },
+  "mode": "rejections",
+  "name": "rejections",
+  "seed": 7
+}

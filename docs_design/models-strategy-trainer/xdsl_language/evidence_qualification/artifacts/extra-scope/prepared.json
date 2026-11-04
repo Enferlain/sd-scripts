@@ -1,0 +1,5407 @@
+{
+  "contributors": [
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.records"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.activities"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.producer"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.encode.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.encode"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.consumer.scope"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.consumers"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.training"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.members"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.gradient.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.gradient"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.update.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.advance"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.evaluation.due"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.request.choice"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.request"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.evaluation"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.measure.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.measure"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.publish_measurement.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.publish_measurement"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "nested.stop"
+    },
+    {
+      "assumptions": [],
+      "classification": "may_depend_on_schedule",
+      "reason": "current version can race owner update; protection preserves safety, not version assignment",
+      "source": "nested.measure.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "may_depend_on_schedule",
+      "reason": "input association or version-admission outcome can depend on scheduling",
+      "source": "nested.records"
+    }
+  ],
+  "format": "shared-owner-fragments-v1",
+  "fragments": [
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.program",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\"]",
+        "origin": "\"nested.run\"",
+        "stage": "\"normalized\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.run"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.encoder"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.encoder\"]",
+        "origin": "\"nested.encoder\"",
+        "sym_name": "\"nested.encoder\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"scale\">"
+      ],
+      "source": "nested.encoder"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.model"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.model\"]",
+        "origin": "\"nested.model\"",
+        "sym_name": "\"nested.model\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"scale\">"
+      ],
+      "source": "nested.model"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.records"
+      ],
+      "completion": null,
+      "flow": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "max_outstanding": 3,
+        "origin": "nested.records",
+        "payload": "!lang.payload<\"record\">",
+        "ready_bound": 2,
+        "versions": {
+          "admission": "any_with_provenance",
+          "boundary": "item_admission",
+          "incomparable": "reject_with_disposition",
+          "max_lag": 0,
+          "metric": "owner_update_ordinal_within_lineage",
+          "owners": [
+            "nested.encoder"
+          ]
+        }
+      },
+      "operands": [],
+      "operation": "lang.stream",
+      "primitive": "local_leaf",
+      "properties": {
+        "admission": "\"any_with_provenance\"",
+        "ancestry": "[\"nested.run\", \"nested.records\"]",
+        "assumptions": "[]",
+        "comparison_boundary": "\"item_admission\"",
+        "horizon": "3 : i64",
+        "max_lag": "0 : i64",
+        "metric": "\"owner_update_ordinal_within_lineage\"",
+        "origin": "\"nested.records\"",
+        "owners": "[@nested.encoder]",
+        "rank_rule": "\"local\"",
+        "ready_bound": "2 : i64",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.records\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.endpoint<!lang.payload<\"record\">>"
+      ],
+      "source": "nested.records"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.products"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.products\"]",
+        "origin": "\"nested.products\"",
+        "sym_name": "\"nested.products\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"products\">"
+      ],
+      "source": "nested.products"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.records",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "nested.encoder",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "nested.model",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "nested.products",
+          "region": null
+        }
+      ],
+      "operation": "lang.parallel",
+      "primitive": "owner.Together",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\"]",
+        "assumptions": "[]",
+        "origin": "\"nested.activities\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.activities\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.activities",
+        "policy": null,
+        "protocol": "parallel",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 2,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.activities",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.activities"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.producer"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.activities",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.activities",
+          "region": 0
+        }
+      ],
+      "operation": "lang.producer",
+      "primitive": "owner.Producer",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.producer\"]",
+        "assumptions": "[]",
+        "origin": "\"nested.producer\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.producer\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.producer",
+        "policy": null,
+        "protocol": "producer",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              }
+            ],
+            "entries": [
+              "!lang.resource<\"scale\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "production_index"
+            ],
+            "yields": [
+              "!lang.payload<\"record\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.producer",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.producer"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "published",
+        "mode": "snapshot",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 0,
+          "origin": "nested.producer",
+          "region": 0
+        },
+        "version_selector": "initial"
+      },
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.producer",
+        "nested.encode.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.producer",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.producer",
+          "region": 0
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.producer\", \"nested.encode.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"published\"",
+        "mode": "\"snapshot\"",
+        "origin": "\"nested.encode.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.encode.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"initial\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.encode.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"snapshot\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"record\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.encode.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "nested.encode.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.producer",
+        "nested.encode.access",
+        "nested.encode"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.encode.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.encode.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.producer\", \"nested.encode.access\", \"nested.encode\"]",
+        "binding": "@encode",
+        "binding_version": "\"1\"",
+        "origin": "\"nested.encode\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "encode",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"snapshot\">",
+          "!lang.payload<\"index\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"record\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "nested.encode"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.producer",
+        "nested.encode.access",
+        "nested.encode.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.encode",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.producer\", \"nested.encode.access\", \"nested.encode.access.yield\"]",
+        "origin": "\"nested.encode.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.encode.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.producer",
+        "nested.production.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.encode.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.producer\", \"nested.production.body.yield\"]",
+        "origin": "\"nested.production.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.production.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.producer.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.producer.branch.yield\"]",
+        "origin": "\"nested.producer.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.producer.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.activities",
+          "region": 1
+        },
+        {
+          "index": 2,
+          "origin": "nested.activities",
+          "region": 1
+        },
+        {
+          "index": 3,
+          "origin": "nested.activities",
+          "region": 1
+        }
+      ],
+      "operation": "lang.once",
+      "primitive": "local_sequence",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\"]",
+        "assumptions": "[]",
+        "origin": "\"nested.consumer.scope\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.consumer.scope\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.consumer.scope",
+        "policy": null,
+        "protocol": "once",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.consumer.scope",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.consumer.scope"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.consumer.scope",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.consumer.scope",
+          "region": 0
+        },
+        {
+          "index": 2,
+          "origin": "nested.consumer.scope",
+          "region": 0
+        }
+      ],
+      "operation": "lang.parallel",
+      "primitive": "owner.Together",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\"]",
+        "assumptions": "[]",
+        "origin": "\"nested.consumers\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.consumers\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.consumers",
+        "policy": null,
+        "protocol": "parallel",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.consumers",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.consumers"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.consumers",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.consumers",
+          "region": 0
+        }
+      ],
+      "operation": "lang.repeat",
+      "primitive": "owner.Repeat",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\"]",
+        "assumptions": "[]",
+        "carry_count": "0 : i64",
+        "limit": "2 : i64",
+        "origin": "\"nested.training\"",
+        "policy": "@bounded_count",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.training\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": 2,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.training",
+        "policy": "bounded_count",
+        "protocol": "repeat",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "iteration_index"
+            ],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.training",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.training"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.zero"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.constant",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.zero\"]",
+        "literal": "\"0.0\"",
+        "origin": "\"nested.zero\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "nested.zero"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.training",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.training",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "nested.zero",
+          "region": null
+        }
+      ],
+      "operation": "lang.repeat",
+      "primitive": "owner.Repeat",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\"]",
+        "assumptions": "[]",
+        "carry_count": "1 : i64",
+        "limit": "2 : i64",
+        "origin": "\"nested.members\"",
+        "policy": "@bounded_count",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.members\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": 2,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.members",
+        "policy": "bounded_count",
+        "protocol": "repeat",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.payload<\"index\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "iteration_index",
+              "loop_carry"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.members",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "nested.members"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.training.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.members",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.training.take\"]",
+        "origin": "\"nested.training.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "nested.training.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.training.take.borrow"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.training.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.borrow",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.training.take.borrow\"]",
+        "origin": "\"nested.training.take.borrow\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "nested.training.take.borrow"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "current_at_start",
+        "mode": "protected_current",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "nested.members",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.gradient.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "nested.members",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "nested.training.take.borrow",
+          "region": null
+        },
+        {
+          "index": 3,
+          "origin": "nested.members",
+          "region": 0
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.gradient.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"current_at_start\"",
+        "mode": "\"protected_current\"",
+        "origin": "\"nested.gradient.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.gradient.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.gradient.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"record\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.payload<\"scalar\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+              "!lang.payload<\"record\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.gradient.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "nested.gradient.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.gradient.access",
+        "nested.gradient"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.gradient.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.gradient.access",
+          "region": 0
+        },
+        {
+          "index": 2,
+          "origin": "nested.gradient.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.gradient.access\", \"nested.gradient\"]",
+        "binding": "@gradient",
+        "binding_version": "\"1\"",
+        "origin": "\"nested.gradient\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "gradient",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+          "!lang.payload<\"record\">",
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "nested.gradient"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.gradient.access",
+        "nested.gradient.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.gradient",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.gradient.access\", \"nested.gradient.access.yield\"]",
+        "origin": "\"nested.gradient.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.gradient.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.training.retire"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.training.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.retire",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.training.retire\"]",
+        "disposition": "\"consumed\"",
+        "origin": "\"nested.training.retire\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.training.retire"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.members",
+        "nested.members.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.gradient.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.members\", \"nested.members.body.yield\"]",
+        "origin": "\"nested.members.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.members.body.yield"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "owner_protocol",
+        "mode": "owner_update",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "nested.training",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.update.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "nested.training",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "nested.members",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.update.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"owner_protocol\"",
+        "mode": "\"owner_update\"",
+        "origin": "\"nested.update.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.update.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.update.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"scalar\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"owner_update\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.update.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "nested.update.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.update.access",
+        "nested.advance"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.update.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.update.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.update.access\", \"nested.advance\"]",
+        "binding": "@advance",
+        "binding_version": "\"1\"",
+        "origin": "\"nested.advance\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "advance",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"owner_update\">",
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "nested.advance"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.update.access",
+        "nested.update.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.advance",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.update.access\", \"nested.update.access.yield\"]",
+        "origin": "\"nested.update.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.update.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.second.window"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.constant",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.second.window\"]",
+        "literal": "\"1\"",
+        "origin": "\"nested.second.window\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"index\">"
+      ],
+      "source": "nested.second.window"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.evaluation.due"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 2,
+          "origin": "nested.training",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "nested.second.window",
+          "region": null
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.evaluation.due\"]",
+        "binding": "@equal",
+        "binding_version": "\"1\"",
+        "origin": "\"nested.evaluation.due\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "equal",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"index\">",
+          "!lang.payload<\"index\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"bool\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"bool\">"
+      ],
+      "source": "nested.evaluation.due"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.request.choice"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.evaluation.due",
+          "region": null
+        },
+        {
+          "index": 2,
+          "origin": "nested.training",
+          "region": 0
+        }
+      ],
+      "operation": "lang.choice",
+      "primitive": "local_finite_choice",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.request.choice\"]",
+        "assumptions": "[]",
+        "origin": "\"nested.request.choice\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.request.choice\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.request.choice",
+        "policy": null,
+        "protocol": "choice",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"index\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.request.choice",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.request.choice"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.request.choice",
+        "nested.request"
+      ],
+      "completion": {
+        "boundary": "settled_success",
+        "kind": "request",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "nested.training",
+        "target": "nested.evaluation"
+      },
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.request.choice",
+          "region": 0
+        }
+      ],
+      "operation": "lang.request",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.request.choice\", \"nested.request\"]",
+        "boundary": "\"settled_success\"",
+        "handler": "@nested.evaluation",
+        "origin": "\"nested.request\"",
+        "source": "@nested.training",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.request"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.request.choice",
+        "nested.request.true.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.request.choice\", \"nested.request.true.yield\"]",
+        "origin": "\"nested.request.true.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.request.true.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.request.choice",
+        "nested.request.false.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.request.choice\", \"nested.request.false.yield\"]",
+        "origin": "\"nested.request.false.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.request.false.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training",
+        "nested.window.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training\", \"nested.window.body.yield\"]",
+        "origin": "\"nested.window.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.window.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.training.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.training.branch.yield\"]",
+        "origin": "\"nested.training.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.training.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.consumers",
+          "region": 1
+        },
+        {
+          "index": 1,
+          "origin": "nested.consumers",
+          "region": 1
+        },
+        {
+          "index": 2,
+          "origin": "nested.consumers",
+          "region": 1
+        }
+      ],
+      "operation": "lang.requests",
+      "primitive": "owner.Requested",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\"]",
+        "assumptions": "[]",
+        "max_active": "1 : i64",
+        "max_outstanding": "1 : i64",
+        "origin": "\"nested.evaluation\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "request_schema": "!lang.payload<\"index\">",
+        "sources": "[@nested.training]",
+        "sym_name": "\"nested.evaluation\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": 1,
+        "max_outstanding": 1,
+        "origin": "nested.evaluation",
+        "policy": null,
+        "protocol": "requests",
+        "quiescence": [],
+        "request_sources": [
+          "nested.training"
+        ],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">",
+              "!lang.request<!lang.payload<\"index\">>"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "accepted_request"
+            ],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.evaluation",
+        "version": 1
+      },
+      "results": [],
+      "source": "nested.evaluation"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.evaluation.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.evaluation",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.evaluation.take\"]",
+        "origin": "\"nested.evaluation.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "nested.evaluation.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.evaluation.take.borrow"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.evaluation.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.borrow",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.evaluation.take.borrow\"]",
+        "origin": "\"nested.evaluation.take.borrow\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "nested.evaluation.take.borrow"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "current_at_start",
+        "mode": "protected_current",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "nested.evaluation",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.measure.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "nested.evaluation",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "nested.evaluation.take.borrow",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.measure.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"current_at_start\"",
+        "mode": "\"protected_current\"",
+        "origin": "\"nested.measure.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.measure.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.measure.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"record\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"measurement\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.measure.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "nested.measure.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.measure.access",
+        "nested.measure"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.measure.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.measure.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.measure.access\", \"nested.measure\"]",
+        "binding": "@measure",
+        "binding_version": "\"1\"",
+        "origin": "\"nested.measure\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "measure",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+          "!lang.payload<\"record\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"measurement\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "nested.measure"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.measure.access",
+        "nested.measure.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.measure",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.measure.access\", \"nested.measure.access.yield\"]",
+        "origin": "\"nested.measure.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.measure.access.yield"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "owner_protocol",
+        "mode": "owner_update",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 2,
+          "origin": "nested.evaluation",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.publish_measurement.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 2,
+          "origin": "nested.evaluation",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "nested.measure.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.publish_measurement.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"owner_protocol\"",
+        "mode": "\"owner_update\"",
+        "origin": "\"nested.publish_measurement.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"nested.publish_measurement.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "nested.publish_measurement.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"measurement\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"products\">, \"owner_update\">",
+              "!lang.payload<\"measurement\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"measurement\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "nested.publish_measurement.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "nested.publish_measurement.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.publish_measurement.access",
+        "nested.publish_measurement"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.publish_measurement.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "nested.publish_measurement.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.publish_measurement.access\", \"nested.publish_measurement\"]",
+        "binding": "@publish_measurement",
+        "binding_version": "\"1\"",
+        "origin": "\"nested.publish_measurement\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "publish_measurement",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"products\">, \"owner_update\">",
+          "!lang.payload<\"measurement\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"measurement\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "nested.publish_measurement"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.publish_measurement.access",
+        "nested.publish_measurement.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.publish_measurement",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.publish_measurement.access\", \"nested.publish_measurement.body.yield\"]",
+        "origin": "\"nested.publish_measurement.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.publish_measurement.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.evaluation.retire"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "nested.evaluation.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.retire",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.evaluation.retire\"]",
+        "disposition": "\"consumed\"",
+        "origin": "\"nested.evaluation.retire\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.evaluation.retire"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation",
+        "nested.evaluation.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation\", \"nested.evaluation.body.yield\"]",
+        "origin": "\"nested.evaluation.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.evaluation.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.consumers",
+        "nested.evaluation.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.consumers\", \"nested.evaluation.branch.yield\"]",
+        "origin": "\"nested.evaluation.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.evaluation.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumer.scope",
+        "nested.enclosing.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumer.scope\", \"nested.enclosing.body.yield\"]",
+        "origin": "\"nested.enclosing.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.enclosing.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.consumers.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.consumers.branch.yield\"]",
+        "origin": "\"nested.consumers.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.consumers.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.stop"
+      ],
+      "completion": {
+        "boundary": "settled",
+        "kind": "stop",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "nested.consumer.scope",
+        "target": "nested.producer"
+      },
+      "flow": null,
+      "operands": [],
+      "operation": "lang.stop_after",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.stop\"]",
+        "origin": "\"nested.stop\"",
+        "source": "@nested.consumer.scope",
+        "target": "@nested.producer",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.stop"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "nested.run",
+        "nested.activities",
+        "nested.control.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"nested.run\", \"nested.activities\", \"nested.control.branch.yield\"]",
+        "origin": "\"nested.control.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "nested.control.branch.yield"
+    }
+  ],
+  "inputs": [
+    {
+      "consumers": [
+        "nested.training.take",
+        "nested.evaluation.take"
+      ],
+      "flow": "nested.records",
+      "producer": "nested.producer",
+      "required_initial_owners": [
+        "nested.encoder"
+      ]
+    }
+  ],
+  "manifest": {
+    "bindings": [
+      {
+        "inputs": [
+          "capability",
+          "index"
+        ],
+        "name": "encode",
+        "outputs": [
+          "record"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record",
+          "scalar"
+        ],
+        "name": "gradient",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "scalar"
+        ],
+        "name": "advance",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record"
+        ],
+        "name": "measure",
+        "outputs": [
+          "measurement"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "index",
+          "index"
+        ],
+        "name": "equal",
+        "outputs": [
+          "bool"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "index"
+        ],
+        "name": "select",
+        "outputs": [
+          "record"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "record"
+        ],
+        "name": "score",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "scalar"
+        ],
+        "name": "feedback",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "measurement"
+        ],
+        "name": "publish_measurement",
+        "outputs": [
+          "measurement"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record",
+          "scalar"
+        ],
+        "name": "publish_score",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      }
+    ],
+    "resources": [
+      {
+        "kind": "scale",
+        "learning_rate": 0.01,
+        "parameter": "weight",
+        "storage": "participant",
+        "version": "1"
+      },
+      {
+        "kind": "policy",
+        "learning_rate": 0.01,
+        "parameter": "",
+        "storage": "state",
+        "version": "1"
+      },
+      {
+        "kind": "products",
+        "learning_rate": 0.01,
+        "parameter": "",
+        "storage": "state",
+        "version": "1"
+      }
+    ],
+    "schemas": [
+      "measurement",
+      "record"
+    ]
+  },
+  "obligations": [
+    {
+      "kind": "ownership",
+      "required": [
+        "affine per invocation/path",
+        "scoped capability extent",
+        "detached leaf results"
+      ],
+      "source": "nested.run"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "nested.encoder",
+        "snapshot",
+        "published",
+        "initial",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "nested.encode.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "nested.model",
+        "protected_current",
+        "current_at_start",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "nested.gradient.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "nested.model",
+        "owner_update",
+        "owner_protocol",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "nested.update.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "nested.model",
+        "protected_current",
+        "current_at_start",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "nested.measure.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "nested.products",
+        "owner_update",
+        "owner_protocol",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "nested.publish_measurement.access"
+    },
+    {
+      "kind": "request_closure",
+      "required": [
+        "nested.training",
+        "pending/admitted dispositions",
+        "no fictional handler invocation"
+      ],
+      "source": "nested.evaluation"
+    },
+    {
+      "kind": "completion_request",
+      "required": [
+        "nested.training",
+        "nested.evaluation",
+        "before_source_terminal",
+        "retain_admitted_promises"
+      ],
+      "source": "nested.request"
+    },
+    {
+      "kind": "producer_stop",
+      "required": [
+        "nested.consumer.scope",
+        "nested.producer",
+        "request stop without awaiting producer termination"
+      ],
+      "source": "nested.stop"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "nested.training.retire"
+      ],
+      "source": "nested.training.take"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "nested.evaluation.retire"
+      ],
+      "source": "nested.evaluation.take"
+    }
+  ],
+  "reproducibility": "unknown",
+  "target": {
+    "physical": "host_workers",
+    "target": "owner_cpu_v1",
+    "workers": 2
+  },
+  "waits": [
+    [
+      [
+        "nested.activities",
+        "body0.entry"
+      ],
+      [
+        "nested.activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body0.settled"
+      ],
+      [
+        "nested.producer",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body0.settled"
+      ],
+      [
+        "nested.producer.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body1.entry"
+      ],
+      [
+        "nested.activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body1.settled"
+      ],
+      [
+        "nested.consumer.scope",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body1.settled"
+      ],
+      [
+        "nested.consumers.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body2.entry"
+      ],
+      [
+        "nested.activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body2.settled"
+      ],
+      [
+        "nested.control.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "body2.settled"
+      ],
+      [
+        "nested.stop",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "entry"
+      ],
+      [
+        "nested.products",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "entry"
+      ],
+      [
+        "nested.run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "settled"
+      ],
+      [
+        "nested.activities",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "settled"
+      ],
+      [
+        "nested.activities",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "settled"
+      ],
+      [
+        "nested.activities",
+        "body2.settled"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "settled"
+      ],
+      [
+        "nested.activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.activities",
+        "settled"
+      ],
+      [
+        "nested.evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.advance",
+        "entry"
+      ],
+      [
+        "nested.update.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.advance",
+        "settled"
+      ],
+      [
+        "nested.advance",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumer.scope",
+        "body0.entry"
+      ],
+      [
+        "nested.consumer.scope",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumer.scope",
+        "body0.settled"
+      ],
+      [
+        "nested.consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumer.scope",
+        "body0.settled"
+      ],
+      [
+        "nested.enclosing.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumer.scope",
+        "entry"
+      ],
+      [
+        "nested.activities",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumer.scope",
+        "settled"
+      ],
+      [
+        "nested.consumer.scope",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumer.scope",
+        "settled"
+      ],
+      [
+        "nested.consumer.scope",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "body0.entry"
+      ],
+      [
+        "nested.consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "body0.settled"
+      ],
+      [
+        "nested.training",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "body0.settled"
+      ],
+      [
+        "nested.training.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "body1.entry"
+      ],
+      [
+        "nested.consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "body1.settled"
+      ],
+      [
+        "nested.evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "body1.settled"
+      ],
+      [
+        "nested.evaluation.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "entry"
+      ],
+      [
+        "nested.consumer.scope",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "settled"
+      ],
+      [
+        "nested.consumers",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "settled"
+      ],
+      [
+        "nested.consumers",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "settled"
+      ],
+      [
+        "nested.consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumers",
+        "settled"
+      ],
+      [
+        "nested.evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.activities",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "nested.consumers.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.consumer.scope",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.consumers.branch.yield",
+        "settled"
+      ],
+      [
+        "nested.consumers.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.control.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.activities",
+        "body2.entry"
+      ]
+    ],
+    [
+      [
+        "nested.control.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.stop",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.control.branch.yield",
+        "settled"
+      ],
+      [
+        "nested.control.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.enclosing.body.yield",
+        "entry"
+      ],
+      [
+        "nested.consumer.scope",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.enclosing.body.yield",
+        "entry"
+      ],
+      [
+        "nested.consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.enclosing.body.yield",
+        "settled"
+      ],
+      [
+        "nested.enclosing.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode",
+        "entry"
+      ],
+      [
+        "nested.encode.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode",
+        "settled"
+      ],
+      [
+        "nested.encode",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access",
+        "body0.entry"
+      ],
+      [
+        "nested.encode.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access",
+        "body0.settled"
+      ],
+      [
+        "nested.encode",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access",
+        "body0.settled"
+      ],
+      [
+        "nested.encode.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access",
+        "entry"
+      ],
+      [
+        "nested.producer",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access",
+        "settled"
+      ],
+      [
+        "nested.encode.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access",
+        "settled"
+      ],
+      [
+        "nested.encode.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access.yield",
+        "entry"
+      ],
+      [
+        "nested.encode",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access.yield",
+        "entry"
+      ],
+      [
+        "nested.encode.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.encode.access.yield",
+        "settled"
+      ],
+      [
+        "nested.encode.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.encoder",
+        "entry"
+      ],
+      [
+        "nested.run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.encoder",
+        "settled"
+      ],
+      [
+        "nested.encoder",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ],
+      [
+        "nested.evaluation",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ],
+      [
+        "nested.evaluation.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ],
+      [
+        "nested.evaluation.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ],
+      [
+        "nested.evaluation.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ],
+      [
+        "nested.evaluation.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ],
+      [
+        "nested.measure.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "entry"
+      ],
+      [
+        "nested.consumers",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "settled"
+      ],
+      [
+        "nested.evaluation",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "settled"
+      ],
+      [
+        "nested.evaluation",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation",
+        "settled"
+      ],
+      [
+        "nested.training",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.body.yield",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.body.yield",
+        "entry"
+      ],
+      [
+        "nested.evaluation.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.body.yield",
+        "settled"
+      ],
+      [
+        "nested.evaluation.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.consumers",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.branch.yield",
+        "settled"
+      ],
+      [
+        "nested.evaluation.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.due",
+        "entry"
+      ],
+      [
+        "nested.second.window",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.due",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.due",
+        "settled"
+      ],
+      [
+        "nested.evaluation.due",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.retire",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.retire",
+        "entry"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.retire",
+        "settled"
+      ],
+      [
+        "nested.evaluation.retire",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.take",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.take",
+        "settled"
+      ],
+      [
+        "nested.evaluation.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.take.borrow",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.take.borrow",
+        "entry"
+      ],
+      [
+        "nested.evaluation.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.evaluation.take.borrow",
+        "settled"
+      ],
+      [
+        "nested.evaluation.take.borrow",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient",
+        "entry"
+      ],
+      [
+        "nested.gradient.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient",
+        "settled"
+      ],
+      [
+        "nested.gradient",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "body0.entry"
+      ],
+      [
+        "nested.gradient.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "body0.settled"
+      ],
+      [
+        "nested.gradient",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "body0.settled"
+      ],
+      [
+        "nested.gradient.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "entry"
+      ],
+      [
+        "nested.members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "entry"
+      ],
+      [
+        "nested.training.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "settled"
+      ],
+      [
+        "nested.gradient.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access",
+        "settled"
+      ],
+      [
+        "nested.gradient.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access.yield",
+        "entry"
+      ],
+      [
+        "nested.gradient",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access.yield",
+        "entry"
+      ],
+      [
+        "nested.gradient.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.gradient.access.yield",
+        "settled"
+      ],
+      [
+        "nested.gradient.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure",
+        "entry"
+      ],
+      [
+        "nested.measure.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure",
+        "settled"
+      ],
+      [
+        "nested.measure",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "body0.entry"
+      ],
+      [
+        "nested.measure.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "body0.settled"
+      ],
+      [
+        "nested.measure",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "body0.settled"
+      ],
+      [
+        "nested.measure.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "entry"
+      ],
+      [
+        "nested.evaluation.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "settled"
+      ],
+      [
+        "nested.measure.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access",
+        "settled"
+      ],
+      [
+        "nested.measure.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access.yield",
+        "entry"
+      ],
+      [
+        "nested.measure",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access.yield",
+        "entry"
+      ],
+      [
+        "nested.measure.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.measure.access.yield",
+        "settled"
+      ],
+      [
+        "nested.measure.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "body0.entry"
+      ],
+      [
+        "nested.members",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "body0.settled"
+      ],
+      [
+        "nested.gradient.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "body0.settled"
+      ],
+      [
+        "nested.members.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "body0.settled"
+      ],
+      [
+        "nested.training.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "body0.settled"
+      ],
+      [
+        "nested.training.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "body0.settled"
+      ],
+      [
+        "nested.training.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "entry"
+      ],
+      [
+        "nested.zero",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "settled"
+      ],
+      [
+        "nested.members",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.members",
+        "settled"
+      ],
+      [
+        "nested.members",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.members.body.yield",
+        "entry"
+      ],
+      [
+        "nested.members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.members.body.yield",
+        "entry"
+      ],
+      [
+        "nested.training.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.members.body.yield",
+        "settled"
+      ],
+      [
+        "nested.members.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.model",
+        "entry"
+      ],
+      [
+        "nested.encoder",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.model",
+        "entry"
+      ],
+      [
+        "nested.run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.model",
+        "settled"
+      ],
+      [
+        "nested.model",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "body0.entry"
+      ],
+      [
+        "nested.producer",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "body0.settled"
+      ],
+      [
+        "nested.encode.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "body0.settled"
+      ],
+      [
+        "nested.production.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "entry"
+      ],
+      [
+        "nested.activities",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "settled"
+      ],
+      [
+        "nested.evaluation.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "settled"
+      ],
+      [
+        "nested.producer",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "settled"
+      ],
+      [
+        "nested.producer",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "settled"
+      ],
+      [
+        "nested.stop",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer",
+        "settled"
+      ],
+      [
+        "nested.training.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.activities",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.producer.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.producer",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.producer.branch.yield",
+        "settled"
+      ],
+      [
+        "nested.producer.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.production.body.yield",
+        "entry"
+      ],
+      [
+        "nested.encode.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.production.body.yield",
+        "entry"
+      ],
+      [
+        "nested.producer",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.production.body.yield",
+        "settled"
+      ],
+      [
+        "nested.production.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.products",
+        "entry"
+      ],
+      [
+        "nested.records",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.products",
+        "entry"
+      ],
+      [
+        "nested.run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.products",
+        "settled"
+      ],
+      [
+        "nested.products",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement",
+        "entry"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement",
+        "settled"
+      ],
+      [
+        "nested.publish_measurement",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "body0.entry"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "body0.settled"
+      ],
+      [
+        "nested.publish_measurement",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "body0.settled"
+      ],
+      [
+        "nested.publish_measurement.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "entry"
+      ],
+      [
+        "nested.evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "entry"
+      ],
+      [
+        "nested.measure.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "settled"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.access",
+        "settled"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.body.yield",
+        "entry"
+      ],
+      [
+        "nested.publish_measurement",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.body.yield",
+        "entry"
+      ],
+      [
+        "nested.publish_measurement.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.publish_measurement.body.yield",
+        "settled"
+      ],
+      [
+        "nested.publish_measurement.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.records",
+        "entry"
+      ],
+      [
+        "nested.model",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.records",
+        "entry"
+      ],
+      [
+        "nested.run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.records",
+        "settled"
+      ],
+      [
+        "nested.records",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.request",
+        "entry"
+      ],
+      [
+        "nested.request.choice",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.request",
+        "settled"
+      ],
+      [
+        "nested.request",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "body0.entry"
+      ],
+      [
+        "nested.request.choice",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "body0.settled"
+      ],
+      [
+        "nested.request",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "body0.settled"
+      ],
+      [
+        "nested.request.true.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "body1.entry"
+      ],
+      [
+        "nested.request.choice",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "body1.settled"
+      ],
+      [
+        "nested.request.false.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "entry"
+      ],
+      [
+        "nested.evaluation.due",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "settled"
+      ],
+      [
+        "nested.request.choice",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "settled"
+      ],
+      [
+        "nested.request.choice",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.choice",
+        "settled"
+      ],
+      [
+        "nested.request.choice",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.false.yield",
+        "entry"
+      ],
+      [
+        "nested.request.choice",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.false.yield",
+        "settled"
+      ],
+      [
+        "nested.request.false.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.true.yield",
+        "entry"
+      ],
+      [
+        "nested.request",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.request.true.yield",
+        "entry"
+      ],
+      [
+        "nested.request.choice",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.request.true.yield",
+        "settled"
+      ],
+      [
+        "nested.request.true.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "body0.entry"
+      ],
+      [
+        "nested.run",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "body0.settled"
+      ],
+      [
+        "nested.activities",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "body0.settled"
+      ],
+      [
+        "nested.encoder",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "body0.settled"
+      ],
+      [
+        "nested.model",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "body0.settled"
+      ],
+      [
+        "nested.products",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "body0.settled"
+      ],
+      [
+        "nested.records",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "settled"
+      ],
+      [
+        "nested.evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "settled"
+      ],
+      [
+        "nested.run",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.run",
+        "settled"
+      ],
+      [
+        "nested.run",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.second.window",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.second.window",
+        "entry"
+      ],
+      [
+        "nested.update.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.second.window",
+        "settled"
+      ],
+      [
+        "nested.second.window",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.stop",
+        "entry"
+      ],
+      [
+        "nested.activities",
+        "body2.entry"
+      ]
+    ],
+    [
+      [
+        "nested.stop",
+        "settled"
+      ],
+      [
+        "nested.consumer.scope",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.stop",
+        "settled"
+      ],
+      [
+        "nested.stop",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.entry"
+      ],
+      [
+        "nested.training",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.evaluation.due",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.members",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.request.choice",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.second.window",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.update.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.window.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "body0.settled"
+      ],
+      [
+        "nested.zero",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "entry"
+      ],
+      [
+        "nested.consumers",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "settled"
+      ],
+      [
+        "nested.training",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.training",
+        "settled"
+      ],
+      [
+        "nested.training",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.consumers",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.branch.yield",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training.branch.yield",
+        "settled"
+      ],
+      [
+        "nested.training.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.retire",
+        "entry"
+      ],
+      [
+        "nested.gradient.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training.retire",
+        "entry"
+      ],
+      [
+        "nested.members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.retire",
+        "settled"
+      ],
+      [
+        "nested.training.retire",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.take",
+        "entry"
+      ],
+      [
+        "nested.members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.take",
+        "settled"
+      ],
+      [
+        "nested.training.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.take.borrow",
+        "entry"
+      ],
+      [
+        "nested.members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.training.take.borrow",
+        "entry"
+      ],
+      [
+        "nested.training.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.training.take.borrow",
+        "settled"
+      ],
+      [
+        "nested.training.take.borrow",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "body0.entry"
+      ],
+      [
+        "nested.update.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "body0.settled"
+      ],
+      [
+        "nested.advance",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "body0.settled"
+      ],
+      [
+        "nested.update.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "entry"
+      ],
+      [
+        "nested.members",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "settled"
+      ],
+      [
+        "nested.update.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "nested.update.access",
+        "settled"
+      ],
+      [
+        "nested.update.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.update.access.yield",
+        "entry"
+      ],
+      [
+        "nested.advance",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.update.access.yield",
+        "entry"
+      ],
+      [
+        "nested.update.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.update.access.yield",
+        "settled"
+      ],
+      [
+        "nested.update.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.window.body.yield",
+        "entry"
+      ],
+      [
+        "nested.request.choice",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "nested.window.body.yield",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.window.body.yield",
+        "settled"
+      ],
+      [
+        "nested.window.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "nested.zero",
+        "entry"
+      ],
+      [
+        "nested.training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "nested.zero",
+        "settled"
+      ],
+      [
+        "nested.zero",
+        "entry"
+      ]
+    ]
+  ]
+}

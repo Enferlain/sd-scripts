@@ -1,0 +1,12 @@
+{
+  "command": [
+    "/home/imi/Projects/sd-scripts/.venv-wsl/bin/python",
+    "-O",
+    "-m",
+    "xdsl_language.qualification_child",
+    "/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/xdsl_language/evidence_qualification/artifacts/rejections/artifact.json",
+    "/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/xdsl_language/evidence_qualification/runs/rejections-optimized/choices.json"
+  ],
+  "exit": 0,
+  "parent_assertions": true
+}

@@ -1,0 +1,412 @@
+{
+  "artifact_hashes": {
+    "artifacts/data-only/accepted.mlir": "44a8469ffd9aa3997a55718f0098bb2e4910bd3f90c251bd118883f07bc3aafb",
+    "artifacts/data-only/artifact.json": "ada12517ec2845d14f800c0691d161e702b41b1ca81a0d193344a498aa9ec4ef",
+    "artifacts/data-only/normalized.mlir": "b6752d11100795234e42e7009f4d75511567a5e48b985165210bcd5da46b2aa7",
+    "artifacts/data-only/prepared.json": "4fbba087ba5c14c27aad23d4a9b6e24ddb1465ff178a2ba5595c032b2bda317d",
+    "artifacts/extra-scope-three-windows/accepted.mlir": "6831fe7babfc86260941a77317e513af668794e2dee2669042e546b0e429a343",
+    "artifacts/extra-scope-three-windows/artifact.json": "9a592e0e92b7226da018ebe1d24b399504f35341498c9945b3e6ac238bbb627b",
+    "artifacts/extra-scope-three-windows/normalized.mlir": "979343867e4e98c885c108e1f9eff9de1c36770be2b63ce96b06c0dd9b51ad8a",
+    "artifacts/extra-scope-three-windows/prepared.json": "b53ed7a670a060c37cd36acf8d622b41b0d19a0a3dea4f0e431957e6e6f0efdb",
+    "artifacts/extra-scope/accepted.mlir": "a445bf23b0c4185c111afc775ffde8feca698294ae2aae5cd97965a97376462d",
+    "artifacts/extra-scope/artifact.json": "005ba90a94b65106c1884dc71091361cfb8c2baea795257e2eb8d92820256951",
+    "artifacts/extra-scope/normalized.mlir": "3fcc8c5b97bd429d6f04c2a768085cfa2bf9aecb4141fab94549b1568774a852",
+    "artifacts/extra-scope/prepared.json": "1073cec97073eaa252c6b8df10597f7b70c22a670befd5dc73871f5238a985c8",
+    "artifacts/lifetime-three-windows/accepted.mlir": "f9900b25dfd112cb30631bd0e736df8d9adb88d6f7e171d8d86ae004c5654d5b",
+    "artifacts/lifetime-three-windows/artifact.json": "9860b694eca3a55b751ecbcb56a5d3beb3205948f5f03c08ec8b75444a66fa66",
+    "artifacts/lifetime-three-windows/normalized.mlir": "61a90d7288182d7fa256819c711692ad18248fa59cd7eb5c58c51d10a369b942",
+    "artifacts/lifetime-three-windows/prepared.json": "0542887de802f0c4d4c785a5875362793d819ee88b49e07ebea5aaf5f375180f",
+    "artifacts/lifetime/accepted.mlir": "a019c9e9219d398f7030540c96268c756aae80528151791f11533e3ade337d6e",
+    "artifacts/lifetime/artifact.json": "e39eef3c6c3be1762366fc9c8d5eda2c56523c8b8e9b629e76bd118623c2037b",
+    "artifacts/lifetime/normalized.mlir": "62a19cc733b91a05dbf6cd4395f077acf1e1a94c415d2e332826d8e717531ba1",
+    "artifacts/lifetime/prepared.json": "296331f2a8f4315223b6998ac5703b872e115a98b96da5b9344565c327e83ab3",
+    "artifacts/rejections/accepted.mlir": "c2f4c7a201fb80a4f0cbc2c180d6a510f99fce226f05bb5565306e700f629e1c",
+    "artifacts/rejections/artifact.json": "79cbb96c9bfe96e7944f0db782cb4bf5fd3b888c55fab7950b845f5c53b862e8",
+    "artifacts/rejections/normalized.mlir": "220913dbf06fc51224d1c9e4e1d8967f65029d51fa107f192a2388a26a0029a9",
+    "artifacts/rejections/prepared.json": "2a5916841420911c3adceeef04d966fb5df6444a6800da9b4bafa6c2bb551a10"
+  },
+  "base_commit": "61467849d851c3ada04cc08cb11d6e3acd7ee466",
+  "limits": "CPU host owner target only; bounded seeded interleavings, not exhaustive. No device, performance or full language/production qualification.",
+  "negative_artifact_hashes": {
+    "forged.json": "47c126037c7fbaef09dc3b68f3631bb127e025ef777c16ab9859cccf8158e08e"
+  },
+  "schedules": [
+    {
+      "file": "schedules/lifetime-0.json.gz",
+      "reference_facts": 453,
+      "sha256": "4977b526e1682b1ffd9e0d11eff262206278e9e53247c4549472120bd26f3012",
+      "target_facts": 454,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-1.json.gz",
+      "reference_facts": 453,
+      "sha256": "759a093c755cc48e24b502d51bbcc91fca55597f7aebb012e356ff0332fefea5",
+      "target_facts": 447,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-2.json.gz",
+      "reference_facts": 453,
+      "sha256": "d1457925bef9d375826de4d39009bf9eec16eac2c58520c8e8d0e4d66152e96a",
+      "target_facts": 451,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-3.json.gz",
+      "reference_facts": 430,
+      "sha256": "df19eaf6946e50cce194f060f5b669f4ddee58409c417f0d6960d112a05e8960",
+      "target_facts": 454,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-4.json.gz",
+      "reference_facts": 430,
+      "sha256": "df7d172f03a86ddaa2eeca089297c77a99df2aa04cad40c2da00ba717a512195",
+      "target_facts": 454,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-5.json.gz",
+      "reference_facts": 430,
+      "sha256": "c35b84c7e3307459d3ce6361332e9213f64b2b1a00952d86b4a8d2d8d8a20c4d",
+      "target_facts": 454,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-6.json.gz",
+      "reference_facts": 453,
+      "sha256": "79f264ad51459ff9d0744666f60315a94e2cdeb923a28014439fb800acf5a586",
+      "target_facts": 451,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/lifetime-7.json.gz",
+      "reference_facts": 453,
+      "sha256": "443c46b1edb11be7c46983b734e14cbfb2cbe2a0d161435d32749ca87eef1893",
+      "target_facts": 454,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-0.json.gz",
+      "reference_facts": 461,
+      "sha256": "d36b7c339b7aba151ee37b5b16914a604057135e81e05d4682d918edb9fc6c22",
+      "target_facts": 460,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-1.json.gz",
+      "reference_facts": 461,
+      "sha256": "259eb3ccb2df7c45c3f6c6c0e98902c9b7f453b27725af6a539b3c082b423042",
+      "target_facts": 460,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-2.json.gz",
+      "reference_facts": 461,
+      "sha256": "64e7fcbed4c3ccb8d93bbe083ae9fe476485f6c4b078ddde20a1abc58df24e8a",
+      "target_facts": 459,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-3.json.gz",
+      "reference_facts": 438,
+      "sha256": "f6a77c28408d807c47b917e697b6617791ceeb7b9f654b92b00252d3d272ad06",
+      "target_facts": 462,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-4.json.gz",
+      "reference_facts": 461,
+      "sha256": "9ae1de0105604d52a29d90e5cce95fb1a79ce3f849c2a40db188b5a09120c86f",
+      "target_facts": 459,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-5.json.gz",
+      "reference_facts": 438,
+      "sha256": "6634c3e8624c6dd577913fc7f2142b9cccac77204d67bee47d927319e7dd202e",
+      "target_facts": 459,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-6.json.gz",
+      "reference_facts": 461,
+      "sha256": "e7891f0ff5248e2a8c997320a77cde34412ec42ed075d1f5f5c8cd130fe9bc76",
+      "target_facts": 462,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/extra-scope-7.json.gz",
+      "reference_facts": 461,
+      "sha256": "d3d16a4ff8589c7d21654412b87417efd99a744f1fa3787ce39b5340d6c7d24b",
+      "target_facts": 459,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-0.json.gz",
+      "reference_facts": 325,
+      "sha256": "cfb181e05757cbc91637373cd514a818ffa3ebbe5b108e5e96fc23550a032840",
+      "target_facts": 343,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-1.json.gz",
+      "reference_facts": 325,
+      "sha256": "f551b58dc25bf67619e4d090e3eec245e71158bb660f49e9d0951f567144565e",
+      "target_facts": 341,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-2.json.gz",
+      "reference_facts": 325,
+      "sha256": "4ce3dbb5db465aa3301f648919476ca20e6c86d9372b0d863c207bbe818ae933",
+      "target_facts": 325,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-3.json.gz",
+      "reference_facts": 325,
+      "sha256": "3c280d9c90b401081124e0643e5b8cb584300c4ea2c294cd44b0572edba846c8",
+      "target_facts": 325,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-4.json.gz",
+      "reference_facts": 325,
+      "sha256": "3dadac3fed6e447c7687d6f69f604def8bb4a5a3d4ae97429625df4bda11b038",
+      "target_facts": 325,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-5.json.gz",
+      "reference_facts": 348,
+      "sha256": "610bdccbfd2e511e9774c43788f3f95dea86596e434567ffaf3c01b1e8990fa5",
+      "target_facts": 341,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-6.json.gz",
+      "reference_facts": 348,
+      "sha256": "f5c393e4bf6bb5b617f72d90def60f2a4fcbf8e7865a2b054360116899b443a5",
+      "target_facts": 341,
+      "verdict": "consumer facts and causal edges match"
+    },
+    {
+      "file": "schedules/data-only-7.json.gz",
+      "reference_facts": 325,
+      "sha256": "588fcfa4ad039d8a1749ddd5e351b2e75fecbd2a5b00fba8774e0d32ebbb73d2",
+      "target_facts": 345,
+      "verdict": "consumer facts and causal edges match"
+    }
+  ],
+  "source_report_hashes": {
+    "docs_design/models-strategy-trainer/xdsl_language/__init__.py": "e7b5bbd894682d4599d16289f17fd5968becb6ebfe776e73a37b83db1b154e28",
+    "docs_design/models-strategy-trainer/xdsl_language/contracts.py": "8aa0888eab2bad9fbdbd038013262e137d398d2dfe3495061ed2577bccedaa74",
+    "docs_design/models-strategy-trainer/xdsl_language/dialects.py": "3b63464d2f831ae101399817d07ac0364f5de5df716d58296bfe8393eceb5369",
+    "docs_design/models-strategy-trainer/xdsl_language/fixtures.py": "88334790dd86008a8b4fe604eb971915282ae3b55541f4431e7497946ae53060",
+    "docs_design/models-strategy-trainer/xdsl_language/normalize.py": "18cb5b07de75c76b103d995aef2df1b47e252f5be405965f315ed6315fd94428",
+    "docs_design/models-strategy-trainer/xdsl_language/observations.py": "82277a4832775bc5cf30f25625e30fc2af74c7809b0faddc9d554469962cb375",
+    "docs_design/models-strategy-trainer/xdsl_language/prepare.py": "2aafd5d19bf4fbeb2a9760a52d2889ca626ec257a2670db1622887366f1266bc",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification.py": "c3b7f534fc931c7603d01a45a144c4b754b09a483b8b2a316ae896eade0edc8f",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_cases.py": "6ae6581d2ca0d33ed8335c1a91a6a4e70e5aefa70629af8f4254bfde161827e4",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_child.py": "ef0c4147d7ff6774c741524380ba5576ec82c2881851ba255f6e115827dbf24c",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_oracle.py": "f6efac585f03e5178db561c57713845722b91c6b88ba723deedb3a7f971c7be8",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_products.py": "f9bc4123756eb9936e62e46785a460706105530d797b9d2a7e347fb23c0588d1",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_runtime.py": "4f782e874a543d90c7be9e4f2f6a077e37015ab6b01daff74e0a778ed19f6d07",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_target.py": "51157fcd2b1ac6381fedce007876017fa06ee8a0e35270043cb0122788cee67d",
+    "docs_design/models-strategy-trainer/xdsl_language/reference.py": "e63e7bf96dbbdb78646ca2a3568bd81297b9e3057358bf00f9fe3bbfffa9b98d",
+    "docs_design/models-strategy-trainer/xdsl_language/standins.py": "b84906b9d84069f20421dd4eb8fd5d11882defe2774a891de9f11efb1821f10d",
+    "docs_design/models-strategy-trainer/xdsl_language/target.py": "f4c19623111bfa6f77b687e9305edd0ee32ad351d54f5ce28e36859cca2fff80",
+    "docs_design/models-strategy-trainer/xdsl_language/target_bindings.py": "436e673d6fcc56027644ea42a6b1fe607c1eb95883cbe6fe750167477f3a1fd4",
+    "docs_design/models-strategy-trainer/xdsl_language/test_prepare.py": "98034625a6b9bebc3a99174358c49094e657425cb4a6eef113a3cb8e96bf79b0",
+    "docs_design/models-strategy-trainer/xdsl_language/test_qualification.py": "2b0b2e85dc06767eca62b4174db09d9c0d051187e4e4d125fd26ad0e5eea8e60",
+    "docs_design/models-strategy-trainer/xdsl_language/test_reference.py": "4b87c82b8660f78da5bf23e5d0408eba759420e43dc53f8e08217d3948c704a7",
+    "docs_design/models-strategy-trainer/xdsl_language/test_structure.py": "cd0f180dff89c855d6eed2e347dd6e516f61caa1bc33757b16529a95def0a763",
+    "docs_design/models-strategy-trainer/xdsl_language/test_target.py": "3d019e9806ada001e17c2475017101b8daf37ac82955da83db71e7ad28e05625",
+    "docs_design/models-strategy-trainer/xdsl_language/test_verify.py": "ea824c5c49144375ace201c58de522e917bbfe335cf681483a5b940a85dd2227",
+    "docs_design/models-strategy-trainer/xdsl_language/verify.py": "8594d81adbf7d515649cc6a1045bf7ce530b6d700a910103f2eb0e76112f1856",
+    "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+    "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md": "7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2"
+  },
+  "verdicts": [
+    {
+      "oracle": "passed",
+      "run": "lifetime-normal-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-normal-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-late-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-late-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-prefetched-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-prefetched-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-orderly-before-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-orderly-before-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-orderly-after-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-orderly-after-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-pending-cancel-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-pending-cancel-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-held-cancel-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-held-cancel-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-held-failure-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-held-failure-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-late-producer-failure-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "lifetime-late-producer-failure-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-normal-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-normal-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-late-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-late-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-prefetched-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-prefetched-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-orderly-before-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-orderly-before-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-orderly-after-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-orderly-after-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-pending-cancel-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-pending-cancel-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-held-cancel-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-held-cancel-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-held-failure-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-held-failure-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-late-producer-failure-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "extra-scope-late-producer-failure-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "data-only-normal-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "data-only-normal-optimized"
+    },
+    {
+      "oracle": "passed",
+      "run": "rejections-normal"
+    },
+    {
+      "oracle": "passed",
+      "run": "rejections-optimized"
+    },
+    {
+      "mismatch": "(0.0, 1)",
+      "oracle": "rejected wrong arithmetic",
+      "run": "wrong-implementation-normal"
+    },
+    {
+      "oracle": "rejected before resource construction",
+      "run": "corrupted-claim-normal"
+    },
+    {
+      "mismatch": "(0.0, 1)",
+      "oracle": "rejected wrong arithmetic",
+      "run": "wrong-implementation-optimized"
+    },
+    {
+      "oracle": "rejected before resource construction",
+      "run": "corrupted-claim-optimized"
+    }
+  ]
+}

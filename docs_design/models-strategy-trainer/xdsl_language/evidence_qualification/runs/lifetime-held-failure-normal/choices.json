@@ -1,0 +1,11 @@
+{
+  "initial": {
+    "encoder": 2.0,
+    "model": 0.8,
+    "products": []
+  },
+  "mode": "held-failure",
+  "name": "lifetime",
+  "prefix": "",
+  "seed": 7
+}

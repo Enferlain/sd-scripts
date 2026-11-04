@@ -1,0 +1,11 @@
+{
+  "initial": {
+    "nested.encoder": 2.0,
+    "nested.model": 0.8,
+    "nested.products": []
+  },
+  "mode": "pending-cancel",
+  "name": "extra-scope",
+  "prefix": "nested.",
+  "seed": 7
+}

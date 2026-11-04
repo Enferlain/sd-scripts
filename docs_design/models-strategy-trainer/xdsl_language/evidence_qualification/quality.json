@@ -1,0 +1,108 @@
+{
+  "base_commit": "61467849d851c3ada04cc08cb11d6e3acd7ee466",
+  "scope": "Milestone9 complete; wider language0.1 and productionG5 remain open; no production integration changes",
+  "gates": {
+    "owner": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "0",
+      "tests": "313",
+      "time": "68.347",
+      "timestamp": "2026-11-04T13:45:36.172924+01:00",
+      "hostname": "nixos"
+    },
+    "torch_free": {
+      "name": "pytest",
+      "errors": "0",
+      "failures": "0",
+      "skipped": "2",
+      "tests": "321",
+      "time": "21.513",
+      "timestamp": "2026-11-04T13:42:52.120262+01:00",
+      "hostname": "nixos"
+    },
+    "focused_post_review": "50passed",
+    "ruff": "pass",
+    "format": "pass",
+    "ty": "pass",
+    "diff_check": "pass"
+  },
+  "owner_environment": {
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "gil_before": false,
+    "gil_after": false,
+    "forced_gil": null,
+    "torch_imported": true,
+    "dynamo_imported": false,
+    "triton_imported": false,
+    "exit": 0
+  },
+  "pure_environment": {
+    "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+    "gil_before": false,
+    "gil_after": false,
+    "forced_gil": null,
+    "torch_imported": false,
+    "exit": 0
+  },
+  "fresh_children": 44,
+  "independent_schedule_pairs": 24,
+  "source_report_hashes": {
+    "docs_design/models-strategy-trainer/xdsl_language/__init__.py": "e7b5bbd894682d4599d16289f17fd5968becb6ebfe776e73a37b83db1b154e28",
+    "docs_design/models-strategy-trainer/xdsl_language/contracts.py": "8aa0888eab2bad9fbdbd038013262e137d398d2dfe3495061ed2577bccedaa74",
+    "docs_design/models-strategy-trainer/xdsl_language/dialects.py": "3b63464d2f831ae101399817d07ac0364f5de5df716d58296bfe8393eceb5369",
+    "docs_design/models-strategy-trainer/xdsl_language/fixtures.py": "88334790dd86008a8b4fe604eb971915282ae3b55541f4431e7497946ae53060",
+    "docs_design/models-strategy-trainer/xdsl_language/normalize.py": "18cb5b07de75c76b103d995aef2df1b47e252f5be405965f315ed6315fd94428",
+    "docs_design/models-strategy-trainer/xdsl_language/observations.py": "82277a4832775bc5cf30f25625e30fc2af74c7809b0faddc9d554469962cb375",
+    "docs_design/models-strategy-trainer/xdsl_language/prepare.py": "2aafd5d19bf4fbeb2a9760a52d2889ca626ec257a2670db1622887366f1266bc",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification.py": "c3b7f534fc931c7603d01a45a144c4b754b09a483b8b2a316ae896eade0edc8f",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_cases.py": "6ae6581d2ca0d33ed8335c1a91a6a4e70e5aefa70629af8f4254bfde161827e4",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_child.py": "ef0c4147d7ff6774c741524380ba5576ec82c2881851ba255f6e115827dbf24c",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_oracle.py": "f6efac585f03e5178db561c57713845722b91c6b88ba723deedb3a7f971c7be8",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_products.py": "f9bc4123756eb9936e62e46785a460706105530d797b9d2a7e347fb23c0588d1",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_runtime.py": "4f782e874a543d90c7be9e4f2f6a077e37015ab6b01daff74e0a778ed19f6d07",
+    "docs_design/models-strategy-trainer/xdsl_language/qualification_target.py": "51157fcd2b1ac6381fedce007876017fa06ee8a0e35270043cb0122788cee67d",
+    "docs_design/models-strategy-trainer/xdsl_language/reference.py": "e63e7bf96dbbdb78646ca2a3568bd81297b9e3057358bf00f9fe3bbfffa9b98d",
+    "docs_design/models-strategy-trainer/xdsl_language/standins.py": "b84906b9d84069f20421dd4eb8fd5d11882defe2774a891de9f11efb1821f10d",
+    "docs_design/models-strategy-trainer/xdsl_language/target.py": "f4c19623111bfa6f77b687e9305edd0ee32ad351d54f5ce28e36859cca2fff80",
+    "docs_design/models-strategy-trainer/xdsl_language/target_bindings.py": "436e673d6fcc56027644ea42a6b1fe607c1eb95883cbe6fe750167477f3a1fd4",
+    "docs_design/models-strategy-trainer/xdsl_language/test_prepare.py": "98034625a6b9bebc3a99174358c49094e657425cb4a6eef113a3cb8e96bf79b0",
+    "docs_design/models-strategy-trainer/xdsl_language/test_qualification.py": "2b0b2e85dc06767eca62b4174db09d9c0d051187e4e4d125fd26ad0e5eea8e60",
+    "docs_design/models-strategy-trainer/xdsl_language/test_reference.py": "4b87c82b8660f78da5bf23e5d0408eba759420e43dc53f8e08217d3948c704a7",
+    "docs_design/models-strategy-trainer/xdsl_language/test_structure.py": "cd0f180dff89c855d6eed2e347dd6e516f61caa1bc33757b16529a95def0a763",
+    "docs_design/models-strategy-trainer/xdsl_language/test_target.py": "3d019e9806ada001e17c2475017101b8daf37ac82955da83db71e7ad28e05625",
+    "docs_design/models-strategy-trainer/xdsl_language/test_verify.py": "ea824c5c49144375ace201c58de522e917bbfe335cf681483a5b940a85dd2227",
+    "docs_design/models-strategy-trainer/xdsl_language/verify.py": "8594d81adbf7d515649cc6a1045bf7ce530b6d700a910103f2eb0e76112f1856",
+    "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+    "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md": "7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2"
+  },
+  "artifact_documents": 24,
+  "negative_artifact_documents": 1,
+  "preservation": {
+    "prior_tracked_paths": 1562,
+    "unallowed_changes": []
+  },
+  "validation": {
+    "standard": "pass",
+    "strict": "exit1",
+    "warnings": 53,
+    "strict_warning_list_unchanged": true
+  },
+  "progress": {
+    "total": 46,
+    "complete": 39,
+    "remaining": 7
+  },
+  "review": {
+    "provider": "review-mcp",
+    "artifact": "/tmp/review-mcp-run-r8deqgcp",
+    "outcome": "Returned;F1-F4 addressed and affected gates rerun. No runtime correctness defects found.",
+    "core_target_changed_after_review": false,
+    "post_review_scope": "bounded test/oracle/harness/document corrections; no significant implementation requiring another review"
+  },
+  "failed_attempts_retained": [
+    "development-failures.json",
+    "failed-owner-gate.log.json"
+  ]
+}

@@ -1,0 +1,5162 @@
+{
+  "contributors": [
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "records"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "activities"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "producer"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "encode.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "encode"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "consumers"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "training"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "members"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "gradient.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "gradient"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "update.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "advance"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "evaluation.due"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "request.choice"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "request"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "evaluation"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "measure.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "measure"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "publish_measurement.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "publish_measurement"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "stop"
+    },
+    {
+      "assumptions": [],
+      "classification": "may_depend_on_schedule",
+      "reason": "current version can race owner update; protection preserves safety, not version assignment",
+      "source": "measure.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "may_depend_on_schedule",
+      "reason": "input association or version-admission outcome can depend on scheduling",
+      "source": "records"
+    }
+  ],
+  "format": "shared-owner-fragments-v1",
+  "fragments": [
+    {
+      "access": null,
+      "ancestry": [
+        "run"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.program",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\"]",
+        "origin": "\"run\"",
+        "stage": "\"normalized\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "run"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "encoder"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"encoder\"]",
+        "origin": "\"encoder\"",
+        "sym_name": "\"encoder\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"scale\">"
+      ],
+      "source": "encoder"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "model"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"model\"]",
+        "origin": "\"model\"",
+        "sym_name": "\"model\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"scale\">"
+      ],
+      "source": "model"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "records"
+      ],
+      "completion": null,
+      "flow": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "max_outstanding": 3,
+        "origin": "records",
+        "payload": "!lang.payload<\"record\">",
+        "ready_bound": 2,
+        "versions": {
+          "admission": "any_with_provenance",
+          "boundary": "item_admission",
+          "incomparable": "reject_with_disposition",
+          "max_lag": 0,
+          "metric": "owner_update_ordinal_within_lineage",
+          "owners": [
+            "encoder"
+          ]
+        }
+      },
+      "operands": [],
+      "operation": "lang.stream",
+      "primitive": "local_leaf",
+      "properties": {
+        "admission": "\"any_with_provenance\"",
+        "ancestry": "[\"run\", \"records\"]",
+        "assumptions": "[]",
+        "comparison_boundary": "\"item_admission\"",
+        "horizon": "3 : i64",
+        "max_lag": "0 : i64",
+        "metric": "\"owner_update_ordinal_within_lineage\"",
+        "origin": "\"records\"",
+        "owners": "[@encoder]",
+        "rank_rule": "\"local\"",
+        "ready_bound": "2 : i64",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"records\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.endpoint<!lang.payload<\"record\">>"
+      ],
+      "source": "records"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "products"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"products\"]",
+        "origin": "\"products\"",
+        "sym_name": "\"products\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"products\">"
+      ],
+      "source": "products"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "records",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "encoder",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "model",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "products",
+          "region": null
+        }
+      ],
+      "operation": "lang.parallel",
+      "primitive": "owner.Together",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\"]",
+        "assumptions": "[]",
+        "origin": "\"activities\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"activities\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "activities",
+        "policy": null,
+        "protocol": "parallel",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 2,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "activities",
+        "version": 1
+      },
+      "results": [],
+      "source": "activities"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "producer"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "activities",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "activities",
+          "region": 0
+        }
+      ],
+      "operation": "lang.producer",
+      "primitive": "owner.Producer",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"producer\"]",
+        "assumptions": "[]",
+        "origin": "\"producer\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"producer\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "producer",
+        "policy": null,
+        "protocol": "producer",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              }
+            ],
+            "entries": [
+              "!lang.resource<\"scale\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "production_index"
+            ],
+            "yields": [
+              "!lang.payload<\"record\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "producer",
+        "version": 1
+      },
+      "results": [],
+      "source": "producer"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "published",
+        "mode": "snapshot",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 0,
+          "origin": "producer",
+          "region": 0
+        },
+        "version_selector": "initial"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "producer",
+        "encode.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "producer",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "producer",
+          "region": 0
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"producer\", \"encode.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"published\"",
+        "mode": "\"snapshot\"",
+        "origin": "\"encode.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"encode.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"initial\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "encode.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"snapshot\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"record\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "encode.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "encode.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "producer",
+        "encode.access",
+        "encode"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "encode.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "encode.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"producer\", \"encode.access\", \"encode\"]",
+        "binding": "@encode",
+        "binding_version": "\"1\"",
+        "origin": "\"encode\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "encode",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"snapshot\">",
+          "!lang.payload<\"index\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"record\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "encode"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "producer",
+        "encode.access",
+        "encode.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "encode",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"producer\", \"encode.access\", \"encode.access.yield\"]",
+        "origin": "\"encode.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "encode.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "producer",
+        "production.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "encode.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"producer\", \"production.body.yield\"]",
+        "origin": "\"production.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "production.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "producer.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"producer.branch.yield\"]",
+        "origin": "\"producer.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "producer.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "activities",
+          "region": 1
+        },
+        {
+          "index": 2,
+          "origin": "activities",
+          "region": 1
+        },
+        {
+          "index": 3,
+          "origin": "activities",
+          "region": 1
+        }
+      ],
+      "operation": "lang.parallel",
+      "primitive": "owner.Together",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\"]",
+        "assumptions": "[]",
+        "origin": "\"consumers\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"consumers\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "consumers",
+        "policy": null,
+        "protocol": "parallel",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "consumers",
+        "version": 1
+      },
+      "results": [],
+      "source": "consumers"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "consumers",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "consumers",
+          "region": 0
+        }
+      ],
+      "operation": "lang.repeat",
+      "primitive": "owner.Repeat",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\"]",
+        "assumptions": "[]",
+        "carry_count": "0 : i64",
+        "limit": "2 : i64",
+        "origin": "\"training\"",
+        "policy": "@bounded_count",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"training\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": 2,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "training",
+        "policy": "bounded_count",
+        "protocol": "repeat",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "iteration_index"
+            ],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "training",
+        "version": 1
+      },
+      "results": [],
+      "source": "training"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "zero"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.constant",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"zero\"]",
+        "literal": "\"0.0\"",
+        "origin": "\"zero\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "zero"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "training",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "training",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "zero",
+          "region": null
+        }
+      ],
+      "operation": "lang.repeat",
+      "primitive": "owner.Repeat",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\"]",
+        "assumptions": "[]",
+        "carry_count": "1 : i64",
+        "limit": "2 : i64",
+        "origin": "\"members\"",
+        "policy": "@bounded_count",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"members\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": 2,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "members",
+        "policy": "bounded_count",
+        "protocol": "repeat",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.payload<\"index\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "iteration_index",
+              "loop_carry"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "members",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "members"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "training.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "members",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"training.take\"]",
+        "origin": "\"training.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "training.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "training.take.borrow"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "training.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.borrow",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"training.take.borrow\"]",
+        "origin": "\"training.take.borrow\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "training.take.borrow"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "current_at_start",
+        "mode": "protected_current",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "members",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "gradient.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "members",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "training.take.borrow",
+          "region": null
+        },
+        {
+          "index": 3,
+          "origin": "members",
+          "region": 0
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"gradient.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"current_at_start\"",
+        "mode": "\"protected_current\"",
+        "origin": "\"gradient.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"gradient.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "gradient.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"record\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.payload<\"scalar\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+              "!lang.payload<\"record\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "gradient.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "gradient.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "gradient.access",
+        "gradient"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "gradient.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "gradient.access",
+          "region": 0
+        },
+        {
+          "index": 2,
+          "origin": "gradient.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"gradient.access\", \"gradient\"]",
+        "binding": "@gradient",
+        "binding_version": "\"1\"",
+        "origin": "\"gradient\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "gradient",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+          "!lang.payload<\"record\">",
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "gradient"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "gradient.access",
+        "gradient.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "gradient",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"gradient.access\", \"gradient.access.yield\"]",
+        "origin": "\"gradient.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "gradient.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "training.retire"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "training.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.retire",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"training.retire\"]",
+        "disposition": "\"consumed\"",
+        "origin": "\"training.retire\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "training.retire"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "members",
+        "members.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "gradient.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"members\", \"members.body.yield\"]",
+        "origin": "\"members.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "members.body.yield"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "owner_protocol",
+        "mode": "owner_update",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "training",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "update.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "training",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "members",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"update.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"owner_protocol\"",
+        "mode": "\"owner_update\"",
+        "origin": "\"update.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"update.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "update.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"scalar\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"owner_update\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "update.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "update.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "update.access",
+        "advance"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "update.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "update.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"update.access\", \"advance\"]",
+        "binding": "@advance",
+        "binding_version": "\"1\"",
+        "origin": "\"advance\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "advance",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"owner_update\">",
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "advance"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "update.access",
+        "update.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "advance",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"update.access\", \"update.access.yield\"]",
+        "origin": "\"update.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "update.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "second.window"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.constant",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"second.window\"]",
+        "literal": "\"1\"",
+        "origin": "\"second.window\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"index\">"
+      ],
+      "source": "second.window"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "evaluation.due"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 2,
+          "origin": "training",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "second.window",
+          "region": null
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"evaluation.due\"]",
+        "binding": "@equal",
+        "binding_version": "\"1\"",
+        "origin": "\"evaluation.due\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "equal",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"index\">",
+          "!lang.payload<\"index\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"bool\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"bool\">"
+      ],
+      "source": "evaluation.due"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "request.choice"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "evaluation.due",
+          "region": null
+        },
+        {
+          "index": 2,
+          "origin": "training",
+          "region": 0
+        }
+      ],
+      "operation": "lang.choice",
+      "primitive": "local_finite_choice",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"request.choice\"]",
+        "assumptions": "[]",
+        "origin": "\"request.choice\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"request.choice\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "request.choice",
+        "policy": null,
+        "protocol": "choice",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"index\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "request.choice",
+        "version": 1
+      },
+      "results": [],
+      "source": "request.choice"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "request.choice",
+        "request"
+      ],
+      "completion": {
+        "boundary": "settled_success",
+        "kind": "request",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "training",
+        "target": "evaluation"
+      },
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "request.choice",
+          "region": 0
+        }
+      ],
+      "operation": "lang.request",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"request.choice\", \"request\"]",
+        "boundary": "\"settled_success\"",
+        "handler": "@evaluation",
+        "origin": "\"request\"",
+        "source": "@training",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "request"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "request.choice",
+        "request.true.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"request.choice\", \"request.true.yield\"]",
+        "origin": "\"request.true.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "request.true.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "request.choice",
+        "request.false.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"request.choice\", \"request.false.yield\"]",
+        "origin": "\"request.false.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "request.false.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training",
+        "window.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training\", \"window.body.yield\"]",
+        "origin": "\"window.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "window.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "training.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"training.branch.yield\"]",
+        "origin": "\"training.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "training.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "consumers",
+          "region": 1
+        },
+        {
+          "index": 1,
+          "origin": "consumers",
+          "region": 1
+        },
+        {
+          "index": 2,
+          "origin": "consumers",
+          "region": 1
+        }
+      ],
+      "operation": "lang.requests",
+      "primitive": "owner.Requested",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\"]",
+        "assumptions": "[]",
+        "max_active": "1 : i64",
+        "max_outstanding": "1 : i64",
+        "origin": "\"evaluation\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "request_schema": "!lang.payload<\"index\">",
+        "sources": "[@training]",
+        "sym_name": "\"evaluation\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": 1,
+        "max_outstanding": 1,
+        "origin": "evaluation",
+        "policy": null,
+        "protocol": "requests",
+        "quiescence": [],
+        "request_sources": [
+          "training"
+        ],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"scale\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"scale\">",
+              "!lang.resource<\"products\">",
+              "!lang.request<!lang.payload<\"index\">>"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "accepted_request"
+            ],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "evaluation",
+        "version": 1
+      },
+      "results": [],
+      "source": "evaluation"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "evaluation.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "evaluation",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"evaluation.take\"]",
+        "origin": "\"evaluation.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "evaluation.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "evaluation.take.borrow"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "evaluation.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.borrow",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"evaluation.take.borrow\"]",
+        "origin": "\"evaluation.take.borrow\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "evaluation.take.borrow"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "current_at_start",
+        "mode": "protected_current",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "evaluation",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "measure.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "evaluation",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "evaluation.take.borrow",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"measure.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"current_at_start\"",
+        "mode": "\"protected_current\"",
+        "origin": "\"measure.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"measure.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "measure.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"record\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"measurement\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "measure.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "measure.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "measure.access",
+        "measure"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "measure.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "measure.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"measure.access\", \"measure\"]",
+        "binding": "@measure",
+        "binding_version": "\"1\"",
+        "origin": "\"measure\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "measure",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"scale\">, \"protected_current\">",
+          "!lang.payload<\"record\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"measurement\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "measure"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "measure.access",
+        "measure.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "measure",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"measure.access\", \"measure.access.yield\"]",
+        "origin": "\"measure.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "measure.access.yield"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "owner_protocol",
+        "mode": "owner_update",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 2,
+          "origin": "evaluation",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "publish_measurement.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 2,
+          "origin": "evaluation",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "measure.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"publish_measurement.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"owner_protocol\"",
+        "mode": "\"owner_update\"",
+        "origin": "\"publish_measurement.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"publish_measurement.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "publish_measurement.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"measurement\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"products\">, \"owner_update\">",
+              "!lang.payload<\"measurement\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"measurement\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "publish_measurement.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "publish_measurement.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "publish_measurement.access",
+        "publish_measurement"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "publish_measurement.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "publish_measurement.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"publish_measurement.access\", \"publish_measurement\"]",
+        "binding": "@publish_measurement",
+        "binding_version": "\"1\"",
+        "origin": "\"publish_measurement\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "publish_measurement",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"products\">, \"owner_update\">",
+          "!lang.payload<\"measurement\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"measurement\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"measurement\">"
+      ],
+      "source": "publish_measurement"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "publish_measurement.access",
+        "publish_measurement.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "publish_measurement",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"publish_measurement.access\", \"publish_measurement.body.yield\"]",
+        "origin": "\"publish_measurement.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "publish_measurement.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "evaluation.retire"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "evaluation.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.retire",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"evaluation.retire\"]",
+        "disposition": "\"consumed\"",
+        "origin": "\"evaluation.retire\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "evaluation.retire"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation",
+        "evaluation.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation\", \"evaluation.body.yield\"]",
+        "origin": "\"evaluation.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "evaluation.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "evaluation.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"evaluation.branch.yield\"]",
+        "origin": "\"evaluation.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "evaluation.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers.branch.yield\"]",
+        "origin": "\"consumers.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "consumers.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "stop"
+      ],
+      "completion": {
+        "boundary": "settled",
+        "kind": "stop",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "consumers",
+        "target": "producer"
+      },
+      "flow": null,
+      "operands": [],
+      "operation": "lang.stop_after",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"stop\"]",
+        "origin": "\"stop\"",
+        "source": "@consumers",
+        "target": "@producer",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "stop"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "control.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"control.branch.yield\"]",
+        "origin": "\"control.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "control.branch.yield"
+    }
+  ],
+  "inputs": [
+    {
+      "consumers": [
+        "training.take",
+        "evaluation.take"
+      ],
+      "flow": "records",
+      "producer": "producer",
+      "required_initial_owners": [
+        "encoder"
+      ]
+    }
+  ],
+  "manifest": {
+    "bindings": [
+      {
+        "inputs": [
+          "capability",
+          "index"
+        ],
+        "name": "encode",
+        "outputs": [
+          "record"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record",
+          "scalar"
+        ],
+        "name": "gradient",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "scalar"
+        ],
+        "name": "advance",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record"
+        ],
+        "name": "measure",
+        "outputs": [
+          "measurement"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "index",
+          "index"
+        ],
+        "name": "equal",
+        "outputs": [
+          "bool"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "index"
+        ],
+        "name": "select",
+        "outputs": [
+          "record"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "record"
+        ],
+        "name": "score",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "scalar"
+        ],
+        "name": "feedback",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "measurement"
+        ],
+        "name": "publish_measurement",
+        "outputs": [
+          "measurement"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record",
+          "scalar"
+        ],
+        "name": "publish_score",
+        "outputs": [
+          "scalar"
+        ],
+        "updates": [
+          0
+        ],
+        "version": "1"
+      }
+    ],
+    "resources": [
+      {
+        "kind": "scale",
+        "learning_rate": 0.01,
+        "parameter": "weight",
+        "storage": "participant",
+        "version": "1"
+      },
+      {
+        "kind": "policy",
+        "learning_rate": 0.01,
+        "parameter": "",
+        "storage": "state",
+        "version": "1"
+      },
+      {
+        "kind": "products",
+        "learning_rate": 0.01,
+        "parameter": "",
+        "storage": "state",
+        "version": "1"
+      }
+    ],
+    "schemas": [
+      "measurement",
+      "record"
+    ]
+  },
+  "obligations": [
+    {
+      "kind": "ownership",
+      "required": [
+        "affine per invocation/path",
+        "scoped capability extent",
+        "detached leaf results"
+      ],
+      "source": "run"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "encoder",
+        "snapshot",
+        "published",
+        "initial",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "encode.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "model",
+        "protected_current",
+        "current_at_start",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "gradient.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "model",
+        "owner_update",
+        "owner_protocol",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "update.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "model",
+        "protected_current",
+        "current_at_start",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "measure.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "products",
+        "owner_update",
+        "owner_protocol",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "publish_measurement.access"
+    },
+    {
+      "kind": "request_closure",
+      "required": [
+        "training",
+        "pending/admitted dispositions",
+        "no fictional handler invocation"
+      ],
+      "source": "evaluation"
+    },
+    {
+      "kind": "completion_request",
+      "required": [
+        "training",
+        "evaluation",
+        "before_source_terminal",
+        "retain_admitted_promises"
+      ],
+      "source": "request"
+    },
+    {
+      "kind": "producer_stop",
+      "required": [
+        "consumers",
+        "producer",
+        "request stop without awaiting producer termination"
+      ],
+      "source": "stop"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "training.retire"
+      ],
+      "source": "training.take"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "evaluation.retire"
+      ],
+      "source": "evaluation.take"
+    }
+  ],
+  "reproducibility": "unknown",
+  "target": {
+    "physical": "host_workers",
+    "target": "owner_cpu_v1",
+    "workers": 2
+  },
+  "waits": [
+    [
+      [
+        "activities",
+        "body0.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body0.settled"
+      ],
+      [
+        "producer",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body0.settled"
+      ],
+      [
+        "producer.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body1.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body1.settled"
+      ],
+      [
+        "consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body1.settled"
+      ],
+      [
+        "consumers.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body2.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body2.settled"
+      ],
+      [
+        "control.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body2.settled"
+      ],
+      [
+        "stop",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "entry"
+      ],
+      [
+        "products",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body2.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "advance",
+        "entry"
+      ],
+      [
+        "update.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "advance",
+        "settled"
+      ],
+      [
+        "advance",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body0.entry"
+      ],
+      [
+        "consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body0.settled"
+      ],
+      [
+        "training",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body0.settled"
+      ],
+      [
+        "training.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body1.entry"
+      ],
+      [
+        "consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body1.settled"
+      ],
+      [
+        "evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body1.settled"
+      ],
+      [
+        "evaluation.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "entry"
+      ],
+      [
+        "activities",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "consumers",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "consumers",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "consumers.branch.yield",
+        "entry"
+      ],
+      [
+        "consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers.branch.yield",
+        "settled"
+      ],
+      [
+        "consumers.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "control.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body2.entry"
+      ]
+    ],
+    [
+      [
+        "control.branch.yield",
+        "entry"
+      ],
+      [
+        "stop",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "control.branch.yield",
+        "settled"
+      ],
+      [
+        "control.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "encode",
+        "entry"
+      ],
+      [
+        "encode.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "encode",
+        "settled"
+      ],
+      [
+        "encode",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "encode.access",
+        "body0.entry"
+      ],
+      [
+        "encode.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "encode.access",
+        "body0.settled"
+      ],
+      [
+        "encode",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "encode.access",
+        "body0.settled"
+      ],
+      [
+        "encode.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "encode.access",
+        "entry"
+      ],
+      [
+        "producer",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "encode.access",
+        "settled"
+      ],
+      [
+        "encode.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "encode.access",
+        "settled"
+      ],
+      [
+        "encode.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "encode.access.yield",
+        "entry"
+      ],
+      [
+        "encode",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "encode.access.yield",
+        "entry"
+      ],
+      [
+        "encode.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "encode.access.yield",
+        "settled"
+      ],
+      [
+        "encode.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "encoder",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "encoder",
+        "settled"
+      ],
+      [
+        "encoder",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.entry"
+      ],
+      [
+        "evaluation",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.settled"
+      ],
+      [
+        "evaluation.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.settled"
+      ],
+      [
+        "evaluation.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.settled"
+      ],
+      [
+        "evaluation.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.settled"
+      ],
+      [
+        "evaluation.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.settled"
+      ],
+      [
+        "measure.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "body0.settled"
+      ],
+      [
+        "publish_measurement.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "settled"
+      ],
+      [
+        "evaluation",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "settled"
+      ],
+      [
+        "evaluation",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation",
+        "settled"
+      ],
+      [
+        "training",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation.body.yield",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.body.yield",
+        "entry"
+      ],
+      [
+        "evaluation.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation.body.yield",
+        "settled"
+      ],
+      [
+        "evaluation.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.branch.yield",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.branch.yield",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation.branch.yield",
+        "settled"
+      ],
+      [
+        "evaluation.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.due",
+        "entry"
+      ],
+      [
+        "second.window",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation.due",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.due",
+        "settled"
+      ],
+      [
+        "evaluation.due",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.retire",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.retire",
+        "entry"
+      ],
+      [
+        "publish_measurement.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation.retire",
+        "settled"
+      ],
+      [
+        "evaluation.retire",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.take",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.take",
+        "settled"
+      ],
+      [
+        "evaluation.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.take.borrow",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "evaluation.take.borrow",
+        "entry"
+      ],
+      [
+        "evaluation.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "evaluation.take.borrow",
+        "settled"
+      ],
+      [
+        "evaluation.take.borrow",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "gradient",
+        "entry"
+      ],
+      [
+        "gradient.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "gradient",
+        "settled"
+      ],
+      [
+        "gradient",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "body0.entry"
+      ],
+      [
+        "gradient.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "body0.settled"
+      ],
+      [
+        "gradient",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "body0.settled"
+      ],
+      [
+        "gradient.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "entry"
+      ],
+      [
+        "members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "entry"
+      ],
+      [
+        "training.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "settled"
+      ],
+      [
+        "gradient.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "gradient.access",
+        "settled"
+      ],
+      [
+        "gradient.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "gradient.access.yield",
+        "entry"
+      ],
+      [
+        "gradient",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "gradient.access.yield",
+        "entry"
+      ],
+      [
+        "gradient.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "gradient.access.yield",
+        "settled"
+      ],
+      [
+        "gradient.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "measure",
+        "entry"
+      ],
+      [
+        "measure.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "measure",
+        "settled"
+      ],
+      [
+        "measure",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "body0.entry"
+      ],
+      [
+        "measure.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "body0.settled"
+      ],
+      [
+        "measure",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "body0.settled"
+      ],
+      [
+        "measure.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "entry"
+      ],
+      [
+        "evaluation.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "settled"
+      ],
+      [
+        "measure.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "measure.access",
+        "settled"
+      ],
+      [
+        "measure.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "measure.access.yield",
+        "entry"
+      ],
+      [
+        "measure",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "measure.access.yield",
+        "entry"
+      ],
+      [
+        "measure.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "measure.access.yield",
+        "settled"
+      ],
+      [
+        "measure.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "members",
+        "body0.entry"
+      ],
+      [
+        "members",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "members",
+        "body0.settled"
+      ],
+      [
+        "gradient.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "body0.settled"
+      ],
+      [
+        "members.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "body0.settled"
+      ],
+      [
+        "training.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "body0.settled"
+      ],
+      [
+        "training.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "body0.settled"
+      ],
+      [
+        "training.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "members",
+        "entry"
+      ],
+      [
+        "zero",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "settled"
+      ],
+      [
+        "members",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "members",
+        "settled"
+      ],
+      [
+        "members",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "members.body.yield",
+        "entry"
+      ],
+      [
+        "members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "members.body.yield",
+        "entry"
+      ],
+      [
+        "training.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "members.body.yield",
+        "settled"
+      ],
+      [
+        "members.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "model",
+        "entry"
+      ],
+      [
+        "encoder",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "model",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "model",
+        "settled"
+      ],
+      [
+        "model",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "body0.entry"
+      ],
+      [
+        "producer",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "body0.settled"
+      ],
+      [
+        "encode.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "body0.settled"
+      ],
+      [
+        "production.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "entry"
+      ],
+      [
+        "activities",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "settled"
+      ],
+      [
+        "evaluation.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "settled"
+      ],
+      [
+        "producer",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "settled"
+      ],
+      [
+        "producer",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "settled"
+      ],
+      [
+        "stop",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "producer",
+        "settled"
+      ],
+      [
+        "training.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "producer.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "producer.branch.yield",
+        "entry"
+      ],
+      [
+        "producer",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "producer.branch.yield",
+        "settled"
+      ],
+      [
+        "producer.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "production.body.yield",
+        "entry"
+      ],
+      [
+        "encode.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "production.body.yield",
+        "entry"
+      ],
+      [
+        "producer",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "production.body.yield",
+        "settled"
+      ],
+      [
+        "production.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "products",
+        "entry"
+      ],
+      [
+        "records",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "products",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "products",
+        "settled"
+      ],
+      [
+        "products",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement",
+        "entry"
+      ],
+      [
+        "publish_measurement.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement",
+        "settled"
+      ],
+      [
+        "publish_measurement",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "body0.entry"
+      ],
+      [
+        "publish_measurement.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "body0.settled"
+      ],
+      [
+        "publish_measurement",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "body0.settled"
+      ],
+      [
+        "publish_measurement.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "entry"
+      ],
+      [
+        "evaluation",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "entry"
+      ],
+      [
+        "measure.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "settled"
+      ],
+      [
+        "publish_measurement.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.access",
+        "settled"
+      ],
+      [
+        "publish_measurement.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.body.yield",
+        "entry"
+      ],
+      [
+        "publish_measurement",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.body.yield",
+        "entry"
+      ],
+      [
+        "publish_measurement.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "publish_measurement.body.yield",
+        "settled"
+      ],
+      [
+        "publish_measurement.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "records",
+        "entry"
+      ],
+      [
+        "model",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "records",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "records",
+        "settled"
+      ],
+      [
+        "records",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request",
+        "entry"
+      ],
+      [
+        "request.choice",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "request",
+        "settled"
+      ],
+      [
+        "request",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "body0.entry"
+      ],
+      [
+        "request.choice",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "body0.settled"
+      ],
+      [
+        "request",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "body0.settled"
+      ],
+      [
+        "request.true.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "body1.entry"
+      ],
+      [
+        "request.choice",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "body1.settled"
+      ],
+      [
+        "request.false.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "entry"
+      ],
+      [
+        "evaluation.due",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "settled"
+      ],
+      [
+        "request.choice",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "settled"
+      ],
+      [
+        "request.choice",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "request.choice",
+        "settled"
+      ],
+      [
+        "request.choice",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request.false.yield",
+        "entry"
+      ],
+      [
+        "request.choice",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "request.false.yield",
+        "settled"
+      ],
+      [
+        "request.false.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request.true.yield",
+        "entry"
+      ],
+      [
+        "request",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "request.true.yield",
+        "entry"
+      ],
+      [
+        "request.choice",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "request.true.yield",
+        "settled"
+      ],
+      [
+        "request.true.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.entry"
+      ],
+      [
+        "run",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "activities",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "encoder",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "model",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "products",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "records",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "settled"
+      ],
+      [
+        "evaluation",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "settled"
+      ],
+      [
+        "run",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "settled"
+      ],
+      [
+        "run",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "second.window",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "second.window",
+        "entry"
+      ],
+      [
+        "update.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "second.window",
+        "settled"
+      ],
+      [
+        "second.window",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "stop",
+        "entry"
+      ],
+      [
+        "activities",
+        "body2.entry"
+      ]
+    ],
+    [
+      [
+        "stop",
+        "settled"
+      ],
+      [
+        "consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "stop",
+        "settled"
+      ],
+      [
+        "stop",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.entry"
+      ],
+      [
+        "training",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "evaluation.due",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "members",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "request.choice",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "second.window",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "update.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "window.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "body0.settled"
+      ],
+      [
+        "zero",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "training",
+        "settled"
+      ],
+      [
+        "training",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "training",
+        "settled"
+      ],
+      [
+        "training",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "training.branch.yield",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "training.branch.yield",
+        "entry"
+      ],
+      [
+        "training",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training.branch.yield",
+        "settled"
+      ],
+      [
+        "training.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "training.retire",
+        "entry"
+      ],
+      [
+        "gradient.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training.retire",
+        "entry"
+      ],
+      [
+        "members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "training.retire",
+        "settled"
+      ],
+      [
+        "training.retire",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "training.take",
+        "entry"
+      ],
+      [
+        "members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "training.take",
+        "settled"
+      ],
+      [
+        "training.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "training.take.borrow",
+        "entry"
+      ],
+      [
+        "members",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "training.take.borrow",
+        "entry"
+      ],
+      [
+        "training.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "training.take.borrow",
+        "settled"
+      ],
+      [
+        "training.take.borrow",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "body0.entry"
+      ],
+      [
+        "update.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "body0.settled"
+      ],
+      [
+        "advance",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "body0.settled"
+      ],
+      [
+        "update.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "entry"
+      ],
+      [
+        "members",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "settled"
+      ],
+      [
+        "update.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "update.access",
+        "settled"
+      ],
+      [
+        "update.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "update.access.yield",
+        "entry"
+      ],
+      [
+        "advance",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "update.access.yield",
+        "entry"
+      ],
+      [
+        "update.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "update.access.yield",
+        "settled"
+      ],
+      [
+        "update.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "window.body.yield",
+        "entry"
+      ],
+      [
+        "request.choice",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "window.body.yield",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "window.body.yield",
+        "settled"
+      ],
+      [
+        "window.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "zero",
+        "entry"
+      ],
+      [
+        "training",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "zero",
+        "settled"
+      ],
+      [
+        "zero",
+        "entry"
+      ]
+    ]
+  ]
+}
