@@ -18,15 +18,33 @@ from xdsl.dialects.builtin import ModuleOp
 from xdsl.ir import Block, Operation, SSAValue
 from xdsl.traits import OpTrait
 
-from .contracts import AccessMode, FlowSemantics, Freshness, Protocol, RegionSemantics, ResourceSemantics, number, origin, symbol, text
+from .contracts import (
+    AccessMode,
+    Admission,
+    FlowContract,
+    FlowSemantics,
+    Freshness,
+    Protocol,
+    RegionSemantics,
+    ResourceSemantics,
+    Version,
+    number,
+    origin,
+    symbol,
+    text,
+)
 from .dialects import (
     BorrowOp,
+    CapabilityType,
+    ClaimType,
     CallOp,
     ConstantOp,
+    EndpointType,
     PayloadType,
     ProgramOp,
     RequestOp,
     ResourceOp,
+    ResourceType,
     RetireOp,
     StopAfterOp,
     StreamOp,
@@ -72,14 +90,6 @@ def require_trait[T: OpTrait](op: Operation, kind: type[T]) -> T:
     if trait is None:
         raise ReferenceError(f"{origin(op)}: missing {kind.__name__}")
     return trait
-
-
-@dataclass(frozen=True)
-class Version:
-    owner: str
-    incarnation: int
-    lineage: str
-    ordinal: int
 
 
 @dataclass
@@ -272,6 +282,7 @@ class Reference:
         self.bindings = dict(bindings)
         self.schemas = dict(schemas or {})
         self.resources = {key: Resource(key, deepcopy(value)) for key, value in resources.items()}
+        self.initial_snapshots = {key: (value.version, deepcopy(value.value)) for key, value in self.resources.items()}
         self.streams: dict[str, Stream] = {}
         self.handlers: dict[str, Handler] = defaultdict(Handler)
         self.outcomes: dict[Identity, Outcome] = {}
@@ -392,11 +403,28 @@ class Reference:
             self._state(identity, State.TERMINAL)
 
     def _body(self, block: Block, args: tuple[object, ...], parent: Identity) -> Generator[Command, object, tuple[object, ...]]:
+        returned: tuple[object, ...] = ()
+        try:
+            returned = yield from self._body_impl(block, args, parent)
+            return returned
+        finally:
+            # Parallel branch bodies own locals without a separate region-op
+            # invocation. Their claims still need disposition on failure/cancel.
+            for stream in self.streams.values():
+                for ticket in tuple(stream.outstanding.values()):
+                    if ticket.owner == parent and not any(value is ticket for value in returned):
+                        self._dispose(ticket, "cancelled" if self.cancelled else "unconsumed", parent)
+
+    def _body_impl(self, block: Block, args: tuple[object, ...], parent: Identity) -> Generator[Command, object, tuple[object, ...]]:
         if len(block.args) != len(args):
             raise ReferenceError("reference entry argument mismatch")
         env: dict[SSAValue, object] = dict(zip(block.args, args, strict=True))
         for op in block.ops:
             if isinstance(op, YieldOp):
+                if isinstance(block.parent_op(), ProgramOp) and any(
+                    isinstance(value.type, CapabilityType | ClaimType | ResourceType | EndpointType) for value in op.operands
+                ):
+                    raise ReferenceError("program has no outgoing owner/claim transfer contract")
                 return tuple(env[value] for value in op.operands)
             if isinstance(op, ResourceOp):
                 name = text(op, "sym_name")
@@ -432,7 +460,9 @@ class Reference:
             result = yield Command("call_complete", op, parent, (entered,))
             return checked(result, tuple)
         if isinstance(op, TakeOp):
-            ticket = yield Command("take", op, parent, args)
+            ticket = None
+            while ticket is None:
+                ticket = yield Command("take", op, parent, args)
             return (ticket,)
         if isinstance(op, BorrowOp):
             ticket = args[0]
@@ -484,10 +514,22 @@ class Reference:
                 return body_args[-carries:] if body_args is not None and carries else ()
             self._state(identity, State.ADMITTED)
             self._state(identity, State.RUNNING)
+            incoming = [value for value in (body_args if body_args is not None else args) if isinstance(value, Ticket)]
+            if len({id(value) for value in incoming}) != len(incoming):
+                raise ReferenceError(f"{origin(op)}: duplicated claim capture")
+            for ticket in incoming:
+                if ticket.owner != parent or ticket.disposition is not None:
+                    raise ReferenceError(f"{origin(op)}: captured claim is not owned by the invoking scope")
+                ticket.owner = identity
             if body_args is not None:
                 result = yield from self._body(op.regions[0].block, body_args, identity)
             else:
                 result = yield from self._protocol(op, args, identity)
+            for value in result:
+                if isinstance(value, Ticket):
+                    if value.owner != identity or value.disposition is not None:
+                        raise ReferenceError(f"{origin(op)}: invalid claim result transfer")
+                    value.owner = parent
             self.outcomes[identity].values = deepcopy(result)
             self.outcomes[identity].status = "succeeded"
             return result
@@ -532,16 +574,20 @@ class Reference:
             raise ReferenceError("missing invocation protocol")
         protocol = trait.protocol
         if protocol in (Protocol.ONCE, Protocol.SEQUENCE):
-            return (yield from self._body(op.regions[0].block, args, identity))
+            return (yield from self._body(op.regions[0].block, self._entry(op, args), identity))
         if protocol == Protocol.CHOICE:
             if type(args[0]) is not bool:
                 raise ReferenceError(f"{origin(op)}: choice predicate is not boolean")
-            return (yield from self._body(op.regions[0 if args[0] else 1].block, args[1:], identity))
+            role = 0 if args[0] else 1
+            return (yield from self._body(op.regions[role].block, self._entry(op, args, role=role), identity))
         if protocol == Protocol.PARALLEL:
             if op.results:
                 raise ReferenceLimit("parallel result merging requires an explicit supported contract")
+            if any(isinstance(value, Ticket) for value in args):
+                raise ReferenceLimit("reference parallel claim transfer is not implemented")
             children = tuple(
-                self._spawn(self._body(region.block, args, (*identity, ("$region", index)))) for index, region in enumerate(op.regions)
+                self._spawn(self._body(region.block, self._entry(op, args, role=index), (*identity, ("$region", index))))
+                for index, region in enumerate(op.regions)
             )
             yield Command("join", op, identity, children)
             errors = [error for index in children if (error := self.tasks[index].error) is not None]
@@ -559,12 +605,12 @@ class Reference:
             for index in range(number(op, "limit")):
                 if self._is_stopped(op, identity):
                     break
-                carries = yield from self._invoke(op, (), identity, body_args=(*captures, index, *carries))
+                carries = yield from self._invoke(op, (), identity, body_args=self._entry(op, (*captures, *carries), (index, *carries)))
             return carries
         if protocol == Protocol.ACCESS:
             cap = checked((yield Command("acquire", op, identity, args)), Capability)
             try:
-                return (yield from self._body(op.regions[0].block, (cap, *args[1:]), identity))
+                return (yield from self._body(op.regions[0].block, self._entry(op, args, (cap,)), identity))
             finally:
                 yield Command("release", op, identity, (cap,))
         if protocol == Protocol.PRODUCER:
@@ -577,7 +623,9 @@ class Reference:
                     ticket = checked(ticket, Ticket)
                     start = len(self.read_versions[identity])
                     try:
-                        values = yield from self._invoke(op, (), identity, body_args=(*args[1:], ticket.key), selected_product=ticket)
+                        values = yield from self._invoke(
+                            op, (), identity, body_args=self._entry(op, args, (ticket.key,)), selected_product=ticket
+                        )
                         ticket.versions = tuple(dict.fromkeys(self.read_versions[identity][start:]))
                         yield Command("publish", op, identity, (ticket, values[0]))
                     except ReferenceError as failed:
@@ -596,7 +644,7 @@ class Reference:
                 request = checked(request, Request)
                 self.request_causes[identity] = request
                 try:
-                    yield from self._invoke(op, (), identity, body_args=(*args, request))
+                    yield from self._invoke(op, (), identity, body_args=self._entry(op, args, (request,)))
                     handler.dispositions[request.ordinal] = "completed"
                 except ReferenceError as failed:
                     handler.dispositions[request.ordinal] = "cancelled" if isinstance(failed, Cancelled) else "failed"
@@ -606,6 +654,22 @@ class Reference:
                     self._fact(origin(op), identity, "request_settled", request, handler.dispositions.get(request.ordinal))
             return ()
         raise ReferenceLimit(f"{origin(op)}: unsupported reference protocol {protocol}")
+
+    def _entry(self, op: Operation, args: tuple[object, ...], extra: tuple[object, ...] = (), *, role: int = 0) -> tuple[object, ...]:
+        """Interpret the registered capture map, rather than positional convention."""
+        contract = require_trait(op, RegionSemantics).describe(op).roles[role]
+        missing = object()
+        values = [missing] * len(contract.entries)
+        for capture in contract.captures:
+            if not 0 <= capture.argument < len(values) or not 0 <= capture.operand < len(args) or values[capture.argument] is not missing:
+                raise ReferenceError(f"{origin(op)}: malformed capture entry mapping")
+            values[capture.argument] = args[capture.operand]
+        unbound = [i for i, value in enumerate(values) if value is missing]
+        if len(unbound) != len(extra):
+            raise ReferenceError(f"{origin(op)}: invocation arguments do not fill the declared entry")
+        for index, value in zip(unbound, extra, strict=True):
+            values[index] = value
+        return tuple(values)
 
     def _dispose(self, ticket: Ticket, disposition: str, identity: Identity) -> None:
         if ticket.disposition is not None:
@@ -631,7 +695,10 @@ class Reference:
             use = op.get_trait(ResourceSemantics)
             if use is None:
                 return True
-            mode = use.describe(op).mode
+            contract = use.describe(op)
+            mode = contract.mode
+            if mode == AccessMode.SNAPSHOT and contract.freshness == Freshness.PUBLISHED and contract.version_selector == "initial":
+                return True
             return resource.writer is None and (not resource.readers or mode in (AccessMode.SNAPSHOT, AccessMode.PROTECTED_CURRENT))
         if kind == "take":
             stream = self.streams[str(args[0])]
@@ -688,11 +755,13 @@ class Reference:
             if (
                 contract.mode == AccessMode.SNAPSHOT
                 and contract.freshness == Freshness.PUBLISHED
-                and (contract.version_selector != "initial" or resource.ordinal != 0)
+                and contract.version_selector != "initial"
             ):
                 raise ReferenceLimit("reference has no published snapshot for that selector")
             token = len(self.capabilities)
             cap = Capability(resource.owner, contract.mode, resource.version, deepcopy(resource.value), token)
+            if contract.mode == AccessMode.SNAPSHOT and contract.freshness == Freshness.PUBLISHED:
+                cap.version, cap.value = deepcopy(self.initial_snapshots[resource.owner])
             self.capabilities[token] = cap
             if contract.mode == AccessMode.PROTECTED_CURRENT:
                 resource.readers.add(token)
@@ -825,9 +894,24 @@ class Reference:
             if not stream.ready:
                 raise ReferenceError(f"{origin(op)}: input exhausted before required admission")
             contract = require_trait(stream.declaration, FlowSemantics).describe(stream.declaration)
-            if contract.versions.admission != "any_with_provenance":
-                raise ReferenceLimit("version-admission evaluation is milestone 7/8")
             ticket = stream.ready.popleft()
+            disposition = self._admission(contract, ticket)
+            comparison = tuple(self.resources[owner].version for owner in contract.versions.owners)
+            self._fact(
+                origin(op),
+                identity,
+                "admission_checked",
+                ticket.key,
+                ticket.versions,
+                ticket.stream,
+                comparison,
+                disposition,
+                contract.versions.boundary,
+            )
+            if disposition != "accepted":
+                self._fact(origin(op), identity, "item_rejected", ticket.key, ticket.versions, ticket.stream, disposition)
+                self._dispose(ticket, disposition, identity)
+                return None
             ticket.owner = identity
             self.input_uses[identity] = (*self.input_uses.get(identity, ()), (ticket.stream, ticket.key))
             self._fact(origin(op), identity, "item_admitted", ticket.key, ticket.versions, ticket.stream)
@@ -895,6 +979,29 @@ class Reference:
                 self._dispose(ticket, "cancelled" if self.cancelled else "discarded", identity)
             return None
         raise ReferenceError(f"unknown reference command {kind}")
+
+    def _admission(self, contract: FlowContract, ticket: Ticket) -> str:
+        """Independent oracle implementation; does not import the verifier."""
+        policy = contract.versions
+        if policy.boundary != "item_admission" or policy.metric != "owner_update_ordinal_within_lineage":
+            raise ReferenceLimit("reference admission boundary/metric is not installed")
+        actual: dict[str, Version] = {}
+        for observed in ticket.versions:
+            if observed.owner in actual and actual[observed.owner] != observed:
+                return "incomparable_provenance"
+            actual[observed.owner] = observed
+        if set(actual) != set(policy.owners):
+            return "missing_or_extra_provenance"
+        if policy.admission == Admission.ANY_WITH_PROVENANCE:
+            return "accepted"
+        allowed = policy.max_lag if policy.admission == Admission.BOUNDED_LAG else 0
+        for owner, observed in actual.items():
+            now = self.resources[owner].version
+            if (observed.incarnation, observed.lineage) != (now.incarnation, now.lineage) or observed.ordinal > now.ordinal:
+                return "incomparable_provenance"
+            if now.ordinal - observed.ordinal > allowed:
+                return "rejected_stale"
+        return "accepted"
 
     def _is_stopped(self, op: Operation, identity: Identity) -> bool:
         return origin(op) in self._external_stops or any(

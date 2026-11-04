@@ -11,9 +11,14 @@ from xdsl.traits import SymbolOpInterface
 from xdsl.utils.exceptions import VerifyException
 
 from .contracts import (
+    CompletionSemantics,
+    DecisionSemantics,
+    EndpointSemantics,
     ExpandSequence,
     FlowContract,
     FlowSemantics,
+    ItemSemantics,
+    origin,
     Protocol,
     RealizationContract,
     RealizationSemantics,
@@ -21,7 +26,6 @@ from .contracts import (
     RegionContract,
     RegionSemantics,
     ResourceSemantics,
-    origin,
     strings,
     text,
 )
@@ -60,6 +64,7 @@ class Structure:
     realizations: tuple[tuple[str, RealizationContract], ...]
     wiring: tuple[tuple[str, tuple[ValueSource, ...]], ...]
     parameters: tuple[tuple[str, tuple[tuple[str, Attribute], ...]], ...]
+    leaf_contracts: tuple[tuple[str, str, object], ...]
 
 
 def value_source(value: SSAValue) -> ValueSource:
@@ -115,8 +120,12 @@ def inspect_structure(module: ModuleOp) -> Structure:
         raise VerifyException("one closed lang.program root is required")
     index = source_index(module)
     symbols = symbol_index(module)
-    regions, links, flows, resources, realizations, wiring, parameters = [], [], [], [], [], [], []
+    regions, links, flows, resources, realizations, wiring, parameters, leaf_contracts = [], [], [], [], [], [], [], []
     for key, op in index.items():
+        for kind in (ItemSemantics, EndpointSemantics, CompletionSemantics, DecisionSemantics):
+            trait = op.get_trait(kind)
+            if trait is not None:
+                leaf_contracts.append((key, kind.__name__, trait.describe(op)))
         wiring.append((key, tuple(value_source(value) for value in op.operands)))
         parameters.append(
             (
@@ -174,7 +183,15 @@ def inspect_structure(module: ModuleOp) -> Structure:
                 raise VerifyException(f"{key}: undeclared request source @{ref.completion_source} for @{ref.target}")
             links.append(Link(key, ref.field, ref.target, ref.kind))
     return Structure(
-        tuple(index), tuple(regions), tuple(links), tuple(flows), tuple(resources), tuple(realizations), tuple(wiring), tuple(parameters)
+        tuple(index),
+        tuple(regions),
+        tuple(links),
+        tuple(flows),
+        tuple(resources),
+        tuple(realizations),
+        tuple(wiring),
+        tuple(parameters),
+        tuple(leaf_contracts),
     )
 
 

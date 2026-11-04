@@ -16,6 +16,8 @@ OBSERVABLE = frozenset(
         "selected",
         "published",
         "item_admitted",
+        "item_rejected",
+        "admission_checked",
         "disposition",
         "request_pending",
         "request_settled",
@@ -64,7 +66,7 @@ def observe(facts: Sequence[Fact]) -> Observation:
             continue
         base = fact.owner, fact.invocation, fact.kind
         occurrence = occurrences[base]
-        if fact.kind in ("selected", "published", "disposition"):
+        if fact.kind in ("selected", "published", "disposition", "item_admitted", "item_rejected", "admission_checked"):
             occurrence = checked(fact.values[0], int)
         elif fact.kind in ("request_pending", "request_settled", "request_disposed"):
             occurrence = checked(fact.values[0], Request).ordinal
@@ -82,7 +84,7 @@ def observe(facts: Sequence[Fact]) -> Observation:
             outcomes[fact.invocation] = key
         if fact.kind in ("selected", "published", "disposition"):
             tickets[(fact.owner, checked(fact.values[0], int))][fact.kind] = key
-        elif fact.kind == "item_admitted":
+        elif fact.kind in ("item_admitted", "item_rejected", "admission_checked"):
             tickets[(str(fact.values[2]), checked(fact.values[0], int))][fact.kind] = key
         if fact.kind == "request_pending" and isinstance(fact.values[0], Request):
             requests.append((fact.values[0], key))
@@ -106,11 +108,17 @@ def observe(facts: Sequence[Fact]) -> Observation:
         if parents:
             edges.add((key, outcomes[max(parents, key=len)]))
     for phases in tickets.values():
-        order = [phases[kind] for kind in ("selected", "published", "item_admitted", "disposition") if kind in phases]
+        order = [
+            phases[kind]
+            for kind in ("selected", "published", "admission_checked", "item_admitted", "item_rejected", "disposition")
+            if kind in phases
+        ]
         edges.update(pairwise(order))
         disposition = phases.get("disposition")
-        if disposition is not None and disposition.invocation in outcomes:
-            edges.add((disposition, outcomes[disposition.invocation]))
+        if disposition is not None:
+            owners = [identity for identity in outcomes if disposition.invocation[: len(identity)] == identity]
+            if owners:
+                edges.add((disposition, outcomes[max(owners, key=len)]))
     for item, completed in physical_uses:
         disposition = tickets.get(item, {}).get("disposition")
         if disposition is not None:

@@ -5,6 +5,11 @@ from __future__ import annotations
 from io import StringIO
 
 from xdsl.context import Context
+from xdsl.ir import Dialect, Operation, ParametrizedAttribute, TypeAttribute
+from xdsl.parser import Parser
+from xdsl.printer import Printer
+from xdsl.utils.exceptions import VerifyException
+
 from xdsl.dialects.builtin import (
     ArrayAttr,
     Builtin,
@@ -14,23 +19,13 @@ from xdsl.dialects.builtin import (
     StringAttr,
     SymbolRefAttr,
 )
-from xdsl.ir import Dialect, Operation, ParametrizedAttribute, TypeAttribute
-from xdsl.parser import Parser
-from xdsl.printer import Printer
-from xdsl.traits import (
-    IsolatedFromAbove,
-    IsTerminator,
-    NoTerminator,
-    OpTrait,
-    SymbolOpInterface,
-)
-from xdsl.utils.exceptions import VerifyException
 
 from xdsl.irdl import (
     irdl_attr_definition,
     irdl_op_definition,
     IRDLOperation,
     operand_def,
+    opt_prop_def,
     prop_def,
     region_def,
     result_def,
@@ -40,12 +35,26 @@ from xdsl.irdl import (
     var_result_def,
 )
 
+from xdsl.traits import (
+    IsolatedFromAbove,
+    IsTerminator,
+    NoTerminator,
+    OpTrait,
+    SymbolOpInterface,
+)
+
 from .contracts import (
     AccessMode,
+    CompletionSemantics,
     decision,
+    DecisionSemantics,
+    EndpointSemantics,
+    EndpointUse,
     ExpandSequence,
     FlowSemantics,
     Freshness,
+    ItemContract,
+    ItemSemantics,
     number,
     origin,
     Protocol,
@@ -107,6 +116,9 @@ class SourcedOp(IRDLOperation):
     origin = prop_def(StringAttr)
     version = prop_def(IntegerAttr)
     ancestry = prop_def(ArrayAttr[StringAttr])
+    reproducibility = opt_prop_def(StringAttr)
+    rank_rule = opt_prop_def(StringAttr)
+    assumptions = opt_prop_def(ArrayAttr[StringAttr])
 
 
 class StructuredOp(SourcedOp):
@@ -114,9 +126,6 @@ class StructuredOp(SourcedOp):
     inputs = var_operand_def()
     outputs = var_result_def()
     body = region_def("single_block")
-    reproducibility = prop_def(StringAttr)
-    rank_rule = prop_def(StringAttr)
-    assumptions = prop_def(ArrayAttr[StringAttr])
     quiescence = prop_def(ArrayAttr[StringAttr])
 
 
@@ -125,9 +134,6 @@ class BranchingOp(SourcedOp):
     inputs = var_operand_def()
     outputs = var_result_def()
     bodies = var_region_def("single_block")
-    reproducibility = prop_def(StringAttr)
-    rank_rule = prop_def(StringAttr)
-    assumptions = prop_def(ArrayAttr[StringAttr])
     quiescence = prop_def(ArrayAttr[StringAttr])
 
 
@@ -189,8 +195,8 @@ class CaptureShape(OpTrait):
                 raise VerifyException(f"{origin(op)}: missing body terminator")
 
 
-def structured_traits(protocol: Protocol):
-    return traits_def(SourceShape(), CaptureShape(), RegionSemantics(protocol), SymbolOpInterface(), IsolatedFromAbove())
+def structured_traits(protocol: Protocol, *extra: OpTrait):
+    return traits_def(SourceShape(), CaptureShape(), RegionSemantics(protocol), SymbolOpInterface(), IsolatedFromAbove(), *extra)
 
 
 @irdl_op_definition
@@ -221,9 +227,6 @@ class StreamOp(SourcedOp):
     metric = prop_def(StringAttr)
     comparison_boundary = prop_def(StringAttr)
     max_lag = prop_def(IntegerAttr)
-    reproducibility = prop_def(StringAttr)
-    rank_rule = prop_def(StringAttr)
-    assumptions = prop_def(ArrayAttr[StringAttr])
     traits = traits_def(SourceShape(), SymbolOpInterface(), FlowSemantics(), ReferenceSemantics((("owners", "resource"),)))
 
     def verify_(self) -> None:
@@ -276,7 +279,7 @@ class RepeatOp(StructuredOp):
 @irdl_op_definition
 class ProducerOp(StructuredOp):
     name = "lang.producer"
-    traits = structured_traits(Protocol.PRODUCER)
+    traits = structured_traits(Protocol.PRODUCER, EndpointSemantics(EndpointUse(0, "produce")))
 
 
 @irdl_op_definition
@@ -315,7 +318,7 @@ class CallOp(SourcedOp):
     outputs = var_result_def()
     binding = prop_def(SymbolRefAttr)
     binding_version = prop_def(StringAttr)
-    traits = traits_def(SourceShape(), RealizationSemantics())
+    traits = traits_def(SourceShape(), RealizationSemantics(), DecisionSemantics())
 
 
 @irdl_op_definition
@@ -331,7 +334,7 @@ class TakeOp(SourcedOp):
     name = "lang.take"
     stream = operand_def(EndpointType)
     claim = result_def(ClaimType)
-    traits = traits_def(SourceShape())
+    traits = traits_def(SourceShape(), ItemSemantics(ItemContract(creates=(0,))), EndpointSemantics(EndpointUse(0, "consume")))
 
     def verify_(self) -> None:
         if (
@@ -347,7 +350,7 @@ class BorrowOp(SourcedOp):
     name = "lang.borrow"
     claim = operand_def(ClaimType)
     value = result_def(PayloadType)
-    traits = traits_def(SourceShape())
+    traits = traits_def(SourceShape(), ItemSemantics(ItemContract(borrows=(0,), detached_outputs=(0,))))
 
     def verify_(self) -> None:
         if not isinstance(self.claim.type, ClaimType) or self.value.type != self.claim.type.payload:
@@ -359,7 +362,7 @@ class RetireOp(SourcedOp):
     name = "lang.retire"
     claim = operand_def(ClaimType)
     disposition = prop_def(StringAttr)
-    traits = traits_def(SourceShape())
+    traits = traits_def(SourceShape(), ItemSemantics(ItemContract(consumes=(0,))))
 
 
 @irdl_op_definition
@@ -369,7 +372,12 @@ class RequestOp(SourcedOp):
     handler = prop_def(SymbolRefAttr)
     source = prop_def(SymbolRefAttr)
     boundary = prop_def(StringAttr)
-    traits = traits_def(SourceShape(), ReferenceSemantics((("handler", "requests"), ("source", "region"))))
+    traits = traits_def(
+        SourceShape(),
+        ReferenceSemantics((("handler", "requests"), ("source", "region"))),
+        CompletionSemantics("request", "handler"),
+        DecisionSemantics(),
+    )
 
 
 @irdl_op_definition
@@ -377,7 +385,12 @@ class StopAfterOp(SourcedOp):
     name = "lang.stop_after"
     source = prop_def(SymbolRefAttr)
     target = prop_def(SymbolRefAttr)
-    traits = traits_def(SourceShape(), ReferenceSemantics((("source", "region"), ("target", "producer"))))
+    traits = traits_def(
+        SourceShape(),
+        ReferenceSemantics((("source", "region"), ("target", "producer"))),
+        CompletionSemantics("stop", "target"),
+        DecisionSemantics(),
+    )
 
 
 @irdl_op_definition

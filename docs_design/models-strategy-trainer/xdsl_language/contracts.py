@@ -136,6 +136,77 @@ class RealizationContract:
     outputs: tuple[Attribute, ...]
     completion: str = "physical_then_validate"
     outcomes: tuple[str, ...] = ("returned", "invalid_output", "raised")
+    decision: Decision = Decision(Reproducibility.UNKNOWN, RankRule.UNKNOWN)
+    result_lifetime: str = "detached_values"
+
+
+@dataclass(frozen=True)
+class Version:
+    """An observed owner version, never a request or global progress counter."""
+
+    owner: str
+    incarnation: int
+    lineage: str
+    ordinal: int
+
+
+@dataclass(frozen=True)
+class ItemContract:
+    borrows: tuple[int, ...] = ()
+    consumes: tuple[int, ...] = ()
+    creates: tuple[int, ...] = ()
+    detached_outputs: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
+class ItemSemantics(OpTrait):
+    contract: ItemContract
+
+    def describe(self, op: Operation) -> ItemContract:
+        return self.contract
+
+
+@dataclass(frozen=True)
+class EndpointUse:
+    operand: int
+    role: str
+
+
+@dataclass(frozen=True)
+class EndpointSemantics(OpTrait):
+    contract: EndpointUse
+
+    def describe(self, op: Operation) -> EndpointUse:
+        return self.contract
+
+
+@dataclass(frozen=True)
+class CompletionControl:
+    kind: str
+    source: str
+    target: str
+    boundary: str
+    registration: str = "before_source_terminal"
+    orderly_stop: str = "retain_admitted_promises"
+
+
+@dataclass(frozen=True)
+class CompletionSemantics(OpTrait):
+    kind: str
+    target_field: str
+
+    def describe(self, op: Operation) -> CompletionControl:
+        source, target = op.properties.get("source"), op.properties.get(self.target_field)
+        if source is None or target is None:
+            raise VerifyException(f"{origin(op)}: completion control requires source and target")
+        return CompletionControl(self.kind, symbol(source), symbol(target), text(op, "boundary") if self.kind == "request" else "settled")
+
+
+class DecisionSemantics(OpTrait):
+    """The same descriptor for leaf calls and completion decisions."""
+
+    def describe(self, op: Operation) -> Decision:
+        return decision(op)
 
 
 @dataclass(frozen=True)
@@ -210,7 +281,11 @@ def origin(op: Operation) -> str:
 
 def decision(op: Operation) -> Decision:
     try:
-        return Decision(Reproducibility(text(op, "reproducibility")), RankRule(text(op, "rank_rule")), strings(op, "assumptions"))
+        return Decision(
+            Reproducibility(text(op, "reproducibility")) if "reproducibility" in op.properties else Reproducibility.UNKNOWN,
+            RankRule(text(op, "rank_rule")) if "rank_rule" in op.properties else RankRule.UNKNOWN,
+            strings(op, "assumptions") if "assumptions" in op.properties else (),
+        )
     except ValueError as failed:
         raise VerifyException(f"{origin(op)}: unsupported decision declaration") from failed
 
@@ -321,4 +396,5 @@ class RealizationSemantics(OpTrait):
             text(op, "binding_version"),
             tuple(x.type for x in op.operands),
             tuple(x.type for x in op.results),
+            decision=decision(op),
         )

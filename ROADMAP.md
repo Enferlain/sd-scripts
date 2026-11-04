@@ -2,19 +2,21 @@
 
 ## Training Architecture Research
 
-The [candidate comparison](docs_design/models-strategy-trainer/candidate_comparison.md)
-consolidates original/xDSL evidence and the existing independent expectations
-for testing another candidate (`sd-scripts-syv.31.18`). xDSL is a viable
-provisional working baseline; further comparison should test a concrete
-architectural or engineering advantage. Language design, authoring constructs,
-final framework and implementations remain open; experimental dialects and
-owner APIs do not establish those choices. Shared correspondence checks protect
-readiness, execution and dependent effects without prescribing preparation order.
-The next [matched comparison](docs_design/models-strategy-trainer/matched_comparison.md)
-fixes the six existing cases, common transformation policy, machinery/diagnostic
-evidence and matched phase costs, ending with a framework recommendation and
-reversal conditions. Preparation does not establish the missing ports or a
-complete language.
+The [matched comparison](docs_design/models-strategy-trainer/machinery_comparison.md)
+records six-case xDSL/Pliron representation, transformation, diagnostic and cost
+evidence. xDSL is the selected working substrate for machinery under
+[D14](openspec/changes/rework-model-strategy-trainer/design.md), with explicit
+reconsideration conditions. Python authoring remains fixed; production APIs,
+runtime integration and numerical targets remain open.
+
+The [shared language slice](docs_design/models-strategy-trainer/xdsl_language/README.md)
+now supplies typed IR, normalization, a Torch-free lifecycle reference and
+shared contract verification for model/data-only work and an alternative scope
+(`sd-scripts-syv.31.26`, milestones 6–7). Pending obligations, stop coverage,
+affine claims, scoped access, version admission and decision declarations have
+focused controls. Milestone 8 derives execution through existing owners;
+milestone 9 qualifies integrated interruptions and interleavings. These stages
+provide bounded evidence toward G5's production design.
 
 The first matched slice now freezes the descriptive fixtures and executes paired
 B live/cold, failure/progress/drain and valid opaque-offset controls. The
@@ -38,8 +40,8 @@ connects independent producer/repeat lifetimes, actual production epochs and
 producer-owned feedback (`.31.25.6`) through the shared owner target. The six
 case meanings now have reciprocal representations. The [matched machinery record](docs_design/models-strategy-trainer/machinery_comparison.md)
 collects source-linked boundaries, diagnostics and bounded phase/process costs
-(`.31.25.7`); the substrate recommendation and reversal conditions remain the
-next task.
+(`.31.25.7`); the selected substrate and reversal conditions are now recorded in
+D14.
 
 The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
 tests that comparison through real graph/SSA regions, semantic/prepared round-trip

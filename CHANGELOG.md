@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-03]
+
+### Added
+
+- **The shared xDSL language slice now verifies composition contracts** — typed IR, normalization and a Torch-free lifecycle reference support model and data-only workflows. The shared verifier checks pending work, stop coverage, ownership, access/version policies and decision declarations, with independent lifecycle and admission controls. Prepared owner-target execution remains the next milestone.
+
 ## [2026-11-02]
 
 ### Added

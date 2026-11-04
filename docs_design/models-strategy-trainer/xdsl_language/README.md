@@ -1,14 +1,14 @@
-# Shared xDSL language slice: milestone 6
+# Shared xDSL language slice: milestones 6 and 7
 
-This isolated package implements structural construction, normalization and an
-executable lifecycle reference for the bounded slice in
+This isolated package implements structural construction, normalization,
+shared semantic verification and an executable lifecycle reference for the bounded slice in
 [D14](../../../openspec/changes/rework-model-strategy-trainer/design.md) and
 [workflow-composition](../../../openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md).
 Training and data-only work use the same operation definitions and reference
 protocols. The extra consumer scope is another composition of those definitions.
 
-**Normalization is not whole-lifetime acceptance or executable readiness.**
-Milestone 7 supplies the shared lifecycle/ownership verifier. Milestone 8
+**Normalization alone is not whole-lifetime acceptance or executable readiness.**
+[verify.py](verify.py) supplies the shared lifecycle/ownership verifier. Milestone 8
 derives prepared execution through the existing owner engine; milestone 9
 qualifies integrated interruption/interleavings. This package currently does
 not prepare or execute that owner target, train a real model, or select public
@@ -31,12 +31,15 @@ The installed traits in [contracts.py](contracts.py) return typed descriptions:
 | `FlowSemantics` | Actual payload type, aggregate outstanding/ready bounds and owner-specific admission policy with lineage metric and comparison boundary |
 | `ReferenceSemantics` | Typed request-source, request-destination, version-owner and stop references exposed for normalization and later dependency analysis |
 | `RealizationSemantics` | Versioned selected binding, actual input/output types and required physical/validation boundary |
+| `ItemSemantics` / `EndpointSemantics` | Claim admission, borrow, consumption and detached payload results; actual production/admission endpoint operands |
+| `CompletionSemantics` / `DecisionSemantics` | Source/target/boundary, registration before source completion and retention of admitted promises; the shared descriptor for leaf calls and completion decisions |
 
 A shared `Decision` description carries reproducibility/rank declarations and
 assumptions through region, flow and resource queries. Region contracts also carry explicit quiescence declarations;
 an empty declaration means none is offered. These are preserved contract
-parameters, **not verified reproducibility, distributed-execution or restoration
-claims**. Their composition checks are milestone 7 work.
+parameters. Verification derives a reproducibility class and checks declared
+cut/rank requirements; actual distributed execution and coordinated restoration
+remain deferred target evidence. Missing decision declarations mean `unknown`.
 
 Semantic symbols (`SymbolOpInterface` / `sym_name`) are distinct from source
 origins. This first slice uses one program-wide flat symbol namespace;
@@ -62,6 +65,58 @@ document. Unknown semantic fields and missing registered definitions reject.
 The normalizer checks local structure only. It does not certify producer-stop
 coverage, all-path affine ownership, capability escape, hold/wait legality,
 whole-lifetime cycles, source completeness or target feasibility.
+
+## Shared verifier and obligation boundaries
+
+`verify(normalize(module))` recomputes from a detached IR copy, using installed
+contract queries. It does not invoke bindings or read runtime observations.
+Its report contains source-attributed obligations, separate input relationships,
+whole-lifetime wait edges and reproducibility contributors. It is a recomputable
+analysis, not a readiness token; mutation requires verification again.
+
+| Obligation | Actual query and check | Independent reference witness / remaining evidence |
+| --- | --- | --- |
+| Pending work and source closure | Region and completion contracts require source closure, owned registration before completion, pending/admitted dispositions and preservation after orderly stop | Late input keeps the group open; no request creates no handler invocation; cancellation disposes pending work |
+| Producer stop | Endpoint operands resolve through actual SSA captures; the stop source must settle every dependent consumer/request lifetime | Training-only stop loses evaluation's late input; group stop retains evaluation and producer drain separately |
+| Known lifetime cycles | Child settlement, serial entry, source closure, pending ownership, stop and transferred-claim drain requirements form a wait graph | A producer preceding its own stop blocks; a transferred claim cannot wait for producer termination before its disposition; initialized bounded feedback remains valid |
+| Affine claims | Item types, borrow/consume descriptions and region execution multiplicity require one consume/transfer per path | Both exclusive branches may retire a claim; duplicate consumption, use after transfer and repeated/concurrent capture reject; explicit carry/return retains one claim |
+| Scoped references and capabilities | Capture maps resolve actual owners; capability types retain issuing access scope; retained extent and detached call/borrow results are explicit contracts | Escaped capabilities fail their later use; resource/endpoint references cannot outlive their declaration scope without a defined transfer; the program has no outgoing owner/claim transfer |
+| Access and physical extent | Resource query selects realization, separate freshness, version selector, profile and retained use extent; realization query requires physical completion then validation | Held reads retain protection through cancellation and late failure; acceptance does not establish physical settlement or resource usability |
+| Nested acquisition | Actual owner aliases and access modes must permit entry while an enclosing scope retains its live protection | Same-owner read/write and write/read/write/current-snapshot nesting reject; read/read, different owners and independently published snapshots remain valid; ambiguous aliases report an analysis limitation |
+| Production versions and admission | Flow owners must match actual production accesses; policies compare observed owner/incarnation/lineage maps at `item_admission`, using owner update ordinals | Independent reference admission matches exact-current, bounded-lag and provenance-only decisions; rejected products receive dispositions and never become consumed |
+| Reproducibility | Region, flow, access and leaf declarations combine with current-version/update overlap and competing admission/input relationships | Ordered protected/current-snapshot reads observe a fixed epoch; concurrent current selection can observe different epochs; fixed snapshots do not remove admission races |
+| Quiescence and rank claims | Cut requirements name a supported declared boundary; replicated decisions require deterministic replicated state or distribution before dependent work | Missing cuts/agreement reject as unavailable target claims; local randomness followed by distribution is valid; coordinated cuts/distribution are not implemented |
+
+`SemanticError` identifies invalid accepted meaning. `TargetLimit` identifies
+a valid contract or claim the selected analysis/target cannot establish.
+`REFERENCE_TARGET` describes the reference's explicit access/policy/scope limits;
+matching this profile is not device, thread or production qualification.
+The first version analysis supports `item_admission` and update ordinals within
+one owner lineage. Other boundaries/metrics require an installed realization.
+An open producer needs a declared progressing normal-stop control to establish
+normal settlement; external cancellation is not that proof. Conditional-only
+stop alternatives currently report a progress-analysis limitation. The analysis
+does not prove general deadlock freedom or termination of selected computation.
+
+The input report's `required_initial_owners` names external owner initialization
+requirements, not already initialized runtime state. Initialization, installed
+bindings, output validation, physical/device/collective ordering and owner
+failure/restoration protocols remain explicit preparation/execution evidence.
+The maintained leaf-call contract returns detached values; retained derivatives
+need a different, explicit lifetime contract. No arbitrary Python return value
+becomes safe merely because its static payload type is copyable.
+Input consumers are potentially reachable templates, not admitted invocations.
+A handler body without a possible request adds no fictional admission/drain
+obligation. Claim transfers are followed to their final dispositions; producer
+settlement retains those drain dependencies. Parallel branch bodies also own
+their transferred locals and dispose them on cancellation/failure, even without
+a separate region-operation invocation.
+Reference provenance follows explicit captures, yields and initialized loop
+backedges. It includes initial carries for zero-iteration/orderly-stop results
+and owners introduced by later iterations. These are conservative possible
+subjects; execution must select the actual SSA-supplied owner and observed
+version, never choose the first owner from an analysis summary. A changing owner
+carry can therefore prevent a schedule-independence claim.
 
 ## Reference semantics and observable comparison
 
@@ -113,7 +168,7 @@ results. Its fact projection is test evidence and never execution authority.
 Parent settlement also waits for accepted pending requests when no handler body
 was invoked. An incomplete source/handler composition can remain blocked;
 direct self-referential settled-source waits receive a typed diagnostic.
-Structural normalization is not the milestone-7 completeness/cycle check.
+Structural normalization alone is not the shared completeness/cycle check.
 Cancellation gives pending requests an explicit disposition.
 
 ## Fixture computations and supported reference target
@@ -137,11 +192,15 @@ handlers, unbounded-total/bounded-live producers, no-result parallel joins,
 two-alternative finite choice and declared enclosing-source completion requests.
 Its persistent resource/endpoint declarations belong to the program root;
 nested persistent declarations are rejected as a reference-target limitation.
-It models protected current reads, current-at-start isolated snapshots, initial
-published snapshots and ordinary owner updates. It records actual owner,
+It models protected current reads, current-at-start isolated snapshots, retained initial
+published snapshots and ordinary owner updates. Published snapshots remain
+available independently of subsequent live-owner writes. It records actual owner,
 incarnation, lineage and update ordinal. It realizes any-with-provenance item
-admission. Other version-admission evaluation and classification are milestone
-7/8 work. Grant profiles, arbitrary published-version selection, parallel result
+admission, exact-current admission and bounded lag. The reference implements
+admission independently of `evaluate_admission()` and emits comparison,
+rejection and disposition facts. One rejected candidate is processed per logical
+command, preserving scheduling/cancellation opportunities. Grant profiles,
+arbitrary published-version selection, parallel claim transfer, parallel result
 merging, distributed targets and coordinated cuts produce an explicit reference
 limitation or remain declaration-only; they do not become weaker semantics.
 Invocation outcomes are retained for inspection in this finite exploration
@@ -179,7 +238,11 @@ SSA remapping, explicit-capture corruption, source/symbol separation, complete
 document parsing, independent numerical expectations, late input/pending work,
 iteration admission versus orderly stop, held physical uses under cancellation,
 late failure, retained partial updates, missing/corrupted observable facts and
-fresh normal/optimized children with authoring absent. Seeded schedules are
+fresh normal/optimized children with authoring absent. Verifier controls include
+early stop, pending coverage, known cycles, actual capture remapping, claim
+duplication/branching/carry, capability escape, owner lifetime, access selection,
+multi-owner admission, missing decision metadata and unavailable cut/rank claims.
+Seeded schedules are
 bounded smoke checks; the integrated exploration/qualification gate remains
 milestone 9. Observe actual GIL state before/after imports and tests without
 forcing it. Interpreter and IR objects remain confined to their calling thread.
