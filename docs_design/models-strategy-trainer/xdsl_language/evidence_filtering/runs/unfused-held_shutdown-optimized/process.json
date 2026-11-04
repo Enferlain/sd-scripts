@@ -1,0 +1,11 @@
+{
+  "command": [
+    "/home/imi/Projects/sd-scripts/.venv-wsl/bin/python",
+    "-O",
+    "-m",
+    "xdsl_language.filter_child",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/artifacts/unfused/artifact.json",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/runs/unfused-held_shutdown-optimized/choices.json"
+  ],
+  "exit": 0
+}

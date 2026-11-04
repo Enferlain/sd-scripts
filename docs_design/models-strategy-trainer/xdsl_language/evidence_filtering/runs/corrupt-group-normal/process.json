@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/home/imi/Projects/sd-scripts/.venv-wsl/bin/python",
+    "-m",
+    "xdsl_language.filter_child",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/corrupt-group.json",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/runs/corrupt-group-normal/choices.json"
+  ],
+  "exit": 0
+}

@@ -24,22 +24,23 @@ from .contracts import (
     FlowContract,
     FlowSemantics,
     Freshness,
+    number,
+    origin,
     Protocol,
     RegionSemantics,
     ResourceSemantics,
-    Version,
-    number,
-    origin,
     symbol,
     text,
+    Version,
 )
 from .dialects import (
     BorrowOp,
+    CallOp,
     CapabilityType,
     ClaimType,
-    CallOp,
     ConstantOp,
     EndpointType,
+    OptionalPayloadType,
     PayloadType,
     ProgramOp,
     RequestOp,
@@ -175,6 +176,24 @@ class Ticket:
     versions: tuple[Version, ...] = ()
     owner: Identity | None = None
     disposition: str | None = None
+    provenance: tuple[tuple[str, int], ...] = ()
+    forwarded_to: tuple[tuple[str, int], ...] = ()
+
+
+@dataclass(frozen=True)
+class Selection:
+    present: bool
+    payload: object
+    versions: tuple[Version, ...]
+    provenance: tuple[tuple[str, int], ...]
+
+
+@dataclass(frozen=True)
+class Settlement:
+    disposition: str
+    versions: tuple[Version, ...]
+    provenance: tuple[tuple[str, int], ...]
+    forwarded_to: tuple[tuple[str, int], ...]
 
 
 @dataclass
@@ -182,10 +201,14 @@ class Stream:
     declaration: StreamOp
     outstanding: dict[int, Ticket] = field(default_factory=dict)
     ready: deque[Ticket] = field(default_factory=deque)
-    terminal: dict[int, str] = field(default_factory=dict)
+    settled: dict[int, Settlement] = field(default_factory=dict)
     next_key: int = 0
     high_water: int = 0
     closed: bool = False
+
+    @property
+    def terminal(self) -> dict[int, str]:
+        return {key: receipt.disposition for key, receipt in self.settled.items()}
 
 
 @dataclass(frozen=True)
@@ -403,22 +426,26 @@ class Reference:
             self._state(identity, State.TERMINAL)
 
     def _body(self, block: Block, args: tuple[object, ...], parent: Identity) -> Generator[Command, object, tuple[object, ...]]:
+        if len(block.args) != len(args):
+            raise ReferenceError("reference entry argument mismatch")
+        env: dict[SSAValue, object] = dict(zip(block.args, args, strict=True))
         returned: tuple[object, ...] = ()
         try:
-            returned = yield from self._body_impl(block, args, parent)
+            returned = yield from self._body_impl(block, env, parent)
             return returned
         finally:
             # Parallel branch bodies own locals without a separate region-op
             # invocation. Their claims still need disposition on failure/cancel.
-            for stream in self.streams.values():
-                for ticket in tuple(stream.outstanding.values()):
-                    if ticket.owner == parent and not any(value is ticket for value in returned):
-                        self._dispose(ticket, "cancelled" if self.cancelled else "unconsumed", parent)
+            for ticket in env.values():
+                if (
+                    isinstance(ticket, Ticket)
+                    and ticket.owner == parent
+                    and ticket.disposition is None
+                    and not any(value is ticket for value in returned)
+                ):
+                    self._dispose(ticket, "cancelled" if self.cancelled else "unconsumed", parent)
 
-    def _body_impl(self, block: Block, args: tuple[object, ...], parent: Identity) -> Generator[Command, object, tuple[object, ...]]:
-        if len(block.args) != len(args):
-            raise ReferenceError("reference entry argument mismatch")
-        env: dict[SSAValue, object] = dict(zip(block.args, args, strict=True))
+    def _body_impl(self, block: Block, env: dict[SSAValue, object], parent: Identity) -> Generator[Command, object, tuple[object, ...]]:
         for op in block.ops:
             if isinstance(op, YieldOp):
                 if isinstance(block.parent_op(), ProgramOp) and any(
@@ -447,6 +474,8 @@ class Reference:
     def _execute(self, op: Operation, args: tuple[object, ...], parent: Identity) -> Generator[Command, object, tuple[object, ...]]:
         region = op.get_trait(RegionSemantics)
         if region is not None:
+            if region.transparent:
+                return (yield from self._body(op.regions[0].block, self._entry(op, args), parent))
             return (yield from self._invoke(op, args, parent))
         command = Command("tick", op, parent)
         yield command
@@ -613,6 +642,27 @@ class Reference:
                 return (yield from self._body(op.regions[0].block, self._entry(op, args, (cap,)), identity))
             finally:
                 yield Command("release", op, identity, (cap,))
+        if protocol == Protocol.FILTER:
+            ticket = checked(args[0], Ticket)
+            if ticket.owner != identity or ticket.disposition is not None:
+                raise ReferenceError(f"{origin(op)}: filter input is not owned")
+            disposition = "failed"
+            try:
+                payload = deepcopy(ticket.payload)
+                values = yield from self._body(op.regions[0].block, self._entry(op, args, (deepcopy(payload),)), identity)
+                if len(values) != 1 or type(values[0]) is not bool:
+                    raise ReferenceError(f"{origin(op)}: filter predicate must return one boolean")
+                if self.closing:
+                    raise Cancelled("run closure prevents a new filter selection")
+                kept = values[0]
+                ticket.forwarded_to = self.product_uses.get(identity, ()) if kept else ()
+                disposition = "forwarded" if kept else "filtered_out"
+                return (Selection(kept, payload if kept else None, ticket.versions, (*ticket.provenance, (ticket.stream, ticket.key))),)
+            except Cancelled:
+                disposition = "cancelled" if self.cancelled else "discarded"
+                raise
+            finally:
+                self._dispose(ticket, disposition, identity)
         if protocol == Protocol.PRODUCER:
             stream_name = str(args[0])
             try:
@@ -626,10 +676,21 @@ class Reference:
                         values = yield from self._invoke(
                             op, (), identity, body_args=self._entry(op, args, (ticket.key,)), selected_product=ticket
                         )
+                        value = values[0]
                         ticket.versions = tuple(dict.fromkeys(self.read_versions[identity][start:]))
-                        yield Command("publish", op, identity, (ticket, values[0]))
+                        terminator = op.regions[0].block.last_op
+                        if terminator is not None and isinstance(terminator.operands[0].type, OptionalPayloadType):
+                            selected = checked(value, Selection)
+                            if not selected.present:
+                                self._dispose(ticket, "no_output", identity)
+                                continue
+                            ticket.versions = tuple(dict.fromkeys((*selected.versions, *ticket.versions)))
+                            ticket.provenance = selected.provenance
+                            value = selected.payload
+                        yield Command("publish", op, identity, (ticket, value))
                     except ReferenceError as failed:
-                        self._dispose(ticket, "cancelled" if isinstance(failed, Cancelled) else "failed", identity)
+                        if ticket.disposition is None:
+                            self._dispose(ticket, "cancelled" if isinstance(failed, Cancelled) else "failed", identity)
                         raise
             finally:
                 self.streams[stream_name].closed = True
@@ -672,14 +733,16 @@ class Reference:
         return tuple(values)
 
     def _dispose(self, ticket: Ticket, disposition: str, identity: Identity) -> None:
-        if ticket.disposition is not None:
-            raise ReferenceError(f"{ticket.stream}/{ticket.key}: duplicate item disposition")
         stream = self.streams[ticket.stream]
+        if ticket.disposition is not None or ticket.key in stream.settled:
+            raise ReferenceError(f"{ticket.stream}/{ticket.key}: duplicate item disposition")
+        if stream.outstanding.get(ticket.key) is not ticket:
+            raise ReferenceError(f"{ticket.stream}/{ticket.key}: disposition lacks the current reservation")
         ticket.disposition = disposition
         stream.outstanding.pop(ticket.key)
         if ticket in stream.ready:
             stream.ready.remove(ticket)
-        stream.terminal[ticket.key] = disposition
+        stream.settled[ticket.key] = Settlement(disposition, ticket.versions, ticket.provenance, ticket.forwarded_to)
         self._fact(ticket.stream, identity, "disposition", ticket.key, disposition)
 
     def _ready(self, command: Command) -> bool:

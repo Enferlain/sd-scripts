@@ -1,0 +1,11 @@
+{
+  "command": [
+    "/home/imi/Projects/sd-scripts/.venv-wsl/bin/python",
+    "-O",
+    "-m",
+    "xdsl_language.filter_child",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/corrupt-claim.json",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/runs/corrupt-claim-optimized/choices.json"
+  ],
+  "exit": 0
+}

@@ -12,8 +12,13 @@ Rules:
 
 ## [2026-11-04]
 
+### Fixed
+
+- **Shared language acceptance now checks ordered SSA and binding update authority** — direct uses, captures and recipes reject unavailable definitions; preparation checks actual update operands, capability issuers and resource identities before factories or physical entry. Runtime authority/version checks and prior cold artifacts remain intact.
+
 ### Added
 
+- **Shared workflow contracts now govern filtering and local fusion** — one selected read/update/unknown-effects descriptor supports preparation and transformation legality. Explicit zero-or-one filtering preserves demand, provenance and claim settlement; an xDSL SSA rewrite reduces local dispatch while preserving stage physical/validation boundaries. The independent reference, erased owner runs and cold negative controls qualify the bounded host case.
 - **The first shared xDSL slice gains integrated qualification** — seeded reference comparisons, explicit owned results after history erasure, local-stop/cancellation and late physical-failure controls, and fresh normal/optimized cold runs retain independent negative controls and exact evidence. The CPU owner target and production/language limits remain explicit.
 - **Shared xDSL workflows now derive prepared owner execution** — detached artifacts and recomputed cold correspondence drive model, data-only and rearranged compositions through the existing owner engine. Explicit snapshots, protected current access and actual-version admission retain request, physical-drain and partial-update evidence; production integration and broader schedule qualification remain open.
 

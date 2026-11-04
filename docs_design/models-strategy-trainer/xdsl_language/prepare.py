@@ -12,12 +12,17 @@ from xdsl.dialects.builtin import ModuleOp
 from xdsl.ir import Attribute, Operation, SSAValue
 
 from .contracts import (
+    AccessMode,
+    BindingContract,
+    BindingEffects,
     CompletionSemantics,
     FlowSemantics,
     origin,
     Protocol,
     RealizationSemantics,
     RegionSemantics,
+    ResourceAccess,
+    ResourceRequirement,
     ResourceSemantics,
     symbol,
     text,
@@ -25,8 +30,10 @@ from .contracts import (
 from .dialects import (
     BorrowOp,
     CallOp,
+    CapabilityType,
     ConstantOp,
     dump,
+    FusedLocalOp,
     parse,
     PayloadType,
     ProgramOp,
@@ -53,6 +60,33 @@ class BindingSpec:
     outputs: tuple[str, ...]
     version: str = "1"
     updates: tuple[int, ...] = ()
+    reads: tuple[int, ...] | None = None
+    unknown_effects: bool = True
+    resource_kinds: tuple[tuple[int, str], ...] = ()
+
+    @property
+    def contract(self) -> BindingContract:
+        positions = (*self.updates, *(self.reads or ()))
+        if (
+            not self.name
+            or not self.version
+            or type(self.unknown_effects) is not bool
+            or (self.reads is None and not self.unknown_effects)
+            or any(type(i) is not int or not 0 <= i < len(self.inputs) or self.inputs[i] != "capability" for i in positions)
+            or len(set(self.updates)) != len(self.updates)
+            or (self.reads is not None and len(set(self.reads)) != len(self.reads))
+        ):
+            raise ValueError(f"{self.name}: invalid selected binding effect/version contract")
+        kinds = dict(self.resource_kinds)
+        if len(kinds) != len(self.resource_kinds) or any(
+            type(i) is not int or i not in positions or not isinstance(kind, str) or not kind for i, kind in self.resource_kinds
+        ):
+            raise ValueError(f"{self.name}: invalid binding resource-kind requirement")
+        requirements = tuple(
+            ResourceRequirement(i, ResourceAccess.UPDATE if i in self.updates else ResourceAccess.READ, kinds.get(i))
+            for i in sorted(set(positions))
+        )
+        return BindingContract(self.name, self.version, self.inputs, self.outputs, BindingEffects(requirements, self.unknown_effects))
 
 
 @dataclass(frozen=True)
@@ -69,6 +103,7 @@ class Policy:
     target: str = "owner_cpu_v1"
     physical: str = "host_workers"
     workers: int = 2
+    fuse_local: bool = False
 
 
 @dataclass(frozen=True)
@@ -83,6 +118,15 @@ def schema(value: SSAValue) -> str:
 
 
 def data(value: object) -> object:
+    if isinstance(value, Policy) and not value.fuse_local:
+        return {name: data(getattr(value, name)) for name in ("target", "physical", "workers")}
+    if isinstance(value, BindingSpec):
+        # Absent v1 effect information remains opaque. Preserve the original
+        # artifact spelling, rather than silently upgrading it to known-pure.
+        names = ("name", "inputs", "outputs", "version", "updates")
+        if value.reads is not None or not value.unknown_effects or value.resource_kinds:
+            names += ("reads", "unknown_effects", "resource_kinds")
+        return {name: data(getattr(value, name)) for name in names}
     if isinstance(value, SSAValue):
         return data(value_source(value))
     if isinstance(value, Attribute):
@@ -158,6 +202,7 @@ _PRIMITIVES = {
     Protocol.PRODUCER: "owner.Producer",
     Protocol.ACCESS: "owner.use_or_isolated_retain",
     Protocol.CHOICE: "local_finite_choice",
+    Protocol.FILTER: "claim_filter_and_settle",
 }
 
 
@@ -178,12 +223,17 @@ def _common(left: Operation, right: Operation) -> Operation:
 
 
 def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verification, dict]:
-    if policy.target != "owner_cpu_v1" or policy.physical != "host_workers" or type(policy.workers) is not int or policy.workers < 1:
+    if (
+        policy.target != "owner_cpu_v1"
+        or policy.physical != "host_workers"
+        or type(policy.workers) is not int
+        or policy.workers < 1
+        or type(policy.fuse_local) is not bool
+    ):
         raise TargetLimit(policy.target, "target", "unsupported explicit physical realization or worker bound")
+    if any(isinstance(op, FusedLocalOp) for op in module.walk()):
+        raise CorrespondenceError("local fusion groups are derived, not authored execution claims")
     checked = verify(normalize(module), target=replace(REFERENCE_TARGET, name=policy.target))
-    normalized = checked.normalized.module
-    index, symbols = source_index(normalized), symbol_index(normalized)
-    root = next(iter(normalized.body.block.ops))
     bindings = {item.name: item for item in manifest.bindings}
     resources = {item.kind: item for item in manifest.resources}
     if (
@@ -192,11 +242,18 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
         or len(set(manifest.schemas)) != len(manifest.schemas)
     ):
         raise CorrespondenceError("duplicate installed manifest entry")
-    if any(
-        not item.version or any(i < 0 or i >= len(item.inputs) or item.inputs[i] != "capability" for i in item.updates)
-        for item in bindings.values()
-    ):
-        raise CorrespondenceError("invalid installed binding update/version contract")
+    try:
+        selected = {name: item.contract for name, item in bindings.items()}
+    except (ValueError, TypeError) as failed:
+        raise CorrespondenceError(f"invalid installed binding update/effect/version contract: {failed}") from failed
+    if policy.fuse_local:
+        from .local_rewrite import fuse
+
+        checked = verify(fuse(checked.normalized, selected), target=replace(REFERENCE_TARGET, name=policy.target))
+    analysis = Analysis(checked.normalized)
+    normalized = analysis.normalized.module
+    index, symbols = source_index(normalized), symbol_index(normalized)
+    root = next(iter(normalized.body.block.ops))
     if any(
         item.storage not in ("participant", "state") or not item.version or (item.storage == "participant" and not item.parameter)
         for item in resources.values()
@@ -232,7 +289,7 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
             raise TargetLimit(policy.target, key, "leaf realization is not installed")
         if realization:
             required = realization.describe(op)
-            installed = bindings.get(required.binding)
+            installed = selected.get(required.binding)
             if installed is None or (installed.version, installed.inputs, installed.outputs) != (
                 required.version,
                 tuple(schema(x) for x in op.operands),
@@ -242,6 +299,52 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
             for name in (*installed.inputs, *installed.outputs):
                 if name not in ("capability", "index", "bool", "scalar") and name not in manifest.schemas:
                     raise CorrespondenceError(f"{key}: payload schema {name} has no installed validator")
+            for position, name in enumerate(installed.inputs):
+                if name == "capability" and not isinstance(op.operands[position].type, CapabilityType):
+                    raise CorrespondenceError(f"{key}: binding @{installed.name} operand {position} requires an issued capability type")
+            for requirement in installed.effects.resources:
+                position = requirement.argument
+                value = op.operands[position]
+                capability = value.type
+                issuers = analysis.value_sources(value)
+                for issuer in sorted(issuers, key=origin):
+                    access = analysis.accesses.get(issuer)
+                    if access is None:
+                        raise CorrespondenceError(
+                            f"{key}: binding @{installed.name} {requirement.access} operand {position} has no scoped capability issuer"
+                        )
+                    owners = analysis.value_sources(access.subject) if access is not None else frozenset()
+                    names = ", ".join(sorted(origin(owner) for owner in owners)) or "unresolved owner"
+                    if (
+                        not isinstance(capability, CapabilityType)
+                        or capability.resource != access.subject.type
+                        or not owners
+                        or any(not isinstance(owner, ResourceOp) or owner.value.type != capability.resource for owner in owners)
+                    ):
+                        raise CorrespondenceError(
+                            f"{key}: binding @{installed.name} {requirement.access} operand {position} resource identity/type "
+                            f"does not correspond to issuer {origin(issuer)} for {names}"
+                        )
+                    if requirement.kind is not None and capability.resource.kind.data != requirement.kind:
+                        raise CorrespondenceError(
+                            f"{key}: binding @{installed.name} operand {position} requires resource kind {requirement.kind}; "
+                            f"actual {capability.resource.kind.data} from {origin(issuer)} for {names}"
+                        )
+                    allowed = (
+                        (AccessMode.OWNER_UPDATE,)
+                        if requirement.access == ResourceAccess.UPDATE
+                        else (
+                            AccessMode.SNAPSHOT,
+                            AccessMode.PROTECTED_CURRENT,
+                            AccessMode.OWNER_UPDATE,
+                        )
+                    )
+                    if capability.mode.data not in allowed or access.mode not in allowed:
+                        raise CorrespondenceError(
+                            f"{key}: binding @{installed.name} {requirement.access} operand {position} requires "
+                            f"{'owner_update' if requirement.access == ResourceAccess.UPDATE else 'read'} authority; "
+                            f"actual {access.mode} from {origin(issuer)} for {names}"
+                        )
         if control:
             description = control.describe(op)
             source = symbols[description.source]
@@ -270,7 +373,6 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
                 "completion": control.describe(op) if control else None,
             }
         )
-    analysis = Analysis(checked.normalized)
     for op, access in analysis.accesses.items():
         inner = analysis.value_sources(access.subject)
         parent = op.parent_op()
@@ -307,6 +409,9 @@ def load(artifact: Artifact, manifest: Manifest, policy: Policy) -> Prepared:
     if text(next(iter(normalized.body.block.ops)), "stage") != "normalized":
         raise CorrespondenceError("normalized artifact has the wrong compiler stage")
     checked, expected = _derive(accepted, manifest, policy)
+    from .local_rewrite import validate_groups
+
+    validate_groups(normalized, {item.name: item.contract for item in manifest.bindings})
     cold = normalize(normalized)
     if cold.structure != checked.normalized.structure:
         raise CorrespondenceError("normalized document does not correspond to accepted IR")

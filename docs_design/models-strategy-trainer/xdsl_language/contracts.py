@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from xdsl.dialects.builtin import ArrayAttr, IntegerAttr, StringAttr, SymbolRefAttr
-from xdsl.ir import Attribute, Operation, SSAValue
+from xdsl.ir import Attribute, BlockArgument, Operation, OpResult, SSAValue
 from xdsl.traits import OpTrait
 from xdsl.utils.exceptions import VerifyException
 
@@ -20,6 +20,7 @@ class Protocol(StrEnum):
     PRODUCER = "producer"
     ACCESS = "access"
     CHOICE = "choice"
+    FILTER = "filter"
 
 
 class AccessMode(StrEnum):
@@ -97,6 +98,37 @@ class RegionContract:
     settlement: str = "physical_cleanup_and_owned_products"
 
 
+class OrderedBody(OpTrait):
+    """Each body entry is initialized before ordered local result availability.
+
+    Parallel roles have separate ordered bodies. Explicit recurrence enters
+    through initialized block arguments, not forward local result references.
+    Graph execution must supply its own availability contract instead.
+    """
+
+    def verify(self, op: Operation) -> None:
+        for region in op.regions:
+            block = region.block
+            available: set[SSAValue] = set(block.args)
+            for child in block.ops:
+                for position, value in enumerate(child.operands):
+                    if value in available:
+                        continue
+                    if isinstance(value, OpResult):
+                        definition = f"{origin(value.owner)} result {value.index}"
+                    elif isinstance(value, BlockArgument):
+                        parent = value.owner.parent_op()
+                        role = parent.regions.index(value.owner.parent) if parent is not None else "external"
+                        definition = f"{origin(parent) if parent is not None else 'external body'} region {role} argument {value.index}"
+                    else:
+                        definition = "an undeclared SSA provider"
+                    raise VerifyException(
+                        f"{origin(child)} operand {position}: {definition} is unavailable in ordered body {origin(op)}; "
+                        "expected an entry argument or an earlier operation result (captures must be explicit)"
+                    )
+                available.update(child.results)
+
+
 @dataclass(frozen=True)
 class AccessContract:
     subject: SSAValue
@@ -140,6 +172,39 @@ class RealizationContract:
     result_lifetime: str = "detached_values"
 
 
+class ResourceAccess(StrEnum):
+    READ = "read"
+    UPDATE = "update"
+
+
+@dataclass(frozen=True)
+class ResourceRequirement:
+    argument: int
+    access: ResourceAccess
+    kind: str | None = None
+
+
+@dataclass(frozen=True)
+class BindingEffects:
+    resources: tuple[ResourceRequirement, ...]
+    unknown: bool
+
+    @property
+    def pure(self) -> bool:
+        return not self.unknown and not self.resources
+
+
+@dataclass(frozen=True)
+class BindingContract:
+    """Selected requirements; not an invocation grant or a returned handback."""
+
+    name: str
+    version: str
+    inputs: tuple[str, ...]
+    outputs: tuple[str, ...]
+    effects: BindingEffects
+
+
 @dataclass(frozen=True)
 class Version:
     """An observed owner version, never a request or global progress counter."""
@@ -156,6 +221,7 @@ class ItemContract:
     consumes: tuple[int, ...] = ()
     creates: tuple[int, ...] = ()
     detached_outputs: tuple[int, ...] = ()
+    forwards: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -291,10 +357,11 @@ def decision(op: Operation) -> Decision:
 
 
 @dataclass(frozen=True)
-class RegionSemantics(OpTrait):
+class RegionSemantics(OrderedBody):
     """An installed operation definition supplies the invocation protocol."""
 
     protocol: Protocol
+    transparent: bool = False
 
     def describe(self, op: Operation) -> RegionContract:
         roles = []
@@ -313,6 +380,9 @@ class RegionSemantics(OpTrait):
             elif self.protocol == Protocol.ACCESS:
                 captures = tuple(Capture(i, i, op.operands[i].type) for i in range(1, count))
                 invocation_arguments = ("owner_issued_capability",)
+            elif self.protocol == Protocol.FILTER:
+                captures = tuple(Capture(i, i, op.operands[i].type) for i in range(1, count))
+                invocation_arguments = ("detached_input_payload",)
             elif self.protocol == Protocol.CHOICE:
                 captures = tuple(Capture(i, i - 1, op.operands[i].type) for i in range(1, count))
             else:
@@ -342,6 +412,7 @@ class RegionSemantics(OpTrait):
             number(op, "max_outstanding") if self.protocol == Protocol.REQUESTS else None,
             number(op, "max_active") if self.protocol == Protocol.REQUESTS else None,
             symbol(op.properties["policy"]) if self.protocol == Protocol.REPEAT else None,
+            admission="enclosing_invocation" if self.transparent else "explicit_invocation",
         )
 
 

@@ -1,0 +1,37 @@
+{
+  "attempts": [
+    {
+      "stage": "initial ordered-SSA authority regression",
+      "failure": "Analysis normalizes and clones IR; the first check looked up original-clone operands in a different analysis instance.",
+      "correction": "Derive the index and source queries from the same analysis-owned normalized module.",
+      "evidence": "/tmp/sd-scripts-language-acceptance.hXHpd1/precheck-corrected.log"
+    },
+    {
+      "stage": "first filter reference prototype",
+      "failure": "The body cleanup scanned all claims owned by its invocation, including the filter input retained outside the predicate body. This retired the input before the filter protocol.",
+      "correction": "Body cleanup now visits its actual local environment; invocation settlement remains responsible for the enclosing claims. Predicate and filter settlement controls pass."
+    },
+    {
+      "stage": "first local fusion prototype",
+      "failure": "The new transparent region was rejected by the explicit-invocation-only lifecycle check.",
+      "correction": "The common contract explicitly selects enclosing-invocation admission for transparent sequences; reference and target preserve the parent identity."
+    },
+    {
+      "stage": "review routing for the earlier gap fixes",
+      "failure": "The callable MCP review namespace was absent and the native Sol fallback exhausted account usage without supplying an assessment.",
+      "correction": "The installed documented review-mcp CLI completed the required review successfully. The full milestone uses that same recovered route."
+    },
+    {
+      "stage": "transparent decision probe after full qualification",
+      "failure": "A derived transparent group was counted as a new unknown decision; an independently annotated deterministic chain lost reproducibility/rank eligibility.",
+      "correction": "Only original stage decisions contribute; positive and negative rank/unknown regressions pass."
+    },
+    {
+      "stage": "first disposition follow-up regression",
+      "failure": "2 reference sibling-failure tests exposed a missing post-physical run-closure check; a final predicate result could still create a selection.",
+      "correction": "Reference and owner explicitly check run closure before filter selection, preserve physical/validation facts and settle the input as discarded/cancelled.",
+      "evidence": "/tmp/sd-scripts-language-acceptance.hXHpd1/filter-followups.log"
+    }
+  ],
+  "qualification": "Three immutable qualified snapshots are retained: initial under /tmp/sd-scripts-language-acceptance.hXHpd1/initial-filtering-qualification; corrected before final small guards under /tmp/sd-scripts-language-acceptance.hXHpd1/corrected-filtering-qualification; and the final source snapshot here. The record reports the final run, not an aggregate or resampling selection."
+}

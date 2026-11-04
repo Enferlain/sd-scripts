@@ -31,6 +31,88 @@ remain distinct from static operation origins.
 - **THEN** their hierarchy, admission, pending work, effects and settlement MUST remain representable through the same shared region contract meanings
 - **AND** no dummy model, optimizer or training clock may supply otherwise missing lifecycle semantics
 
+### Requirement: Execution contracts govern SSA availability
+Every region SHALL define when operand values become available. An ordered
+body SHALL admit only its entry arguments, permitted explicit captures and
+results of earlier local operations. Other graph or recurrence execution
+SHALL use an explicit applicable rule rather than inherit ordered assumptions.
+
+#### Scenario: An ordered use or capture precedes its definition
+- **WHEN** an ordered operation uses or captures a result that is not yet available
+- **THEN** acceptance and preparation MUST reject the use before dependent execution
+- **AND** the diagnostic MUST identify the operand/use and definition
+- **AND** equivalent invalid wiring inside a recipe or its normalized expansion MUST also reject
+
+#### Scenario: Repetition passes an initialized carry
+- **WHEN** recurrence enters through a declared initialized loop argument and yields an available next value
+- **THEN** ordered-value verification MUST preserve that recurrence
+- **AND** a sibling region's entry or a later local result MUST NOT substitute for the declared argument
+
+### Requirement: One selected binding contract bounds resource effects
+Installed binding contracts SHALL declare required resource reads/updates and
+possible additional unknown effects. Preparation and transformation legality
+SHALL consume that declaration, separately from invocation authority, actual
+reported effects/outcomes and physical settlement. Requirements SHALL follow
+actual argument positions and resource identities, not an enclosing scope alone.
+
+#### Scenario: An update binding receives a read capability
+- **WHEN** an actual argument cannot satisfy its binding's declared update requirement
+- **THEN** preparation MUST reject the mismatch before dependent readiness or effects
+- **AND** the bounded corruption control MUST reject before resource factories or physical work enter
+- **AND** runtime active-authority/current-version checks MUST remain in force for executed calls
+
+#### Scenario: A captured read is used inside an unrelated writer
+- **WHEN** a call's update position refers to a captured read of one resource while another resource has an enclosing writer
+- **THEN** preparation MUST check the actual operand's issuer, resource identity/type and granted mode
+- **AND** the unrelated writer MUST NOT supply the missing authority
+
+#### Scenario: Unknown effects accompany otherwise valid selected work
+- **WHEN** a valid binding declares additional unknown effects
+- **THEN** ordinary execution MAY proceed under its declared authority and completion rules
+- **AND** transformations MUST conservatively honor the unknown effects
+- **AND** neither unknown nor undeclared effects may authorize an otherwise undeclared resource update
+
+### Requirement: Filtering declares output cardinality and claim settlement
+A filtering invocation SHALL declare zero-or-one output and exactly-once input
+disposition after required use. Retained output SHALL preserve actual input and
+version provenance. Dropped admitted work SHALL remain distinct from input
+admission rejection. Reservations, ready outputs and admitted claims SHALL
+participate in their applicable outstanding-work and backpressure contracts.
+
+#### Scenario: Filtering drops an admitted input while demand remains
+- **WHEN** a filter successfully produces no downstream item for an admitted input
+- **THEN** the input MUST receive its declared drop disposition exactly once and unused output capacity MUST be released
+- **AND** no downstream item admission or fulfilled request may be invented
+- **AND** pending retained-output demand MUST remain an enclosing obligation
+
+#### Scenario: Filtering retains a value across an independent producer lifetime
+- **WHEN** filtering forwards one admitted input into the retained-output flow
+- **THEN** its actual source association and observed version dependencies MUST remain inspectable
+- **AND** input and output claims or reservations MUST settle under their respective owners without duplication
+- **AND** consumer-group completion MAY request producer stop while physical production still needs draining
+
+#### Scenario: Stop or cancellation interrupts physical filtering
+- **WHEN** filtering has entered physical work before a stop, failure or cancellation boundary
+- **THEN** required input protection, disposition and cleanup MUST await that entered work's settlement
+- **AND** completed retained products and later independent failures MUST remain separate outcomes
+
+### Requirement: Local rewriting preserves observable contracts
+Local transformation legality SHALL follow selected effects, actual SSA
+wiring, authority and completion contracts. A legal rewrite SHALL preserve
+values, input association, stage outcomes, validation and required settlement.
+Purity alone SHALL NOT authorize removing observable coordination boundaries.
+
+#### Scenario: Adjacent pure stages have compatible wiring and boundaries
+- **WHEN** selected contracts and actual def/use relationships establish a legal local composition
+- **THEN** a rewrite MAY remap their results and realize a combined local fragment
+- **AND** stage entry, physical completion, validation, failure and source association MUST remain correct
+- **AND** the transformed representation and execution distinction MUST be inspectable
+
+#### Scenario: A valid opaque or authority boundary interrupts a local chain
+- **WHEN** otherwise compatible stages are separated by unknown effects or an incompatible authority/completion boundary
+- **THEN** the unfused valid program MUST remain executable
+- **AND** unsafe fusion and a cold artifact forging that fusion MUST reject before dependent effects
+
 ### Requirement: Requested work participates in enclosing settlement
 Accepted requests SHALL become enclosing obligations before handler admission.
 Contracts SHALL define request sources, closure, live bounds and dispositions.

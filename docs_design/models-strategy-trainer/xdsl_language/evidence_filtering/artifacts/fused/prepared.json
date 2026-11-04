@@ -1,0 +1,6318 @@
+{
+  "contributors": [
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "raw"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "kept"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "activities"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "source"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "produce.access"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "produce"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "filtering"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "filter"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "predicate"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "consumers"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "initial"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "first.local"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "first.extract"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "first.offset"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "first.double"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "first.write"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "first.publish"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "request"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "more"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "requested"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "next.local"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "next.extract"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "next.offset"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "next.double"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "next.write"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "next.publish"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "stop.filter"
+    },
+    {
+      "assumptions": [],
+      "classification": "unknown",
+      "reason": "declared computation/control/input/admission",
+      "source": "stop.source"
+    },
+    {
+      "assumptions": [],
+      "classification": "may_depend_on_schedule",
+      "reason": "input association or version-admission outcome can depend on scheduling",
+      "source": "kept"
+    }
+  ],
+  "format": "shared-owner-fragments-v1",
+  "fragments": [
+    {
+      "access": null,
+      "ancestry": [
+        "run"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.program",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\"]",
+        "origin": "\"run\"",
+        "stage": "\"normalized\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "run"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "config"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"config\"]",
+        "origin": "\"config\"",
+        "sym_name": "\"config\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"filter_config\">"
+      ],
+      "source": "config"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "products"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.resource_decl",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"products\"]",
+        "origin": "\"products\"",
+        "sym_name": "\"products\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.resource<\"filter_products\">"
+      ],
+      "source": "products"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "raw"
+      ],
+      "completion": null,
+      "flow": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "max_outstanding": 3,
+        "origin": "raw",
+        "payload": "!lang.payload<\"record\">",
+        "ready_bound": 2,
+        "versions": {
+          "admission": "any_with_provenance",
+          "boundary": "item_admission",
+          "incomparable": "reject_with_disposition",
+          "max_lag": 0,
+          "metric": "owner_update_ordinal_within_lineage",
+          "owners": [
+            "config"
+          ]
+        }
+      },
+      "operands": [],
+      "operation": "lang.stream",
+      "primitive": "local_leaf",
+      "properties": {
+        "admission": "\"any_with_provenance\"",
+        "ancestry": "[\"run\", \"raw\"]",
+        "assumptions": "[]",
+        "comparison_boundary": "\"item_admission\"",
+        "horizon": "3 : i64",
+        "max_lag": "0 : i64",
+        "metric": "\"owner_update_ordinal_within_lineage\"",
+        "origin": "\"raw\"",
+        "owners": "[@config]",
+        "rank_rule": "\"local\"",
+        "ready_bound": "2 : i64",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"raw\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.endpoint<!lang.payload<\"record\">>"
+      ],
+      "source": "raw"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "kept"
+      ],
+      "completion": null,
+      "flow": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "max_outstanding": 3,
+        "origin": "kept",
+        "payload": "!lang.payload<\"record\">",
+        "ready_bound": 2,
+        "versions": {
+          "admission": "any_with_provenance",
+          "boundary": "item_admission",
+          "incomparable": "reject_with_disposition",
+          "max_lag": 0,
+          "metric": "owner_update_ordinal_within_lineage",
+          "owners": [
+            "config"
+          ]
+        }
+      },
+      "operands": [],
+      "operation": "lang.stream",
+      "primitive": "local_leaf",
+      "properties": {
+        "admission": "\"any_with_provenance\"",
+        "ancestry": "[\"run\", \"kept\"]",
+        "assumptions": "[]",
+        "comparison_boundary": "\"item_admission\"",
+        "horizon": "3 : i64",
+        "max_lag": "0 : i64",
+        "metric": "\"owner_update_ordinal_within_lineage\"",
+        "origin": "\"kept\"",
+        "owners": "[@config]",
+        "rank_rule": "\"local\"",
+        "ready_bound": "2 : i64",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"kept\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.endpoint<!lang.payload<\"record\">>"
+      ],
+      "source": "kept"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "raw",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "kept",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "config",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "products",
+          "region": null
+        }
+      ],
+      "operation": "lang.parallel",
+      "primitive": "owner.Together",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\"]",
+        "assumptions": "[]",
+        "origin": "\"activities\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"activities\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "activities",
+        "policy": null,
+        "protocol": "parallel",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"filter_config\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_config\">",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"filter_config\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_config\">",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"filter_config\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_config\">",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 2,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"filter_config\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_config\">",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 3,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.resource<\"filter_config\">"
+              },
+              {
+                "argument": 3,
+                "operand": 3,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_config\">",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 4,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "activities",
+        "version": 1
+      },
+      "results": [],
+      "source": "activities"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "source"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "activities",
+          "region": 0
+        },
+        {
+          "index": 2,
+          "origin": "activities",
+          "region": 0
+        }
+      ],
+      "operation": "lang.producer",
+      "primitive": "owner.Producer",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"source\"]",
+        "assumptions": "[]",
+        "origin": "\"source\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"source\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "source",
+        "policy": null,
+        "protocol": "producer",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.resource<\"filter_config\">"
+              }
+            ],
+            "entries": [
+              "!lang.resource<\"filter_config\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "production_index"
+            ],
+            "yields": [
+              "!lang.payload<\"record\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "source",
+        "version": 1
+      },
+      "results": [],
+      "source": "source"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "published",
+        "mode": "snapshot",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 0,
+          "origin": "source",
+          "region": 0
+        },
+        "version_selector": "initial"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "source",
+        "produce.access"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "source",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "source",
+          "region": 0
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"source\", \"produce.access\"]",
+        "assumptions": "[]",
+        "freshness": "\"published\"",
+        "mode": "\"snapshot\"",
+        "origin": "\"produce.access\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"produce.access\"",
+        "version": "1 : i64",
+        "version_selector": "\"initial\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "produce.access",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"index\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"filter_config\">, \"snapshot\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"record\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "produce.access",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "produce.access"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "source",
+        "produce.access",
+        "produce"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "produce.access",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "produce.access",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"source\", \"produce.access\", \"produce\"]",
+        "binding": "@filter_produce",
+        "binding_version": "\"1\"",
+        "origin": "\"produce\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_produce",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"filter_config\">, \"snapshot\">",
+          "!lang.payload<\"index\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"record\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "produce"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "source",
+        "produce.access",
+        "produce.access.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "produce",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"source\", \"produce.access\", \"produce.access.yield\"]",
+        "origin": "\"produce.access.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "produce.access.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "source",
+        "source.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "produce.access",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"source\", \"source.body.yield\"]",
+        "origin": "\"source.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "source.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "source.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"source.branch.yield\"]",
+        "origin": "\"source.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "source.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "activities",
+          "region": 1
+        },
+        {
+          "index": 0,
+          "origin": "activities",
+          "region": 1
+        }
+      ],
+      "operation": "lang.producer",
+      "primitive": "owner.Producer",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering\"]",
+        "assumptions": "[]",
+        "origin": "\"filtering\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"filtering\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "filtering",
+        "policy": null,
+        "protocol": "producer",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 1,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "production_index"
+            ],
+            "yields": [
+              "!lang.optional<!lang.payload<\"record\">>"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "filtering",
+        "version": 1
+      },
+      "results": [],
+      "source": "filtering"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering",
+        "filter.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "filtering",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering\", \"filter.take\"]",
+        "origin": "\"filter.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "filter.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering",
+        "filter"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "filter.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.filter",
+      "primitive": "claim_filter_and_settle",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering\", \"filter\"]",
+        "assumptions": "[]",
+        "origin": "\"filter\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"filter\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "filter",
+        "policy": null,
+        "protocol": "filter",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [],
+            "entries": [
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "detached_input_payload"
+            ],
+            "yields": [
+              "!lang.payload<\"bool\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "filter",
+        "version": 1
+      },
+      "results": [
+        "!lang.optional<!lang.payload<\"record\">>"
+      ],
+      "source": "filter"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering",
+        "filter",
+        "predicate"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "filter",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering\", \"filter\", \"predicate\"]",
+        "binding": "@filter_even",
+        "binding_version": "\"1\"",
+        "origin": "\"predicate\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_even",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"record\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"bool\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"bool\">"
+      ],
+      "source": "predicate"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering",
+        "filter",
+        "filter.predicate.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "predicate",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering\", \"filter\", \"filter.predicate.yield\"]",
+        "origin": "\"filter.predicate.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "filter.predicate.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering",
+        "filter.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "filter",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering\", \"filter.body.yield\"]",
+        "origin": "\"filter.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "filter.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "filtering.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"filtering.branch.yield\"]",
+        "origin": "\"filtering.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "filtering.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "activities",
+          "region": 2
+        },
+        {
+          "index": 3,
+          "origin": "activities",
+          "region": 2
+        }
+      ],
+      "operation": "lang.parallel",
+      "primitive": "owner.Together",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\"]",
+        "assumptions": "[]",
+        "origin": "\"consumers\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"consumers\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "consumers",
+        "policy": null,
+        "protocol": "parallel",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          },
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 1,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "consumers",
+        "version": 1
+      },
+      "results": [],
+      "source": "consumers"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "consumers",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "consumers",
+          "region": 0
+        }
+      ],
+      "operation": "lang.once",
+      "primitive": "local_sequence",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\"]",
+        "assumptions": "[]",
+        "origin": "\"initial\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"initial\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "initial",
+        "policy": null,
+        "protocol": "once",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_products\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "initial",
+        "version": 1
+      },
+      "results": [],
+      "source": "initial"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "initial",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.take\"]",
+        "origin": "\"first.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "first.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.take.borrow"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.borrow",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.take.borrow\"]",
+        "origin": "\"first.take.borrow\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "first.take.borrow"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.take.borrow",
+          "region": null
+        }
+      ],
+      "operation": "lang.once",
+      "primitive": "local_sequence",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\"]",
+        "assumptions": "[]",
+        "origin": "\"first.local\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"first.local\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "first.local",
+        "policy": null,
+        "protocol": "once",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.payload<\"record\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "first.local",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "first.local"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local",
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.local",
+          "region": 0
+        }
+      ],
+      "operation": "lang.fused_local",
+      "primitive": "local_sequence",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\", \"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\"]",
+        "members": "[\"first.extract\", \"first.offset\", \"first.double\"]",
+        "origin": "\"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\"",
+        "quiescence": "[]",
+        "sym_name": "\"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "enclosing_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "policy": null,
+        "protocol": "sequence",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.payload<\"record\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local",
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "first.extract"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\", \"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\", \"first.extract\"]",
+        "binding": "@filter_extract",
+        "binding_version": "\"1\"",
+        "origin": "\"first.extract\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_extract",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"record\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "first.extract"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local",
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "first.offset"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.extract",
+          "region": null
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\", \"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\", \"first.offset\"]",
+        "binding": "@filter_offset",
+        "binding_version": "\"1\"",
+        "origin": "\"first.offset\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_offset",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "first.offset"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local",
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "first.double"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.offset",
+          "region": null
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\", \"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\", \"first.double\"]",
+        "binding": "@filter_double",
+        "binding_version": "\"1\"",
+        "origin": "\"first.double\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_double",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "first.double"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local",
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.double",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\", \"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4\", \"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield\"]",
+        "origin": "\"$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.local",
+        "first.local.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.local\", \"first.local.yield\"]",
+        "origin": "\"first.local.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "first.local.yield"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "owner_protocol",
+        "mode": "owner_update",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "initial",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.write"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "initial",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "first.take.borrow",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "first.local",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.write\"]",
+        "assumptions": "[]",
+        "freshness": "\"owner_protocol\"",
+        "mode": "\"owner_update\"",
+        "origin": "\"first.write\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"first.write\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "first.write",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"record\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.payload<\"scalar\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"filter_products\">, \"owner_update\">",
+              "!lang.payload<\"record\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "first.write",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "first.write"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.write",
+        "first.publish"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.write",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "first.write",
+          "region": 0
+        },
+        {
+          "index": 2,
+          "origin": "first.write",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.write\", \"first.publish\"]",
+        "binding": "@filter_publish",
+        "binding_version": "\"1\"",
+        "origin": "\"first.publish\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_publish",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"filter_products\">, \"owner_update\">",
+          "!lang.payload<\"record\">",
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "first.publish"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.write",
+        "first.write.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.publish",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.write\", \"first.write.yield\"]",
+        "origin": "\"first.write.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "first.write.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "first.retire"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "first.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.retire",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"first.retire\"]",
+        "disposition": "\"consumed\"",
+        "origin": "\"first.retire\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "first.retire"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "two"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.constant",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"two\"]",
+        "literal": "\"2\"",
+        "origin": "\"two\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "two"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "request"
+      ],
+      "completion": {
+        "boundary": "settled_success",
+        "kind": "request",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "initial",
+        "target": "more"
+      },
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "two",
+          "region": null
+        }
+      ],
+      "operation": "lang.request",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"request\"]",
+        "boundary": "\"settled_success\"",
+        "handler": "@more",
+        "origin": "\"request\"",
+        "source": "@initial",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "request"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial",
+        "initial.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial\", \"initial.body.yield\"]",
+        "origin": "\"initial.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "initial.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "initial.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"initial.branch.yield\"]",
+        "origin": "\"initial.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "initial.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "consumers",
+          "region": 1
+        },
+        {
+          "index": 1,
+          "origin": "consumers",
+          "region": 1
+        }
+      ],
+      "operation": "lang.requests",
+      "primitive": "owner.Requested",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\"]",
+        "assumptions": "[]",
+        "max_active": "1 : i64",
+        "max_outstanding": "1 : i64",
+        "origin": "\"more\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "request_schema": "!lang.payload<\"scalar\">",
+        "sources": "[@initial]",
+        "sym_name": "\"more\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": 1,
+        "max_outstanding": 1,
+        "origin": "more",
+        "policy": null,
+        "protocol": "requests",
+        "quiescence": [],
+        "request_sources": [
+          "initial"
+        ],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_products\">",
+              "!lang.request<!lang.payload<\"scalar\">>"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "accepted_request"
+            ],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "more",
+        "version": 1
+      },
+      "results": [],
+      "source": "more"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "more",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "more",
+          "region": 0
+        }
+      ],
+      "operation": "lang.repeat",
+      "primitive": "owner.Repeat",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\"]",
+        "assumptions": "[]",
+        "carry_count": "0 : i64",
+        "limit": "2 : i64",
+        "origin": "\"requested\"",
+        "policy": "@bounded_count",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"requested\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": 2,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "requested",
+        "policy": "bounded_count",
+        "protocol": "repeat",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.endpoint<!lang.payload<\"record\">>"
+              },
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.resource<\"filter_products\">"
+              }
+            ],
+            "entries": [
+              "!lang.endpoint<!lang.payload<\"record\">>",
+              "!lang.resource<\"filter_products\">",
+              "!lang.payload<\"index\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "iteration_index"
+            ],
+            "yields": []
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "requested",
+        "version": 1
+      },
+      "results": [],
+      "source": "requested"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.take"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "requested",
+          "region": 0
+        }
+      ],
+      "operation": "lang.take",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.take\"]",
+        "origin": "\"next.take\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.claim<!lang.payload<\"record\">>"
+      ],
+      "source": "next.take"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.take.borrow"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.borrow",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.take.borrow\"]",
+        "origin": "\"next.take.borrow\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [
+        "!lang.payload<\"record\">"
+      ],
+      "source": "next.take.borrow"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.take.borrow",
+          "region": null
+        }
+      ],
+      "operation": "lang.once",
+      "primitive": "local_sequence",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\"]",
+        "assumptions": "[]",
+        "origin": "\"next.local\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"next.local\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "next.local",
+        "policy": null,
+        "protocol": "once",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.payload<\"record\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "next.local",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "next.local"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local",
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.local",
+          "region": 0
+        }
+      ],
+      "operation": "lang.fused_local",
+      "primitive": "local_sequence",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\", \"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\"]",
+        "members": "[\"next.extract\", \"next.offset\", \"next.double\"]",
+        "origin": "\"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\"",
+        "quiescence": "[]",
+        "sym_name": "\"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": {
+        "admission": "enclosing_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "policy": null,
+        "protocol": "sequence",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 0,
+                "operand": 0,
+                "type": "!lang.payload<\"record\">"
+              }
+            ],
+            "entries": [
+              "!lang.payload<\"record\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local",
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "next.extract"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\", \"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\", \"next.extract\"]",
+        "binding": "@filter_extract",
+        "binding_version": "\"1\"",
+        "origin": "\"next.extract\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_extract",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"record\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "next.extract"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local",
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "next.offset"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.extract",
+          "region": null
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\", \"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\", \"next.offset\"]",
+        "binding": "@filter_offset",
+        "binding_version": "\"1\"",
+        "origin": "\"next.offset\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_offset",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "next.offset"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local",
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "next.double"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.offset",
+          "region": null
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\", \"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\", \"next.double\"]",
+        "binding": "@filter_double",
+        "binding_version": "\"1\"",
+        "origin": "\"next.double\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_double",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "next.double"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local",
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.double",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\", \"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb\", \"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield\"]",
+        "origin": "\"$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.local",
+        "next.local.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.local\", \"next.local.yield\"]",
+        "origin": "\"next.local.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "next.local.yield"
+    },
+    {
+      "access": {
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "extent": "body_and_admitted_uses_settled",
+        "freshness": "owner_protocol",
+        "mode": "owner_update",
+        "profile": "ordinary_owner",
+        "subject": {
+          "index": 1,
+          "origin": "requested",
+          "region": 0
+        },
+        "version_selector": "current"
+      },
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.write"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 1,
+          "origin": "requested",
+          "region": 0
+        },
+        {
+          "index": 0,
+          "origin": "next.take.borrow",
+          "region": null
+        },
+        {
+          "index": 0,
+          "origin": "next.local",
+          "region": null
+        }
+      ],
+      "operation": "lang.access",
+      "primitive": "owner.use_or_isolated_retain",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.write\"]",
+        "assumptions": "[]",
+        "freshness": "\"owner_protocol\"",
+        "mode": "\"owner_update\"",
+        "origin": "\"next.write\"",
+        "profile": "\"ordinary_owner\"",
+        "quiescence": "[]",
+        "rank_rule": "\"local\"",
+        "reproducibility": "\"unknown\"",
+        "sym_name": "\"next.write\"",
+        "version": "1 : i64",
+        "version_selector": "\"current\""
+      },
+      "realization": null,
+      "region": {
+        "admission": "explicit_invocation",
+        "completion": "required_children_and_sources_closed",
+        "decision": {
+          "assumptions": [],
+          "rank": "local",
+          "reproducibility": "unknown"
+        },
+        "interruption": "close_admission_then_settle",
+        "limit": null,
+        "max_active": null,
+        "max_outstanding": null,
+        "origin": "next.write",
+        "policy": null,
+        "protocol": "access",
+        "quiescence": [],
+        "request_sources": [],
+        "roles": [
+          {
+            "captures": [
+              {
+                "argument": 1,
+                "operand": 1,
+                "type": "!lang.payload<\"record\">"
+              },
+              {
+                "argument": 2,
+                "operand": 2,
+                "type": "!lang.payload<\"scalar\">"
+              }
+            ],
+            "entries": [
+              "!lang.capability<!lang.resource<\"filter_products\">, \"owner_update\">",
+              "!lang.payload<\"record\">",
+              "!lang.payload<\"scalar\">"
+            ],
+            "index": 0,
+            "invocation_arguments": [
+              "owner_issued_capability"
+            ],
+            "yields": [
+              "!lang.payload<\"scalar\">"
+            ]
+          }
+        ],
+        "settlement": "physical_cleanup_and_owned_products",
+        "symbol": "next.write",
+        "version": 1
+      },
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "next.write"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.write",
+        "next.publish"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.write",
+          "region": 0
+        },
+        {
+          "index": 1,
+          "origin": "next.write",
+          "region": 0
+        },
+        {
+          "index": 2,
+          "origin": "next.write",
+          "region": 0
+        }
+      ],
+      "operation": "lang.call",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.write\", \"next.publish\"]",
+        "binding": "@filter_publish",
+        "binding_version": "\"1\"",
+        "origin": "\"next.publish\"",
+        "version": "1 : i64"
+      },
+      "realization": {
+        "binding": "filter_publish",
+        "completion": "physical_then_validate",
+        "decision": {
+          "assumptions": [],
+          "rank": "unknown",
+          "reproducibility": "unknown"
+        },
+        "inputs": [
+          "!lang.capability<!lang.resource<\"filter_products\">, \"owner_update\">",
+          "!lang.payload<\"record\">",
+          "!lang.payload<\"scalar\">"
+        ],
+        "outcomes": [
+          "returned",
+          "invalid_output",
+          "raised"
+        ],
+        "outputs": [
+          "!lang.payload<\"scalar\">"
+        ],
+        "result_lifetime": "detached_values",
+        "version": "1"
+      },
+      "region": null,
+      "results": [
+        "!lang.payload<\"scalar\">"
+      ],
+      "source": "next.publish"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.write",
+        "next.write.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.publish",
+          "region": null
+        }
+      ],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.write\", \"next.write.yield\"]",
+        "origin": "\"next.write.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "next.write.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "next.retire"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [
+        {
+          "index": 0,
+          "origin": "next.take",
+          "region": null
+        }
+      ],
+      "operation": "lang.retire",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"next.retire\"]",
+        "disposition": "\"consumed\"",
+        "origin": "\"next.retire\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "next.retire"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "requested",
+        "requested.iteration.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"requested\", \"requested.iteration.yield\"]",
+        "origin": "\"requested.iteration.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "requested.iteration.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more",
+        "more.body.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more\", \"more.body.yield\"]",
+        "origin": "\"more.body.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "more.body.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumers",
+        "more.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumers\", \"more.branch.yield\"]",
+        "origin": "\"more.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "more.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "consumer.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"consumer.branch.yield\"]",
+        "origin": "\"consumer.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "consumer.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "stop.filter"
+      ],
+      "completion": {
+        "boundary": "settled",
+        "kind": "stop",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "consumers",
+        "target": "filtering"
+      },
+      "flow": null,
+      "operands": [],
+      "operation": "lang.stop_after",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"stop.filter\"]",
+        "origin": "\"stop.filter\"",
+        "source": "@consumers",
+        "target": "@filtering",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "stop.filter"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "stop.filter.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"stop.filter.branch.yield\"]",
+        "origin": "\"stop.filter.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "stop.filter.branch.yield"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "stop.source"
+      ],
+      "completion": {
+        "boundary": "settled",
+        "kind": "stop",
+        "orderly_stop": "retain_admitted_promises",
+        "registration": "before_source_terminal",
+        "source": "filtering",
+        "target": "source"
+      },
+      "flow": null,
+      "operands": [],
+      "operation": "lang.stop_after",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"stop.source\"]",
+        "origin": "\"stop.source\"",
+        "source": "@filtering",
+        "target": "@source",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "stop.source"
+    },
+    {
+      "access": null,
+      "ancestry": [
+        "run",
+        "activities",
+        "stop.source.branch.yield"
+      ],
+      "completion": null,
+      "flow": null,
+      "operands": [],
+      "operation": "lang.yield",
+      "primitive": "local_leaf",
+      "properties": {
+        "ancestry": "[\"run\", \"activities\", \"stop.source.branch.yield\"]",
+        "origin": "\"stop.source.branch.yield\"",
+        "version": "1 : i64"
+      },
+      "realization": null,
+      "region": null,
+      "results": [],
+      "source": "stop.source.branch.yield"
+    }
+  ],
+  "inputs": [
+    {
+      "consumers": [
+        "filter.take"
+      ],
+      "flow": "raw",
+      "producer": "source",
+      "required_initial_owners": [
+        "config"
+      ]
+    },
+    {
+      "consumers": [
+        "first.take",
+        "next.take"
+      ],
+      "flow": "kept",
+      "producer": "filtering",
+      "required_initial_owners": [
+        "config"
+      ]
+    }
+  ],
+  "manifest": {
+    "bindings": [
+      {
+        "inputs": [
+          "capability",
+          "index"
+        ],
+        "name": "filter_produce",
+        "outputs": [
+          "record"
+        ],
+        "reads": [
+          0
+        ],
+        "resource_kinds": [
+          [
+            0,
+            "filter_config"
+          ]
+        ],
+        "unknown_effects": false,
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "record"
+        ],
+        "name": "filter_even",
+        "outputs": [
+          "bool"
+        ],
+        "reads": [],
+        "resource_kinds": [],
+        "unknown_effects": false,
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "record"
+        ],
+        "name": "filter_extract",
+        "outputs": [
+          "scalar"
+        ],
+        "reads": [],
+        "resource_kinds": [],
+        "unknown_effects": false,
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "scalar"
+        ],
+        "name": "filter_offset",
+        "outputs": [
+          "scalar"
+        ],
+        "reads": [],
+        "resource_kinds": [],
+        "unknown_effects": false,
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "scalar"
+        ],
+        "name": "filter_double",
+        "outputs": [
+          "scalar"
+        ],
+        "reads": [],
+        "resource_kinds": [],
+        "unknown_effects": false,
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "scalar"
+        ],
+        "name": "filter_opaque",
+        "outputs": [
+          "scalar"
+        ],
+        "reads": [],
+        "resource_kinds": [],
+        "unknown_effects": true,
+        "updates": [],
+        "version": "1"
+      },
+      {
+        "inputs": [
+          "capability",
+          "record",
+          "scalar"
+        ],
+        "name": "filter_publish",
+        "outputs": [
+          "scalar"
+        ],
+        "reads": [
+          0
+        ],
+        "resource_kinds": [
+          [
+            0,
+            "filter_products"
+          ]
+        ],
+        "unknown_effects": false,
+        "updates": [
+          0
+        ],
+        "version": "1"
+      }
+    ],
+    "resources": [
+      {
+        "kind": "filter_config",
+        "learning_rate": 0.01,
+        "parameter": "",
+        "storage": "state",
+        "version": "1"
+      },
+      {
+        "kind": "filter_products",
+        "learning_rate": 0.01,
+        "parameter": "",
+        "storage": "state",
+        "version": "1"
+      }
+    ],
+    "schemas": [
+      "record"
+    ]
+  },
+  "obligations": [
+    {
+      "kind": "ownership",
+      "required": [
+        "affine per invocation/path",
+        "scoped capability extent",
+        "detached leaf results"
+      ],
+      "source": "run"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "config",
+        "snapshot",
+        "published",
+        "initial",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "produce.access"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "products",
+        "owner_update",
+        "owner_protocol",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "first.write"
+    },
+    {
+      "kind": "access_evidence",
+      "required": [
+        "products",
+        "owner_update",
+        "owner_protocol",
+        "current",
+        "body_and_admitted_uses_settled"
+      ],
+      "source": "next.write"
+    },
+    {
+      "kind": "request_closure",
+      "required": [
+        "initial",
+        "pending/admitted dispositions",
+        "no fictional handler invocation"
+      ],
+      "source": "more"
+    },
+    {
+      "kind": "completion_request",
+      "required": [
+        "initial",
+        "more",
+        "before_source_terminal",
+        "retain_admitted_promises"
+      ],
+      "source": "request"
+    },
+    {
+      "kind": "producer_stop",
+      "required": [
+        "filtering",
+        "source",
+        "request stop without awaiting producer termination"
+      ],
+      "source": "stop.source"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "filter"
+      ],
+      "source": "filter.take"
+    },
+    {
+      "kind": "producer_stop",
+      "required": [
+        "consumers",
+        "filtering",
+        "request stop without awaiting producer termination"
+      ],
+      "source": "stop.filter"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "first.retire"
+      ],
+      "source": "first.take"
+    },
+    {
+      "kind": "producer_drain",
+      "required": [
+        "next.retire"
+      ],
+      "source": "next.take"
+    }
+  ],
+  "reproducibility": "unknown",
+  "target": {
+    "fuse_local": true,
+    "physical": "host_workers",
+    "target": "owner_cpu_v1",
+    "workers": 3
+  },
+  "waits": [
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.entry"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.settled"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.settled"
+      ],
+      [
+        "first.double",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.settled"
+      ],
+      [
+        "first.extract",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.settled"
+      ],
+      [
+        "first.offset",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "entry"
+      ],
+      [
+        "first.local",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "settled"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "settled"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield",
+        "entry"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield",
+        "entry"
+      ],
+      [
+        "first.double",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield",
+        "settled"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4/yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.entry"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.settled"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.settled"
+      ],
+      [
+        "next.double",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.settled"
+      ],
+      [
+        "next.extract",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.settled"
+      ],
+      [
+        "next.offset",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "entry"
+      ],
+      [
+        "next.local",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "settled"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "settled"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield",
+        "entry"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield",
+        "entry"
+      ],
+      [
+        "next.double",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield",
+        "settled"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb/yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body0.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body0.settled"
+      ],
+      [
+        "source",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body0.settled"
+      ],
+      [
+        "source.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body1.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body1.settled"
+      ],
+      [
+        "filtering",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body1.settled"
+      ],
+      [
+        "filtering.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body2.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body2.settled"
+      ],
+      [
+        "consumer.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body2.settled"
+      ],
+      [
+        "consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body3.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body3.settled"
+      ],
+      [
+        "stop.filter",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body3.settled"
+      ],
+      [
+        "stop.filter.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body4.entry"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body4.settled"
+      ],
+      [
+        "stop.source",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "body4.settled"
+      ],
+      [
+        "stop.source.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "entry"
+      ],
+      [
+        "kept",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body2.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body3.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "body4.settled"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "activities",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "activities",
+        "settled"
+      ],
+      [
+        "more",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "config",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "config",
+        "settled"
+      ],
+      [
+        "config",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumer.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body2.entry"
+      ]
+    ],
+    [
+      [
+        "consumer.branch.yield",
+        "entry"
+      ],
+      [
+        "consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumer.branch.yield",
+        "settled"
+      ],
+      [
+        "consumer.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body0.entry"
+      ],
+      [
+        "consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body0.settled"
+      ],
+      [
+        "initial",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body0.settled"
+      ],
+      [
+        "initial.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body1.entry"
+      ],
+      [
+        "consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body1.settled"
+      ],
+      [
+        "more",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "body1.settled"
+      ],
+      [
+        "more.branch.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "entry"
+      ],
+      [
+        "activities",
+        "body2.entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "consumers",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "consumers",
+        "body1.settled"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "consumers",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "consumers",
+        "settled"
+      ],
+      [
+        "more",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "body0.entry"
+      ],
+      [
+        "filter",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "body0.settled"
+      ],
+      [
+        "filter.predicate.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "body0.settled"
+      ],
+      [
+        "predicate",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "entry"
+      ],
+      [
+        "filter.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "entry"
+      ],
+      [
+        "filtering",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "settled"
+      ],
+      [
+        "filter",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "filter",
+        "settled"
+      ],
+      [
+        "filter",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filter.body.yield",
+        "entry"
+      ],
+      [
+        "filter",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filter.body.yield",
+        "entry"
+      ],
+      [
+        "filtering",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "filter.body.yield",
+        "settled"
+      ],
+      [
+        "filter.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filter.predicate.yield",
+        "entry"
+      ],
+      [
+        "filter",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "filter.predicate.yield",
+        "entry"
+      ],
+      [
+        "predicate",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filter.predicate.yield",
+        "settled"
+      ],
+      [
+        "filter.predicate.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filter.take",
+        "entry"
+      ],
+      [
+        "filtering",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "filter.take",
+        "settled"
+      ],
+      [
+        "filter.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "body0.entry"
+      ],
+      [
+        "filtering",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "body0.settled"
+      ],
+      [
+        "filter",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "body0.settled"
+      ],
+      [
+        "filter.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "body0.settled"
+      ],
+      [
+        "filter.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "entry"
+      ],
+      [
+        "activities",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "settled"
+      ],
+      [
+        "filtering",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "settled"
+      ],
+      [
+        "filtering",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "settled"
+      ],
+      [
+        "first.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "settled"
+      ],
+      [
+        "next.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering",
+        "settled"
+      ],
+      [
+        "stop.filter",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "filtering.branch.yield",
+        "entry"
+      ],
+      [
+        "filtering",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "filtering.branch.yield",
+        "settled"
+      ],
+      [
+        "filtering.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.double",
+        "entry"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.double",
+        "entry"
+      ],
+      [
+        "first.offset",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.double",
+        "settled"
+      ],
+      [
+        "first.double",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.extract",
+        "entry"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.extract",
+        "settled"
+      ],
+      [
+        "first.extract",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "body0.entry"
+      ],
+      [
+        "first.local",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "body0.settled"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "body0.settled"
+      ],
+      [
+        "first.local.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "entry"
+      ],
+      [
+        "first.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "settled"
+      ],
+      [
+        "first.local",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "first.local",
+        "settled"
+      ],
+      [
+        "first.local",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.local.yield",
+        "entry"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.local.yield",
+        "entry"
+      ],
+      [
+        "first.local",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.local.yield",
+        "settled"
+      ],
+      [
+        "first.local.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.offset",
+        "entry"
+      ],
+      [
+        "$fused/7a972af8b5151b1befc99a8e4c936fe69fe1250f0c64d1daf1a97ea85a4130a4",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.offset",
+        "entry"
+      ],
+      [
+        "first.extract",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.offset",
+        "settled"
+      ],
+      [
+        "first.offset",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.publish",
+        "entry"
+      ],
+      [
+        "first.write",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.publish",
+        "settled"
+      ],
+      [
+        "first.publish",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.retire",
+        "entry"
+      ],
+      [
+        "first.write",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.retire",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.retire",
+        "settled"
+      ],
+      [
+        "first.retire",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.take",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.take",
+        "settled"
+      ],
+      [
+        "first.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.take.borrow",
+        "entry"
+      ],
+      [
+        "first.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.take.borrow",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.take.borrow",
+        "settled"
+      ],
+      [
+        "first.take.borrow",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "body0.entry"
+      ],
+      [
+        "first.write",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "body0.settled"
+      ],
+      [
+        "first.publish",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "body0.settled"
+      ],
+      [
+        "first.write.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "entry"
+      ],
+      [
+        "first.local",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "settled"
+      ],
+      [
+        "first.write",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "first.write",
+        "settled"
+      ],
+      [
+        "first.write",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "first.write.yield",
+        "entry"
+      ],
+      [
+        "first.publish",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "first.write.yield",
+        "entry"
+      ],
+      [
+        "first.write",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "first.write.yield",
+        "settled"
+      ],
+      [
+        "first.write.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.entry"
+      ],
+      [
+        "initial",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "first.local",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "first.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "first.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "first.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "first.write",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "initial.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "request",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "body0.settled"
+      ],
+      [
+        "two",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "settled"
+      ],
+      [
+        "initial",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "initial",
+        "settled"
+      ],
+      [
+        "initial",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "initial.body.yield",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "initial.body.yield",
+        "entry"
+      ],
+      [
+        "request",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial.body.yield",
+        "settled"
+      ],
+      [
+        "initial.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "initial.branch.yield",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "initial.branch.yield",
+        "entry"
+      ],
+      [
+        "initial",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "initial.branch.yield",
+        "settled"
+      ],
+      [
+        "initial.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "kept",
+        "entry"
+      ],
+      [
+        "raw",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "kept",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "kept",
+        "settled"
+      ],
+      [
+        "kept",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "more",
+        "body0.entry"
+      ],
+      [
+        "more",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "more",
+        "body0.settled"
+      ],
+      [
+        "more.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "more",
+        "body0.settled"
+      ],
+      [
+        "requested",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "more",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "more",
+        "settled"
+      ],
+      [
+        "initial",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "more",
+        "settled"
+      ],
+      [
+        "more",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "more",
+        "settled"
+      ],
+      [
+        "more",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "more.body.yield",
+        "entry"
+      ],
+      [
+        "more",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "more.body.yield",
+        "entry"
+      ],
+      [
+        "requested",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "more.body.yield",
+        "settled"
+      ],
+      [
+        "more.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "more.branch.yield",
+        "entry"
+      ],
+      [
+        "consumers",
+        "body1.entry"
+      ]
+    ],
+    [
+      [
+        "more.branch.yield",
+        "entry"
+      ],
+      [
+        "more",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "more.branch.yield",
+        "settled"
+      ],
+      [
+        "more.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.double",
+        "entry"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.double",
+        "entry"
+      ],
+      [
+        "next.offset",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.double",
+        "settled"
+      ],
+      [
+        "next.double",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.extract",
+        "entry"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.extract",
+        "settled"
+      ],
+      [
+        "next.extract",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "body0.entry"
+      ],
+      [
+        "next.local",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "body0.settled"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "body0.settled"
+      ],
+      [
+        "next.local.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "entry"
+      ],
+      [
+        "next.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "entry"
+      ],
+      [
+        "requested",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "settled"
+      ],
+      [
+        "next.local",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "next.local",
+        "settled"
+      ],
+      [
+        "next.local",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.local.yield",
+        "entry"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.local.yield",
+        "entry"
+      ],
+      [
+        "next.local",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.local.yield",
+        "settled"
+      ],
+      [
+        "next.local.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.offset",
+        "entry"
+      ],
+      [
+        "$fused/caeb9a29f38a1ceed02cda10016297c819e48eb96c4baca5d70d9d133ff8cccb",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.offset",
+        "entry"
+      ],
+      [
+        "next.extract",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.offset",
+        "settled"
+      ],
+      [
+        "next.offset",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.publish",
+        "entry"
+      ],
+      [
+        "next.write",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.publish",
+        "settled"
+      ],
+      [
+        "next.publish",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.retire",
+        "entry"
+      ],
+      [
+        "next.write",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.retire",
+        "entry"
+      ],
+      [
+        "requested",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.retire",
+        "settled"
+      ],
+      [
+        "next.retire",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.take",
+        "entry"
+      ],
+      [
+        "requested",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.take",
+        "settled"
+      ],
+      [
+        "next.take",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.take.borrow",
+        "entry"
+      ],
+      [
+        "next.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.take.borrow",
+        "entry"
+      ],
+      [
+        "requested",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.take.borrow",
+        "settled"
+      ],
+      [
+        "next.take.borrow",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "body0.entry"
+      ],
+      [
+        "next.write",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "body0.settled"
+      ],
+      [
+        "next.publish",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "body0.settled"
+      ],
+      [
+        "next.write.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "entry"
+      ],
+      [
+        "next.local",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "entry"
+      ],
+      [
+        "requested",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "settled"
+      ],
+      [
+        "next.write",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "next.write",
+        "settled"
+      ],
+      [
+        "next.write",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "next.write.yield",
+        "entry"
+      ],
+      [
+        "next.publish",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "next.write.yield",
+        "entry"
+      ],
+      [
+        "next.write",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "next.write.yield",
+        "settled"
+      ],
+      [
+        "next.write.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "predicate",
+        "entry"
+      ],
+      [
+        "filter",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "predicate",
+        "settled"
+      ],
+      [
+        "predicate",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "produce",
+        "entry"
+      ],
+      [
+        "produce.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "produce",
+        "settled"
+      ],
+      [
+        "produce",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "produce.access",
+        "body0.entry"
+      ],
+      [
+        "produce.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "produce.access",
+        "body0.settled"
+      ],
+      [
+        "produce",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "produce.access",
+        "body0.settled"
+      ],
+      [
+        "produce.access.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "produce.access",
+        "entry"
+      ],
+      [
+        "source",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "produce.access",
+        "settled"
+      ],
+      [
+        "produce.access",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "produce.access",
+        "settled"
+      ],
+      [
+        "produce.access",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "produce.access.yield",
+        "entry"
+      ],
+      [
+        "produce",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "produce.access.yield",
+        "entry"
+      ],
+      [
+        "produce.access",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "produce.access.yield",
+        "settled"
+      ],
+      [
+        "produce.access.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "products",
+        "entry"
+      ],
+      [
+        "config",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "products",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "products",
+        "settled"
+      ],
+      [
+        "products",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "raw",
+        "entry"
+      ],
+      [
+        "products",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "raw",
+        "entry"
+      ],
+      [
+        "run",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "raw",
+        "settled"
+      ],
+      [
+        "raw",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "request",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "request",
+        "entry"
+      ],
+      [
+        "two",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "request",
+        "settled"
+      ],
+      [
+        "request",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.entry"
+      ],
+      [
+        "requested",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.settled"
+      ],
+      [
+        "next.local",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.settled"
+      ],
+      [
+        "next.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.settled"
+      ],
+      [
+        "next.take",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.settled"
+      ],
+      [
+        "next.take.borrow",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.settled"
+      ],
+      [
+        "next.write",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "body0.settled"
+      ],
+      [
+        "requested.iteration.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "entry"
+      ],
+      [
+        "more",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "settled"
+      ],
+      [
+        "requested",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "requested",
+        "settled"
+      ],
+      [
+        "requested",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "requested.iteration.yield",
+        "entry"
+      ],
+      [
+        "next.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "requested.iteration.yield",
+        "entry"
+      ],
+      [
+        "requested",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "requested.iteration.yield",
+        "settled"
+      ],
+      [
+        "requested.iteration.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.entry"
+      ],
+      [
+        "run",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "activities",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "config",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "kept",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "products",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "body0.settled"
+      ],
+      [
+        "raw",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "settled"
+      ],
+      [
+        "more",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "settled"
+      ],
+      [
+        "run",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "run",
+        "settled"
+      ],
+      [
+        "run",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "source",
+        "body0.entry"
+      ],
+      [
+        "source",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "source",
+        "body0.settled"
+      ],
+      [
+        "produce.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "source",
+        "body0.settled"
+      ],
+      [
+        "source.body.yield",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "source",
+        "entry"
+      ],
+      [
+        "activities",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "source",
+        "settled"
+      ],
+      [
+        "filter",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "source",
+        "settled"
+      ],
+      [
+        "source",
+        "body0.settled"
+      ]
+    ],
+    [
+      [
+        "source",
+        "settled"
+      ],
+      [
+        "source",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "source",
+        "settled"
+      ],
+      [
+        "stop.source",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "source.body.yield",
+        "entry"
+      ],
+      [
+        "produce.access",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "source.body.yield",
+        "entry"
+      ],
+      [
+        "source",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "source.body.yield",
+        "settled"
+      ],
+      [
+        "source.body.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "source.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "source.branch.yield",
+        "entry"
+      ],
+      [
+        "source",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "source.branch.yield",
+        "settled"
+      ],
+      [
+        "source.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "stop.filter",
+        "entry"
+      ],
+      [
+        "activities",
+        "body3.entry"
+      ]
+    ],
+    [
+      [
+        "stop.filter",
+        "settled"
+      ],
+      [
+        "consumers",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "stop.filter",
+        "settled"
+      ],
+      [
+        "stop.filter",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "stop.filter.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body3.entry"
+      ]
+    ],
+    [
+      [
+        "stop.filter.branch.yield",
+        "entry"
+      ],
+      [
+        "stop.filter",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "stop.filter.branch.yield",
+        "settled"
+      ],
+      [
+        "stop.filter.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "stop.source",
+        "entry"
+      ],
+      [
+        "activities",
+        "body4.entry"
+      ]
+    ],
+    [
+      [
+        "stop.source",
+        "settled"
+      ],
+      [
+        "filtering",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "stop.source",
+        "settled"
+      ],
+      [
+        "stop.source",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "stop.source.branch.yield",
+        "entry"
+      ],
+      [
+        "activities",
+        "body4.entry"
+      ]
+    ],
+    [
+      [
+        "stop.source.branch.yield",
+        "entry"
+      ],
+      [
+        "stop.source",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "stop.source.branch.yield",
+        "settled"
+      ],
+      [
+        "stop.source.branch.yield",
+        "entry"
+      ]
+    ],
+    [
+      [
+        "two",
+        "entry"
+      ],
+      [
+        "first.retire",
+        "settled"
+      ]
+    ],
+    [
+      [
+        "two",
+        "entry"
+      ],
+      [
+        "initial",
+        "body0.entry"
+      ]
+    ],
+    [
+      [
+        "two",
+        "settled"
+      ],
+      [
+        "two",
+        "entry"
+      ]
+    ]
+  ]
+}

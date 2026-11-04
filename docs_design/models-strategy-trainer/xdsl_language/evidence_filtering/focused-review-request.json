@@ -1,0 +1,23 @@
+{
+  "diff_target": "HEAD",
+  "focus": [
+    "docs_design/models-strategy-trainer/xdsl_language/verify.py",
+    "docs_design/models-strategy-trainer/xdsl_language/local_rewrite.py",
+    "docs_design/models-strategy-trainer/xdsl_language/reference.py",
+    "docs_design/models-strategy-trainer/xdsl_language/target.py",
+    "docs_design/models-strategy-trainer/xdsl_language/filter_checks.py",
+    "docs_design/models-strategy-trainer/xdsl_language/filter_runtime.py",
+    "docs_design/models-strategy-trainer/xdsl_language/test_filtering.py",
+    "docs_design/models-strategy-trainer/xdsl_language/test_filter_target.py"
+  ],
+  "context": [
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/followup-scope.md",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/review-resolutions.json",
+    "docs_design/models-strategy-trainer/xdsl_language/evidence_filtering/verification.json",
+    "docs_design/models-strategy-trainer/xdsl_language/filter_checks.py",
+    "docs_design/models-strategy-trainer/xdsl_language/filter_runtime.py",
+    "docs_design/models-strategy-trainer/xdsl_language/local_rewrite.py"
+  ],
+  "task": "Focused review of corrections after the completed full milestone review /tmp/review-mcp-run-mhii64yi. The attached followup-scope describes the exact delta. Please inspect transparent-group reproducibility/rank preservation without hiding original unknown decisions; post-physical filter closure and sibling-failure dispositions; strict duplicate/impostor settlement with cleanup guards; and the strengthened interrupted-receipt oracle/regressions. Focus on those corrections and any necessary dependencies, rather than repeating the entire milestone review. The new untracked helper files are attached in full. New gates: 449 owner/language tests, 410 Torch-free plus 3 expected optional module skips; Ruff/format/ty; all 60 fresh normal/-O cold children and 16 independent paired schedules rerun successfully; ordinary GIL remains off without forcing; 645 protected sources/reports/evidence unchanged. Original qualification and review are retained separately. Do not modify files. Report actionable findings and limits honestly.",
+  "timeout_seconds": 1500
+}

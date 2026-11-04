@@ -50,6 +50,12 @@ notes.
   bounded research supplies G5 evidence;
   it does not adopt experimental APIs or select a numerical backend. Selected
   computational regions may later lower through a qualified MLIR boundary.
+- Extend that bounded shared slice with ordered SSA availability and early
+  binding-authority checks, one minimal read/update/unknown-effects contract,
+  zero-or-one filtering with explicit claim/provenance/demand settlement, and
+  one contract-driven local rewrite. Keep the independent reference, cold
+  correspondence and interruption checks; do not infer a broader vocabulary,
+  performance claim or production readiness from this extension.
 
 ## Capabilities
 

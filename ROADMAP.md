@@ -20,6 +20,13 @@ adds seeded reference comparisons, history erasure and detached normal/optimized
 owner execution with independent negative controls. These stages
 provide bounded evidence toward G5's production design.
 
+The next bounded extension (`sd-scripts-syv.31.28`, milestone 10) adds ordered
+SSA/selected-authority rejection, shared binding effects, actual zero-or-one
+filtering and a contract-driven local fusion rewrite. Independent expected
+products and surviving flow receipts check requested demand, provenance and
+settlement through interruption and diagnostic erasure. The [filtering case](docs_design/models-strategy-trainer/xdsl_language/filtering.md)
+records its contracts, separate physical calls and explicit host/production limits.
+
 The first matched slice now freezes the descriptive fixtures and executes paired
 B live/cold, failure/progress/drain and valid opaque-offset controls. The
 [xDSL lifetime port](docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md)

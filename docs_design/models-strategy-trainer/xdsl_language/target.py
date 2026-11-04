@@ -33,10 +33,24 @@ from .contracts import (
     text,
     Version,
 )
-from .dialects import BorrowOp, CallOp, ConstantOp, ProgramOp, RequestOp, ResourceOp, RetireOp, StopAfterOp, StreamOp, TakeOp, YieldOp
+from .dialects import (
+    BorrowOp,
+    CallOp,
+    ConstantOp,
+    FusedLocalOp,
+    OptionalPayloadType,
+    ProgramOp,
+    RequestOp,
+    ResourceOp,
+    RetireOp,
+    StopAfterOp,
+    StreamOp,
+    TakeOp,
+    YieldOp,
+)
 from .normalize import source_index, symbol_index
 from .prepare import BindingSpec, Manifest, Prepared, ResourceSpec, _common, load, schema
-from .reference import Fact, Identity, Outcome, Request, State, Ticket
+from .reference import Fact, Identity, Outcome, Request, Selection, Settlement, State, Ticket
 from .verify import Analysis, Comparison, TargetLimit, evaluate_admission
 
 
@@ -134,10 +148,14 @@ class Flow:
     declaration: StreamOp
     capacity: asyncio.BoundedSemaphore
     active: dict[int, Ticket] = field(default_factory=dict)
-    terminal: dict[int, str] = field(default_factory=dict)
+    settled: dict[int, Settlement] = field(default_factory=dict)
     next_key: int = 0
     high_water: int = 0
     changed: asyncio.Event = field(default_factory=asyncio.Event)
+
+    @property
+    def terminal(self) -> dict[int, str]:
+        return {key: receipt.disposition for key, receipt in self.settled.items()}
 
 
 @dataclass
@@ -198,6 +216,7 @@ class Runtime:
         self._live: dict[Identity, Outcome] = {}
         self.ordinals: dict[tuple[Identity, str], int] = defaultdict(int)
         self.call_counts: dict[str, int] = defaultdict(int)
+        self.local_dispatches: dict[str, int] = defaultdict(int)
         self.entry_counts: dict[str, int] = defaultdict(int)
         self.inputs: dict[Identity, tuple[tuple[str, int], ...]] = {}
         self.products: dict[Identity, tuple[tuple[str, int], ...]] = {}
@@ -411,8 +430,13 @@ class Runtime:
                     env[op.results[0]] = text(op, "sym_name")
                     continue
                 args = tuple(env[value] for value in op.operands)
+                contract = op.get_trait(RegionSemantics)
+                if isinstance(op, CallOp | FusedLocalOp):
+                    self.local_dispatches[origin(op)] += 1
                 result = (
-                    await self._invoke(op, args, identity) if op.get_trait(RegionSemantics) else await self.compiled[op](args, identity)
+                    await self._invoke(op, args, identity)
+                    if contract is not None and not contract.transparent
+                    else await self.compiled[op](args, identity)
                 )
                 if len(result) != len(op.results):
                     raise ExecutionError(f"{origin(op)}: target result arity mismatch")
@@ -420,7 +444,12 @@ class Runtime:
             return ()
         finally:
             for value in env.values():
-                if isinstance(value, Ticket) and value.owner == identity and all(value is not output for output in returned):
+                if (
+                    isinstance(value, Ticket)
+                    and value.owner == identity
+                    and value.disposition is None
+                    and all(value is not output for output in returned)
+                ):
                     self._dispose(value, "cancelled" if self.cancelled else "unconsumed", identity)
 
     async def _invoke(
@@ -507,6 +536,11 @@ class Runtime:
                 if body_args is None:
                     await self._close_source(op, identity, outcome)
             finally:
+                # Admission may be interrupted after ownership transfer but
+                # before the body (and its local cleanup) has been entered.
+                for value in incoming:
+                    if isinstance(value, Ticket) and value.owner == identity and value.disposition is None:
+                        self._dispose(value, "cancelled" if self.cancelled else "unconsumed", identity)
                 outcome.cleanup, outcome.cancel_requested = True, self.cancelled
                 outcome.stop_requested = self._is_stopped(op, identity)
                 self._state(identity, State.TERMINAL)
@@ -525,6 +559,17 @@ class Runtime:
                 del self._live[identity]
 
     def _compile(self, op: Operation):
+        if isinstance(op, FusedLocalOp):
+            stages = tuple(op.body.block.ops)[:-1]
+            # Only integer indices enter generated code. Source names and
+            # user payloads remain data in the already-verified stage table.
+            lines = ["async def fused(args, identity):"]
+            for index in range(len(stages)):
+                lines.append(f"    args = await call(stages[{index}], args, identity)")
+            lines.append("    return args")
+            namespace = {"call": self._call, "stages": stages}
+            exec(compile("\n".join(lines), "<verified-local-fusion>", "exec"), namespace)
+            return namespace["fused"]
         if isinstance(op, ProgramOp):
 
             async def program(args, identity):
@@ -632,6 +677,27 @@ class Runtime:
                     return await self._body(op.regions[0].block, self._entry(op, args, (cap,)), identity)
                 finally:
                     self._fact(origin(op), identity, "released", cap.version)
+        if protocol == Protocol.FILTER:
+            ticket = args[0]
+            if not isinstance(ticket, Ticket) or ticket.owner != identity or ticket.disposition is not None:
+                raise ExecutionError(f"{origin(op)}: filter input is not owned")
+            disposition = "failed"
+            try:
+                payload = deepcopy(ticket.payload)
+                values = await self._body(op.regions[0].block, self._entry(op, args, (deepcopy(payload),)), identity)
+                if len(values) != 1 or type(values[0]) is not bool:
+                    raise ExecutionError(f"{origin(op)}: filter predicate must return one boolean")
+                if self.cancelled or self.failed:
+                    raise asyncio.CancelledError("run closure prevents a new filter selection")
+                kept = values[0]
+                ticket.forwarded_to = self.products.get(identity, ()) if kept else ()
+                disposition = "forwarded" if kept else "filtered_out"
+                return (Selection(kept, payload if kept else None, ticket.versions, (*ticket.provenance, (ticket.stream, ticket.key))),)
+            except asyncio.CancelledError:
+                disposition = "cancelled" if self.cancelled else "discarded"
+                raise
+            finally:
+                self._dispose(ticket, disposition, identity)
         if protocol == Protocol.PRODUCER:
             stream = str(args[0])
             flow = self.flows[stream]
@@ -671,8 +737,19 @@ class Runtime:
                     start = len(self.read_versions[identity])
                     try:
                         result = await self._invoke(op, (), identity, body_args=self._entry(op, args, (key,)), product=ticket)
-                        ticket.payload = deepcopy(result[0])
+                        value = result[0]
                         ticket.versions = tuple(dict.fromkeys(self.read_versions[identity][start:]))
+                        terminator = op.regions[0].block.last_op
+                        if terminator is not None and isinstance(terminator.operands[0].type, OptionalPayloadType):
+                            if not isinstance(value, Selection):
+                                raise ExecutionError(f"{origin(op)}: zero-or-one completion lacks its selection envelope")
+                            if not value.present:
+                                self._dispose(ticket, "no_output", identity)
+                                continue
+                            ticket.versions = tuple(dict.fromkeys((*value.versions, *ticket.versions)))
+                            ticket.provenance = value.provenance
+                            value = value.payload
+                        ticket.payload = deepcopy(value)
                         if stop_event.is_set() or text(op, "sym_name") in self.stopped:
                             self._dispose(ticket, "discarded", identity)
                         else:
@@ -691,7 +768,8 @@ class Runtime:
                             if interrupted and stop_event.is_set()
                             else "failed"
                         )
-                        self._dispose(ticket, disposition, identity)
+                        if ticket.disposition is None:
+                            self._dispose(ticket, disposition, identity)
                         raise
 
             async def cleanup(_context):
@@ -1029,7 +1107,7 @@ class Runtime:
                     raise ExecutionError("input exhausted before required admission")
                 key = min(feed.ready)
                 ticket = feed.ready.pop(key).value
-                if ticket.disposition is not None or key in flow.terminal:
+                if ticket.disposition is not None or key in flow.settled:
                     feed.changed.notify_all()
                     continue
                 comparison = tuple(self._version(owner) for owner in contract.versions.owners)
@@ -1058,12 +1136,14 @@ class Runtime:
             await asyncio.sleep(0)
 
     def _dispose(self, ticket: Ticket, disposition: str, identity: Identity) -> None:
-        if ticket.disposition is not None:
-            return
         flow = self.flows[ticket.stream]
+        if ticket.disposition is not None or ticket.key in flow.settled:
+            raise ExecutionError(f"{ticket.stream}/{ticket.key}: duplicate item disposition")
+        if flow.active.get(ticket.key) is not ticket:
+            raise ExecutionError(f"{ticket.stream}/{ticket.key}: disposition lacks the current reservation")
         ticket.disposition = disposition
         self.state.feeds[ticket.stream].ready.pop(ticket.key, None)
-        flow.terminal[ticket.key] = disposition
+        flow.settled[ticket.key] = Settlement(disposition, ticket.versions, ticket.provenance, ticket.forwarded_to)
         del flow.active[ticket.key]
         flow.capacity.release()
         flow.changed.set()

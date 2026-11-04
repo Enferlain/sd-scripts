@@ -1,0 +1,50 @@
+{
+  "initial_review": "/tmp/review-mcp-run-mhii64yi",
+  "corrections": [
+    {
+      "id": 1,
+      "result": "Removed redundant payload-type test; retained actual unary signature/type checks."
+    },
+    {
+      "id": 2,
+      "result": "Explicit post-physical run-closure guard in both executors, matching discarded/cancelled labels and a held sibling-failure witness."
+    },
+    {
+      "id": 3,
+      "result": "Duplicate or impostor settlement rejects before ledger/permit mutation; cleanup guards live claims and preserves completed dispositions."
+    },
+    {
+      "id": 4,
+      "result": "All forwarding/drop receipts are checked under completion, partial progress, failure and cancellation; corrupted interrupted provenance rejects."
+    },
+    {
+      "id": "additional-probe",
+      "result": "Transparent groups add no decision contributor; deterministic and unknown-stage rank controls pass."
+    }
+  ],
+  "focused_review": "/tmp/review-mcp-run-d64v05hs",
+  "focused_verdict": "All five corrections are implemented as described; no blocking issue.",
+  "focused_findings": [
+    {
+      "id": "F1",
+      "status": "addressed",
+      "change": "Explicit forwarding_provider semantic diagnostic before lookup of an unsupported non-flow provenance provider."
+    },
+    {
+      "id": "F2",
+      "status": "addressed",
+      "change": "Reference producer exception cleanup skips an already settled ticket, matching owner cleanup."
+    },
+    {
+      "id": "F3",
+      "status": "documented limit",
+      "change": "The oracle pins every forwarded/dropped receipt and the controlled sibling-failure input; it does not independently pin every never-published cancelled reservation version."
+    },
+    {
+      "id": "F4",
+      "status": "qualified target detail",
+      "change": "Semaphore permit introspection is confined to the CPython qualification harness, not language semantics."
+    }
+  ],
+  "post_review_validation": "The two small requested guard corrections rerun integrated suites and the complete cold qualification. No further full review was required for these local guards."
+}

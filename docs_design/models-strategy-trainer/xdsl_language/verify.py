@@ -28,6 +28,8 @@ from .contracts import (
     FlowSemantics,
     Freshness,
     ItemSemantics,
+    number,
+    origin,
     Protocol,
     RankRule,
     RealizationSemantics,
@@ -35,13 +37,11 @@ from .contracts import (
     RegionSemantics,
     Reproducibility,
     ResourceSemantics,
+    text,
     Version,
     VersionPolicy,
-    number,
-    origin,
-    text,
 )
-from .dialects import CapabilityType, ClaimType, ConstantOp, EndpointType, ProgramOp, ResourceOp, ResourceType, YieldOp
+from .dialects import CapabilityType, ClaimType, ConstantOp, EndpointType, OptionalPayloadType, ProgramOp, ResourceOp, ResourceType, YieldOp
 from .normalize import Normalized, Structure, normalize, source_index, symbol_index
 
 
@@ -256,7 +256,10 @@ class Analysis:
             if trait is not None:
                 contract = trait.describe(op)
                 self.regions[op] = contract
-                self.decisions[op] = contract.decision
+                # A transparent realization has no new admission/decision.
+                # Its original source stages remain the decision contributors.
+                if not trait.transparent:
+                    self.decisions[op] = contract.decision
             flow = op.get_trait(FlowSemantics)
             if flow is not None:
                 self.flows[op] = flow.describe(op)
@@ -360,6 +363,11 @@ class Analysis:
                 if parent in self.flows or isinstance(parent, ResourceOp):
                     found.add(parent)
                     continue
+                endpoint = parent.get_trait(EndpointSemantics)
+                item = parent.get_trait(ItemSemantics)
+                if endpoint is not None and item is not None and current.index in item.describe(parent).creates:
+                    pending.append(parent.operands[endpoint.describe(parent).operand])
+                    continue
                 if parent in self.regions:
                     contract = self.regions[parent]
                     if contract.protocol == Protocol.REPEAT:
@@ -406,6 +414,8 @@ class Analysis:
                         self.error("item_contract", op, "claim positions do not match actual types")
                 if any(not 0 <= index < len(op.results) for index in uses.detached_outputs):
                     self.error("item_contract", op, "detached result position is absent")
+                if any(index not in uses.consumes for index in uses.forwards):
+                    self.error("item_contract", op, "forwarded provenance requires a consumed claim")
                 if (uses.borrows or uses.consumes) and any(
                     not isinstance(value.type, ClaimType) and index not in uses.detached_outputs for index, value in enumerate(op.results)
                 ):
@@ -423,7 +433,11 @@ class Analysis:
                         for c in role.captures
                     ):
                         self.error("capture_mapping", op, "capture provider/index/type does not match the actual operands")
-                captured_claims = [i for i, value in enumerate(op.operands) if isinstance(value.type, ClaimType)]
+                captured_claims = [
+                    i
+                    for i, value in enumerate(op.operands)
+                    if isinstance(value.type, ClaimType) and (uses is None or i not in uses.consumes)
+                ]
                 for index in captured_claims:
                     carried = contract.protocol == Protocol.REPEAT and index >= len(op.operands) - number(op, "carry_count")
                     if any(sum(c.operand == index for c in role.captures) != (0 if carried else 1) for role in contract.roles):
@@ -447,7 +461,7 @@ class Analysis:
                 ):
                     self.error("physical_boundary", op, "entered uses must retain physical completion and validation")
                 if declared.result_lifetime != "detached_values" or any(
-                    isinstance(v.type, CapabilityType | ResourceType | EndpointType | ClaimType) for v in op.results
+                    isinstance(v.type, CapabilityType | ResourceType | EndpointType | ClaimType | OptionalPayloadType) for v in op.results
                 ):
                     self.error("result_lifetime", op, "this leaf contract returns detached values, not owner references or retained views")
             for value in (*op.operands, *op.results):
@@ -533,8 +547,14 @@ class Analysis:
     def lifecycle(self) -> None:
         requests = [(op, control) for op, control in self.controls.items() if control.kind == "request"]
         for op, contract in self.regions.items():
+            region = op.get_trait(RegionSemantics)
+            admission = (
+                "enclosing_invocation"
+                if region is not None and region.transparent and contract.protocol == Protocol.SEQUENCE
+                else "explicit_invocation"
+            )
             if (
-                contract.admission != "explicit_invocation"
+                contract.admission != admission
                 or contract.interruption != "close_admission_then_settle"
                 or contract.settlement != "physical_cleanup_and_owned_products"
             ):
@@ -680,6 +700,31 @@ class Analysis:
                 if flow not in self.flows:
                     self.error("endpoint_provider", op, "endpoint does not resolve to a declared flow")
                 (producers if use.role == "produce" else consumers)[flow].append(op)
+        dependencies_by_flow: dict[Operation, set[str]] = {flow: set() for flow in self.flows}
+        forwarded: dict[Operation, set[Operation]] = {flow: set() for flow in self.flows}
+        for flow, candidates in producers.items():
+            for producer in candidates:
+                for access, use in self.accesses.items():
+                    if producer.is_ancestor(access):
+                        dependencies_by_flow[flow].update(text(owner, "sym_name") for owner in self.value_sources(use.subject))
+                for child in producer.walk():
+                    item = child.get_trait(ItemSemantics)
+                    if item is not None:
+                        for position in item.describe(child).forwards:
+                            forwarded[flow].update(self.value_sources(child.operands[position]))
+        # Forwarding preserves actual upstream versions, rather than sampling
+        # an unrelated current version when the output happens to be published.
+        while True:
+            changed = False
+            for flow, upstream in forwarded.items():
+                before = len(dependencies_by_flow[flow])
+                for source in upstream:
+                    if source not in dependencies_by_flow:
+                        self.error("forwarding_provider", flow, f"forwarded claim resolves to non-flow provider {origin(source)}")
+                    dependencies_by_flow[flow].update(dependencies_by_flow[source])
+                changed |= before != len(dependencies_by_flow[flow])
+            if not changed:
+                break
         inputs = []
         for flow, contract in self.flows.items():
             if not producers[flow] and not consumers[flow]:
@@ -688,10 +733,7 @@ class Analysis:
                 self.error("flow_producer", flow, "this flow contract requires one actual producer")
             producer = producers[flow][0]
             active_consumers = [consumer for consumer in consumers[flow] if consumer in self.reachable]
-            dependencies = set()
-            for access, use in self.accesses.items():
-                if producer.is_ancestor(access):
-                    dependencies.update(text(owner, "sym_name") for owner in self.value_sources(use.subject))
+            dependencies = dependencies_by_flow[flow]
             if dependencies != set(contract.versions.owners) or len(set(contract.versions.owners)) != len(contract.versions.owners):
                 self.error("production_versions", flow, "declared owners do not match actual production access/capture dependencies")
             if not contract.versions.boundary or not contract.versions.metric:

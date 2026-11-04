@@ -27,6 +27,7 @@ from .reference import CallResult, Reference, Request, StandIn, State, Ticket, U
 from .target import Binding, Controls, Effect, ExecutionError, Installed, ResourceBinding, Result, Runtime, backend, graph, owners
 from .target_bindings import capability, installed, model
 from .test_verify import counter_program, version_flow
+from .test_prepare import two_capability_program
 from .verify import SemanticError, TargetLimit
 
 
@@ -34,6 +35,44 @@ async def until(predicate, *, timeout=10):
     async with asyncio.timeout(timeout):
         while not predicate():
             await asyncio.sleep(0.001)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("cold", [False, True])
+async def test_incompatible_binding_authority_rejects_before_factories_and_physical_entry(cold):
+    factories, entered = [], []
+
+    def initialize(value):
+        factories.append(value)
+        return value
+
+    def mutate(args):
+        entered.append(args[0].resource)
+        value = args[0].value + 1
+        return Result((value,), (Effect(0, "assign", value),))
+
+    bindings = Installed(
+        (Binding(BindingSpec("mutate", ("capability", "capability"), ("scalar",), updates=(0,)), mutate),),
+        (ResourceBinding(ResourceSpec("counter", "state"), initialize, lambda value: None),),
+        {},
+    )
+    good = prepare(two_capability_program(reverse=True), bindings.manifest, Policy())
+    control = Runtime(good, bindings, {"first": 1, "second": 2})
+    await asyncio.wait_for(control.run(), 10)
+    assert len(factories) == 2 and entered == ["second"]
+    assert control.value("first") == 1 and control.value("second") == 3
+    factories.clear()
+    entered.clear()
+    bad = two_capability_program()
+    with pytest.raises(CorrespondenceError, match=r"mutate.*operand 0.*read.first for first"):
+        if cold:
+            from .dialects import dump
+
+            plan = load(replace(good.artifact, accepted=dump(bad)), bindings.manifest, Policy())
+        else:
+            plan = prepare(bad, bindings.manifest, Policy())
+        await Runtime(plan, bindings, {"first": 1, "second": 2}).run()
+    assert factories == entered == []
 
 
 def facts(runtime, kind, owner=None):

@@ -56,6 +56,7 @@ from .contracts import (
     ItemContract,
     ItemSemantics,
     number,
+    OrderedBody,
     origin,
     Protocol,
     RealizationSemantics,
@@ -86,6 +87,12 @@ class EndpointType(ParametrizedAttribute, TypeAttribute):
 @irdl_attr_definition
 class ClaimType(ParametrizedAttribute, TypeAttribute):
     name = "lang.claim"
+    payload: PayloadType
+
+
+@irdl_attr_definition
+class OptionalPayloadType(ParametrizedAttribute, TypeAttribute):
+    name = "lang.optional"
     payload: PayloadType
 
 
@@ -153,7 +160,19 @@ class CaptureShape(OpTrait):
                 if not expected or not isinstance(expected[0], EndpointType):
                     raise VerifyException(f"{origin(op)}: producer requires a typed endpoint")
                 outputs = (expected[0].payload,)
+                if role.yields == (OptionalPayloadType(expected[0].payload),):
+                    outputs = role.yields
                 expected = (*expected[1:], index_type())
+            elif contract.protocol == Protocol.FILTER:
+                if not expected or not isinstance(expected[0], ClaimType):
+                    raise VerifyException(f"{origin(op)}: filter requires one owned input claim")
+                payload = expected[0].payload
+                if tuple(value.type for value in op.results) != (OptionalPayloadType(payload),):
+                    raise VerifyException(f"{origin(op)}: filter must return an explicit zero-or-one detached payload")
+                if any(isinstance(value, ClaimType) for value in expected[1:]):
+                    raise VerifyException(f"{origin(op)}: filter consumes exactly one claim")
+                expected = (payload, *expected[1:])
+                outputs = (bool_type(),)
             elif contract.protocol == Protocol.REPEAT:
                 count = number(op, "carry_count")
                 if not 0 <= count <= len(expected) or number(op, "limit") < 0:
@@ -204,7 +223,7 @@ class ProgramOp(SourcedOp):
     name = "lang.program"
     stage = prop_def(StringAttr)
     body = region_def("single_block")
-    traits = traits_def(SourceShape(), IsolatedFromAbove(), NoTerminator())
+    traits = traits_def(SourceShape(), OrderedBody(), IsolatedFromAbove(), NoTerminator())
 
 
 @irdl_op_definition
@@ -248,6 +267,15 @@ class SequenceOp(StructuredOp):
 
 
 @irdl_op_definition
+class FusedLocalOp(StructuredOp):
+    """Derived local dispatch group; it creates no new lifetime or authority."""
+
+    name = "lang.fused_local"
+    members = prop_def(ArrayAttr[StringAttr])
+    traits = traits_def(SourceShape(), CaptureShape(), RegionSemantics(Protocol.SEQUENCE, transparent=True), IsolatedFromAbove())
+
+
+@irdl_op_definition
 class RecipeOp(StructuredOp):
     name = "lang.recipe"
     traits = traits_def(
@@ -280,6 +308,12 @@ class RepeatOp(StructuredOp):
 class ProducerOp(StructuredOp):
     name = "lang.producer"
     traits = structured_traits(Protocol.PRODUCER, EndpointSemantics(EndpointUse(0, "produce")))
+
+
+@irdl_op_definition
+class FilterOp(StructuredOp):
+    name = "lang.filter"
+    traits = structured_traits(Protocol.FILTER, ItemSemantics(ItemContract(consumes=(0,), detached_outputs=(0,), forwards=(0,))))
 
 
 @irdl_op_definition
@@ -408,11 +442,13 @@ Language = Dialect(
         StreamOp,
         OnceOp,
         SequenceOp,
+        FusedLocalOp,
         RecipeOp,
         ParallelOp,
         ChoiceOp,
         RepeatOp,
         ProducerOp,
+        FilterOp,
         RequestsOp,
         AccessOp,
         CallOp,
@@ -424,7 +460,7 @@ Language = Dialect(
         StopAfterOp,
         YieldOp,
     ],
-    [PayloadType, ResourceType, EndpointType, ClaimType, CapabilityType, RequestType],
+    [PayloadType, ResourceType, EndpointType, ClaimType, OptionalPayloadType, CapabilityType, RequestType],
 )
 
 

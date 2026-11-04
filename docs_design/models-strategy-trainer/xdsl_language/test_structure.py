@@ -7,31 +7,38 @@ from collections.abc import Callable
 import pytest
 
 from xdsl.dialects.builtin import ArrayAttr, ModuleOp, StringAttr, SymbolRefAttr
-from xdsl.ir import Dialect, Operation, Region
-from xdsl.irdl import irdl_op_definition, opt_prop_def, prop_def, traits_def, var_operand_def
+from xdsl.ir import Block, Dialect, Operation, Region
 from xdsl.pattern_rewriter import PatternRewriter
 from xdsl.traits import IsolatedFromAbove, OpTrait, SymbolOpInterface
 from xdsl.utils.exceptions import ParseError, VerifyException
+
+from xdsl.irdl import (
+    irdl_op_definition,
+    opt_prop_def,
+    prop_def,
+    traits_def,
+    var_operand_def,
+)
 
 from .contracts import (
     AccessMode,
     ExpandSequence,
     FlowSemantics,
     Freshness,
+    origin,
     Protocol,
     ReferenceSemantics,
     RegionSemantics,
     ResourceSemantics,
-    origin,
 )
 from .dialects import (
     AccessOp,
     CallOp,
     CaptureShape,
     ConstantOp,
-    ParallelOp,
     dump,
     integer,
+    ParallelOp,
     parse,
     PayloadType,
     ProgramOp,
@@ -40,14 +47,16 @@ from .dialects import (
     RequestOp,
     RequestsOp,
     ResourceOp,
-    SourceShape,
+    SequenceOp,
     SourcedOp,
+    SourceShape,
     StreamOp,
     StructuredOp,
 )
 from .fixtures import data_only, lifetime, props
 from .normalize import inspect_structure, normalize, source_index
 from . import normalize as normalization
+from . import fixtures as f
 
 
 def find[T: Operation](module: Operation, kind: type[T], name: str | None = None) -> T:
@@ -95,6 +104,71 @@ class IndependentRecipe(StructuredOp):
     traits = traits_def(
         SourceShape(), CaptureShape(), RegionSemantics(Protocol.SEQUENCE), ExpandSequence(), SymbolOpInterface(), IsolatedFromAbove()
     )
+
+
+def ordered_values_program(shape: str, *, normalized: bool = False, invalid: bool = True) -> ModuleOp:
+    late = f.node(ConstantOp, "later.definition", outputs=[f.SCALAR], literal=StringAttr("3"))
+    if shape == "direct":
+        use = f.node(
+            CallOp, "earlier.use", inputs=late.results, outputs=[f.SCALAR], binding=SymbolRefAttr("echo"), binding_version=StringAttr("1")
+        )
+        operations = [late, use]
+    else:
+        recipe = shape in ("recipe_capture", "recipe_body", "independent_recipe")
+        capture = shape != "recipe_body"
+        inner = Block(arg_types=[f.SCALAR] if capture else [])
+        if not capture:
+            inner.add_op(late)
+        use = f.call(inner, "earlier.use", "echo", inner.args if capture else late.results, [f.SCALAR])
+        f.end(inner, "capture.body", *use.results)
+        kind = IndependentRecipe if shape == "independent_recipe" else RecipeOp if recipe else SequenceOp
+        scope = f.structured(kind, "capture.scope", late.results if capture else [], [inner], outputs=[f.SCALAR])
+        operations = [late, scope] if capture else [scope]
+    root = ProgramOp.create(properties={**props("run"), "stage": StringAttr("accepted")}, regions=[Region(Block(operations))])
+    module = ModuleOp([root])
+    if normalized:
+        module = normalize(module).module
+    if invalid:
+        index = source_index(module)
+        late = index["later.definition"]
+        anchor = index["earlier.use" if shape in ("direct", "recipe_body") else "capture.scope"]
+        block = anchor.parent_block()
+        assert block is not None
+        block.detach_op(late)
+        block.insert_op_after(late, anchor)
+    return module
+
+
+@pytest.mark.parametrize("shape", ["direct", "nested_capture", "recipe_capture", "recipe_body", "independent_recipe"])
+@pytest.mark.parametrize("normalized", [False, True])
+def test_ordered_definition_availability_rejects_forward_uses_and_captures(shape, normalized):
+    module = ordered_values_program(shape, normalized=normalized)
+    with pytest.raises(VerifyException) as failed:
+        normalize(module)
+    diagnostic = str(failed.value)
+    assert "later.definition" in diagnostic
+    assert ("earlier.use" if shape in ("direct", "recipe_body") else "capture.scope") in diagnostic
+    assert "operand 0" in diagnostic and "unavailable in ordered body" in diagnostic
+
+
+def test_an_ordered_operation_cannot_consume_its_own_result():
+    module = ordered_values_program("direct", invalid=False)
+    call = source_index(module)["earlier.use"]
+    call.operands = call.results
+    with pytest.raises(VerifyException, match=r"earlier.use operand 0.*earlier.use result 0.*unavailable"):
+        normalize(module)
+
+
+def test_parallel_role_cannot_borrow_a_sibling_entry_argument_as_a_local_value():
+    value = f.node(ConstantOp, "input", outputs=[f.SCALAR], literal=StringAttr("3"))
+    first, second = f.body(value.results), f.body(value.results)
+    f.end(first, "first")
+    f.call(second, "cross_role.use", "echo", first.args, [f.SCALAR])
+    f.end(second, "second")
+    branches = f.structured(ParallelOp, "branches", value.results, [first, second])
+    root = ProgramOp.create(properties={**props("run"), "stage": StringAttr("accepted")}, regions=[Region(Block([value, branches]))])
+    with pytest.raises(VerifyException, match=r"cross_role.use operand 0.*branches region 0 argument 0.*unavailable"):
+        normalize(ModuleOp([root]))
 
 
 def test_a_separate_registered_operation_uses_existing_contract_and_expansion() -> None:

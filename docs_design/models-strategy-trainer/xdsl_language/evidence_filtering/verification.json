@@ -1,0 +1,109 @@
+{
+  "baseline": "8ac18bd5ce900c83eee952eef356372cddd08281",
+  "quality": [
+    {
+      "command": [
+        "/tmp/sd-scripts-xdsl-b-env/bin/ruff",
+        "check",
+        "docs_design/models-strategy-trainer/xdsl_language"
+      ],
+      "exit": 0,
+      "output": "All checks passed!\n"
+    },
+    {
+      "command": [
+        "/tmp/sd-scripts-xdsl-b-env/bin/ruff",
+        "format",
+        "--check",
+        "docs_design/models-strategy-trainer/xdsl_language"
+      ],
+      "exit": 0,
+      "output": "43 files already formatted\n"
+    },
+    {
+      "command": [
+        "/tmp/sd-scripts-xdsl-b-env/bin/ty",
+        "check",
+        "--python",
+        ".venv-wsl/bin/python",
+        "--extra-search-path",
+        "/tmp/sd-scripts-xdsl-b-env/lib/python3.14t/site-packages",
+        "--extra-search-path",
+        "docs_design/models-strategy-trainer",
+        "docs_design/models-strategy-trainer/xdsl_language"
+      ],
+      "exit": 0,
+      "output": "All checks passed!\n"
+    },
+    {
+      "command": [
+        "git",
+        "diff",
+        "--check"
+      ],
+      "exit": 0,
+      "output": ""
+    }
+  ],
+  "tests": {
+    "owner": 449,
+    "torch_free": 410,
+    "optional_owner_module_skips": 3
+  },
+  "environments": {
+    "owner": {
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "build_gil_disabled": 1,
+      "gil_before": false,
+      "gil_after": false,
+      "forced_gil": null,
+      "torch_loaded": true,
+      "torch": "2.14.1+cu130",
+      "xdsl": "0.74.0",
+      "exit": 0
+    },
+    "pure": {
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "build_gil_disabled": 1,
+      "gil_before": false,
+      "gil_after": false,
+      "forced_gil": null,
+      "torch_loaded": false,
+      "torch": null,
+      "xdsl": "0.74.0",
+      "exit": 0
+    }
+  },
+  "cold_children": 60,
+  "paired_schedules": 16,
+  "openspec": {
+    "standard_valid": true,
+    "strict_valid": false,
+    "unchanged_inherited_warning_count": 53,
+    "cleanup_issue": "sd-scripts-syv.31.27"
+  },
+  "preservation": {
+    "base_commit": "8ac18bd5ce900c83eee952eef356372cddd08281",
+    "verified_files": 645,
+    "changed": [],
+    "reports": {
+      "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+      "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md": "7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2"
+    }
+  },
+  "review": {
+    "full": {
+      "run": "/tmp/review-mcp-run-mhii64yi",
+      "exit": 0,
+      "response": "initial-review.md"
+    },
+    "focused": {
+      "run": "/tmp/review-mcp-run-d64v05hs",
+      "exit": 0,
+      "response": "focused-review.md"
+    },
+    "verdict": "No blocking issue; requested corrections addressed and affected gates rerun.",
+    "post_review": "Two small requested robustness guards were verified by the final full suites and immutable cold qualification; no additional review was required for these local corrections."
+  },
+  "limits": "Bounded CPU host qualification; no performance, device, complete language or production readiness claim."
+}

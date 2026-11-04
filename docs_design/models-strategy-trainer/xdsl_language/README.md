@@ -1,4 +1,4 @@
-# Shared xDSL language slice: milestones 6–9
+# Shared xDSL language slice: milestones 6–10
 
 This isolated package implements structural construction, normalization,
 shared semantic verification, an executable lifecycle reference and derived
@@ -19,6 +19,13 @@ backend or a production migration.
 ## Representation and contract queries
 
 [dialects.py](dialects.py) defines actual xDSL operations, types and regions.
+`OrderedBody` is an execution contract selected by the program and maintained
+structured region definitions. Each role starts with its own entry arguments;
+an operation may use those arguments and earlier local results. Explicit
+captures must already be available at the capturing operation. Repetition's
+initialized carry arguments remain valid recurrence; forward local SSA uses,
+self-use and sibling-role entry arguments reject with use/definition origins.
+Graph execution would need its own availability rule.
 Persistent resource and endpoint references are typed SSA values; records and
 live model state are outside the IR. Independently invoked bodies use explicit
 capture operands and block arguments. xDSL verifies types, region structure,
@@ -283,6 +290,67 @@ unsupported profiles reject as explicit target limitations. Snapshot and
 protected-current selection come from the IR; a target never substitutes one.
 Runtime instances are single-use. Selected Python implementations remain trusted
 and independently checked for numerical conformance.
+
+Preparation checks each installed binding's declared update positions against
+the actual SSA-supplied capability, its issuing access and possible resource
+identities. An enclosing writer does not authorize mutation through a captured
+read capability. Snapshot/protected-read updates reject before resource factories
+or physical entry. Runtime checks still enforce the actual capability's active
+authority, resource version and reported effects. This validates the current
+update contract and the shared selected-binding effect requirements described below.
+
+## Selected effects, filtering and local fusion
+
+[BindingSpec.contract](prepare.py) supplies one typed `BindingContract` for
+preparation and [local transformation legality](local_rewrite.py). Its minimal
+effect summary contains resource read/update argument positions, optional resource
+kinds and possible unknown effects. Preparation checks those requirements against
+actual capability issuers, resource identities and modes. The same descriptor
+permits fusion only for known-pure detached unary stages with compatible SSA
+wiring. An explicit empty resource set and `unknown_effects=False` declare purity;
+missing legacy effect information remains opaque. Neither unknown effects nor a
+declaration creates invocation authority. The runtime still checks actual reported
+updates, active authority/current versions, output validation and physical settlement.
+
+The original `shared-owner-fragments-v1` documents retain their original binding
+and policy spelling: absent new effect fields stay unknown, and absent fusion policy
+means unfused. Explicit effects/fusion add fields to that inspectable recipe. Cold
+loading compares the full installed descriptor and rederives the rewrite; it cannot
+silently reinterpret an old artifact as pure or fuse it. No prior evidence is rewritten.
+
+`lang.filter` consumes exactly one admitted claim. Its body receives a detached
+copy of the input payload and yields a boolean; the operation returns a typed
+`lang.optional` zero-or-one selection. A false result settles the input as
+`filtered_out`; a true result settles it as `forwarded`. Both retain protection
+through physical predicate completion. A kept output retains the original payload,
+observed upstream versions and separate provenance, even if a predicate changes its
+own copy. Selection envelopes originate from the cardinality protocol, never an
+arbitrary physical binding. Run failure/cancellation prevents a new selection after
+physical completion; interrupted inputs settle as discarded/cancelled respectively.
+A producer reserves aggregate capacity before this work;
+an absent result retires that reservation as `no_output` without publishing an item.
+Actual upstream version dependencies are followed through the forwarding contract.
+
+The [concrete case](filtering.md) uses an independent producer, a filtering producer,
+one initial retained consumer and a completion-requested two-iteration consumer.
+Odd inputs drop; keys 0, 2 and 4 produce 2, 6 and 10. Drops release capacity while
+requested demand remains pending. Consumer completion stops filtering; filtering
+settlement stops source production; the run joins both. Cursor/ticket/queue mechanics
+remain runtime details. Flow settlement receipts retain actual dispositions, versions,
+provenance and forwarding destinations after diagnostic erasure. These are finite-case
+owner receipts, not a production retention policy.
+
+`Policy(fuse_local=True)` selects actual xDSL rewriting with result-use remapping.
+Derived `lang.fused_local` groups have the enclosing invocation's lifetime and no
+completion symbol. Their generated coroutine calls each original stage directly,
+preserving source identity, physical entry/return, validation, failure, interruption
+and item associations. A transparent group adds no decision contributor: original
+stage reproducibility and rank requirements remain authoritative. It replaces three local interpreter dispatches with one in
+this case while retaining all three physical calls. Cold loading recomputes legality
+and canonical correspondence. Unknown/resource effects, extra SSA uses and enclosing
+authority/completion/cardinality boundaries constrain grouping. The valid opaque
+identity variant runs successfully and rejects a forged group crossing its barrier.
+Dispatch counts establish a distinct path; they do not establish a speed advantage.
 
 Focused live/cold tests cover the independent arithmetic and request/input
 associations, pending work and late input, orderly stop after window admission,

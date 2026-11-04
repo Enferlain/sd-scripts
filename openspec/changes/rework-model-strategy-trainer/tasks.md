@@ -1,11 +1,11 @@
 Production implementation is **not ready**. Sections 1–5 retain the numbered
-design tasks for `design.md` G1–G5. Sections 6–9 are the bounded, non-integrated
+design tasks for `design.md` G1–G5. Sections 6–10 are the bounded, non-integrated
 xDSL language evidence authorized by D14; they do not cut over the active
 Trainer or complete the production-shape gate. Exact production migration
 milestones are still written by task 5.6 after the full G5 decisions and review.
 OpenSpec artifact status does not override that boundary.
 
-The next research execution order is **6 → 7 → 8 → 9**, supplying evidence for
+The research execution order is **6 → 7 → 8 → 9 → 10**, supplying evidence for
 5.3/5.4. Those groups appear before section 5 below to follow that dependency;
 task IDs in sections 1–5 remain stable. Each group includes its own checks,
 documentation and required review before the next starts. Section 9 performs
@@ -16,7 +16,7 @@ be reconciled with the later representation/contract choices; the ordering
 above does not introduce a new evidence dependency for those two tasks.
 
 Bead `sd-scripts-syv` remains the durable tracker; D14's milestone table maps
-groups 6–9 to their beads. The
+groups 6–10 to their beads. The
 [research proposal](research/xdsl_language_0_1_proposal.md) is input; D14
 (including its amendments) and the `workflow-composition` and other delta
 requirements define the adopted scope, not the proposal's full illustrative API.
@@ -95,6 +95,15 @@ spec/review gate; checking either task does not close that gate.
 
 - [x] 9.1 Integrate the previously tested programs with late and prefetched input, pending requests, local stop versus root cancellation, bounded returning-exclusion progress where selected, held physical calls and late failure. Erase diagnostic histories and independently reconstruct actual owner-visible results and dispositions. Use fresh normal and optimized runtime children with authoring disabled and an assertion-enabled parent oracle; retain deliberate wrong-implementation and corrupted-claim controls. Verify a successful result and a later failure remain independent, with physical drain and protected-use obligations preserved. Explore systematic or seeded randomized interleavings at suspension points for each supported composition and compare runtime lifecycle facts with the reference across them; a single passing schedule does not qualify a protocol.
 - [x] 9.2 Retain source/report hashes, accepted/normalized/prepared artifacts, actual observations, failures, environment/import/GIL state and qualification limits in the research package. Run the relevant integrated regression and documentation checks, prove prior owner/experimental evidence and both user reports remain unchanged, complete the required review and address findings. Record which wider language 0.1 features and G5 production decisions remain unimplemented; update the Beads milestone without treating new test totals, old CPU timings or host witnesses as new performance/device qualification.
+
+## 10. Extend Effects, Filtering And Contract-Driven Local Rewriting
+
+- [x] 10.1 Reject unavailable ordered SSA uses through region execution contracts, including direct uses, explicit/nested captures and normalized recipes; preserve initialized recurrence and report use/definition origins. Check installed binding update positions against actual capability issuers, resource identity/type and mode. Prove live/cold rejection precedes factories and physical entry, retain runtime authority/current-version checks, and verify the existing accepted programs and detached artifacts.
+- [x] 10.2 Define one authoritative minimal selected-binding contract for required reads, updates and possible unknown effects. Use it in preparation and local transformation legality, while keeping invocation grants, actual reported effects/outcomes and physical settlement distinct. Unknown or missing effect knowledge is conservative; it never supplies missing resource authority. Preserve historical reports/artifacts and make any new contract/format compatibility boundary explicit.
+- [x] 10.3 Implement one genuine zero-or-one filter composition through the independent reference and existing owner target: independently live source, admitted-input filtering, retained-output flow, initial retained consumption and requested additional retained demand. Verify dropped/forwarded input dispositions, retained provenance, output reservation release, aggregate bounds/backpressure and pending demand across drops. Keep simple independent expected outputs and producer-stop/consumer-completion relationships inspectable through shared contracts without case dispatch or another whole-run coordinator.
+- [x] 10.4 Implement one actual xDSL local rewrite and SSA use remapping for compatible adjacent pure stages. Derive legality from the same selected-binding effects plus actual wiring and authority/completion rules. Preserve each stage's entry, result validation, physical completion, failure outcome and input association. Demonstrate a distinct prepared/local execution path and an executable opaque-effect barrier; reject an unsafe forged group on cold loading. Do not infer performance or collapse required physical boundaries from arithmetic purity.
+- [x] 10.5 Qualify unfused/fused filtering with independent value/association/disposition expectations, late/prefetched input and pending demand, scoped stop versus root cancellation, held physical filtering/production and late failure. Preserve diagnostic erasure, cold correspondence, wrong-implementation/corrupted-claim controls, fresh normal/optimized children and bounded interleavings. Retain exact sources/reports/artifacts, actual observations, environment/import/GIL state, failed attempts and limits; prove prior evidence and both user reports remain unchanged.
+- [x] 10.6 Run relevant integrated regression, typing, formatting and documentation checks; complete the required review and address findings. Record which scalar-gradient/unit choices remain target conventions and which broader language/production features remain open. Update the Beads extension milestone without promoting host witnesses, dispatch counts or new test totals to performance/device qualification or G5 readiness.
 
 ## 5. Choose Production Shapes And Write The Migration Plan
 

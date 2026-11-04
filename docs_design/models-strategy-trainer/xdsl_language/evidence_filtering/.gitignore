@@ -1,0 +1,3 @@
+# Retain actual integrated test outputs with this qualification.
+!owner-final.log
+!pure-final.log

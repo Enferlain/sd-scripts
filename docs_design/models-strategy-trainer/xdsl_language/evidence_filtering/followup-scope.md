@@ -1,0 +1,13 @@
+# Focused follow-up review of milestone 10
+
+The complete implementation received review-mcp review /tmp/review-mcp-run-mhii64yi, with no blocking correctness issue and four low-priority follow-ups. Its retained response is [initial-review.md](initial-review.md). This review is limited to the corrections below, after focused and integrated validation.
+
+1. The duplicate payload-type branch in local_rewrite.barrier is removed; signature and unary detached-payload checks remain.
+2. A filter whose entered predicate completes after run failure/cancellation emits no new selection. Physical validation/failure remains observed; its input is discarded/cancelled respectively. Reference and target now make that rule explicit. The invalid-stage external scenario holds predicate 1 through sibling validation failure; reference and owner require the same discarded input disposition.
+3. Settlement rejects both a duplicate disposition and an impostor ticket before mutating the actual flow ledger or releasing capacity. Normal cleanup checks whether its claim still needs settlement; producer exception cleanup preserves an already completed consumer disposition. Regression controls exercise live impostors and settled duplicates in both executors.
+4. The receipt oracle checks every forwarded or dropped input, including interrupted/unclaimed output tails. Cancellation between local stages checks retained provenance too. A deliberately corrupted interrupted receipt must reject. Partial-success expected consumption still has its own explicit bound.
+5. An additional independently annotated arithmetic probe exposed a transparent group being counted as a new unknown decision. Analysis now omits that synthetic decision contributor while retaining every original stage decision. The deterministic chain retains identical reproducibility contributors and replicated-rank eligibility after rewriting; an unknown original stage remains unknown and rejects the claim at that stage. No rank/distributed runtime is thereby qualified.
+
+Changed code: verify.Analysis.__init__, local_rewrite.barrier, reference filter protocol/disposal, target body/producer cleanup and filter/disposal, filter_checks, filter_runtime's invalid-stage control, and targeted regressions. Public artifact/binding/effect formats, owner engine, declared work, numerical implementations and other protocol mechanics are unchanged.
+
+Please focus on correctness of these changes and their interaction with existing cleanup, correspondence and per-stage completion. Do not re-review the entire earlier milestone unless a dependency requires it. The original full review and final qualification are separately retained. Do not modify files.

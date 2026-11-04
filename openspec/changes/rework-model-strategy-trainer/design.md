@@ -2831,9 +2831,76 @@ whole-run async lowering and a numerical-backend migration are outside tasks
 6–9. No generic purity/DCE inference may erase observable coordination,
 validation, requests or outcomes just because local arithmetic is pure.
 
+#### Selected effects, filtering and a local transformation
+
+The next bounded advance after tasks 6–9 is task group 10. It corrects two
+acceptance gaps and tests whether one additional data-composition boundary and
+one transformation enter through reusable contracts. It does not reopen the
+substrate comparison, implement the wider language catalogue or settle G5.
+
+**Availability follows execution.** Each maintained ordered body makes its
+entry arguments and preceding local results available. Captures must be
+available at the capturing operation; sibling-role entries, self-use and later
+local definitions are not available. Initialized repetition carries are entry
+arguments, not forward references. Graph execution and other recurrence need
+their own availability rules. Diagnostics identify the offending operand/use
+and its definition. Apply these checks before and after recipe normalization.
+
+**Selected work has one minimal effect contract.** Begin with declared resource
+reads, declared updates and possible additional unknown effects. Requirements
+name actual argument positions and the resource type/identity relationship
+they require; reusable bindings do not acquire a global owner by name. Resolve
+each invocation's actual capabilities through its SSA captures and issuing
+accesses. Preparation and local transformation legality consume the same
+authoritative declaration. Keep declaration, granted authority, actual returned
+effects/outcomes and physical settlement distinct. Unknown effects constrain
+rewriting and do not authorize undeclared resource mutation. Preserve runtime
+active-authority/current-version checks. Missing legacy effect information is
+conservative, never evidence of purity; preserve existing saved artifacts or
+reject an explicitly unsupported format without rewriting historical evidence.
+
+**Filtering is actual zero-or-one production.** An independently live source
+feeds an intermediate filter producer and a retained-output flow. A filter
+invocation owns one admitted input claim and returns either no downstream item
+or one detached retained output with its actual input/version provenance. Drop
+and forwarding settle that input exactly once after its required physical use;
+an output reservation that produces no item also releases its capacity. The
+source and retained-output horizons count all owned reservations, ready items
+and admitted claims under their respective contracts. Transport capacity alone
+does not establish the aggregate bound.
+
+The concrete data fixture retains keys 0, 2 and 4 and drops intervening keys.
+The first retained consumer requests two additional retained consumptions.
+Dropped admitted inputs do not fulfill that demand or finish the consumer
+group. A small local chain `(x + 1) * 2` yields independent expected products
+2, 6 and 10. Consumer-group completion requests filter stop; filter settlement
+then requests source stop. The group does not await producer termination to
+request stop. Hold actual filter/source work to distinguish group completion,
+physical drain, late failure and root cancellation. Bounded run-ahead is allowed
+with explicit dispositions; no identical scheduling trace is required.
+
+**One local rewrite must earn its legality.** Use actual xDSL rewriting and SSA
+result remapping to combine compatible adjacent unary pure stages. Eligibility
+requires explicit known effects, compatible types and wiring, and preserved
+authority/completion/validation contracts. A generated local realization may
+remove generic local dispatch while retaining each stage's logical invocation,
+entry guard, physical completion, validation and failure outcome. This does not
+collapse distinct physical calls or move an effect across a protected boundary.
+Retain an executable opaque identity/offset between otherwise compatible
+stages; unknown effects block grouping, and a forged group crossing that
+barrier rejects on cold loading. Purity does not make coordination, validation
+or stage outcomes removable.
+
+The extension retains independent reference/owner checks, live and cold paths,
+diagnostic erasure, wrong-implementation and corrupted-claim controls, and
+normal/optimized child qualification. Existing scalar-gradient conventions and
+optimization-unit construction remain bounded target realizations rather than
+language rules. No host dispatch count establishes framework/device performance.
+
 #### Bounded milestones and success criteria
 
-Tasks 6–9 and Beads `sd-scripts-syv.31.26` provide evidence for tasks 5.3/5.4:
+Tasks 6–10 and Beads `sd-scripts-syv.31.26` / `sd-scripts-syv.31.28` provide
+evidence for tasks 5.3/5.4:
 
 | Milestone | Bead | Delivered boundary |
 | --- | --- | --- |
@@ -2841,6 +2908,7 @@ Tasks 6–9 and Beads `sd-scripts-syv.31.26` provide evidence for tasks 5.3/5.4:
 | 7 | `sd-scripts-syv.31.26.3` | Shared pending-work/source-closure, stop-coverage and lifetime verification; ownership checked as affine claims and region-scoped capabilities; access-mode, admission and reproducibility-class checks; each verified against the reference |
 | 8 | `sd-scripts-syv.31.26.4` | Derived prepared setup and live/cold execution through existing owner services, realizing both `snapshot` and `protected_current` explicitly; runtime lifecycle facts compared differentially with the reference |
 | 9 | `sd-scripts-syv.31.26.5` | Integrated cancellation, late failure, archive-erasure and fresh-process qualification, with interleaving exploration against the reference across the supported compositions |
+| 10 | `sd-scripts-syv.31.28` | Earlier SSA/binding rejection, one shared effects contract, actual zero-or-one filtering across requested demand, and one justified local rewrite with an executable barrier |
 
 Each milestone includes its own tests, scope documentation, relevant quality
 gates and required review before the next starts. Milestone 9 integrates prior
