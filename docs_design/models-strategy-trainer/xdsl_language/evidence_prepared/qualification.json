@@ -1,0 +1,65 @@
+{
+  "scope": "Milestone 8 artifact examples; these snapshots require recomputed cold correspondence and grant no independent readiness.",
+  "format": "shared-owner-fragments-v1",
+  "artifact_hashes": {
+    "lifetime/accepted.mlir": "bb2c820a85156c9c5c2d37c08f7fab2989af1487835f6ce61ea7dccf5d09d3a3",
+    "lifetime/normalized.mlir": "788b1d2f2bdc327d5615314732e31b49a1ffaf640c3471d397f2540264b680b9",
+    "lifetime/prepared.json": "2228a612f06d11c0be33ff48626f84db9314d82b81d21545dccc2a06f4230e3d",
+    "extra-scope/accepted.mlir": "659b5ccc0a81ade63aba0a441f565fba3e097a1ce30211b7bf803d273c1e2058",
+    "extra-scope/normalized.mlir": "cc399b91d823f85e334c2da17dd9c7092ec7c0c18cf5a5c4287bb3528c2b91b4",
+    "extra-scope/prepared.json": "08ec7653a1dd5b5d34ead7a98d7c64493d0b81c473f2b5675140eb6c572f969c",
+    "data-only/accepted.mlir": "5ec5d64a6fd84f8870c82e511f06ae3a11aff61fea70b2c4195eaec4165cdae4",
+    "data-only/normalized.mlir": "66e86f59e054c717b8f0ed5bc481b37877ea7dd4fe31471829a9135b96cab8f1",
+    "data-only/prepared.json": "90d0085a617e03e82ade24a397599fcebf673e5badf6ea5f00e1c5f44b1f50eb"
+  },
+  "execution": "Focused live/cold execution in test_target.py; initialization is an explicit runtime input, not saved owner state.",
+  "limits": "Milestone8 only. Complete admission-gap equivalence, archive erasure, fresh optimized owner children and broader schedule exploration remain milestone9. Production and device qualification remain open.",
+  "environment": {
+    "owner": {
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "build_gil_disabled": 1,
+      "forced_gil": null,
+      "gil_before": false,
+      "gil_after_pytest_import": false,
+      "exit": 0,
+      "gil_after": false,
+      "torch": "2.14.1+cu130",
+      "xdsl": "0.74.0",
+      "triton_imported": false,
+      "dynamo_imported": false
+    },
+    "torch_free": {
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "gil_before": false,
+      "forced_gil": null,
+      "exit": 0,
+      "gil_after": false,
+      "torch_imported": false
+    }
+  },
+  "focused_checks": {
+    "owner_language": "263 passed",
+    "torch_free": "319 passed, one optional owner-module skip",
+    "owner_tests": 34,
+    "artifacts": "All9 file hashes checked and all3 saved programs cold-loaded and executed by tests",
+    "imports": "No forced GIL setting; no Triton or Dynamo in the owner-language cohort"
+  },
+  "review": {
+    "primary": {
+      "provider": "review-mcp",
+      "artifact": "/tmp/review-mcp-run-8ae_7_o1",
+      "outcome": "Returned findings; corrections completed"
+    },
+    "followup": {
+      "provider": "review-mcp",
+      "artifact": "/tmp/review-mcp-run-2c8zheby",
+      "outcome": "Tool call timed out after1500s; no assessment"
+    },
+    "fallback": {
+      "model": "GPT-6.1 Sol",
+      "reasoning_effort": "medium",
+      "outcome": "Focused corrections reviewed; external producer-stop P2 found, corrected, and confirmed with no remaining actionable finding in local confirmation",
+      "receipt": "/tmp/sd-scripts-xdsl-language8-1rvu03vq/native-sol-medium-confirmation.md"
+    }
+  }
+}

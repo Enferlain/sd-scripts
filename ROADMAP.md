@@ -12,10 +12,11 @@ runtime integration and numerical targets remain open.
 The [shared language slice](docs_design/models-strategy-trainer/xdsl_language/README.md)
 now supplies typed IR, normalization, a Torch-free lifecycle reference and
 shared contract verification for model/data-only work and an alternative scope
-(`sd-scripts-syv.31.26`, milestones 6–7). Pending obligations, stop coverage,
+(`sd-scripts-syv.31.26`, milestones 6–8). Pending obligations, stop coverage,
 affine claims, scoped access, version admission and decision declarations have
-focused controls. Milestone 8 derives execution through existing owners;
-milestone 9 qualifies integrated interruptions and interleavings. These stages
+focused controls. Prepared live/cold execution now reuses existing owners with
+explicit snapshot/current access and version admission; milestone 9 qualifies
+integrated interruptions and interleavings. These stages
 provide bounded evidence toward G5's production design.
 
 The first matched slice now freezes the descriptive fixtures and executes paired

@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-04]
+
+### Added
+
+- **Shared xDSL workflows now derive prepared owner execution** — detached artifacts and recomputed cold correspondence drive model, data-only and rearranged compositions through the existing owner engine. Explicit snapshots, protected current access and actual-version admission retain request, physical-drain and partial-update evidence; production integration and broader schedule qualification remain open.
+
 ## [2026-11-03]
 
 ### Added

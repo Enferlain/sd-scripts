@@ -1,18 +1,19 @@
-# Shared xDSL language slice: milestones 6 and 7
+# Shared xDSL language slice: milestones 6–8
 
 This isolated package implements structural construction, normalization,
-shared semantic verification and an executable lifecycle reference for the bounded slice in
+shared semantic verification, an executable lifecycle reference and derived
+owner-target preparation for the bounded slice in
 [D14](../../../openspec/changes/rework-model-strategy-trainer/design.md) and
 [workflow-composition](../../../openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md).
 Training and data-only work use the same operation definitions and reference
 protocols. The extra consumer scope is another composition of those definitions.
 
 **Normalization alone is not whole-lifetime acceptance or executable readiness.**
-[verify.py](verify.py) supplies the shared lifecycle/ownership verifier. Milestone 8
-derives prepared execution through the existing owner engine; milestone 9
-qualifies integrated interruption/interleavings. This package currently does
-not prepare or execute that owner target, train a real model, or select public
-APIs, a numerical backend or a production migration.
+[verify.py](verify.py) supplies the shared lifecycle/ownership verifier.
+[prepare.py](prepare.py) and [target.py](target.py) derive and execute the bounded
+owner target. Milestone 9 still qualifies integrated interruption/interleavings.
+This package does not train a real model or select public APIs, a numerical
+backend or a production migration.
 
 ## Representation and contract queries
 
@@ -212,6 +213,112 @@ block subsequent updates. Modeled completion, host return, a version stamp or a
 successful reference result do not qualify a real resource as usable or prove
 device ordering, thread safety, backend interoperability or performance.
 
+## Prepared artifacts and existing owner target
+
+`prepare(module, manifest, Policy())` is Torch-free. It verifies a detached
+normalized document, checks installed binding signatures/versions and explicit
+target bounds, then derives a fragment for each actual operation. Fragments
+retain SSA providers, result types, role/capture maps, source ancestry, region,
+flow/access/completion contracts and their selected primitive. The prepared
+recipe also contains source-attributed obligations, input relationships, wait
+edges, reproducibility contributors and binding/resource/target manifests.
+
+`Artifact` contains separate accepted, normalized and prepared documents.
+`load()` parses complete documents and recomputes all correspondence from the
+accepted IR and installed definitions. It checks normalized structure and the
+entire prepared recipe; saved summaries and hashes cannot authorize execution.
+Initial published snapshots are materialized only for declared published-snapshot uses; protected-current-only resources acquire no copying obligation.
+`Runtime` repeats that barrier against the actually installed registry before
+initializing resources or publishing its owner image. This is this target's
+chosen ordering; pure construction before final verification is not prohibited
+by the language. Cold loading starts a new run with explicit initial resources;
+it is not exact restoration of a prior runtime.
+
+The checked-in [artifact examples](evidence_prepared/qualification.json), whose hashes and cold execution are tested directly, cover
+the model lifetime, extra consumer scope and data-only compositions. The
+prepared JSON is an inspectable lowering recipe, not an independent semantic
+authority. The target emits its local closures and owner primitives from the
+reverified normalized IR, installed contracts and matching realization policy.
+
+| Derived meaning | Existing service / target adaptation |
+| --- | --- |
+| Root readiness and run | One `RunState`, installed image and `Engine`; no second root coordinator |
+| Parallel lifetime | `Lowering.scope(Together(...))` supplies TaskGroup failure/cancellation and joins |
+| Serial repetition | `Lowering.scope(Repeat(...))` supplies policy admission, iterations and completion; a returned choice commits the iteration, and locals/carries remain invocation-owned |
+| Requested activity | `Lowering.scope(Requested(...))` supplies serial request execution; the adapter registers completion debt before source terminal publication and bounds pending plus active work together |
+| Independent producer | `Lowering.scope(Producer(...))` supplies stop, cancellation, physical cleanup and port closure; the provider owns selection and bounded publication |
+| Local bodies and choice | Prepared local closures interpret actual SSA captures/results and finite choice; they do not create another scheduler |
+| Ready and admitted items | Existing `Feed` owns bounded ready products; a first-eligible claim adapter evaluates actual versions under its condition. A separate aggregate reservation remains live through physical work, ready state and final claim disposition |
+| Protected current model | `RunState.use` acquires actual live protection and current stamp together; protection survives physical completion, validation and cancellation drain |
+| Current snapshot model | `RunState.retain(isolated=True)` coherently copies, verifies separate storage and preserves the acquired stamp; the isolated copy outlives the live read lease and is released after its uses |
+| State cells | Existing owner-state acquisition protects a domain value and its update ordinal; snapshots copy under acquisition, then release it before use. This target serializes live cell reads as well as writes |
+| Physical selected calls | Existing `Workers.execute` owns dispatch entry and completion; only selected arguments enter workers, with event-loop-owned observations and effect application |
+| Model advancement | Existing contribution, advancement, optimizer and reset protocols; their returned/uncertain/not-attempted evidence survives failure |
+
+The old `graph.Contract` accepts the original experimental language. The new
+shared verifier remains the semantic authority: the target constructs the
+owner engine's `Accepted` image descriptor from checked declarations and emits
+its structured primitives, rather than fabricating an old-language producer
+tree for that contract. This is reuse of one ownership implementation, not
+independent validation of another owner engine. Engine counters, resource
+leases, pending requests and claims remain live control state; diagnostic fact
+lists do not select execution.
+
+[target_bindings.py](target_bindings.py) reuses the existing composition's scale
+loader, encode, objective and measurement functions, never its whole-case
+`lower()` builder. The scalar fixture's `gradient` returns a detached numerical
+gradient. `advance` feeds that declared gradient through a linear scalar loss
+to the existing contribution/step/reset owner. This is a bounded realization
+of these bindings, not general autodiff or derivative routing. The model uses
+CPU float64; the data-only workflow has no model binding or optimization unit.
+
+The first target supports root persistent declarations, serial bounded-count
+repeats and one live request per handler, no parallel result/claim merging,
+initial-published or current-at-start snapshots, protected-current reads and
+ordinary owner updates. Completion sources with multiple service invocations
+inside one relationship scope, multiple completion stops for one producer,
+nested live acquisition of the same state-cell owner, grants and other
+unsupported profiles reject as explicit target limitations. Snapshot and
+protected-current selection come from the IR; a target never substitutes one.
+Runtime instances are single-use. Selected Python implementations remain trusted
+and independently checked for numerical conformance.
+
+Focused live/cold tests cover the independent arithmetic and request/input
+associations, pending work and late input, orderly stop after window admission,
+cancellation through held physical use, late physical failure and a partial
+optimizer effect. Physical settlement is separate from resource usability:
+failed live use withholds that owner; a failed optimizer may have changed the
+weight while its outcome remains uncertain. Producer cleanup waits for
+consumer-owned claims through their physical uses before retiring them. Disposition removes a product from both live reservations and ready storage; a disposed request packet cannot enter its handler. A nested driver group retains child-generated pending requests until handoff to its enclosing handler. Failure/cancellation can dispose that debt. Settlement checks precede a region's own completion-generated emissions, preserving their registration before terminal publication.
+
+External producer stop wakes its native stop service even while aggregate capacity is exhausted; admission rechecks the signal after acquiring a permit. Ready work can be discarded, while a consumer-owned claim remains live through its physical use. Stop before producer service entry selects no work. These boundaries have independent reference controls.
+
+A three-window variant stops after window-two admission and verifies that the third window is not admitted while window two and its request finish; its consumer and stop facts are compared with the reference. Scoped producer-stop flags are retained.
+
+Differential checks compare model consumer facts and causal requirements with
+the independent interpreter, allowing harmless producer run-ahead. Data-only
+checks use an aggregate horizon of one to fix feedback order. Two further
+comparisons supply the same external phases independently to each execution:
+old prefill, two completed owner writes, then admission under bounded lag.
+Both snapshot and protected-current variants reject records 0 and 1 and admit
+record 2 using its actual observed version. A held production read separately
+shows that snapshot use permits an independent update while protected-current
+use excludes it. Version selection alone does not remove admission-related
+schedule dependence. Neither execution is replayed from the other's trace.
+
+This is not yet a complete stop-schedule equivalence claim. The reference can expose a created/pending repeat attempt rejected at its separate `admit` command (`stopped_unadmitted`); the native repeat commits admission when its policy returns a choice and may create no attempt at an earlier stop. The tested external stop is after admitted window entry in both executions. Aligning finer admission-gap choices and their attempt-only observations remains part of milestone 9. Producer run-ahead is explicitly classified; score, update and consumer facts permit no truncated surplus.
+
+The existing owner target imports Torch, including its worker context and
+optimizer adapter. Language-only checks remain Torch-free. The target checks
+reuse the two existing environments without installation or root dependency
+changes: the qualified xDSL site directory is added to the existing project
+interpreter's search path. Record actual GIL state before imports and after
+checks, without forcing it. These CPU tests do not qualify GPU/device ordering,
+replicated execution, native-library concurrency generally or performance.
+Archive erasure, fresh optimized owner children and broader schedule exploration
+remain milestone 9; the earlier reference-only optimized children do not supply
+that target evidence.
+
 ## Run the bounded checks
 
 Reuse the existing qualified environment; no root dependency or lockfile update
@@ -228,7 +335,13 @@ PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 /tmp/sd-scripts-xdsl-b-env/bin/python -m pytest
   -q -p pytest_asyncio.plugin
 /tmp/sd-scripts-xdsl-b-env/bin/ruff check docs_design/models-strategy-trainer/xdsl_language
 /tmp/sd-scripts-xdsl-b-env/bin/ruff format --check docs_design/models-strategy-trainer/xdsl_language
-/tmp/sd-scripts-xdsl-b-env/bin/ty check --python /tmp/sd-scripts-xdsl-b-env/bin/python \
+# Existing owner target, with its existing Torch dependency:
+PYTHONPATH=/tmp/sd-scripts-xdsl-b-env/lib/python3.14t/site-packages \
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 .venv-wsl/bin/python -m pytest \
+  --noconftest docs_design/models-strategy-trainer/xdsl_language \
+  -q -p pytest_asyncio.plugin
+/tmp/sd-scripts-xdsl-b-env/bin/ty check --python .venv-wsl/bin/python \
+  --extra-search-path /tmp/sd-scripts-xdsl-b-env/lib/python3.14t/site-packages \
   --extra-search-path docs_design/models-strategy-trainer \
   docs_design/models-strategy-trainer/xdsl_language
 ```
