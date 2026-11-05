@@ -1,0 +1,59 @@
+{
+  "progress": {
+    "total": 56,
+    "complete": 49,
+    "remaining": 7
+  },
+  "state": "ready",
+  "remaining": [
+    {
+      "id": "50",
+      "description": "5.1 Derive concrete participant, relationship, binding, route, view, obligation-revision, evidence, snapshot, transition, realization-attempt, preparation-attempt, and publication types from the completed consumers; verify examples preserve every settled invariant without copying provisional spike names, exposing unrestricted lookup, or allowing downstream reinterpretation of the authored strategy.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 117
+    },
+    {
+      "id": "51",
+      "description": "5.2 Derive concrete semantic optimization plan, unit, candidate, prepared runtime, advancement, and checkpoint types; verify optimizer/backend objects remain realizations and all current flags, primary-trainable, synchronization-handle, and repeated mode queries have one intended replacement.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 118
+    },
+    {
+      "id": "52",
+      "description": "5.3 Choose the accepted-arrangement and executable-run representation from the case comparison; verify it makes semantic acceptance distinct from executable readiness and preserves the authoritative obligation revision, maintained/custom structure, imperative regions, capability state, binding authority, prepared routes, optimization runtime, readability, and hot-path performance boundaries.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 119
+    },
+    {
+      "id": "53",
+      "description": "5.4 Choose the training-contract definition, contract-guided authored-strategy, strategy-fulfillment boundary, and API; verify the active contract is available before authoring, fulfillment produces one authoritative run-specific obligation set and detailed pass/fail result, governed realization consumes that set without reinterpretation, bypass is prevented in the normal launcher, explicit composition remains understandable, and no automatic resolver or active-strategy callback is introduced. Derive the best representation and code placement for contract knowledge, shared conformance logic, fulfillment, evidence evaluation, and diagnostics without assuming one giant contract object or several independent validator systems.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 120
+    },
+    {
+      "id": "54",
+      "description": "5.5 Map final types and owners to production modules; verify dependency direction, public/internal boundaries, names, and migration from `LoadedModelComponent`, `TrainingStrategy`, `TrainingMode`, objectives, phases, checkpointing, metadata, and observability are recorded with no circular or duplicate authority. The migration MUST define the reusable PEFT authoring integration and bounded per-strategy method support; place semantic adapter target intent, governed concrete target resolution, policy-neutral target refs, method realization, and Trainer-owned parameter grouping without deriving ownership from the current `optimization` namespace; dissolve `FineTuneMode` into authored training-subject intent plus standard optimization/preparation; keep artifact-product choice independent; permit contract-compatible direct-plus-PEFT composition; and introduce no replacement runtime mode axis. Verify any transitional user-facing mode/preset label is consumed before the accepted-arrangement boundary.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 121
+    },
+    {
+      "id": "55",
+      "description": "5.6 Replace the planning-only production outline with exact numbered vertical implementation milestones; verify each milestone names changed paths, displaced authority removed in the same slice, governing requirements/scenarios, regression/conformance/failure/performance tests, rollback boundary, and required review gate. If old and new launch paths coexist temporarily, verify they select separate run topologies and that a new-topology run cannot fall through to active-strategy callbacks, `TrainingMode` ownership, or old Trainer binding state.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 122
+    },
+    {
+      "id": "56",
+      "description": "5.7 Run strict validation and documentation checks, obtain the required review, address findings, and discuss the complete production design and task breakdown with the user; only then mark the change ready for a separately requested production apply workflow.",
+      "done": false,
+      "sourcePath": "/home/imi/Projects/sd-scripts/openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "line": 123
+    }
+  ]
+}

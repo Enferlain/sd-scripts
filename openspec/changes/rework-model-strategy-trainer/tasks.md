@@ -1,11 +1,11 @@
 Production implementation is **not ready**. Sections 1–5 retain the numbered
-design tasks for `design.md` G1–G5. Sections 6–10 are the bounded, non-integrated
+design tasks for `design.md` G1–G5. Sections 6–11 are the bounded, non-integrated
 xDSL language evidence authorized by D14; they do not cut over the active
 Trainer or complete the production-shape gate. Exact production migration
 milestones are still written by task 5.6 after the full G5 decisions and review.
 OpenSpec artifact status does not override that boundary.
 
-The research execution order is **6 → 7 → 8 → 9 → 10**, supplying evidence for
+The research execution order is **6 → 7 → 8 → 9 → 10 → 11**, supplying evidence for
 5.3/5.4. Those groups appear before section 5 below to follow that dependency;
 task IDs in sections 1–5 remain stable. Each group includes its own checks,
 documentation and required review before the next starts. Section 9 performs
@@ -16,7 +16,7 @@ be reconciled with the later representation/contract choices; the ordering
 above does not introduce a new evidence dependency for those two tasks.
 
 Bead `sd-scripts-syv` remains the durable tracker; D14's milestone table maps
-groups 6–10 to their beads. The
+groups 6–11 to their beads. The
 [research proposal](research/xdsl_language_0_1_proposal.md) is input; D14
 (including its amendments) and the `workflow-composition` and other delta
 requirements define the adopted scope, not the proposal's full illustrative API.
@@ -104,6 +104,13 @@ spec/review gate; checking either task does not close that gate.
 - [x] 10.4 Implement one actual xDSL local rewrite and SSA use remapping for compatible adjacent pure stages. Derive legality from the same selected-binding effects plus actual wiring and authority/completion rules. Preserve each stage's entry, result validation, physical completion, failure outcome and input association. Demonstrate a distinct prepared/local execution path and an executable opaque-effect barrier; reject an unsafe forged group on cold loading. Do not infer performance or collapse required physical boundaries from arithmetic purity.
 - [x] 10.5 Qualify unfused/fused filtering with independent value/association/disposition expectations, late/prefetched input and pending demand, scoped stop versus root cancellation, held physical filtering/production and late failure. Preserve diagnostic erasure, cold correspondence, wrong-implementation/corrupted-claim controls, fresh normal/optimized children and bounded interleavings. Retain exact sources/reports/artifacts, actual observations, environment/import/GIL state, failed attempts and limits; prove prior evidence and both user reports remain unchanged.
 - [x] 10.6 Run relevant integrated regression, typing, formatting and documentation checks; complete the required review and address findings. Record which scalar-gradient/unit choices remain target conventions and which broader language/production features remain open. Update the Beads extension milestone without promoting host witnesses, dispatch counts or new test totals to performance/device qualification or G5 readiness.
+
+## 11. Qualify Scoped Resource-Backed Products
+
+- [x] 11.1 Define detached versus scoped retained products, explicit dependency positions and release, read-only borrowing, alias/mutation and escape rules. Verify actual SSA dependency/consumer/release wiring and installed binding correspondence, including cold rejection before factories. Preserve prior artifact spelling and conservative fusion boundaries.
+- [x] 11.2 Extend the independent reference and existing owner target with retained-use control state. Preserve dependencies through producing-call completion and every entered consumer's physical settlement; reject premature release/update and clean up on failure/cancellation without diagnostic histories.
+- [x] 11.3 Exercise a real buffer/view and tiny CPU PyTorch/autograd computation through the shared contracts. Independently check values, source versions, alias identity, retained graph use and release; reject illegal escape/reuse and demonstrate cancellation retaining protection until physical drain.
+- [x] 11.4 Qualify live/cold, normal/optimized and erased-history execution, negative controls and affected regressions. Retain exact sources/artifacts/environment/GIL/failure evidence, update documentation and complete required review. Feed G5 without selecting production APIs; keep bookkeeping reclamation a separate follow-up.
 
 ## 5. Choose Production Shapes And Write The Migration Plan
 

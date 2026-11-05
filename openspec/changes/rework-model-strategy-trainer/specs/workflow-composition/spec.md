@@ -208,6 +208,29 @@ per-composition rules.
 - **THEN** each alternative MAY consume the claim
 - **AND** the check MUST rely on the choice's region contract rather than on SSA use counts
 
+### Requirement: Retained products declare dependencies and release
+A resource-backed product SHALL distinguish its payload from its retained
+storage/state dependencies. Its contract SHALL identify dependency arguments,
+permitted borrowing/mutation, escape and release rules. Producing-call
+completion SHALL NOT release obligations needed by dependent physical uses.
+Actual storage SHALL remain outside semantic IR.
+
+#### Scenario: A scoped retained product is borrowed by later physical work
+- **WHEN** a selected call produces a scoped retained product from declared capabilities or earlier retained products
+- **THEN** consumers MUST retain the actual dependencies and observed versions through physical settlement
+- **AND** read-only borrowing MUST NOT authorize mutation or an undeclared owner transfer
+- **AND** explicit release MUST follow every dependent use and derived retained product
+
+#### Scenario: A scoped retained product escapes or is reused prematurely
+- **WHEN** a retained product leaves its declared body extent, is used after release, or conflicts with a known update to its retained owner
+- **THEN** verification or preparation MUST reject the invalid claim before dependent execution
+- **AND** cold correspondence MUST check the declared retention against installed binding contracts
+
+#### Scenario: Cancellation interrupts an entered retained consumer
+- **WHEN** cancellation closes admission while a consumer still physically uses a retained product
+- **THEN** cleanup MUST keep its dependencies protected until that consumer settles
+- **AND** neither diagnostic erasure nor producing-call completion may authorize early release
+
 ### Requirement: Lifecycle semantics have an executable reference
 The shared invocation protocols SHALL have a deterministic reference semantics
 that executes normalized IR and derives admission, completion, interruption,

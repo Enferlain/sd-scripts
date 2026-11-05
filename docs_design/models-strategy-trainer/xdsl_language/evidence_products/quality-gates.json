@@ -1,0 +1,49 @@
+[
+  {
+    "command": [
+      "/tmp/sd-scripts-xdsl-b-env/bin/ruff",
+      "check",
+      "docs_design/models-strategy-trainer/xdsl_language"
+    ],
+    "exit": 0,
+    "stdout": "All checks passed!\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "/tmp/sd-scripts-xdsl-b-env/bin/ruff",
+      "format",
+      "--check",
+      "docs_design/models-strategy-trainer/xdsl_language"
+    ],
+    "exit": 0,
+    "stdout": "58 files already formatted\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "/tmp/sd-scripts-xdsl-b-env/bin/ty",
+      "check",
+      "--python",
+      ".venv-wsl/bin/python",
+      "--extra-search-path",
+      "/tmp/sd-scripts-xdsl-b-env/lib/python3.14t/site-packages",
+      "--extra-search-path",
+      "docs_design/models-strategy-trainer",
+      "docs_design/models-strategy-trainer/xdsl_language"
+    ],
+    "exit": 0,
+    "stdout": "All checks passed!\n",
+    "stderr": ""
+  },
+  {
+    "command": [
+      "git",
+      "diff",
+      "--check"
+    ],
+    "exit": 0,
+    "stdout": "",
+    "stderr": ""
+  }
+]

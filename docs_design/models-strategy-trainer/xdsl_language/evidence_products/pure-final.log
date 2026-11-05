@@ -1,0 +1,14 @@
+........................................................................ [ 16%]
+........................................................................ [ 32%]
+........................................................................ [ 48%]
+........................................................................ [ 64%]
+........................................................................ [ 80%]
+........................................................................ [ 97%]
+.............                                                            [100%]
+=========================== short test summary info ============================
+SKIPPED [1] docs_design/models-strategy-trainer/xdsl_language/test_filter_target.py:12: owner engine imports Torch
+SKIPPED [1] docs_design/models-strategy-trainer/xdsl_language/test_product_target.py:16: owner engine and actual autograd require Torch
+SKIPPED [1] docs_design/models-strategy-trainer/xdsl_language/test_qualification.py:10: owner qualification requires the existing CPU target
+SKIPPED [1] docs_design/models-strategy-trainer/xdsl_language/test_target.py:19: existing CPU owner target imports Torch
+445 passed, 4 skipped in 27.54s
+{"build_gil_disabled": 1, "forced_gil": null, "gil_after": false, "gil_before": false, "pytest_exit": 0, "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]"}

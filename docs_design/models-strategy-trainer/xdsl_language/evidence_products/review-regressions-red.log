@@ -1,0 +1,38 @@
+F...FF                                                                   [100%]
+=================================== FAILURES ===================================
+____ test_malformed_derived_positions_have_attributed_rejection[positions0] ____
+docs_design/models-strategy-trainer/xdsl_language/test_products.py:150: in test_malformed_derived_positions_have_attributed_rejection
+    prepare(module, product_case.manifest(derived=True), Policy())
+docs_design/models-strategy-trainer/xdsl_language/prepare.py:443: in prepare
+    checked, recipe = _derive(module, manifest, policy)
+                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+docs_design/models-strategy-trainer/xdsl_language/prepare.py:259: in _derive
+    checked = verify(normalize(module), target=replace(REFERENCE_TARGET, name=policy.target))
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+docs_design/models-strategy-trainer/xdsl_language/verify.py:1096: in verify
+    analysis.retained_products()
+docs_design/models-strategy-trainer/xdsl_language/verify.py:601: in retained_products
+    if borrower.operands[i] is not product:
+       ^^^^^^^^^^^^^^^^^^^^
+/tmp/sd-scripts-xdsl-b-env/lib/python3.14t/site-packages/xdsl/ir/core.py:782: in __getitem__
+    return self._op._operands[idx]  # pyright: ignore[reportPrivateUsage]
+           ^^^^^^^^^^^^^^^^^^^^^^^
+/tmp/sd-scripts-xdsl-b-env/lib/python3.14t/site-packages/xdsl/ir/core.py:760: in __getitem__
+    return super().__getitem__(idx)
+           ^^^^^^^^^^^^^^^^^^^^^^^^
+E   IndexError: tuple index out of range
+__ test_closing_at_physical_completion_cannot_admit_a_retained_result[cancel] __
+docs_design/models-strategy-trainer/xdsl_language/test_product_target.py:284: in test_closing_at_physical_completion_cannot_admit_a_retained_result
+    assert not runtime.product_receipts
+E   AssertionError: assert not {('make', 0): ('cancelled', (Version(owner='storage', incarnation=1, lineage='initial', ordinal=0),))}
+E    +  where {('make', 0): ('cancelled', (Version(owner='storage', incarnation=1, lineage='initial', ordinal=0),))} = <xdsl_language.target.Runtime object at 0x5f2347d0910>.product_receipts
+_ test_closing_at_physical_completion_cannot_admit_a_retained_result[failure] __
+docs_design/models-strategy-trainer/xdsl_language/test_product_target.py:284: in test_closing_at_physical_completion_cannot_admit_a_retained_result
+    assert not runtime.product_receipts
+E   AssertionError: assert not {('make', 0): ('cancelled', (Version(owner='storage', incarnation=1, lineage='initial', ordinal=0),))}
+E    +  where {('make', 0): ('cancelled', (Version(owner='storage', incarnation=1, lineage='initial', ordinal=0),))} = <xdsl_language.target.Runtime object at 0x5f2347d3790>.product_receipts
+=========================== short test summary info ============================
+FAILED docs_design/models-strategy-trainer/xdsl_language/test_products.py::test_malformed_derived_positions_have_attributed_rejection[positions0]
+FAILED docs_design/models-strategy-trainer/xdsl_language/test_product_target.py::test_closing_at_physical_completion_cannot_admit_a_retained_result[cancel]
+FAILED docs_design/models-strategy-trainer/xdsl_language/test_product_target.py::test_closing_at_physical_completion_cannot_admit_a_retained_result[failure]
+3 failed, 3 passed, 55 deselected in 2.39s

@@ -30,18 +30,32 @@ from .contracts import (
     ItemSemantics,
     number,
     origin,
+    ProductSemantics,
     Protocol,
     RankRule,
     RealizationSemantics,
     RegionContract,
     RegionSemantics,
     Reproducibility,
+    ResourceAccess,
     ResourceSemantics,
+    symbol,
     text,
     Version,
     VersionPolicy,
 )
-from .dialects import CapabilityType, ClaimType, ConstantOp, EndpointType, OptionalPayloadType, ProgramOp, ResourceOp, ResourceType, YieldOp
+from .dialects import (
+    CapabilityType,
+    ClaimType,
+    ConstantOp,
+    EndpointType,
+    OptionalPayloadType,
+    ProgramOp,
+    ResourceOp,
+    ResourceType,
+    RetainedType,
+    YieldOp,
+)
 from .normalize import Normalized, Structure, normalize, source_index, symbol_index
 
 
@@ -401,7 +415,8 @@ class Analysis:
                 contract is None
                 and not isinstance(op, ProgramOp | ResourceOp | ConstantOp | YieldOp)
                 and not any(
-                    op.get_trait(kind) is not None for kind in (FlowSemantics, RealizationSemantics, ItemSemantics, CompletionSemantics)
+                    op.get_trait(kind) is not None
+                    for kind in (FlowSemantics, RealizationSemantics, ItemSemantics, ProductSemantics, CompletionSemantics)
                 )
             ):
                 self.error("semantic_contract", op, "registered definition lacks maintained region/leaf meaning")
@@ -460,7 +475,7 @@ class Analysis:
                     declared.outcomes
                 ):
                     self.error("physical_boundary", op, "entered uses must retain physical completion and validation")
-                if declared.result_lifetime != "detached_values" or any(
+                if declared.result_lifetime not in ("detached_values", "scoped_retained") or any(
                     isinstance(v.type, CapabilityType | ResourceType | EndpointType | ClaimType | OptionalPayloadType) for v in op.results
                 ):
                     self.error("result_lifetime", op, "this leaf contract returns detached values, not owner references or retained views")
@@ -529,6 +544,123 @@ class Analysis:
         self.obligations.append(
             Obligation(origin(self.root), "ownership", ("affine per invocation/path", "scoped capability extent", "detached leaf results"))
         )
+
+    def retained_products(self) -> None:
+        """One lexical profile; broader transfers need another contract."""
+        for op in self.index.values():
+            realization = op.get_trait(RealizationSemantics)
+            declared = realization.describe(op) if realization is not None else None
+            retained = [value for value in op.results if isinstance(value.type, RetainedType)]
+            if (retained or (declared is not None and declared.retains)) and (
+                declared is None
+                or len(op.results) != 1
+                or len(retained) != 1
+                or not declared.retains
+                or len(set(declared.retains)) != len(declared.retains)
+                or any(
+                    not 0 <= i < len(op.operands) or not isinstance(op.operands[i].type, CapabilityType | RetainedType)
+                    for i in declared.retains
+                )
+            ):
+                self.error("retained_dependency", op, "one retained result requires explicit capability/product dependency positions")
+        # Validate every declaration before following a parent's borrower edges.
+        for op in self.index.values():
+            realization = op.get_trait(RealizationSemantics)
+            retained = [value for value in op.results if isinstance(value.type, RetainedType)]
+            for value in op.operands:
+                if not isinstance(value.type, RetainedType):
+                    continue
+                if not isinstance(value, OpResult) or value.owner.parent_block() is not op.parent_block():
+                    self.error("retained_escape", op, "scoped retained products cannot cross their defining ordered body")
+                if realization is None and op.get_trait(ProductSemantics) is None:
+                    self.error(
+                        "retained_escape", op, "retained products require physical borrowing or explicit release; no implicit transfer"
+                    )
+            for product in retained:
+                block = op.parent_block()
+                if block is None:
+                    self.error("retained_dependency", op, "retained result has no owning body")
+                positions = {child: i for i, child in enumerate(block.ops)}
+                releases, borrowers = [], []
+                for use in product.uses:
+                    consumer = use.operation
+                    if consumer.parent_block() is not block:
+                        self.error("retained_escape", consumer, f"product from {origin(op)} bypasses its body extent")
+                    release = consumer.get_trait(ProductSemantics)
+                    if release is not None and use.index in release.describe(consumer):
+                        releases.append(consumer)
+                    elif consumer.get_trait(RealizationSemantics) is not None:
+                        borrowers.append(consumer)
+                    else:
+                        self.error("retained_escape", consumer, f"product from {origin(op)} has no retained borrow/release contract")
+                if len(releases) != 1:
+                    self.error("retained_release", op, f"retained product requires exactly one release, found {len(releases)}")
+                if any(positions[borrower] >= positions[releases[0]] for borrower in borrowers):
+                    self.error("retained_after_release", releases[0], f"release precedes a dependent use of {origin(op)}")
+                for borrower in borrowers:
+                    contract = borrower.get_trait(RealizationSemantics)
+                    if contract is None:
+                        continue
+                    for i in contract.describe(borrower).retains:
+                        if borrower.operands[i] is not product:
+                            continue
+                        child = borrower.results[0]
+                        for use in child.uses:
+                            if use.operation.get_trait(ProductSemantics) is not None and (
+                                use.operation.parent_block() is not block or positions[use.operation] >= positions[releases[0]]
+                            ):
+                                self.error("retained_release", releases[0], f"derived product {origin(borrower)} must release first")
+        if any(isinstance(value.type, RetainedType) for op in self.index.values() for value in op.results):
+            self.obligations.append(
+                Obligation(
+                    origin(self.root),
+                    "retained_products",
+                    ("lexical read-only borrowing", "explicit dependencies and release", "physical-use settlement before cleanup"),
+                )
+            )
+
+    def retained_effects(self, bindings) -> None:
+        if not any(isinstance(value.type, RetainedType) for op in self.index.values() for value in op.results):
+            return
+
+        def owners(value: SSAValue) -> frozenset[Operation]:
+            if isinstance(value.type, CapabilityType):
+                return frozenset(
+                    owner
+                    for issuer in self.value_sources(value)
+                    if self.accesses[issuer].mode != AccessMode.SNAPSHOT
+                    for owner in self.value_sources(self.accesses[issuer].subject)
+                )
+            if isinstance(value, OpResult) and isinstance(value.type, RetainedType):
+                rule = value.owner.get_trait(RealizationSemantics)
+                if rule is not None:
+                    return frozenset(owner for i in rule.describe(value.owner).retains for owner in owners(value.owner.operands[i]))
+            self.error("retained_dependency", value.owner if isinstance(value, OpResult) else self.root, "unresolved product dependency")
+
+        def visit(block, inherited):
+            live = dict(inherited)
+            for op in block.ops:
+                if op.get_trait(ProductSemantics) is not None:
+                    live.pop(op.operands[0], None)
+                rule = op.get_trait(RealizationSemantics)
+                if rule is not None:
+                    binding = bindings.get(symbol(op.properties["binding"]))
+                    if binding is not None:
+                        for requirement in binding.effects.resources:
+                            if requirement.access != ResourceAccess.UPDATE:
+                                continue
+                            updated = owners(op.operands[requirement.argument])
+                            for product, required in live.items():
+                                if updated & required:
+                                    self.error(
+                                        "retained_update", op, f"update conflicts with live retained product {origin(product.owner)}"
+                                    )
+                    if rule.describe(op).retains:
+                        live[op.results[0]] = owners(op.results[0])
+                for region in op.regions:
+                    visit(region.block, live)
+
+        visit(self.root.regions[0].block, {})
 
     def closure_source(self, waiting: Operation, source: Operation) -> Operation:
         if source.is_ancestor(waiting):
@@ -965,6 +1097,7 @@ def verify(program: Normalized, *, replicated: bool = False, cuts: Sequence[Cut]
     """Recompute from detached IR; no bindings, runtime observations or factories."""
     analysis = Analysis(program)
     analysis.ownership()
+    analysis.retained_products()
     analysis.access_rules()
     analysis.lifecycle()
     inputs = analysis.flow_links()

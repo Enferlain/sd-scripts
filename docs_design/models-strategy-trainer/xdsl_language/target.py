@@ -40,6 +40,7 @@ from .dialects import (
     FusedLocalOp,
     OptionalPayloadType,
     ProgramOp,
+    ReleaseProductOp,
     RequestOp,
     ResourceOp,
     RetireOp,
@@ -73,6 +74,16 @@ class Capability:
     mode: AccessMode
     version: Version
     value: object
+    active: bool = True
+
+
+@dataclass(eq=False)
+class RetainedProduct:
+    key: tuple[str, int]
+    value: object
+    capabilities: tuple[Capability, ...]
+    parents: tuple[RetainedProduct, ...]
+    borrowers: int = 0
     active: bool = True
 
 
@@ -216,6 +227,8 @@ class Runtime:
         self._live: dict[Identity, Outcome] = {}
         self.ordinals: dict[tuple[Identity, str], int] = defaultdict(int)
         self.call_counts: dict[str, int] = defaultdict(int)
+        self.retained: dict[tuple[str, int], RetainedProduct] = {}
+        self.product_receipts: dict[tuple[str, int], tuple[str, tuple[Version, ...]]] = {}
         self.local_dispatches: dict[str, int] = defaultdict(int)
         self.entry_counts: dict[str, int] = defaultdict(int)
         self.inputs: dict[Identity, tuple[tuple[str, int], ...]] = {}
@@ -421,6 +434,7 @@ class Runtime:
     async def _body(self, block: Block, values: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
         env = dict(zip(block.args, values, strict=True))
         returned: tuple[object, ...] = ()
+        cleanup = "unconsumed"
         try:
             for op in block.ops:
                 if isinstance(op, YieldOp):
@@ -442,8 +456,13 @@ class Runtime:
                     raise ExecutionError(f"{origin(op)}: target result arity mismatch")
                 env.update(zip(op.results, result, strict=True))
             return ()
+        except BaseException as failed:
+            cleanup = "cancelled" if isinstance(failed, asyncio.CancelledError) else "failed"
+            raise
         finally:
-            for value in env.values():
+            for value in reversed(tuple(env.values())):
+                if isinstance(value, RetainedProduct) and value.active:
+                    self._release_product(value, "cancelled" if self.cancelled else cleanup)
                 if (
                     isinstance(value, Ticket)
                     and value.owner == identity
@@ -596,6 +615,9 @@ class Runtime:
                 if not isinstance(ticket, Ticket) or ticket.owner != identity or ticket.disposition is not None:
                     raise ExecutionError("borrow lacks an owned item claim")
                 return (deepcopy(ticket.payload),)
+            if isinstance(op, ReleaseProductOp):
+                self._release_product(args[0], "released")
+                return ()
             if isinstance(op, RetireOp):
                 self._dispose(args[0], text(op, "disposition"), identity)
                 return ()
@@ -966,6 +988,17 @@ class Runtime:
                     cap.active = False
 
     def _valid(self, value: object, name: str) -> bool:
+        if name.startswith("retained:"):
+            return (
+                isinstance(value, RetainedProduct)
+                and value.active
+                and self.retained.get(value.key) is value
+                and all(
+                    cap.active and (cap.mode == AccessMode.SNAPSHOT or self._version(cap.resource) == cap.version)
+                    for cap in value.capabilities
+                )
+                and self._valid(value.value, name.removeprefix("retained:"))
+            )
         if name == "capability":
             return isinstance(value, Capability) and value.active
         if name == "scalar":
@@ -977,7 +1010,41 @@ class Runtime:
         validator = self.installed.schemas.get(name)
         return validator(value) if validator else False
 
+    def _release_product(self, product: RetainedProduct, disposition: str) -> None:
+        if not isinstance(product, RetainedProduct) or self.retained.get(product.key) is not product or not product.active:
+            raise ExecutionError("product release lacks current retained ownership")
+        if product.borrowers or any(any(parent is product for parent in child.parents) for child in self.retained.values()):
+            raise ExecutionError("product release precedes dependent physical settlement")
+        self.product_receipts[product.key] = disposition, tuple(cap.version for cap in product.capabilities)
+        del self.retained[product.key]
+        product.active, product.value = False, None
+        product.capabilities, product.parents = (), ()
+
     async def _call(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        borrowed = tuple(value for value in args if isinstance(value, RetainedProduct))
+        if any(
+            not self._valid(value, self.bindings[symbol(op.properties["binding"])].spec.inputs[i])
+            for i, value in enumerate(args)
+            if isinstance(value, RetainedProduct)
+        ):
+            raise ExecutionError("selected call uses a released/stale retained product")
+        binding = self.bindings[symbol(op.properties["binding"])]
+        for i in binding.spec.updates:
+            cap = args[i]
+            if isinstance(cap, Capability) and any(
+                any(dependency.mode != AccessMode.SNAPSHOT and dependency.resource == cap.resource for dependency in value.capabilities)
+                for value in self.retained.values()
+            ):
+                raise ExecutionError("owner update conflicts with a live retained product")
+        for product in borrowed:
+            product.borrowers += 1
+        try:
+            return await self._call_physical(op, args, identity)
+        finally:
+            for product in borrowed:
+                product.borrowers -= 1
+
+    async def _call_physical(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
         if self.cancelled or self.failed:
             raise asyncio.CancelledError("run closing prevents selected-call entry")
         binding = self.bindings[symbol(op.properties["binding"])]
@@ -1005,7 +1072,7 @@ class Runtime:
                 gate.wait()
             if failure is not None:
                 raise ExecutionError(failure)
-            return binding.invoke(args)
+            return binding.invoke(tuple(value.value if isinstance(value, RetainedProduct) else value for value in args))
 
         try:
             finished = await self.workers.execute(invoke, threading.Event())
@@ -1066,13 +1133,13 @@ class Runtime:
             identity,
             "physical_completed",
             ordinal,
-            result.values,
+            (("retained", binding.spec.outputs[0], key),) if binding.spec.retains else result.values,
             self.causes.get(identity),
             self.inputs.get(identity, ()),
             self.products.get(identity, ()),
         )
         if len(result.values) != len(binding.spec.outputs) or not all(
-            self._valid(value, kind) for value, kind in zip(result.values, binding.spec.outputs, strict=True)
+            self._valid(value, kind.removeprefix("retained:")) for value, kind in zip(result.values, binding.spec.outputs, strict=True)
         ):
             self._fact(origin(op), identity, "validation_rejected", self.inputs.get(identity, ()), self.products.get(identity, ()))
             raise ExecutionError(f"{origin(op)}: binding output contract mismatch")
@@ -1085,7 +1152,30 @@ class Runtime:
             )
             if not orderly_production:
                 raise interruption
-        return deepcopy(result.values)
+        if binding.spec.retains:
+            if self.cancelled or self.failed:
+                raise asyncio.CancelledError("run closing prevents retained product admission after physical completion")
+            dependencies = tuple(args[i] for i in binding.spec.retains)
+            parents = tuple(value for value in dependencies if isinstance(value, RetainedProduct))
+            capabilities: dict[int, Capability] = {}
+            for dependency in dependencies:
+                if isinstance(dependency, Capability):
+                    capabilities[id(dependency)] = dependency
+                elif isinstance(dependency, RetainedProduct):
+                    capabilities.update((id(cap), cap) for cap in dependency.capabilities)
+                else:
+                    raise ExecutionError("invalid retained dependency authority")
+            caps = tuple(capabilities.values())
+            if any(not cap.active or (cap.mode != AccessMode.SNAPSHOT and self._version(cap.resource) != cap.version) for cap in caps):
+                raise ExecutionError("retained result depends on inactive/stale capability")
+            product = RetainedProduct(key, result.values[0], caps, parents)
+            self.retained[key] = product
+            self._fact(source, identity, "product_retained", key, tuple(cap.version for cap in caps))
+            return (product,)
+        try:
+            return deepcopy(result.values)
+        except (TypeError, RuntimeError) as failed:
+            raise ExecutionError(f"{source}: detached result isolation failed; an explicit retained contract is required") from failed
 
     async def _take(self, op: Operation, name: str, identity: Identity) -> Ticket:
         entry_key = origin(op), self.entry_counts[origin(op)]

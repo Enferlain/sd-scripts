@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "pid": 37396,
+  "started_at": 1793875009.3511822,
+  "cwd": "/home/imi/Projects/sd-scripts",
+  "state": "failed",
+  "result_available": true,
+  "request": {
+    "entrypoint": "mcp",
+    "workspace": "/home/imi/Projects/sd-scripts",
+    "diff_target": "HEAD",
+    "context_files": [
+      "docs_design/models-strategy-trainer/xdsl_language/product_case.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_contracts.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_reference.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_bindings.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_runtime.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_child.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_qualification.py",
+      "docs_design/models-strategy-trainer/xdsl_language/test_products.py",
+      "docs_design/models-strategy-trainer/xdsl_language/test_product_target.py",
+      "docs_design/models-strategy-trainer/xdsl_language/products.md",
+      "docs_design/models-strategy-trainer/xdsl_language/README.md",
+      "openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md",
+      "openspec/changes/rework-model-strategy-trainer/tasks.md"
+    ],
+    "focus_files": [
+      "docs_design/models-strategy-trainer/xdsl_language/contracts.py",
+      "docs_design/models-strategy-trainer/xdsl_language/dialects.py",
+      "docs_design/models-strategy-trainer/xdsl_language/normalize.py",
+      "docs_design/models-strategy-trainer/xdsl_language/verify.py",
+      "docs_design/models-strategy-trainer/xdsl_language/prepare.py",
+      "docs_design/models-strategy-trainer/xdsl_language/reference.py",
+      "docs_design/models-strategy-trainer/xdsl_language/target.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_bindings.py",
+      "docs_design/models-strategy-trainer/xdsl_language/test_products.py",
+      "docs_design/models-strategy-trainer/xdsl_language/test_product_target.py",
+      "docs_design/models-strategy-trainer/xdsl_language/product_qualification.py"
+    ],
+    "task_description": "Review bounded shared-language milestone 11: resource-backed scoped retained products. Explicit IR/installed dependency positions, lexical read-only borrowing, affine release and derived-product ordering; shared preparation/update/fusion constraints; independent reference and existing owner/worker target; actual buffer views and CPU autograd with retain_graph across repeated borrows; cleanup after physical settlement through repeated cancellation/late failure. Check semantic/cold correspondence, alias/authority/version handling including snapshots, runtime control and diagnostics erasure, unsafe release/update/escape, real numerical independent oracles and qualification negatives. New product_*.py/test_product*.py files are untracked and provided as full context; inspect them alongside HEAD diff. Current gates: 504 owner/language tests; 441 pure tests +4 optional skips; GIL false before/after ordinary imports; Ruff/format/ty pass;52 fresh normal/-O cold children including wrong implementation and forged artifacts pass;940 protected prior files/reports unchanged. Lexical same-body products deliberately have no cross-region/flow owner transfer and selected Python callables remain trusted. G5, mutable alias discovery, device qualification and continuous-run receipt reclamation remain out of scope. Report actionable correctness gaps and evidence limits without inventing broader scope.",
+    "model": null,
+    "reasoning_effort": null
+  },
+  "result_ok": false,
+  "chars": 145,
+  "exit_code": 1,
+  "finished_at": 1793875020.5988405
+}

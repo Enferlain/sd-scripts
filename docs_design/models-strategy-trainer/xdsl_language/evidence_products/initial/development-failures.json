@@ -1,0 +1,17 @@
+{
+  "attempts": [
+    {
+      "scope": "first focused invocation",
+      "outcome": "pytest asyncio plugin was not explicitly loaded; corrected invocation"
+    },
+    {
+      "scope": "reference cancellation tests",
+      "outcome": "test used a nonexistent cancel method; corrected to the reference external cancellation flag; no runtime change for that error"
+    },
+    {
+      "scope": "unmarked tensor negative test",
+      "outcome": "test expected inner ExecutionError instead of the existing owner WorkFailed envelope; corrected exception expectation"
+    }
+  ],
+  "retained_development_receipts": "/tmp/sd-scripts-retained-use-rffq34z9"
+}

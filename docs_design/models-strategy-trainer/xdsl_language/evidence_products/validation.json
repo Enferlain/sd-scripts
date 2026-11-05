@@ -1,0 +1,53 @@
+{
+  "owner": {
+    "passed": 510,
+    "environment": {
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "build_gil_disabled": 1,
+      "gil_before": false,
+      "gil_after": false,
+      "forced_gil": null,
+      "pytest_exit": 0
+    }
+  },
+  "pure": {
+    "passed": 445,
+    "optional_skips": 4,
+    "environment": {
+      "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+      "build_gil_disabled": 1,
+      "gil_before": false,
+      "gil_after": false,
+      "forced_gil": null,
+      "pytest_exit": 0
+    }
+  },
+  "cold": {
+    "fresh_processes": 68,
+    "normal_and_optimized": true,
+    "authoring_blocked": true,
+    "initial_pre_review_processes": 52
+  },
+  "quality": {
+    "ruff": "passed",
+    "format": "passed",
+    "ty": "passed",
+    "git_diff_check": "passed"
+  },
+  "openspec": {
+    "standard": "passed",
+    "strict": "53 inherited warnings, zero errors; separate sd-scripts-syv.31.27"
+  },
+  "review": {
+    "required_mcp": "failed before assessment, HTTP429",
+    "fallback": "GPT-6.1 Sol medium: two actionable findings; both fixed, independently confirmed in follow-up; no remaining actionable findings"
+  },
+  "followup": "sd-scripts-syv.31.30: bounded historical bookkeeping retirement",
+  "limits": [
+    "lexical same-body readonly retained products",
+    "trusted selected bindings",
+    "CPU storage and differentiation witness",
+    "no escaping owner transfer, device, optimizer or performance qualification",
+    "G5 remains open"
+  ]
+}

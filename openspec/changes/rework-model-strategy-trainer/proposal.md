@@ -59,6 +59,12 @@ notes.
 
 ## Capabilities
 
+The next bounded language milestone qualifies scoped resource-backed products:
+explicit storage/state dependencies survive producing-call completion until
+retained consumers physically settle. It uses buffer/view and real CPU
+autograd cases to inform G5; it does not adopt production ownership APIs or
+solve continuous-run bookkeeping reclamation.
+
 ### New Capabilities
 
 - `training-contract`: The Trainer/pipeline-derived contract surfaces, contract-guided

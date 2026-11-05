@@ -19,6 +19,7 @@ from .contracts import (
     FlowSemantics,
     ItemSemantics,
     origin,
+    ProductSemantics,
     Protocol,
     RealizationContract,
     RealizationSemantics,
@@ -122,7 +123,7 @@ def inspect_structure(module: ModuleOp) -> Structure:
     symbols = symbol_index(module)
     regions, links, flows, resources, realizations, wiring, parameters, leaf_contracts = [], [], [], [], [], [], [], []
     for key, op in index.items():
-        for kind in (ItemSemantics, EndpointSemantics, CompletionSemantics, DecisionSemantics):
+        for kind in (ItemSemantics, ProductSemantics, EndpointSemantics, CompletionSemantics, DecisionSemantics):
             trait = op.get_trait(kind)
             if trait is not None:
                 leaf_contracts.append((key, kind.__name__, trait.describe(op)))

@@ -1,4 +1,4 @@
-# Shared xDSL language slice: milestones 6–10
+# Shared xDSL language slice: milestones 6–11
 
 This isolated package implements structural construction, normalization,
 shared semantic verification, an executable lifecycle reference and derived
@@ -111,9 +111,10 @@ The input report's `required_initial_owners` names external owner initialization
 requirements, not already initialized runtime state. Initialization, installed
 bindings, output validation, physical/device/collective ordering and owner
 failure/restoration protocols remain explicit preparation/execution evidence.
-The maintained leaf-call contract returns detached values; retained derivatives
-need a different, explicit lifetime contract. No arbitrary Python return value
-becomes safe merely because its static payload type is copyable.
+Ordinary leaf calls return detached values. The explicit scoped retained-product
+contract below supports storage/derivative dependencies through physical uses.
+No arbitrary Python return value becomes safe merely because its static payload
+type is copyable.
 Input consumers are potentially reachable templates, not admitted invocations.
 A handler body without a possible request adds no fictional admission/drain
 obligation. Claim transfers are followed to their final dispositions; producer
@@ -394,6 +395,29 @@ replicated execution, native-library concurrency generally or performance.
 The [qualification record](qualification.md) adds owner-target history erasure,
 fresh normal/optimized children and seeded suspension checks. Earlier
 reference-only children remain separate evidence.
+
+## Scoped resource-backed products
+
+[The retained-product case](products.md) adds `lang.retained` results with
+explicit capability/product dependency positions and `lang.release_product`.
+A product belongs to its defining ordered body, permits read-only physical
+borrowing and retains actual dependencies/observed versions until release.
+Derived products release before their parents. Yields, nested captures,
+publication, use after release and known conflicting live-owner updates reject;
+release of a snapshot product does not depend on the live owner's current epoch.
+
+Preparation checks the same installed retention declaration and derives cold
+correspondence before factories. The reference models logical products and
+independent arithmetic; the existing owner target carries actual memory views
+and non-leaf Torch graphs without copying them. Cleanup retains entered uses
+through repeated cancellation and late failure, then clears live product
+references before access protection ends. The existing detached-only fusion
+keeps these product boundaries. No new scheduler or production API is introduced.
+
+The two witnesses exercise read-only buffer aliases and real CPU differentiation
+through a frozen base into a trainable leaf. This is explicit product lifetime
+evidence, not general model/optimizer routing, escaping graph support, mutable
+alias safety, device qualification or bounded historical bookkeeping.
 
 ## Run the bounded checks
 

@@ -2897,9 +2897,39 @@ normal/optimized child qualification. Existing scalar-gradient conventions and
 optimization-unit construction remain bounded target realizations rather than
 language rules. No host dispatch count establishes framework/device performance.
 
+#### Scoped resource-backed products
+
+Task group 11 and bead `sd-scripts-syv.31.29` extend the language/owner evidence
+with one lexical retained-product contract. A physical call may return one
+explicitly typed retained payload whose declared dependency positions name
+actual capabilities or earlier retained products. Borrowers receive the actual
+payload, without cloning away storage aliases or autograd dependencies. They
+have read-only use; selected implementations remain trusted to honor that
+contract. The product retains its dependencies and observed versions until an
+explicit release after every borrower and derived product settles.
+
+This first profile keeps products within their defining ordered body. A
+product cannot be yielded, captured into another region, published to a flow or
+implicitly copied; broader ownership transfer requires another explicit
+contract. Each normal path releases exactly once. Failure/cancellation cleanup
+releases remaining products in reverse dependency order after entered physical
+work drains. Known updates to a retained owner reject before execution; runtime
+checks remain authoritative for active products, capability versions, dependent
+uses and reported updates. Actual storage stays outside IR. Detached results
+retain their existing isolation convention; failed isolation is not permission
+to infer an ownership contract.
+
+Use a read-only buffer view and a real CPU autograd product passed between
+physical calls. Independent stand-ins establish arithmetic and lifetime facts;
+target evidence establishes actual aliases and graph retention. Preserve cold
+correspondence, diagnostic erasure, interruption and late failure. Retention
+boundaries block the existing detached-only fusion. This bounded profile feeds
+G5 types and representation choices; it does not qualify device ordering,
+mutable aliases, arbitrary escaped autograd graphs or production reclamation.
+
 #### Bounded milestones and success criteria
 
-Tasks 6–10 and Beads `sd-scripts-syv.31.26` / `sd-scripts-syv.31.28` provide
+Tasks 6–11 and Beads `sd-scripts-syv.31.26` / `sd-scripts-syv.31.28` / `sd-scripts-syv.31.29` provide
 evidence for tasks 5.3/5.4:
 
 | Milestone | Bead | Delivered boundary |
@@ -2909,6 +2939,7 @@ evidence for tasks 5.3/5.4:
 | 8 | `sd-scripts-syv.31.26.4` | Derived prepared setup and live/cold execution through existing owner services, realizing both `snapshot` and `protected_current` explicitly; runtime lifecycle facts compared differentially with the reference |
 | 9 | `sd-scripts-syv.31.26.5` | Integrated cancellation, late failure, archive-erasure and fresh-process qualification, with interleaving exploration against the reference across the supported compositions |
 | 10 | `sd-scripts-syv.31.28` | Earlier SSA/binding rejection, one shared effects contract, actual zero-or-one filtering across requested demand, and one justified local rewrite with an executable barrier |
+| 11 | `sd-scripts-syv.31.29` | Scoped resource-backed products, explicit dependency/release contracts and actual storage/autograd use through cancellation and physical settlement |
 
 Each milestone includes its own tests, scope documentation, relevant quality
 gates and required review before the next starts. Milestone 9 integrates prior
@@ -3600,12 +3631,12 @@ task 5.7 or authorize production apply, spec sync/archive, or a new runtime API.
 ### G5. Choose production shapes and traced migration milestones
 
 D14 records the working xDSL substrate choice. The bounded language milestones
-6–9 supply additional evidence for tasks 5.3/5.4 before those production choices
+6–11 supply additional evidence for tasks 5.3/5.4 before those production choices
 are completed. Their research contract types and runtime adapters do not close
 G5 or become production interfaces by default.
 
 Tasks 5.1/5.2 can develop independently from the completed exchanges; the
-6–9 dependency applies to tasks 5.3/5.4, not every production-design task.
+6–11 dependency applies to tasks 5.3/5.4, not every production-design task.
 Any independently developed shapes still require reconciliation with those
 choices before production placement and migration are finalized.
 

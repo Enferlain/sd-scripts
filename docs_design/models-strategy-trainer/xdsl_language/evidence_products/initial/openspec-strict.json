@@ -1,0 +1,296 @@
+{
+  "items": [
+    {
+      "id": "rework-model-strategy-trainer",
+      "type": "change",
+      "valid": false,
+      "issues": [
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Accepted execution covers the whole run\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Equivalent execution preserves required interactions\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Differentiated work preserves routing and numerical lifetime\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Input handoff retains identity and admission meaning\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Cross-owner action facts remain correlatable\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Completion and failure follow the accepted activity relationships\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Imperative regions receive only accepted authority\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Current-use protection spans owners and actual use\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "accepted-training-execution/spec.md",
+          "message": "ADDED \"Conformance and execution cost are checked against accepted meaning\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "adapter-system/spec.md",
+          "message": "ADDED \"Authored adapter intent becomes accepted participants and relationships\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "adapter-system/spec.md",
+          "message": "ADDED \"Pipeline coordination replaces mode ownership\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "model-family-metadata/spec.md",
+          "message": "ADDED \"Metadata keeps runtime and durable model identity meanings distinct\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "model-family-metadata/spec.md",
+          "message": "ADDED \"Metadata history preserves observed revisions and accepted outcomes\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "model-family-metadata/spec.md",
+          "message": "ADDED \"Artifact and restoration observations report their own achieved guarantees\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "model-family-metadata/spec.md",
+          "message": "ADDED \"Metadata delivery cannot change origin-owned truth\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-artifact-persistence/spec.md",
+          "message": "ADDED \"Artifact plans select semantic state\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-artifact-persistence/spec.md",
+          "message": "ADDED \"Products preserve the information required for their declared use\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-artifact-persistence/spec.md",
+          "message": "ADDED \"Capture preserves source meaning across later run changes\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-artifact-persistence/spec.md",
+          "message": "ADDED \"Semantic transformations are declared before serialization\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-artifact-persistence/spec.md",
+          "message": "ADDED \"Export does not grant live-state mutation authority\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-artifact-persistence/spec.md",
+          "message": "ADDED \"Artifact results report actual output\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Capability selection is validated before use\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Caching separates semantics from storage orchestration\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Cache requests and results preserve the selected computation\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Cache freshness follows actual computation dependencies\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Cache publication and consumer admission are distinct\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Cache storage lifecycle preserves outstanding use\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Independent cache production has bounded lifecycle and owned continuation\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Validation separates evaluation semantics from traversal\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Validation results preserve measurement and effect meaning\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Sampling separates generation semantics from orchestration\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Sampling results distinguish generation publication and reporting\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Evaluation and generation use protected current state\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Capability temporary projections have scoped cleanup\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Runtime snapshots declare accepted continuation coverage\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Snapshot contributions form a coherent recoverable cut\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Recovery preserves unfinished work and effect distinctions\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Snapshot publication and restore readiness have separate outcomes\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Coordinated restoration preserves logical identity with fresh readiness\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-capability-coordination/spec.md",
+          "message": "ADDED \"Failed restoration cannot expose a mixed continuation\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-contract/spec.md",
+          "message": "ADDED \"Authors assemble strategies explicitly\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-contract/spec.md",
+          "message": "ADDED \"Strategy fulfillment produces acceptance or rejection\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-contract/spec.md",
+          "message": "ADDED \"Readiness checkpoints are derived during strategy fulfillment\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-observability/spec.md",
+          "message": "ADDED \"Whole-run observations preserve owner scopes and independent progress\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-observability/spec.md",
+          "message": "ADDED \"Diagnostics and resource accounting use accepted subject and ownership evidence\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-observability/spec.md",
+          "message": "ADDED \"Observation degradation is separate from execution and required feedback\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-optimization/spec.md",
+          "message": "ADDED \"Binding changes invalidate affected optimization runtime\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-optimization/spec.md",
+          "message": "ADDED \"Standard advancement supports independently and jointly due units\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-runtime-preparation/spec.md",
+          "message": "ADDED \"Preparation derives one coherent attempt-scoped job\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-runtime-preparation/spec.md",
+          "message": "ADDED \"Backend coordination does not replace semantic identity\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-runtime-preparation/spec.md",
+          "message": "ADDED \"Optimization candidates preserve accepted member correspondence\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-runtime-preparation/spec.md",
+          "message": "ADDED \"Readiness establishes differentiated and granted-work support\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        },
+        {
+          "level": "WARNING",
+          "path": "training-runtime-preparation/spec.md",
+          "message": "ADDED \"Destructive preparation withdraws guarantees before mutation\": Requirement text is very long (>500 characters). Move examples and edge cases into scenarios, or split it into separate requirements that each state one behavior."
+        }
+      ],
+      "durationMs": 107
+    }
+  ],
+  "summary": {
+    "totals": {
+      "items": 1,
+      "passed": 0,
+      "failed": 1
+    },
+    "byType": {
+      "change": {
+        "items": 1,
+        "passed": 0,
+        "failed": 1
+      }
+    }
+  },
+  "version": "1.0",
+  "root": {
+    "path": "/home/imi/Projects/sd-scripts",
+    "source": "nearest"
+  }
+}

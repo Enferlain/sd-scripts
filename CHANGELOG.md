@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-05]
+
+### Added
+
+- **Scoped products now retain storage and derivative dependencies through physical use** — explicit dependency/release contracts reject escape and premature reuse, while real buffer views and CPU autograd products execute through the independent reference and existing owner target. Cold correspondence, erased histories, cancellation and late physical failure are qualified; production ownership APIs and bookkeeping reclamation remain open.
+
 ## [2026-11-04]
 
 ### Fixed

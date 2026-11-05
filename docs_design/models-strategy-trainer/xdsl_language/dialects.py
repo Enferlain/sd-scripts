@@ -58,6 +58,7 @@ from .contracts import (
     number,
     OrderedBody,
     origin,
+    ProductSemantics,
     Protocol,
     RealizationSemantics,
     ReferenceSemantics,
@@ -93,6 +94,12 @@ class ClaimType(ParametrizedAttribute, TypeAttribute):
 @irdl_attr_definition
 class OptionalPayloadType(ParametrizedAttribute, TypeAttribute):
     name = "lang.optional"
+    payload: PayloadType
+
+
+@irdl_attr_definition
+class RetainedType(ParametrizedAttribute, TypeAttribute):
+    name = "lang.retained"
     payload: PayloadType
 
 
@@ -352,7 +359,15 @@ class CallOp(SourcedOp):
     outputs = var_result_def()
     binding = prop_def(SymbolRefAttr)
     binding_version = prop_def(StringAttr)
+    retains = opt_prop_def(ArrayAttr[IntegerAttr])
     traits = traits_def(SourceShape(), RealizationSemantics(), DecisionSemantics())
+
+
+@irdl_op_definition
+class ReleaseProductOp(SourcedOp):
+    name = "lang.release_product"
+    product = operand_def(RetainedType)
+    traits = traits_def(SourceShape(), ProductSemantics())
 
 
 @irdl_op_definition
@@ -452,6 +467,7 @@ Language = Dialect(
         RequestsOp,
         AccessOp,
         CallOp,
+        ReleaseProductOp,
         ConstantOp,
         TakeOp,
         BorrowOp,
@@ -460,7 +476,7 @@ Language = Dialect(
         StopAfterOp,
         YieldOp,
     ],
-    [PayloadType, ResourceType, EndpointType, ClaimType, OptionalPayloadType, CapabilityType, RequestType],
+    [PayloadType, ResourceType, EndpointType, ClaimType, OptionalPayloadType, RetainedType, CapabilityType, RequestType],
 )
 
 

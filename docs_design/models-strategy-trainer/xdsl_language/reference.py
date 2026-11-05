@@ -27,6 +27,7 @@ from .contracts import (
     number,
     origin,
     Protocol,
+    RealizationSemantics,
     RegionSemantics,
     ResourceSemantics,
     symbol,
@@ -43,9 +44,11 @@ from .dialects import (
     OptionalPayloadType,
     PayloadType,
     ProgramOp,
+    ReleaseProductOp,
     RequestOp,
     ResourceOp,
     ResourceType,
+    RetainedType,
     RetireOp,
     StopAfterOp,
     StreamOp,
@@ -118,6 +121,16 @@ class Capability:
     active: bool = True
 
 
+@dataclass(eq=False)
+class ReferenceProduct:
+    key: tuple[str, int]
+    value: object
+    capabilities: tuple[Capability, ...]
+    parents: tuple[ReferenceProduct, ...]
+    borrowers: int = 0
+    active: bool = True
+
+
 @dataclass(frozen=True)
 class Update:
     capability: int
@@ -137,6 +150,7 @@ class StandIn:
     invoke: Callable[[tuple[object, ...]], CallResult]
     updates: tuple[int, ...] = ()
     version: str = "1"
+    retains: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.version or any(
@@ -253,6 +267,8 @@ class Task:
 
 
 def schema(value: SSAValue) -> str:
+    if isinstance(value.type, RetainedType):
+        return "retained:" + value.type.payload.schema.data
     kind = value.type.name
     if isinstance(value.type, PayloadType):
         return str(value.type.schema.data)
@@ -260,6 +276,8 @@ def schema(value: SSAValue) -> str:
 
 
 def valid(value: object, name: str, schemas: Mapping[str, Callable[[object], bool]]) -> bool:
+    if name.startswith("retained:"):
+        return isinstance(value, ReferenceProduct) and value.active and valid(value.value, name.removeprefix("retained:"), schemas)
     if name == "scalar":
         return type(value) in (float, int)
     if name == "index":
@@ -304,6 +322,8 @@ class Reference:
                 raise ReferenceError(f"{origin(op)}: circular self-referential source settlement")
         self.bindings = dict(bindings)
         self.schemas = dict(schemas or {})
+        self.retained: dict[tuple[str, int], ReferenceProduct] = {}
+        self.product_receipts: dict[tuple[str, int], tuple[str, tuple[Version, ...]]] = {}
         self.resources = {key: Resource(key, deepcopy(value)) for key, value in resources.items()}
         self.initial_snapshots = {key: (value.version, deepcopy(value.value)) for key, value in self.resources.items()}
         self.streams: dict[str, Stream] = {}
@@ -430,12 +450,19 @@ class Reference:
             raise ReferenceError("reference entry argument mismatch")
         env: dict[SSAValue, object] = dict(zip(block.args, args, strict=True))
         returned: tuple[object, ...] = ()
+        cleanup = "unconsumed"
         try:
             returned = yield from self._body_impl(block, env, parent)
             return returned
+        except ReferenceError as failed:
+            cleanup = "cancelled" if isinstance(failed, Cancelled) else "failed"
+            raise
         finally:
             # Parallel branch bodies own locals without a separate region-op
             # invocation. Their claims still need disposition on failure/cancel.
+            for product in reversed(tuple(env.values())):
+                if isinstance(product, ReferenceProduct) and product.active:
+                    self._release_product(product, "cancelled" if self.cancelled else cleanup)
             for ticket in env.values():
                 if (
                     isinstance(ticket, Ticket)
@@ -488,6 +515,9 @@ class Reference:
             entered = yield Command("call_enter", op, parent, args)
             result = yield Command("call_complete", op, parent, (entered,))
             return checked(result, tuple)
+        if isinstance(op, ReleaseProductOp):
+            self._release_product(checked(args[0], ReferenceProduct), "released")
+            return ()
         if isinstance(op, TakeOp):
             ticket = None
             while ticket is None:
@@ -745,6 +775,16 @@ class Reference:
         stream.settled[ticket.key] = Settlement(disposition, ticket.versions, ticket.provenance, ticket.forwarded_to)
         self._fact(ticket.stream, identity, "disposition", ticket.key, disposition)
 
+    def _release_product(self, product: ReferenceProduct, disposition: str) -> None:
+        if self.retained.get(product.key) is not product or not product.active:
+            raise ReferenceError("product release lacks current retained ownership")
+        if product.borrowers or any(any(parent is product for parent in child.parents) for child in self.retained.values()):
+            raise ReferenceError("product release precedes dependent physical settlement")
+        self.product_receipts[product.key] = disposition, tuple(cap.version for cap in product.capabilities)
+        del self.retained[product.key]
+        product.active, product.value = False, None
+        product.capabilities, product.parents = (), ()
+
     def _ready(self, command: Command) -> bool:
         kind, op, args = command.kind, command.op, command.args
         if self.closing and kind not in ("call_complete", "release", "join", "drain", "next_request", "settle_requests"):
@@ -837,6 +877,8 @@ class Reference:
         if kind == "release":
             cap = checked(args[0], Capability)
             resource = self.resources[cap.resource]
+            if any(any(dependency is cap for dependency in product.capabilities) for product in self.retained.values()):
+                raise ReferenceError("access release precedes retained product settlement")
             resource.readers.discard(cap.token)
             if resource.writer == cap.token:
                 resource.writer = None
@@ -852,6 +894,7 @@ class Reference:
             outputs = tuple(schema(value) for value in op.results)
             if (
                 binding.inputs != inputs
+                or binding.retains != require_trait(op, RealizationSemantics).describe(op).retains
                 or binding.outputs != outputs
                 or not all(valid(value, name, self.schemas) for value, name in zip(args, inputs, strict=True))
             ):
@@ -859,7 +902,16 @@ class Reference:
             ordinal = self.call_counts[origin(op)]
             self.call_counts[origin(op)] += 1
             call_id = len(self.calls)
-            self.calls[call_id] = PendingCall(command, binding, ordinal, deepcopy(args))
+            for value in args:
+                if isinstance(value, ReferenceProduct):
+                    if self.retained.get(value.key) is not value or any(
+                        not cap.active or (cap.mode != AccessMode.SNAPSHOT and self.resources[cap.resource].version != cap.version)
+                        for cap in value.capabilities
+                    ):
+                        raise ReferenceError("call uses a stale retained product")
+                    value.borrowers += 1
+            snapshots = tuple(deepcopy(value.value) if isinstance(value, ReferenceProduct) else deepcopy(value) for value in args)
+            self.calls[call_id] = PendingCall(command, binding, ordinal, snapshots)
             self._fact(
                 origin(op),
                 identity,
@@ -872,67 +924,101 @@ class Reference:
             return call_id
         if kind == "call_complete":
             pending = self.calls[checked(args[0], int)]
-            original = pending.command
-            failure = self.failures.get((origin(op), pending.ordinal))
-            if failure is not None:
-                self._fact(
-                    origin(op),
-                    identity,
-                    "physical_failed",
-                    pending.ordinal,
-                    failure,
-                    self.request_causes.get(identity),
-                    self.input_uses.get(identity, ()),
-                    self.product_uses.get(identity, ()),
-                )
-                raise ReferenceError(f"{origin(op)}: {failure}")
             try:
-                result = pending.binding.invoke(pending.snapshots)
-            except Exception as failed:
+                original = pending.command
+                failure = self.failures.get((origin(op), pending.ordinal))
+                if failure is not None:
+                    self._fact(
+                        origin(op),
+                        identity,
+                        "physical_failed",
+                        pending.ordinal,
+                        failure,
+                        self.request_causes.get(identity),
+                        self.input_uses.get(identity, ()),
+                        self.product_uses.get(identity, ()),
+                    )
+                    raise ReferenceError(f"{origin(op)}: {failure}")
+                try:
+                    result = pending.binding.invoke(pending.snapshots)
+                except Exception as failed:
+                    self._fact(
+                        origin(op),
+                        identity,
+                        "physical_failed",
+                        pending.ordinal,
+                        str(failed),
+                        self.request_causes.get(identity),
+                        self.input_uses.get(identity, ()),
+                        self.product_uses.get(identity, ()),
+                    )
+                    raise ReferenceError(f"{origin(op)}: stand-in raised {failed}") from failed
+                if not isinstance(result, CallResult):
+                    raise ReferenceError(f"{origin(op)}: stand-in returned an invalid completion envelope")
+                for update in result.updates:
+                    if update.capability not in pending.binding.updates:
+                        raise ReferenceError(f"{origin(op)}: undeclared stand-in update")
+                    cap = original.args[update.capability]
+                    if not isinstance(cap, Capability) or not cap.active or cap.mode != AccessMode.OWNER_UPDATE:
+                        raise ReferenceError(f"{origin(op)}: update lacks owner-issued authority")
+                    resource = self.resources[cap.resource]
+                    if any(
+                        any(
+                            dependency.mode != AccessMode.SNAPSHOT and dependency.resource == cap.resource
+                            for dependency in product.capabilities
+                        )
+                        for product in self.retained.values()
+                    ):
+                        raise ReferenceError("owner update conflicts with a live retained product")
+                    if resource.version != cap.version or resource.writer != cap.token:
+                        raise ReferenceError(f"{origin(op)}: stale owner update")
+                    resource.value = deepcopy(update.value)
+                    resource.ordinal += 1
+                    self._fact(cap.resource, identity, "updated", resource.version, resource.value)
                 self._fact(
                     origin(op),
                     identity,
-                    "physical_failed",
+                    "physical_completed",
                     pending.ordinal,
-                    str(failed),
+                    (("retained", pending.binding.outputs[0], (origin(op), pending.ordinal)),)
+                    if pending.binding.retains
+                    else result.values,
                     self.request_causes.get(identity),
                     self.input_uses.get(identity, ()),
                     self.product_uses.get(identity, ()),
                 )
-                raise ReferenceError(f"{origin(op)}: stand-in raised {failed}") from failed
-            if not isinstance(result, CallResult):
-                raise ReferenceError(f"{origin(op)}: stand-in returned an invalid completion envelope")
-            for update in result.updates:
-                if update.capability not in pending.binding.updates:
-                    raise ReferenceError(f"{origin(op)}: undeclared stand-in update")
-                cap = original.args[update.capability]
-                if not isinstance(cap, Capability) or not cap.active or cap.mode != AccessMode.OWNER_UPDATE:
-                    raise ReferenceError(f"{origin(op)}: update lacks owner-issued authority")
-                resource = self.resources[cap.resource]
-                if resource.version != cap.version or resource.writer != cap.token:
-                    raise ReferenceError(f"{origin(op)}: stale owner update")
-                resource.value = deepcopy(update.value)
-                resource.ordinal += 1
-                self._fact(cap.resource, identity, "updated", resource.version, resource.value)
-            self._fact(
-                origin(op),
-                identity,
-                "physical_completed",
-                pending.ordinal,
-                result.values,
-                self.request_causes.get(identity),
-                self.input_uses.get(identity, ()),
-                self.product_uses.get(identity, ()),
-            )
-            if len(result.values) != len(pending.binding.outputs) or not all(
-                valid(value, name, self.schemas) for value, name in zip(result.values, pending.binding.outputs, strict=True)
-            ):
-                self._fact(
-                    origin(op), identity, "validation_rejected", self.input_uses.get(identity, ()), self.product_uses.get(identity, ())
-                )
-                raise ReferenceError(f"{origin(op)}: stand-in output contract mismatch")
-            self._fact(origin(op), identity, "validated", self.input_uses.get(identity, ()), self.product_uses.get(identity, ()))
-            return result.values
+                if len(result.values) != len(pending.binding.outputs) or not all(
+                    valid(value, name.removeprefix("retained:"), self.schemas)
+                    for value, name in zip(result.values, pending.binding.outputs, strict=True)
+                ):
+                    self._fact(
+                        origin(op), identity, "validation_rejected", self.input_uses.get(identity, ()), self.product_uses.get(identity, ())
+                    )
+                    raise ReferenceError(f"{origin(op)}: stand-in output contract mismatch")
+                self._fact(origin(op), identity, "validated", self.input_uses.get(identity, ()), self.product_uses.get(identity, ()))
+                if pending.binding.retains:
+                    if self.closing:
+                        raise Cancelled("run closing prevents retained product admission after physical completion")
+                    dependencies = tuple(original.args[i] for i in pending.binding.retains)
+                    parents = tuple(value for value in dependencies if isinstance(value, ReferenceProduct))
+                    capabilities: dict[int, Capability] = {}
+                    for dependency in dependencies:
+                        if isinstance(dependency, Capability):
+                            capabilities[id(dependency)] = dependency
+                        elif isinstance(dependency, ReferenceProduct):
+                            capabilities.update((id(cap), cap) for cap in dependency.capabilities)
+                        else:
+                            raise ReferenceError("invalid retained dependency authority")
+                    caps = tuple(capabilities.values())
+                    product = ReferenceProduct((origin(op), pending.ordinal), result.values[0], caps, parents)
+                    self.retained[product.key] = product
+                    self._fact(origin(op), identity, "product_retained", product.key, tuple(cap.version for cap in caps))
+                    return (product,)
+                return result.values
+            finally:
+                for value in pending.command.args:
+                    if isinstance(value, ReferenceProduct):
+                        value.borrowers -= 1
         if kind == "reserve":
             stream = self.streams[str(args[0])]
             if self._is_stopped(op, identity):

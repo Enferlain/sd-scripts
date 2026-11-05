@@ -1,0 +1,10 @@
+{
+  "command": [
+    "/home/imi/Projects/sd-scripts/.venv-wsl/bin/python",
+    "-m",
+    "xdsl_language.product_child",
+    "/tmp/sd-scripts-retained-use-rffq34z9/corrected-cold/artifacts/autograd-derived.json",
+    "/tmp/sd-scripts-retained-use-rffq34z9/corrected-cold/autograd-derived-failure-normal/choices.json"
+  ],
+  "exit": 0
+}

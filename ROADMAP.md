@@ -20,7 +20,14 @@ adds seeded reference comparisons, history erasure and detached normal/optimized
 owner execution with independent negative controls. These stages
 provide bounded evidence toward G5's production design.
 
-The next bounded extension (`sd-scripts-syv.31.28`, milestone 10) adds ordered
+[Scoped retained products](docs_design/models-strategy-trainer/xdsl_language/products.md)
+(`sd-scripts-syv.31.29`, milestone 11) add explicit storage/state dependencies,
+read-only borrowing and release after physical use. Buffer views and real CPU
+autograd products supply further evidence for G5's ownership shapes. General
+ownership transfer, production integration and continuous-run bookkeeping
+reclamation remain separate decisions.
+
+The bounded extension (`sd-scripts-syv.31.28`, milestone 10) adds ordered
 SSA/selected-authority rejection, shared binding effects, actual zero-or-one
 filtering and a contract-driven local fusion rewrite. Independent expected
 products and surviving flow receipts check requested demand, provenance and

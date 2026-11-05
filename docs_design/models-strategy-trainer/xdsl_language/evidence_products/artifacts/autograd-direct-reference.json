@@ -1,0 +1,16 @@
+{
+  "receipts": {
+    "('make', 0)": [
+      "released",
+      [
+        {
+          "incarnation": 1,
+          "lineage": "initial",
+          "ordinal": 0,
+          "owner": "storage"
+        }
+      ]
+    ]
+  },
+  "value": 276.0
+}

@@ -1,0 +1,266 @@
+{
+  "processes": 52,
+  "scope": "scoped CPU storage/physical uses; no escaping ownership, GPU or reclamation claim",
+  "verdicts": [
+    {
+      "case": "buffer-direct-normal",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-cancel",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-cancel_failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-cancel_make",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-wrong",
+      "optimized": false,
+      "verdict": "wrong numerical implementation rejected"
+    },
+    {
+      "case": "buffer-direct-normal",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-cancel",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-cancel_failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-cancel_make",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-direct-wrong",
+      "optimized": true,
+      "verdict": "wrong numerical implementation rejected"
+    },
+    {
+      "case": "buffer-direct-corrupt",
+      "optimized": false,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "buffer-direct-corrupt",
+      "optimized": true,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "buffer-derived-normal",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-cancel",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-cancel_failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-cancel_make",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-normal",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-cancel",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-cancel_failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-cancel_make",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "buffer-derived-corrupt",
+      "optimized": false,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "buffer-derived-corrupt",
+      "optimized": true,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "autograd-direct-normal",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-cancel",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-cancel_failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-cancel_make",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-wrong",
+      "optimized": false,
+      "verdict": "wrong numerical implementation rejected"
+    },
+    {
+      "case": "autograd-direct-normal",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-cancel",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-cancel_failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-cancel_make",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-direct-wrong",
+      "optimized": true,
+      "verdict": "wrong numerical implementation rejected"
+    },
+    {
+      "case": "autograd-direct-corrupt",
+      "optimized": false,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "autograd-direct-corrupt",
+      "optimized": true,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "autograd-derived-normal",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-cancel",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-cancel_failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-failure",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-cancel_make",
+      "optimized": false,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-normal",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-cancel",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-cancel_failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-failure",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-cancel_make",
+      "optimized": true,
+      "verdict": "passed"
+    },
+    {
+      "case": "autograd-derived-corrupt",
+      "optimized": false,
+      "verdict": "corruption rejected before factories"
+    },
+    {
+      "case": "autograd-derived-corrupt",
+      "optimized": true,
+      "verdict": "corruption rejected before factories"
+    }
+  ]
+}

@@ -170,6 +170,7 @@ class RealizationContract:
     outcomes: tuple[str, ...] = ("returned", "invalid_output", "raised")
     decision: Decision = Decision(Reproducibility.UNKNOWN, RankRule.UNKNOWN)
     result_lifetime: str = "detached_values"
+    retains: tuple[int, ...] = ()
 
 
 class ResourceAccess(StrEnum):
@@ -203,6 +204,17 @@ class BindingContract:
     inputs: tuple[str, ...]
     outputs: tuple[str, ...]
     effects: BindingEffects
+    retains: tuple[int, ...] = ()
+
+
+@dataclass(frozen=True)
+class ProductSemantics(OpTrait):
+    """Explicit termination of a scoped retained product's obligations."""
+
+    consumes: tuple[int, ...] = (0,)
+
+    def describe(self, op: Operation) -> tuple[int, ...]:
+        return self.consumes
 
 
 @dataclass(frozen=True)
@@ -462,10 +474,16 @@ class FlowSemantics(OpTrait):
 
 class RealizationSemantics(OpTrait):
     def describe(self, op: Operation) -> RealizationContract:
+        declared = op.properties.get("retains")
+        if declared is not None and (not isinstance(declared, ArrayAttr) or any(not isinstance(item, IntegerAttr) for item in declared)):
+            raise VerifyException(f"{origin(op)}: retained positions must be integer attributes")
+        retains = tuple(item.value.data for item in declared if isinstance(item, IntegerAttr)) if isinstance(declared, ArrayAttr) else ()
         return RealizationContract(
             symbol(op.properties["binding"]),
             text(op, "binding_version"),
             tuple(x.type for x in op.operands),
             tuple(x.type for x in op.results),
             decision=decision(op),
+            result_lifetime="scoped_retained" if retains else "detached_values",
+            retains=retains,
         )

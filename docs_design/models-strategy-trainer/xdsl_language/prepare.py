@@ -19,6 +19,7 @@ from .contracts import (
     FlowSemantics,
     origin,
     Protocol,
+    RealizationContract,
     RealizationSemantics,
     RegionSemantics,
     ResourceAccess,
@@ -37,8 +38,10 @@ from .dialects import (
     parse,
     PayloadType,
     ProgramOp,
+    ReleaseProductOp,
     RequestOp,
     ResourceOp,
+    RetainedType,
     RetireOp,
     StopAfterOp,
     StreamOp,
@@ -63,6 +66,7 @@ class BindingSpec:
     reads: tuple[int, ...] | None = None
     unknown_effects: bool = True
     resource_kinds: tuple[tuple[int, str], ...] = ()
+    retains: tuple[int, ...] = ()
 
     @property
     def contract(self) -> BindingContract:
@@ -75,6 +79,15 @@ class BindingSpec:
             or any(type(i) is not int or not 0 <= i < len(self.inputs) or self.inputs[i] != "capability" for i in positions)
             or len(set(self.updates)) != len(self.updates)
             or (self.reads is not None and len(set(self.reads)) != len(self.reads))
+            or len(set(self.retains)) != len(self.retains)
+            or any(
+                type(i) is not int
+                or not 0 <= i < len(self.inputs)
+                or not (self.inputs[i] == "capability" or self.inputs[i].startswith("retained:"))
+                for i in self.retains
+            )
+            or (bool(self.retains) != (len(self.outputs) == 1 and self.outputs[0].startswith("retained:")))
+            or (any(name.startswith("retained:") for name in self.outputs) and not self.retains)
         ):
             raise ValueError(f"{self.name}: invalid selected binding effect/version contract")
         kinds = dict(self.resource_kinds)
@@ -86,7 +99,11 @@ class BindingSpec:
             ResourceRequirement(i, ResourceAccess.UPDATE if i in self.updates else ResourceAccess.READ, kinds.get(i))
             for i in sorted(set(positions))
         )
-        return BindingContract(self.name, self.version, self.inputs, self.outputs, BindingEffects(requirements, self.unknown_effects))
+        if any(self.inputs[i] == "capability" and i not in positions for i in self.retains):
+            raise ValueError(f"{self.name}: retained capability dependency needs a declared resource requirement")
+        return BindingContract(
+            self.name, self.version, self.inputs, self.outputs, BindingEffects(requirements, self.unknown_effects), self.retains
+        )
 
 
 @dataclass(frozen=True)
@@ -114,10 +131,14 @@ class Manifest:
 
 
 def schema(value: SSAValue) -> str:
+    if isinstance(value.type, RetainedType):
+        return "retained:" + value.type.payload.schema.data
     return value.type.schema.data if isinstance(value.type, PayloadType) else value.type.name.removeprefix("lang.")
 
 
 def data(value: object) -> object:
+    if isinstance(value, BindingContract | RealizationContract) and not value.retains:
+        return {field.name: data(getattr(value, field.name)) for field in fields(value) if field.name != "retains"}
     if isinstance(value, Policy) and not value.fuse_local:
         return {name: data(getattr(value, name)) for name in ("target", "physical", "workers")}
     if isinstance(value, BindingSpec):
@@ -126,6 +147,8 @@ def data(value: object) -> object:
         names = ("name", "inputs", "outputs", "version", "updates")
         if value.reads is not None or not value.unknown_effects or value.resource_kinds:
             names += ("reads", "unknown_effects", "resource_kinds")
+        if value.retains:
+            names += ("retains",)
         return {name: data(getattr(value, name)) for name in names}
     if isinstance(value, SSAValue):
         return data(value_source(value))
@@ -251,6 +274,7 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
 
         checked = verify(fuse(checked.normalized, selected), target=replace(REFERENCE_TARGET, name=policy.target))
     analysis = Analysis(checked.normalized)
+    analysis.retained_effects(selected)
     normalized = analysis.normalized.module
     index, symbols = source_index(normalized), symbol_index(normalized)
     root = next(iter(normalized.body.block.ops))
@@ -284,7 +308,19 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
                 if len(stops) != 1:
                     raise TargetLimit(policy.target, key, "owner producer adapter requires one declared completion stop")
         elif not isinstance(
-            op, ProgramOp | ResourceOp | StreamOp | ConstantOp | CallOp | TakeOp | BorrowOp | RetireOp | RequestOp | StopAfterOp | YieldOp
+            op,
+            ProgramOp
+            | ResourceOp
+            | StreamOp
+            | ConstantOp
+            | CallOp
+            | ReleaseProductOp
+            | TakeOp
+            | BorrowOp
+            | RetireOp
+            | RequestOp
+            | StopAfterOp
+            | YieldOp,
         ):
             raise TargetLimit(policy.target, key, "leaf realization is not installed")
         if realization:
@@ -296,10 +332,15 @@ def _derive(module: ModuleOp, manifest: Manifest, policy: Policy) -> tuple[Verif
                 tuple(schema(x) for x in op.results),
             ):
                 raise CorrespondenceError(f"{key}: installed binding signature/version mismatch")
+            if installed.retains != required.retains:
+                raise CorrespondenceError(f"{key}: installed binding retained dependency contract mismatch")
             for name in (*installed.inputs, *installed.outputs):
+                name = name.removeprefix("retained:")
                 if name not in ("capability", "index", "bool", "scalar") and name not in manifest.schemas:
                     raise CorrespondenceError(f"{key}: payload schema {name} has no installed validator")
             for position, name in enumerate(installed.inputs):
+                if name.startswith("retained:") and not isinstance(op.operands[position].type, RetainedType):
+                    raise CorrespondenceError(f"{key}: operand {position} requires an actual retained product type")
                 if name == "capability" and not isinstance(op.operands[position].type, CapabilityType):
                     raise CorrespondenceError(f"{key}: binding @{installed.name} operand {position} requires an issued capability type")
             for requirement in installed.effects.resources:

@@ -1,0 +1,23 @@
+{
+  "initial": "initial/review-sol-initial.md",
+  "followup": "review-sol-followup.md",
+  "findings": [
+    {
+      "severity": "P2",
+      "issue": "Closing at producing-call completion could still admit a retained product",
+      "fix": "Explicit cancelled/failed check immediately before retained admission",
+      "regression": "test_closing_at_physical_completion_cannot_admit_a_retained_result; eight normal/optimized cold completion-closure combinations",
+      "status": "confirmed resolved"
+    },
+    {
+      "severity": "P3",
+      "issue": "Parent traversal could index malformed derived dependencies before validating them",
+      "fix": "Validate all declarations before following retained dependency edges",
+      "regression": "test_malformed_derived_positions_have_attributed_rejection, including out-of-range position9",
+      "status": "confirmed resolved"
+    }
+  ],
+  "red_regressions": "review-regressions-red.log",
+  "corrected_regressions": "review-regressions-corrected.log",
+  "initial_evidence_preserved": true
+}

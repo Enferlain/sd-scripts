@@ -1,0 +1,27 @@
+{
+  "receipts": {
+    "('derive', 0)": [
+      "released",
+      [
+        {
+          "incarnation": 1,
+          "lineage": "initial",
+          "ordinal": 0,
+          "owner": "storage"
+        }
+      ]
+    ],
+    "('make', 0)": [
+      "released",
+      [
+        {
+          "incarnation": 1,
+          "lineage": "initial",
+          "ordinal": 0,
+          "owner": "storage"
+        }
+      ]
+    ]
+  },
+  "value": 1128.0
+}
