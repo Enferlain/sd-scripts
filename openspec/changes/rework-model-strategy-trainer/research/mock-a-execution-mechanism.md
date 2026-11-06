@@ -29,7 +29,7 @@ requirements. In particular:
   govern their respective cross-owner interactions.
 
 The pre-OpenSpec
-[direction](../../../../docs_design/models-strategy-trainer/strategy_system_direction.md)
+[direction](../../../../docs_design/archive/models-strategy-trainer/strategy_system_direction.md)
 remains normative input as described by the governing design. Existing
 research, including [answer-edited.md](answer-edited.md),
 [trainer-architecture-research.md](trainer-architecture-research.md),

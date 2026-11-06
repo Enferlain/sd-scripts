@@ -2,6 +2,12 @@
 
 ## Training Architecture Research
 
+The [rework history](docs_design/models-strategy-trainer/history/README.md)
+traces decisions through the current language frontier. Earlier source documents
+and package snapshots are preserved in the
+[historical archive](docs_design/archive/models-strategy-trainer/README.md),
+with explicit relocation mappings; the active change remains in OpenSpec.
+
 The [matched comparison](docs_design/models-strategy-trainer/machinery_comparison.md)
 records six-case xDSL/Pliron representation, transformation, diagnostic and cost
 evidence. xDSL is the selected working substrate for machinery under

@@ -1,0 +1,5 @@
+# Preserve these explicitly archived source packages despite the root rules.
+!inventory_01_02.7z
+!mst_pre_astra.zip
+!rework-model-strategy-trainer.zip
+!rework-model-strategy-trainer922.zip

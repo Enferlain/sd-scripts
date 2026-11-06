@@ -23,15 +23,15 @@ The pre-OpenSpec records have different jobs. They are not interchangeable:
 
 | Record | Authority in this change |
 | --- | --- |
-| [Strategy system direction](../../../docs_design/models-strategy-trainer/strategy_system_direction.md) | Normative input for the settled architecture and Q1–Q5 decisions. This design must not silently weaken or reopen it. |
-| [Contract exchange design](../../../docs_design/models-strategy-trainer/strategy_contract_exchange_design.md) | Detailed derivation of binding, preparation, identity, optimization, and the execution frontier. `SETTLED INPUT` is inherited; working decisions are adopted here only where this design or a delta spec states them. |
-| [Production inventory](../../../docs_design/models-strategy-trainer/strategy_system_inventory.md) | Evidence about active code and pressure scenarios, not authority over the target. |
-| [Implementation mapping](../../../docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md) | Source-backed current-to-target responsibility map and design dependency order. |
-| [Chronological notes](../../../docs_design/models-strategy-trainer/notes.md) | History. Later dated corrections supersede earlier positions. In particular, the accepted-run-arrangement correction supersedes the active-strategy topology. |
-| [Framework comparison](../../../docs_design/models-strategy-trainer/framework_pattern_comparison.md) | Subordinate prior art. It does not select this repository's ownership model. |
+| [Strategy system direction](../../../docs_design/archive/models-strategy-trainer/strategy_system_direction.md) | Normative input for the settled architecture and Q1–Q5 decisions. This design must not silently weaken or reopen it. |
+| [Contract exchange design](../../../docs_design/archive/models-strategy-trainer/strategy_contract_exchange_design.md) | Detailed derivation of binding, preparation, identity, optimization, and the execution frontier. `SETTLED INPUT` is inherited; working decisions are adopted here only where this design or a delta spec states them. |
+| [Production inventory](../../../docs_design/archive/models-strategy-trainer/strategy_system_inventory.md) | Evidence about active code and pressure scenarios, not authority over the target. |
+| [Implementation mapping](../../../docs_design/archive/models-strategy-trainer/strategy_system_implementation_mapping.md) | Source-backed current-to-target responsibility map and design dependency order. |
+| [Chronological notes](../../../docs_design/archive/models-strategy-trainer/notes.md) | History. Later dated corrections supersede earlier positions. In particular, the accepted-run-arrangement correction supersedes the active-strategy topology. |
+| [Framework comparison](../../../docs_design/archive/models-strategy-trainer/framework_pattern_comparison.md) | Subordinate prior art. It does not select this repository's ownership model. |
 | [xDSL language 0.1 proposal](research/xdsl_language_0_1_proposal.md) | Research input. D14 and the execution/contract deltas adopt the bounded shared-lifecycle decisions; its wider operation catalogue, identifiers and Python sketches are not accepted production APIs. |
 | [Executable spike](../../../docs_design/models-strategy-trainer/executable_spike/) | Behavioral evidence for binding/preparation failure cases. Its class names and storage shapes are not a production prototype. |
-| [Original discussion](../../../docs_design/models-strategy-trainer/strategy_discussion.md) and [external discussion](../../../docs_design/models-strategy-trainer/strategy_discussion_external.md) | Raw historical context. External comments are opinions; neither transcript is a requirement source. |
+| [Original discussion](../../../docs_design/archive/models-strategy-trainer/strategy_discussion.md) and [external discussion](../../../docs_design/archive/models-strategy-trainer/strategy_discussion_external.md) | Raw historical context. External comments are opinions; neither transcript is a requirement source. |
 
 The language proposal stays unchanged as supplied research input. Where this
 design departs from or adds to it, D14's "Amendments to the language proposal"
@@ -145,7 +145,7 @@ requiring new top-level orchestration authorities.
 ### Previously tried draft
 
 An earlier September draft is retained only as
-`openspec/changes/mst_pre_astra.zip`. It correctly recognized the governing
+`docs_design/archive/models-strategy-trainer/packages/mst_pre_astra.zip`. It correctly recognized the governing
 change and implementation gate, but left the full carry-forward audit and
 Trainer exchanges as later work while already defining broad requirements. It
 also did not resolve main-spec requirements that still make `AdapterMode` the
@@ -499,7 +499,7 @@ Alternatives rejected:
 
 ### Current-code evidence for the intended Trainer boundary
 
-The existing [implementation mapping](../../../docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md)
+The existing [implementation mapping](../../../docs_design/archive/models-strategy-trainer/strategy_system_implementation_mapping.md)
 is the detailed source-to-target disposition; this is its focused evidence
 refresh, not a new current-code design. Exact source and one-hop call traces
 were checked against graph generation `2026-09-22T05:52:18Z`. Every cited code
@@ -3155,7 +3155,7 @@ directly, and implementation/tests must establish that it works.
 | Objective compatibility | Current config validation requires DDPM for SD1/2 and rectified flow for SD3 (`library/config/config_validation.py:575–593`); SD3's batch computation directly uses the flow objective (`library/strategies/sd3/diffusion.py:50–121`). | The training contract makes supported model/objective combinations visible during strategy authoring and rejects a known invalid selection at fulfillment. Trainer does not choose an objective by branching on model family. This records current support, not a permanent rule that no future SD implementation may support another objective. |
 | Component-specific preparation | SD's preparation delegates to CLIP helpers (`library/strategies/sd/model_preparation.py:12–46`). SD3 distinguishes CLIP from T5, currently rejects T5 FP8 preparation, and rejects training T5 while caching its outputs (`library/strategies/sd3/model_preparation.py:13–70`). | Accepted component constraints and selected preparation operations govern these differences. A known unsupported authored combination fails during fulfillment; realized/backend-specific incompatibility fails at its evidence checkpoint. Generic Trainer preparation still coordinates the coherent job. |
 | Supported trained products | SD does not override the base full-model save method, which raises `NotImplementedError` (`library/strategies/sd/checkpointing.py:15–53`, `library/strategies/base/contracts.py:302–336`). SD3's full-model writer currently supports only safetensors (`library/strategies/sd3/checkpointing.py:70–120`). | A strategy offers only products and formats its selected implementation supports. A requested unsupported product is rejected before Trainer starts; a serializer failure after acceptance is a separate runtime failure. Adapter products, where declared, are not inferred from the existence of a family metadata resolver. |
-| Deferred materialization | The generic loading contract mentions a deferred module and exposes a lazy-load hook; training preparation checks for a missing denoiser (`library/strategies/base/contracts.py:34–74`, `library/training/phases/model_prep.py:30–51`). The inspected SD3 loader itself returns an MMDiT and may return absent encoders; it is **not** evidence of a working deferred-MMDiT path (`library/models/sd3/loader.py:435–481`). The deferred SD3 denoiser is explicitly a design scenario in `docs_design/models-strategy-trainer/strategy_contract_exchange_design.md`. | An accepted deferred participant remains declared and unbound until an allowed readiness checkpoint; later loading materializes the same identity. A phase that requires it cannot proceed on `None`, while an explicitly allowed earlier phase may. This is a target obligation to implement and test, not behavior credited to today's SD3 path. |
+| Deferred materialization | The generic loading contract mentions a deferred module and exposes a lazy-load hook; training preparation checks for a missing denoiser (`library/strategies/base/contracts.py:34–74`, `library/training/phases/model_prep.py:30–51`). The inspected SD3 loader itself returns an MMDiT and may return absent encoders; it is **not** evidence of a working deferred-MMDiT path (`library/models/sd3/loader.py:435–481`). The deferred SD3 denoiser is explicitly a design scenario in `docs_design/archive/models-strategy-trainer/strategy_contract_exchange_design.md`. | An accepted deferred participant remains declared and unbound until an allowed readiness checkpoint; later loading materializes the same identity. A phase that requires it cannot proceed on `None`, while an explicitly allowed earlier phase may. This is a target obligation to implement and test, not behavior credited to today's SD3 path. |
 
 At this limited level, D5's ownership categories can describe SD and SD3
 without adding their encoder counts, conditioning fields, objective types, or

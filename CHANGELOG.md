@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-06]
+
+### Changed
+
+- **Historical rework sources now live in the design archive** — the history index connects the decision trail to byte-preserved originals and explicit path mappings. Active OpenSpec references follow the move; runnable experiments and retained evidence keep their existing paths.
+
 ## [2026-11-05]
 
 ### Added
