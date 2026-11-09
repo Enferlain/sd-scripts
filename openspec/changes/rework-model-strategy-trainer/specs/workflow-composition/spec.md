@@ -41,7 +41,7 @@ SHALL use an explicit applicable rule rather than inherit ordered assumptions.
 - **WHEN** an ordered operation uses or captures a result that is not yet available
 - **THEN** acceptance and preparation MUST reject the use before dependent execution
 - **AND** the diagnostic MUST identify the operand/use and definition
-- **AND** equivalent invalid wiring inside a recipe or its normalized expansion MUST also reject
+- **AND** equivalent invalid wiring inside a derived word or its normalized expansion MUST also reject
 
 #### Scenario: Repetition passes an initialized carry
 - **WHEN** recurrence enters through a declared initialized loop argument and yields an available next value
@@ -110,8 +110,8 @@ Purity alone SHALL NOT authorize removing observable coordination boundaries.
 
 #### Scenario: A valid opaque or authority boundary interrupts a local chain
 - **WHEN** otherwise compatible stages are separated by unknown effects or an incompatible authority/completion boundary
-- **THEN** the unfused valid program MUST remain executable
-- **AND** unsafe fusion and a cold artifact forging that fusion MUST reject before dependent effects
+- **THEN** the unfused valid strategy MUST remain executable
+- **AND** unsafe fusion and a cold-loaded written form forging that fusion MUST reject before dependent effects
 
 ### Requirement: Requested work participates in enclosing settlement
 Accepted requests SHALL become enclosing obligations before handler admission.
@@ -239,18 +239,18 @@ runtimes SHALL be checked against it. Neither the verifier nor a runtime SHALL
 be the only definition of lifecycle correctness.
 
 #### Scenario: A runtime disagrees with the reference
-- **WHEN** a prepared runtime reports owner-visible lifecycle facts for a supported program that differ from the reference under the same explicitly supplied external inputs, completion and scheduling choices
+- **WHEN** a prepared runtime reports owner-visible lifecycle facts for a supported strategy that differ from the reference under the same explicitly supplied external inputs, completion and scheduling choices
 - **THEN** conformance MUST report a defect in the runtime or the reference
 - **AND** the runtime's observed behavior MUST NOT be accepted as correct by default
 
 #### Scenario: A runtime omits an admission or request
-- **WHEN** the reference is given external choices for a supported program
+- **WHEN** the reference is given external choices for a supported strategy
 - **THEN** it MUST derive legal admissions and request obligations from normalized IR and its protocol states
 - **AND** it MUST NOT adopt the runtime's admitted-work trace as its expected result
 - **AND** comparison MUST permit private bookkeeping differences that preserve the declared observable meaning
 
-#### Scenario: A program admits several legal interleavings
-- **WHEN** a supported program can interleave differently at its suspension points
+#### Scenario: A strategy admits several legal interleavings
+- **WHEN** a supported strategy can interleave differently at its suspension points
 - **THEN** conformance MUST compare the runtime against the reference across a systematic or randomized set of those interleavings
 - **AND** a single passing schedule MUST NOT certify the protocol
 
