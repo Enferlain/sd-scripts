@@ -132,16 +132,9 @@ internal construction order.
 ### Requirement: Binding changes invalidate affected optimization runtime
 Every optimization runtime SHALL have authority-verifiable dependency evidence
 covering the applicable participant, relationship, binding, route, substructure,
-unit-definition, obligation, and backend/preparation revisions. That evidence
-MAY be established through an authority snapshot, a prepared generation's
-dependency evidence, or a justified narrower dependency set; it SHALL NOT
-require every runtime object to store an explicit tuple of those revisions.
-Without a justified narrower dependency set the runtime SHALL depend
-conservatively on its source authority snapshot.
-An accepted change that breaks those dependencies SHALL remove the runtime
-from current use until re-realization or replanning succeeds. Reuse under a
-changed obligation revision SHALL require authority-backed evidence that the
-applicable obligations remain satisfied.
+unit-definition, obligation, and backend/preparation revisions. An accepted
+change that breaks those dependencies SHALL remove the runtime from current use
+until re-realization or replanning succeeds.
 
 #### Scenario: Adapter attachment changes parameter structure
 - **WHEN** an accepted relationship transition changes the available optimization substructure
@@ -156,6 +149,26 @@ applicable obligations remain satisfied.
 - **WHEN** an allowed structure-preserving transition changes physical parameters without changing the accepted selector, grouping, policy, or semantic dependencies
 - **THEN** the unit MUST retain its definition revision while its members, aliases, trainability, and backend runtime are re-resolved
 - **AND** an arbitrary runtime trainability flag MUST NOT redefine accepted membership
+
+### Requirement: Optimization dependency evidence may be a snapshot or a narrower set
+Optimization runtime dependency evidence MAY be established through an authority
+snapshot, a prepared generation's dependency evidence, or a justified narrower
+dependency set; it SHALL NOT require every runtime object to store an explicit
+tuple of those revisions. Without a justified narrower dependency set the
+runtime SHALL depend conservatively on its source authority snapshot.
+
+#### Scenario: A runtime declares no narrower dependencies
+- **WHEN** an optimization runtime records no justified narrower dependency set
+- **THEN** it MUST depend on its whole source authority snapshot
+- **AND** it MUST NOT be required to store an explicit tuple of every relevant revision
+
+### Requirement: Reuse under a changed obligation revision needs evidence
+Reuse under a changed obligation revision SHALL require authority-backed
+evidence that the applicable obligations remain satisfied.
+
+#### Scenario: The obligation revision changes while bindings do not
+- **WHEN** an accepted change advances the applicable obligation revision while the runtime's participant bindings stay the same
+- **THEN** the runtime MUST be reused only with authority-backed evidence that its applicable obligations remain satisfied
 
 ### Requirement: Unit identity continuity does not imply state continuity
 Before affected work resumes after replacement, surgery, replanning, or a
@@ -192,13 +205,9 @@ require an accepted extension and SHALL NOT create dual ownership.
 ### Requirement: Standard advancement supports independently and jointly due units
 The standard profile SHALL support one due unit, independently due units, and
 jointly due disjoint units through accepted policies rather than one fixed
-training-step sequence. Each policy SHALL identify addressed sources and
-gradient routes, contribution and accumulation-window completion rules,
-synchronization and scaling requirements, clipping scope and timing, ordered
-eligible advancement, scheduler triggers, zeroing/discard rules, lifecycle
-effects, and failure and continuation ownership. Due decisions MAY use live
-coordinates and accepted owned state without consulting the authoring interface.
-Executable readiness SHALL require backend support for the selected policy.
+training-step sequence. Due decisions MAY use live coordinates and accepted
+owned state without consulting the authoring interface. Executable readiness
+SHALL require backend support for the selected policy.
 
 #### Scenario: Independent units contribute on different clocks
 - **WHEN** a bounded policy selects nonconsecutive contributions for independently due units
@@ -209,6 +218,13 @@ Executable readiness SHALL require backend support for the selected policy.
 - **WHEN** an accepted action offers one source to several disjoint units
 - **THEN** Trainer MAY use shared backward work only when it satisfies all accepted gradient, window, synchronization, and ordering requirements
 - **AND** each unit MUST retain its own contribution and advancement outcome
+
+### Requirement: Advancement policies identify routes, windows and mechanics
+Each standard advancement policy SHALL identify addressed sources and gradient
+routes, contribution and accumulation-window completion rules, synchronization
+and scaling requirements, clipping scope and timing, ordered eligible
+advancement, scheduler triggers, zeroing/discard rules, lifecycle effects, and
+failure and continuation ownership.
 
 #### Scenario: Distinct sources could introduce cross-unit gradients
 - **WHEN** several sources can influence parameters outside their accepted destination units

@@ -25,9 +25,6 @@ dependencies, semantic transformations, expected members, representation,
 packaging expectations, and consistency requirements from a coherent accepted
 state projection. It SHALL NOT select state by incidental Python object or
 wrapper identity.
-The declaration and plan SHALL identify the selected state variant and
-required versus optional constituents. Selection SHALL NOT be inferred from
-trainability or require every component used during training to be exported.
 
 #### Scenario: Adapter product spans shared and local state
 - **WHEN** an adapter product contains shared banks and target-local state
@@ -38,25 +35,22 @@ trainability or require every component used during training to be exported.
 - **WHEN** a family artifact requires state from several participants and unwrapped views
 - **THEN** the plan MUST preserve their semantic coverage and accepted consistency boundary
 
+### Requirement: Plans identify state variants without inferring them from training
+The declaration and plan SHALL identify the selected state variant and required
+versus optional constituents. Selection SHALL NOT be inferred from trainability
+or require every component used during training to be exported.
+
 #### Scenario: Student or EMA autoencoder is exported
 - **WHEN** a declared product selects a student or an EMA autoencoder while teacher, discriminator, and optimizer state are training-only
 - **THEN** the plan MUST select that state variant and its required constituents without including training-only state by default
 - **AND** the result MUST identify the state actually captured rather than substitute another available variant
 
 ### Requirement: Products preserve the information required for their declared use
-A product SHALL embed or explicitly reference the state and information
-required for its declared use, including relevant non-parameter state,
-construction, representation, installation, and implementation dependencies.
-Implementation dependencies SHALL describe requirements relevant to
-reconstruction/use, not automatically the training Python class/object
-identity, wrapper, or exact compiled artifact.
-Those requirements SHALL come from accepted product behavior rather than a
-universal model layout or an assumption that a state dictionary is sufficient.
-Capability-owned contributions SHALL remain domain-owned and need not become
-separate participants. Consumer dependencies, training/preparation dependencies,
-and historical provenance SHALL remain distinguishable. External references
-SHALL identify the required state and compatibility conditions; a mutable
-load path alone SHALL NOT establish them.
+A product SHALL embed or explicitly reference the state and information required
+for its declared use, including relevant non-parameter state, construction,
+representation, installation, and implementation dependencies. Capability-owned
+contributions SHALL remain domain-owned and need not become separate
+participants.
 
 #### Scenario: Autoencoder requires more than weights
 - **WHEN** the declared representation requires a codebook or normalization statistics and packing/inverse-transform information
@@ -68,9 +62,22 @@ load path alone SHALL NOT establish them.
 - **THEN** the plan and result MUST preserve that information and its compatible host dependencies
 - **AND** they MUST NOT infer installation meaning solely from tensor key prefixes
 
+### Requirement: Implementation dependencies describe reconstruction requirements
+Implementation dependencies SHALL describe requirements relevant to
+reconstruction/use, not automatically the training Python class/object identity,
+wrapper, or exact compiled artifact. Those requirements SHALL come from accepted
+product behavior rather than a universal model layout or an assumption that a
+state dictionary is sufficient.
+
 #### Scenario: Consumer uses another compatible implementation
 - **WHEN** a supported consumer satisfies the declared architecture, configuration, operation, and representation requirements through another compatible implementation
 - **THEN** product usability MUST NOT require the training Python object identity, wrapper, or compiled artifact unless an explicit reconstruction/use requirement makes that necessary
+
+### Requirement: Product dependency kinds stay distinguishable
+Consumer dependencies, training/preparation dependencies, and historical
+provenance SHALL remain distinguishable. External references SHALL identify the
+required state and compatibility conditions; a mutable load path alone SHALL NOT
+establish them.
 
 #### Scenario: Preparation dependency is not an inference dependency
 - **WHEN** a teacher or tokenizer used during training is unnecessary for the product's declared inference use
@@ -134,38 +141,43 @@ coherence.
 - **THEN** the plan MAY include both if their accepted dependency and freshness semantics hold at the boundary
 
 ### Requirement: Capture preserves source meaning across later run changes
-Persistence SHALL establish a stable product-specific capture under the
-accepted source dependencies and consistency obligations before permitting
-conflicting live changes. Source access SHALL remain protected until required
-reads actually complete, including outstanding backend work. A borrowed live
-object or tensor reference SHALL NOT by itself prove stability. The captured
-state, topology, relationships, dependencies, state variant, and lineage SHALL
-remain authoritative for the product through later serialization/publication.
-A later live transition SHALL NOT relabel that capture or invalidate historical
-publication solely because the run changed, unless the accepted request
-requires a stronger condition such as latest-state publication.
+Persistence SHALL establish a stable product-specific capture under the accepted
+source dependencies and consistency obligations before permitting conflicting
+live changes. Source access SHALL remain protected until required reads actually
+complete, including outstanding backend work. A borrowed live object or tensor
+reference SHALL NOT by itself prove stability.
+
+#### Scenario: Live tensors are not protected
+- **WHEN** export borrows tensors that can be updated before its required reads complete
+- **THEN** readiness MUST remain unsatisfied unless the accepted capture mechanism prevents an incoherent product
+
+### Requirement: A capture stays authoritative for its product
+The captured state, topology, relationships, dependencies, state variant, and
+lineage SHALL remain authoritative for the product through later
+serialization/publication. A later live transition SHALL NOT relabel that
+capture or invalidate historical publication solely because the run changed,
+unless the accepted request requires a stronger condition such as latest-state
+publication.
 
 #### Scenario: Topology changes while an older capture is published
 - **WHEN** a stable dense-model capture is still being serialized or uploaded after the live arrangement transitions to a MoE topology
 - **THEN** the result MUST describe the captured dense topology and its construction meaning
 - **AND** publication MAY finish under the accepted historical-product policy without claiming to describe the current MoE state
 
-#### Scenario: Live tensors are not protected
-- **WHEN** export borrows tensors that can be updated before its required reads complete
-- **THEN** readiness MUST remain unsatisfied unless the accepted capture mechanism prevents an incoherent product
-
 ### Requirement: Semantic transformations are declared before serialization
 Transformations that change coverage, dependencies, lineage, or realization
 meaning SHALL be declared by the product capability. Domain serializers SHALL
 perform resolved mechanical conversion and writing but SHALL NOT infer a
 semantic merge, delta, pruning, or quantization from incidental runtime state.
-Product compatibility SHALL be evaluated under the same accepted obligations
-at the earliest authoritative evidence point. Training compatibility SHALL NOT
-be treated as evidence that every export transformation is compatible.
 
 #### Scenario: Merged adapter product is requested
 - **WHEN** persistence produces a host realization with adapter state folded into it
 - **THEN** the product plan MUST declare the merge/fold transformation and resulting lineage before serializer mechanics run
+
+### Requirement: Product compatibility is judged under the accepted obligations
+Product compatibility SHALL be evaluated under the same accepted obligations at
+the earliest authoritative evidence point. Training compatibility SHALL NOT be
+treated as evidence that every export transformation is compatible.
 
 #### Scenario: Training works but low-precision merge is unsupported
 - **WHEN** separate adapter execution is compatible with the loaded low-precision base but the requested merge violates accepted product requirements
@@ -175,16 +187,19 @@ be treated as evidence that every export transformation is compatible.
 ### Requirement: Export does not grant live-state mutation authority
 Product transformations and serializers SHALL operate within their accepted
 authority. Export SHALL NOT silently change canonical participant state,
-bindings, relationships, or runtime modes. Any temporary live-state effects
-SHALL be explicitly permitted and coordinated against conflicting use, with
-restoration before affected use resumes. Canonical run changes SHALL use the
-existing authority-governed transition path. Cleanup failure SHALL gate unsafe
-use without erasing known product output or implying rollback.
+bindings, relationships, or runtime modes. Canonical run changes SHALL use the
+existing authority-governed transition path.
 
 #### Scenario: Serializer changes live dtype or configuration
 - **WHEN** a selected export implementation would change a live module's dtype or configuration
 - **THEN** it MUST use a protected independent representation or an explicitly accepted temporary-effect protocol
 - **AND** it MUST NOT leave the running arrangement silently changed
+
+### Requirement: Temporary export effects are coordinated and restored
+Any temporary live-state effects SHALL be explicitly permitted and coordinated
+against conflicting use, with restoration before affected use resumes. Cleanup
+failure SHALL gate unsafe use without erasing known product output or implying
+rollback.
 
 #### Scenario: Export completes but temporary-state restoration fails
 - **WHEN** artifact writing reaches a known result and cleanup cannot restore the required live execution state
@@ -194,39 +209,19 @@ use without erasing known product output or implying rollback.
 ### Requirement: Artifact results report actual output
 The artifact result SHALL report actual members and resources, formats, sizes,
 checksums, references, omissions, partial status, and failures. Post-write facts
-SHALL NOT be guessed from the plan.
-Writing, local resource completion, requested remote publication, and
-observation SHALL have distinguishable outcomes where applicable. Complete
-product status SHALL require every constituent and dependency required by the
-accepted completion policy. Required external dependencies SHALL satisfy
-that policy through its specified embedded state, available/resolvable resource,
-or stable compatible external reference. A policy MAY accept a valid external
-reference without current reachability. Product completion SHALL NOT by itself
-claim self-containment, dependency availability for current use, or continued
-availability of externally referenced resources.
-Pending or uncertain work SHALL NOT be reported
-as successful completion. Known partial output SHALL remain reportable;
-an exception or absent return value SHALL NOT imply that no resources exist.
-Reported checksums SHALL identify their algorithm and measured scope rather
-than equate a model/tensor hash with a whole-resource checksum.
-
-#### Scenario: Optional sidecar is not emitted
-- **WHEN** a planned optional member is omitted or fails
-- **THEN** the result MUST record its actual status and the resources that were successfully produced
-
-#### Scenario: Reference-only base dependency is currently unreachable
-- **WHEN** an adapter product has all other required output complete and a stable compatible external base reference satisfying its accepted reference-only completion policy, but the base is currently unreachable
-- **THEN** the product MAY be reported complete without embedding or currently fetching that base
-- **AND** the result MUST preserve the external dependency without claiming self-containment or availability for current use
-
-#### Scenario: Completion policy requires an available dependency
-- **WHEN** an accepted product completion policy requires a resolvable dependency resource and that requirement is not established
-- **THEN** a reference alone MUST NOT satisfy completion
-- **AND** the result MUST preserve known local output separately from the unmet dependency requirement
+SHALL NOT be guessed from the plan. Known partial output SHALL remain
+reportable; an exception or absent return value SHALL NOT imply that no
+resources exist. Reported checksums SHALL identify their algorithm and measured
+scope rather than equate a model/tensor hash with a whole-resource checksum.
 
 #### Scenario: Later required write fails
 - **WHEN** some resources are written and a later required member or manifest fails
 - **THEN** the result MUST report known resources and the incomplete product without assuming rollback or atomic multi-resource writing
+
+### Requirement: Write, publication and observation outcomes stay distinct
+Writing, local resource completion, requested remote publication, and
+observation SHALL have distinguishable outcomes where applicable. Pending or
+uncertain work SHALL NOT be reported as successful completion.
 
 #### Scenario: Local writing succeeds but remote publication is pending or fails
 - **WHEN** local resources are complete but requested remote publication has not succeeded
@@ -236,6 +231,32 @@ than equate a model/tensor hash with a whole-resource checksum.
 #### Scenario: Reporting fails after publication
 - **WHEN** publication succeeds but a metadata or observation sink fails
 - **THEN** the actual product result MUST remain authoritative without claiming successful reporting
+
+### Requirement: Complete product status follows the completion policy
+Complete product status SHALL require every constituent and dependency required
+by the accepted completion policy. Required external dependencies SHALL satisfy
+that policy through its specified embedded state, available/resolvable resource,
+or stable compatible external reference. A policy MAY accept a valid external
+reference without current reachability.
+
+#### Scenario: Optional sidecar is not emitted
+- **WHEN** a planned optional member is omitted or fails
+- **THEN** the result MUST record its actual status and the resources that were successfully produced
+
+#### Scenario: Completion policy requires an available dependency
+- **WHEN** an accepted product completion policy requires a resolvable dependency resource and that requirement is not established
+- **THEN** a reference alone MUST NOT satisfy completion
+- **AND** the result MUST preserve known local output separately from the unmet dependency requirement
+
+### Requirement: Product completion does not claim dependency availability
+Product completion SHALL NOT by itself claim self-containment, dependency
+availability for current use, or continued availability of externally referenced
+resources.
+
+#### Scenario: Reference-only base dependency is currently unreachable
+- **WHEN** an adapter product has all other required output complete and a stable compatible external base reference satisfying its accepted reference-only completion policy, but the base is currently unreachable
+- **THEN** the product MAY be reported complete without embedding or currently fetching that base
+- **AND** the result MUST preserve the external dependency without claiming self-containment or availability for current use
 
 ### Requirement: Retention respects resource membership and outstanding work
 Persistence infrastructure SHALL use actual member/resource associations for

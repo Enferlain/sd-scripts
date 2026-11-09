@@ -12,21 +12,8 @@ Each preparation attempt SHALL be derived atomically from one coherent accepted
 authority state and obligation revision. The job SHALL identify source
 revisions, requested routes and views, every required participant, constraints,
 joint groups, mutation permissions, freshness guarantees, and typed
-infrastructure items. Preparation SHALL produce candidate state and evidence;
-it SHALL NOT define new compatibility meaning or certify its own result.
-
-When optimization participates, the request SHALL include the accepted unit
-incarnations and definition revisions, semantic membership and logical groups,
-policies, dependencies, and constraints supplied by the accepted optimization
-plan. Optimization SHALL contribute to the same attempt rather than publish
-an independently prepared optimizer runtime.
-
-Training-side preparation coordination SHALL derive the job from the accepted
-requirements and current authority projection, then coordinate final
-installation of its verified result across the authority-owned routes and
-views and Trainer-owned optimization and backend state. It SHALL NOT keep a
-competing binding map or independently define conformance rules. Each owner
-retains its own state, and none may publish a partial current result.
+infrastructure items. Preparation SHALL produce candidate state and evidence; it
+SHALL NOT define new compatibility meaning or certify its own result.
 
 #### Scenario: Frozen participant requires backend preparation
 - **WHEN** a frozen participant is required by accepted execution and needs movement, casting, wrapping, sharding, or compilation
@@ -41,21 +28,49 @@ retains its own state, and none may publish a partial current result.
 - **THEN** the attempt MUST be rejected before expected-expensive backend work
 - **AND** the incompatibility MUST NOT be deferred merely because the backend could also fail
 
+### Requirement: Optimization joins the same preparation attempt
+When optimization participates, the request SHALL include the accepted unit
+incarnations and definition revisions, semantic membership and logical groups,
+policies, dependencies, and constraints supplied by the accepted optimization
+plan. Optimization SHALL contribute to the same attempt rather than publish an
+independently prepared optimizer runtime.
+
+#### Scenario: Preparation realizes optimization units
+- **WHEN** a preparation attempt includes optimization
+- **THEN** its request MUST carry the accepted unit incarnations, definition revisions, membership, logical groups, policies, dependencies and constraints
+- **AND** optimization MUST contribute to that same attempt rather than publish an independently prepared optimizer runtime
+
+### Requirement: Training-side coordination installs results across owners
+Training-side preparation coordination SHALL derive the job from the accepted
+requirements and current authority projection, then coordinate final
+installation of its verified result across the authority-owned routes and views
+and Trainer-owned optimization and backend state. Training-side preparation
+coordination SHALL NOT keep a competing binding map or independently define
+conformance rules. Each owner retains its own state, and none may publish a
+partial current result.
+
+#### Scenario: A verified preparation result is installed
+- **WHEN** training-side preparation coordination installs a verified result
+- **THEN** it MUST coordinate installation across the authority's routes and views and the Trainer's optimization and backend state
+- **AND** it MUST NOT keep a competing binding map or define conformance rules
+- **AND** no owner may publish a partial current result
+
 ### Requirement: Backend coordination does not replace semantic identity
 Backend replicas, wrappers, and composite handles SHALL remain runtime
 infrastructure state. They SHALL NOT replace participant references, merge
 participant identities, or become execution routes merely because a backend
 returns them.
 
-Prepared usability SHALL require matching current authority-owned route and
-view guarantees together with the Trainer-owned backend coordination state for
-every participant that state covers. Neither ownership surface alone SHALL
-certify that a participant is ready for execution.
-
 #### Scenario: Composite covers several participants
 - **WHEN** a backend returns one composite coordination handle for multiple participants
 - **THEN** every participant MUST retain its own reference and accepted route meaning
 - **AND** the composite MUST remain Trainer/runtime state
+
+### Requirement: Prepared usability needs both ownership surfaces
+Prepared usability SHALL require matching current authority-owned route and view
+guarantees together with the Trainer-owned backend coordination state for every
+participant that state covers. Neither ownership surface alone SHALL certify
+that a participant is ready for execution.
 
 #### Scenario: Backend handle outlives a route guarantee
 - **WHEN** a backend coordination handle still exists but a covered participant's required route is no longer current
@@ -81,14 +96,7 @@ Provisional optimization resolution SHALL account for semantic members and
 aliases, logical-to-execution-group correspondence, trainability, gradient,
 clipping and synchronization membership, and optimizer/scheduler construction.
 Backend transformations SHALL retain evidence connecting final parameters and
-callable views to those accepted meanings. Before publication, every optimizer
-SHALL target the final accepted member realization or have an evidenced rebind;
-a plausible optimizer object SHALL NOT suffice.
-
-#### Scenario: Optimizer is constructed before parameters are replaced
-- **WHEN** backend preparation transforms parameters after optimizer construction
-- **THEN** validation MUST establish that the returned optimizer targets the final prepared members or reject the candidate
-- **AND** an evidenced rebind MAY satisfy that correspondence without revising accepted unit meaning
+callable views to those accepted meanings.
 
 #### Scenario: Parameters are prepared before optimizer construction
 - **WHEN** the backend requires transformed parameters first
@@ -100,15 +108,21 @@ a plausible optimizer object SHALL NOT suffice.
 - **THEN** the candidate MUST consolidate aliases within the same accepted unit and execution group with provenance
 - **AND** it MUST reject standard-profile overlap across units or execution groups before publication
 
+### Requirement: Optimizers target the final members before publication
+Before publication, every optimizer SHALL target the final accepted member
+realization or have an evidenced rebind; a plausible optimizer object SHALL NOT
+suffice.
+
+#### Scenario: Optimizer is constructed before parameters are replaced
+- **WHEN** backend preparation transforms parameters after optimizer construction
+- **THEN** validation MUST establish that the returned optimizer targets the final prepared members or reject the candidate
+- **AND** an evidenced rebind MAY satisfy that correspondence without revising accepted unit meaning
+
 ### Requirement: Readiness establishes differentiated and granted-work support
 Governed preparation SHALL evaluate the current implementation/backend evidence
-for accepted derivative routes, numerical-state retention or recomputation,
-safe completion and release, gradient-window and synchronization requirements,
-scoped state access, and any granted phase's protection and handback obligations.
-Unsupported requirements SHALL fail readiness without changing the accepted
-algorithm or granting broader authority. Supported framework or compiled
-realizations MAY implement these meanings without one universal continuation
-or tensor-graph interface.
+for accepted derivative routes, numerical-state retention or recomputation, safe
+completion and release, gradient-window and synchronization requirements, scoped
+state access, and any granted phase's protection and handback obligations.
 
 #### Scenario: Backend cannot realize an accepted two-pass split
 - **WHEN** the chosen backend cannot provide scoped parameter/gradient access, protected temporary edits, or the required clean-handback evidence
@@ -118,6 +132,17 @@ or tensor-graph interface.
 #### Scenario: Requested derivatives need unsupported retained state
 - **WHEN** the accepted derivative or recomputation demands cannot preserve required numerical state under the chosen backend
 - **THEN** preparation MUST reject readiness rather than detach a path, overwrite needed state, or silently change gradient routing
+
+### Requirement: Readiness rejects unsupported work without a universal interface
+Unsupported requirements SHALL fail readiness without changing the accepted
+algorithm or granting broader authority. Supported framework or compiled
+realizations MAY implement the accepted derivative, retention and granted-work
+meanings without one universal continuation or tensor-graph interface.
+
+#### Scenario: A compiled realization meets the derivative demands
+- **WHEN** a supported framework or compiled realization satisfies the accepted derivative and retention demands
+- **THEN** preparation MAY accept it
+- **AND** readiness MUST NOT require one universal continuation or tensor-graph interface
 
 ### Requirement: Fallible work precedes final publication
 All ordinarily fallible backend work, component preparation, candidate
@@ -158,21 +183,22 @@ first establish an authority-recognized destructive attempt and withdraw every
 affected freshness guarantee. Failure SHALL leave those guarantees withdrawn
 until accepted state is replaced or re-established.
 
-The destructive attempt SHALL have an authority-recognized coordination
-identity distinct from its source snapshot, so withdrawing the source
-guarantees does not invalidate that attempt's own completion basis. An older
-optimistic result SHALL NOT use the withdrawn snapshot to restore usability.
+#### Scenario: In-place mutation fails
+- **WHEN** destructive preparation mutates an authoritative object and then fails
+- **THEN** the system MUST NOT advertise the prior route or views as usable solely because no replacement was published
+- **AND** the failure MUST identify the state requiring recovery
+
+### Requirement: Destructive attempts have their own coordination identity
+The destructive attempt SHALL have an authority-recognized coordination identity
+distinct from its source snapshot, so withdrawing the source guarantees does not
+invalidate that attempt's own completion basis. An older optimistic result SHALL
+NOT use the withdrawn snapshot to restore usability.
 
 #### Scenario: Withdrawing guarantees advances the authority snapshot
 - **WHEN** a destructive attempt withdraws its source route guarantees before mutation
 - **THEN** the authority MUST record a new freshness revision that withdraws those guarantees from the source snapshot
 - **AND** the accepted attempt MUST remain addressable by its distinct coordination identity for completion or failure
 - **AND** an older optimistic result based only on the withdrawn snapshot MUST NOT become current
-
-#### Scenario: In-place mutation fails
-- **WHEN** destructive preparation mutates an authoritative object and then fails
-- **THEN** the system MUST NOT advertise the prior route or views as usable solely because no replacement was published
-- **AND** the failure MUST identify the state requiring recovery
 
 #### Scenario: Older optimistic candidate completes later
 - **WHEN** a replacement-only candidate derived before a destructive attempt finishes during or after that attempt

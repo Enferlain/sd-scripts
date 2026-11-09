@@ -40,7 +40,7 @@ notes.
   parameter training and PEFT composition do not become replacement runtime
   modes.
 - Carry the design forward through evidence-backed OpenSpec milestones before
-  production migration. Creating the planning artifacts does not by itself
+  production implementation. Creating the planning artifacts does not by itself
   satisfy the implementation-readiness gate.
 - Use xDSL as the working semantic/prepared IR substrate. Develop the first
   shared language slice through registered region, flow and resource contracts,
@@ -137,17 +137,18 @@ solve continuous-run bookkeeping reclamation.
 
 ## Impact
 
-The eventual migration affects `train.py`, `library/strategies/`,
+The rework affects `train.py`, `library/strategies/`,
 `library/training/`, `library/objectives/`, `library/optimization/`, model
 loading, adapter integration, checkpointing/restoration, metadata, and the
 selected caching, validation, sampling, persistence, and observability paths.
 Existing family and domain implementations should be retained where their
 responsibilities fit, but their whole-Trainer and active-strategy boundaries
-will change.
+will change. The system itself is built new: today's Trainer, strategy and
+mode code is a checklist and a sanity-check reference, never migrated.
 
 The change is tracked by bead `sd-scripts-syv`. It is one governing
-architecture change with multiple focused specifications and reviewed vertical
-milestones, not a one-shot rewrite. SDXL is the first detailed migration case;
+architecture change with multiple focused specifications, built new in
+reviewed milestones. SDXL is the first detailed case;
 SD, SD3, adapter, deferred-loading, compound-participant, and strong imperative
 research cases constrain the design before implementation. The active
 `expand-model-metadata-identity-and-structure` change overlaps identity,
@@ -158,4 +159,4 @@ The next executable design evidence is the bounded xDSL language slice in
 `design.md` D14 and tasks 6–9, tracked by `sd-scripts-syv.31.26`. It remains under
 `docs_design/models-strategy-trainer/`, using existing owner services and
 independent expectations. Tasks 5.1–5.7 still govern the production types,
-placement, migration and implementation-readiness decision.
+placement, implementation milestones and implementation-readiness decision.

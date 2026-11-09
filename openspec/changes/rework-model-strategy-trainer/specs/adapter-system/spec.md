@@ -64,16 +64,17 @@ SHALL resolve target intent against current accepted host structure. Adapter
 construction, attachment, activation, replacement, merge/fold, and persistence
 SHALL use explicit accepted transitions and results.
 
+#### Scenario: Injected adapter is attached
+- **WHEN** adapter state is materialized and its host targets resolve
+- **THEN** attachment MUST transition the accepted adapter/host relationship
+- **AND** it MUST NOT create the adapter participant implicitly or hide the effect as arbitrary module mutation
+
+### Requirement: Strategies declare the adapter methods they support
 An authored strategy that adopts repository-maintained PEFT integration SHALL
 declare the method set it currently supports. When strategy construction
 includes an adapter participant for a run, it SHALL select that participant's
 method from the declared set. Repository availability alone SHALL NOT silently
 add support to an existing strategy.
-
-#### Scenario: Injected adapter is attached
-- **WHEN** adapter state is materialized and its host targets resolve
-- **THEN** attachment MUST transition the accepted adapter/host relationship
-- **AND** it MUST NOT create the adapter participant implicitly or hide the effect as arbitrary module mutation
 
 #### Scenario: Undeclared PEFT method is selected
 - **WHEN** strategy construction requests a repository PEFT method outside that strategy's declared supported set
@@ -108,10 +109,9 @@ infrastructure SHALL NOT collapse these into one save/load lifecycle.
 Trainer/pipeline orchestration SHALL own when adapter materialization,
 attachment, preparation, lifecycle actions, optimization participation,
 persistence, and restoration occur. Adapter-domain implementations SHALL own
-their specialized mechanics and return typed results. The accepted arrangement
-SHALL NOT contain a replacement `TrainingMode` authority or a mode value that
-Trainer uses to select training behavior. Adapter-domain implementations SHALL
-receive only the accepted inputs and authority required by their own operations.
+their specialized mechanics and return typed results. Adapter-domain
+implementations SHALL receive only the accepted inputs and authority required by
+their own operations.
 
 #### Scenario: Adapter has a specialized post-step action
 - **WHEN** a selected adapter requires maximum-norm or another declared post-step behavior
@@ -122,6 +122,15 @@ receive only the accepted inputs and authority required by their own operations.
 - **WHEN** exact restoration requires adapter-owned continuation state
 - **THEN** the accepted adapter runtime MUST contribute that state through the restoration contract
 - **AND** it MUST NOT own overall run checkpoint coordination
+
+### Requirement: The accepted arrangement carries no mode authority
+The accepted arrangement SHALL NOT contain a replacement `TrainingMode`
+authority or a mode value that Trainer uses to select training behavior.
+
+#### Scenario: A preset selects an adapter strategy
+- **WHEN** a user-facing preset selects a maintained adapter strategy
+- **THEN** launch MUST resolve the preset before fulfillment
+- **AND** the accepted arrangement MUST NOT contain a `TrainingMode` authority or a mode value that the Trainer uses to select training behavior
 
 ## REMOVED Requirements
 

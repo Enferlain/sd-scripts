@@ -24,12 +24,7 @@ semantics. Support SHALL be explicit rather than inferred from method presence,
 An authored strategy SHALL explicitly provide every capability it exposes or
 requires. Execution configuration MAY request an exposed capability within its
 bounds. Missing or incompatible requested capabilities SHALL be rejected at the
-earliest authoritative evidence point. Incompatibilities already knowable during
-strategy fulfillment SHALL be rejected then; deliberately later requests SHALL
-be validated against the same current obligations before the capability becomes
-ready or its use begins. A due or trigger decision MAY derive a bounded request, but
-SHALL NOT establish its validity or executable readiness. Capability-specific
-restrictions on resource creation before request validation SHALL still apply.
+earliest authoritative evidence point.
 
 #### Scenario: Full-model persistence is unavailable
 - **WHEN** configuration requests a full-model product that the authored strategy does not provide
@@ -39,6 +34,14 @@ restrictions on resource creation before request validation SHALL still apply.
 #### Scenario: Provided capability is not requested
 - **WHEN** an accepted arrangement provides a sampling capability but the run's accepted configuration or policy does not request sampling
 - **THEN** the pipeline MUST NOT schedule sampling merely because the capability is available
+
+### Requirement: Later capability requests are validated against current obligations
+Incompatibilities already knowable during strategy fulfillment SHALL be rejected
+then; deliberately later requests SHALL be validated against the same current
+obligations before the capability becomes ready or its use begins. A due or
+trigger decision MAY derive a bounded request, but SHALL NOT establish its
+validity or executable readiness. Capability-specific restrictions on resource
+creation before request validation SHALL still apply.
 
 #### Scenario: Trigger-derived request is incompatible
 - **WHEN** an accepted runtime policy derives a bounded request when a capability becomes due and that request violates the current accepted obligations
@@ -69,18 +72,21 @@ rather than current phase-function names.
 ### Requirement: Caching separates semantics from storage orchestration
 Representation and conditioning implementations SHALL own semantic cache
 encoding, decoding, schema, and dependency meaning. Data/cache infrastructure
-SHALL own traversal and storage coordination **for cache production**. A
-selected live input provider MAY traverse available sources or cache records
-under its accepted input policy; consuming coordination SHALL still check
-readiness and admission before use, with training input coordination responsible
-for training-input handoff. Neither traversal owner SHALL silently
-take over the other's continuation state. Cache results SHALL identify their
-accepted dependencies and SHALL become stale when those guarantees fail.
+SHALL own traversal and storage coordination **for cache production**. Cache
+results SHALL identify their accepted dependencies and SHALL become stale when
+those guarantees fail.
 
 #### Scenario: Autoencoder replacement invalidates latent cache
 - **WHEN** accepted autoencoder state changes and a latent cache depends on that realization
 - **THEN** the cache MUST no longer be treated as current
 - **AND** unrelated conditioning cache MAY remain current only through an explicit valid dependency set
+
+### Requirement: Live input traversal and cache production stay separate
+A selected live input provider MAY traverse available sources or cache records
+under its accepted input policy; consuming coordination SHALL still check
+readiness and admission before use, with training input coordination responsible
+for training-input handoff. Neither traversal owner SHALL silently take over the
+other's continuation state.
 
 #### Scenario: Cache-backed input is produced asynchronously
 - **WHEN** cache production writes a value while a live input provider selects work independently
@@ -93,23 +99,8 @@ A caching request SHALL identify the selected accepted computation/behavior and
 representation boundary, requested work or production scope, relevant
 input/transformation meaning, consumer schema, producer dependencies,
 reuse/consistency obligations, storage support, and applicable lifecycle and
-failure policies. Cache coordination SHALL derive requests and judge results
-under the existing
-run-specific obligations; it SHALL NOT invent another acceptance policy.
-Results SHALL remain associated with their request/attempt and distinguish
-completed values and actual provenance, storage/readiness outcomes, incomplete
-coverage, and failures or uncertainty. No universal image, latent, tokenizer,
-tensor-axis, or file-per-sample fields SHALL be required by this exchange.
-Accepted behavior identity/meaning SHALL NOT be equated automatically with
-physical callable, compiler-artifact, or backend identity. A different
-realization MAY preserve reuse only with evidence that relevant computation,
-numerical/stochastic, and dependency obligations remain satisfied; realization
-differences SHALL remain dependencies wherever they affect those guarantees.
-
-#### Scenario: Equivalent realization changes without changing cache meaning
-- **WHEN** the same accepted encoder behavior uses a different eager/compiled or backend realization
-- **THEN** reuse MAY remain compatible only if evidence establishes that its relevant accepted computation and numerical/stochastic dependencies remain satisfied
-- **AND** compatibility MUST NOT be inferred from either physical callable identity or a matching semantic label alone
+failure policies. No universal image, latent, tokenizer, tensor-axis, or
+file-per-sample fields SHALL be required by this exchange.
 
 #### Scenario: One sample has several caption variants
 - **WHEN** requested work selects a caption variant for a sample that already has another cached variant
@@ -126,25 +117,49 @@ differences SHALL remain dependencies wherever they affect those guarantees.
 - **THEN** fulfillment or admission MUST reject that unaccepted change at its earliest authoritative evidence point
 - **AND** such behavior MAY be used only when explicitly selected and accepted with its own semantics
 
+### Requirement: Cache results are judged under the existing obligations
+Cache coordination SHALL derive requests and judge results under the existing
+run-specific obligations; it SHALL NOT invent another acceptance policy. Results
+SHALL remain associated with their request/attempt and distinguish completed
+values and actual provenance, storage/readiness outcomes, incomplete coverage,
+and failures or uncertainty.
+
+#### Scenario: A cache attempt completes only part of its work
+- **WHEN** a caching attempt completes some values and fails or is uncertain for others
+- **THEN** its results MUST stay associated with the request and attempt and distinguish completed values and their actual provenance from incomplete coverage, failures and uncertainty
+- **AND** cache coordination MUST judge them under the existing run-specific obligations without inventing another acceptance policy
+
+### Requirement: Cache reuse across realizations needs evidence
+Accepted behavior identity/meaning SHALL NOT be equated automatically with
+physical callable, compiler-artifact, or backend identity. A different
+realization MAY preserve reuse only with evidence that relevant computation,
+numerical/stochastic, and dependency obligations remain satisfied; realization
+differences SHALL remain dependencies wherever they affect those guarantees.
+
+#### Scenario: Equivalent realization changes without changing cache meaning
+- **WHEN** the same accepted encoder behavior uses a different eager/compiled or backend realization
+- **THEN** reuse MAY remain compatible only if evidence establishes that its relevant accepted computation and numerical/stochastic dependencies remain satisfied
+- **AND** compatibility MUST NOT be inferred from either physical callable identity or a matching semantic label alone
+
 ### Requirement: Cache freshness follows actual computation dependencies
 Cache evidence SHALL identify the relevant inputs, representation/schema, and
 producer states actually used, with sufficient dependency and consistency
 meaning to judge reuse under the current obligations. Evidence MAY use a
 protected state/snapshot or structured provenance over portions of work where
 accepted production permits it; provenance alone SHALL NOT authorize mixed
-states. Unchanged participant identity, binding revision, a file path, or a
-caption hash SHALL NOT substitute for missing producer-state evidence.
-Relevant changes SHALL withdraw affected reuse guarantees before dependent
-use. Unrelated changes MAY preserve reuse only with valid precise evidence.
-Older-state values MAY remain stored or serve an explicitly accepted version
-or lag policy, but SHALL NOT be treated as current under a failed guarantee.
-Published availability SHALL NOT be a perpetual current-use guarantee. A query
-claiming current usability SHALL evaluate current dependency evidence even
-when no binding revision changed. Implementations MAY withdraw guarantees
-proactively or re-evaluate at query/admission, but SHALL NOT report a failed
-guarantee as current. Persistent reuse across runs SHALL be judged against the
-current run's obligations and producer/representation correspondence, not
-inherit prior-run readiness or participant identity.
+states.
+
+#### Scenario: Producer completes after its source state changes
+- **WHEN** in-flight cache work finishes after a relevant producer dependency or request obligation changes
+- **THEN** publication MUST check current obligations using actual production provenance rather than relabel the result with the launch or completion state
+- **AND** consumer admission MUST reject or follow an explicitly accepted version/lag policy before use
+- **AND** detached cached output MUST NOT silently replace a required live derivative path
+
+### Requirement: Relevant changes withdraw cache reuse guarantees
+Unchanged participant identity, binding revision, a file path, or a caption hash
+SHALL NOT substitute for missing producer-state evidence. Relevant changes SHALL
+withdraw affected reuse guarantees before dependent use. Unrelated changes MAY
+preserve reuse only with valid precise evidence.
 
 #### Scenario: Encoder weights change without participant replacement
 - **WHEN** an encoder's weights change while its participant and binding identity remain the same
@@ -156,73 +171,95 @@ inherit prior-run readiness or participant identity.
 - **THEN** that cached upstream value MAY remain usable
 - **AND** the adapter output MUST still be recomputed under the accepted live computation
 
+### Requirement: Older cache values are not current under a failed guarantee
+Older-state values MAY remain stored or serve an explicitly accepted version or
+lag policy, but SHALL NOT be treated as current under a failed guarantee.
+Published availability SHALL NOT be a perpetual current-use guarantee.
+
+#### Scenario: A cached value outlives its source state
+- **WHEN** a cached value was produced from an older source state and its current-use guarantee has failed
+- **THEN** the value MAY remain stored or serve an explicitly accepted version or lag policy
+- **AND** it MUST NOT be treated as current
+- **AND** its earlier publication MUST NOT serve as a perpetual current-use guarantee
+
+### Requirement: Usability queries and cross-run reuse use current evidence
+A query claiming current usability SHALL evaluate current dependency evidence
+even when no binding revision changed. Implementations MAY withdraw guarantees
+proactively or re-evaluate at query/admission, but SHALL NOT report a failed
+guarantee as current. Persistent reuse across runs SHALL be judged against the
+current run's obligations and producer/representation correspondence, not
+inherit prior-run readiness or participant identity.
+
 #### Scenario: Another run reuses persistent cached values
 - **WHEN** a new run finds values stored by an earlier run
 - **THEN** reuse MUST establish that their actual input, producer-state, and representation evidence satisfy the new run's current obligations
 - **AND** prior readiness or a matching authored participant address MUST NOT prove current compatibility or transfer the earlier participant's runtime identity
 
-#### Scenario: Producer completes after its source state changes
-- **WHEN** in-flight cache work finishes after a relevant producer dependency or request obligation changes
-- **THEN** publication MUST check current obligations using actual production provenance rather than relabel the result with the launch or completion state
-- **AND** consumer admission MUST reject or follow an explicitly accepted version/lag policy before use
-- **AND** detached cached output MUST NOT silently replace a required live derivative path
-
 ### Requirement: Cache publication and consumer admission are distinct
 Cache coordination SHALL publish readiness only for a complete usable accepted
 publication unit, such as a value, bundle, or independently consumable chunk,
-whose payload, storage access/index, schema, and dependency evidence
-satisfy its accepted consistency boundary. That boundary SHALL be explicit
-without requiring one dataset-wide transaction. Published availability SHALL
-NOT establish admission for another request or consumer. The consuming
-coordination surface SHALL check exact work association, representation,
-freshness/lag, and gradient requirements against that consumer's existing
-accepted obligations before use. Training input coordination SHALL do so for
-training inputs; relevant capability coordination SHALL do so for its own
-consumption, directly or through shared input coordination, without creating
-another acceptance policy or a universal training-input gateway. Required
-source/storage guarantees SHALL remain protected through dependent use.
-Results SHALL describe actual publication and partial coverage rather than
-infer readiness from file existence, queue position, or a successful encoding
-call.
-
-#### Scenario: Consumers share storage but have different requirements
-- **WHEN** training and validation or sampling consume a shared cached representation under different accepted requirements
-- **THEN** the relevant consuming coordinators MUST judge admission under their respective existing obligations
-- **AND** admission for one consumer MUST NOT establish admission for another, such as when detached cached output is allowed for inference but cannot replace a required training derivative path
+whose payload, storage access/index, schema, and dependency evidence satisfy its
+accepted consistency boundary. That boundary SHALL be explicit without requiring
+one dataset-wide transaction.
 
 #### Scenario: Only some independently usable chunks are published
 - **WHEN** a selected representation permits independently consumable chunks and only some chunks meet their complete publication obligations
 - **THEN** those chunks MAY become ready and be admitted to consumers whose accepted scope requires only them
 - **AND** the entire representation or a required full bundle MUST NOT be advertised as ready merely because those chunks are ready
 
-#### Scenario: Payload write succeeds but publication fails
-- **WHEN** payload writing succeeds but its required index, locator, or readiness publication fails
-- **THEN** the result MUST report incomplete publication and known external effects without advertising the affected value as ready
-- **AND** the storage implementation's accepted recovery MAY verify and adopt, reissue, or remove orphaned work without claiming a crash-safe transaction that it does not provide
-
 #### Scenario: One record fails in a larger production job
 - **WHEN** one record fails while other independently complete records satisfy their publication obligations
 - **THEN** the result MUST identify actual ready coverage and the failed or uncertain work
 - **AND** accepted partial-coverage policy MAY retain the complete records without claiming that the whole scope completed
+
+### Requirement: Consumers check cached values against their own obligations
+Published availability SHALL NOT establish admission for another request or
+consumer. The consuming coordination surface SHALL check exact work association,
+representation, freshness/lag, and gradient requirements against that consumer's
+existing accepted obligations before use.
 
 #### Scenario: Ready value does not match selected work
 - **WHEN** a published value is structurally readable but belongs to another caption, transformation, source state, or representation than the consumer accepts
 - **THEN** admission MUST reject it or follow an explicitly accepted recovery policy before computation
 - **AND** stored validity MUST NOT override the consumer's accepted requirements
 
+### Requirement: Each coordinator admits its own consumption
+Training input coordination SHALL perform those consumer checks for training
+inputs; relevant capability coordination SHALL perform them for its own
+consumption, directly or through shared input coordination, without creating
+another acceptance policy or a universal training-input gateway. Required
+source/storage guarantees SHALL remain protected through dependent use.
+
+#### Scenario: Consumers share storage but have different requirements
+- **WHEN** training and validation or sampling consume a shared cached representation under different accepted requirements
+- **THEN** the relevant consuming coordinators MUST judge admission under their respective existing obligations
+- **AND** admission for one consumer MUST NOT establish admission for another, such as when detached cached output is allowed for inference but cannot replace a required training derivative path
+
+### Requirement: Cache results report actual publication
+Results SHALL describe actual publication and partial coverage rather than infer
+readiness from file existence, queue position, or a successful encoding call.
+
+#### Scenario: Payload write succeeds but publication fails
+- **WHEN** payload writing succeeds but its required index, locator, or readiness publication fails
+- **THEN** the result MUST report incomplete publication and known external effects without advertising the affected value as ready
+- **AND** the storage implementation's accepted recovery MAY verify and adopt, reissue, or remove orphaned work without claiming a crash-safe transaction that it does not provide
+
 ### Requirement: Cache storage lifecycle preserves outstanding use
 Logical input/work identity and cache dependency meaning SHALL remain distinct
 from physical storage access. Selected backends MAY use memory, individual
 files, shards, or other supported storage without changing accepted consumer
-meaning. Sharing, eviction, compaction, or replacement SHALL preserve required
-outstanding reads and readiness guarantees through completion, supported
-isolation, or rejection before dependent use. Storage capacity and miss
-behavior SHALL follow accepted policies, not silently change input selection.
+meaning.
 
 #### Scenario: Several samples share one cached representation
 - **WHEN** several requested inputs have identical complete cache dependencies and supported reuse meaning
 - **THEN** they MAY reference one stored value while retaining distinct logical work/handoff identities
 - **AND** a cache filename or shard position MUST NOT become their semantic identity
+
+### Requirement: Storage changes preserve outstanding reads
+Sharing, eviction, compaction, or replacement SHALL preserve required
+outstanding reads and readiness guarantees through completion, supported
+isolation, or rejection before dependent use. Storage capacity and miss behavior
+SHALL follow accepted policies, not silently change input selection.
 
 #### Scenario: Compaction or eviction overlaps a consumer read
 - **WHEN** storage coordination would relocate or remove a value whose accepted read is outstanding
@@ -234,12 +271,7 @@ Where selected and supported, cache production MAY progress independently of
 training consumption without a complete finite manifest or shared step/epoch
 clock. Run coordination SHALL manage accepted startup, shutdown, readiness,
 cancellation, and failure relationships; cache infrastructure SHALL retain its
-production traversal, private workers/queue, and continuation state. It SHALL
-expose accepted bounds on work, resource use, and backpressure and respect
-producer-state access and distributed data ownership. The input provider SHALL
-retain selection, packing, delivery, and exposure continuation separately.
-These obligations SHALL NOT require every private worker task to be a graph
-node or every supported backend to implement every asynchronous/storage mode.
+production traversal, private workers/queue, and continuation state.
 
 #### Scenario: Training consumes a ready subset during production
 - **WHEN** accepted production continues while an input provider selects currently ready work
@@ -252,6 +284,14 @@ node or every supported backend to implement every asynchronous/storage mode.
 - **AND** dependent work MUST wait, recover, use an explicitly accepted fallback, or stop before invalid input is delivered
 - **AND** resource release or producer shutdown alone MUST NOT certify uncertain source or storage state as usable
 
+### Requirement: Cache production exposes bounds and keeps input continuation separate
+Independent cache production SHALL expose accepted bounds on work, resource use,
+and backpressure and respect producer-state access and distributed data
+ownership. The input provider SHALL retain selection, packing, delivery, and
+exposure continuation separately. Independent cache production obligations SHALL
+NOT require every private worker task to be a graph node or every supported
+backend to implement every asynchronous/storage mode.
+
 #### Scenario: Cache work contributes to exact restoration
 - **WHEN** exact continuation depends on independently progressing cache production and input consumption
 - **THEN** cache coordination MUST contribute the production position, pending/publication state, dependency evidence, and stored-resource guarantees needed by the accepted recovery policy
@@ -261,18 +301,20 @@ node or every supported backend to implement every asynchronous/storage mode.
 
 ### Requirement: Validation separates evaluation semantics from traversal
 The pipeline SHALL own validation scheduling, data traversal, ordinary
-train/eval transitions, aggregation, and result routing. The selected
-validation capability SHALL own accepted model/objective evaluation semantics
-and return typed results. It SHALL define measurement contributions and
-reduction/weighting meaning; pipeline aggregation SHALL execute that meaning
-rather than invent a metric from returned batch values. Outer evaluation
-traversal SHALL NOT transfer a selected input provider's private selection,
-packing, or continuation ownership to the coordinator.
+train/eval transitions, aggregation, and result routing. The selected validation
+capability SHALL own accepted model/objective evaluation semantics and return
+typed results. It SHALL define measurement contributions and reduction/weighting
+meaning; pipeline aggregation SHALL execute that meaning rather than invent a
+metric from returned batch values.
 
 #### Scenario: SDXL validation runs
 - **WHEN** Trainer coordinates validation for an accepted SDXL arrangement
 - **THEN** the capability MUST reuse accepted prepared evaluation behavior
 - **AND** it MUST NOT require an active strategy object to repeat the training flow
+
+### Requirement: Validation traversal leaves input-provider continuation alone
+Outer evaluation traversal SHALL NOT transfer a selected input provider's
+private selection, packing, or continuation ownership to the coordinator.
 
 #### Scenario: Evaluation uses a bounded input stream
 - **WHEN** accepted evaluation has no finite dataset length and uses a bounded coverage/stopping rule
@@ -286,19 +328,29 @@ source consistency, runtime/derivative needs, measurement rules, and declared
 effects. Results SHALL preserve request/attempt and evaluated-input
 associations, actual source-state provenance, relevant coverage and
 weighting/reduction evidence, completion/failure meaning, and declared-effect
-outcomes. Incomplete work SHALL NOT claim the requested completed measurement;
-accepted partial measurements SHALL retain their scope. Empty or undefined
-reductions SHALL follow the accepted policy rather than fabricate a score.
-Evaluation MAY supply accepted adaptive feedback or state effects and require
-derivatives; it SHALL NOT receive implicit optimization advancement or
-participant-transition authority. Algorithmic state and reactions SHALL retain
-their declared owners and continuation needs, not become generic Trainer
-evaluation logic.
+outcomes.
 
 #### Scenario: Unequal batches or distributed contributions are reduced
 - **WHEN** evaluated inputs have unequal relevant weight, masks, or distributed coverage
 - **THEN** pipeline aggregation MUST apply the selected measurement's reduction and coverage rules
 - **AND** it MUST NOT silently substitute an unweighted mean of batch means or claim missing contributions completed
+
+### Requirement: Partial and empty validation results follow the accepted policy
+Incomplete work SHALL NOT claim the requested completed measurement; accepted
+partial measurements SHALL retain their scope. Empty or undefined reductions
+SHALL follow the accepted policy rather than fabricate a score.
+
+#### Scenario: Validation stops partway
+- **WHEN** validation stops before covering its requested input scope, or a reduction has no contributions
+- **THEN** it MUST NOT claim the requested completed measurement, and an accepted partial measurement MUST retain its scope
+- **AND** an empty or undefined reduction MUST follow the accepted policy rather than fabricate a score
+
+### Requirement: Evaluation effects keep their owners
+Evaluation MAY supply accepted adaptive feedback or state effects and require
+derivatives; it SHALL NOT receive implicit optimization advancement or
+participant-transition authority. Algorithmic state and reactions SHALL retain
+their declared owners and continuation needs, not become generic Trainer
+evaluation logic.
 
 #### Scenario: Validation changes an accepted adaptive policy
 - **WHEN** selected evaluation measurements feed an accepted later noise-range or other adaptive decision
@@ -311,29 +363,45 @@ The pipeline SHALL own sampling triggers, requests, destinations, and
 observation. The selected sampling capability SHALL own accepted conditioning,
 prediction, representation, and objective-compatible generation behavior.
 Pipeline coordination SHALL own outer request traversal and output handling
-through selected publication implementations. Sampling requests SHALL identify
-the selected generator, supported domain parameters, work/output associations,
-relevant random-input policy, source/view consistency, destination, declared
-effects, and cancellation/partial-failure policy. Universal sampling inputs or
-outputs SHALL NOT require image dimensions, prompt strings, PIL images, or PNG.
+through selected publication implementations.
 
 #### Scenario: Objective-specific sampler is needed
 - **WHEN** a selected objective requires compatible sampling behavior
 - **THEN** the strategy acceptance check MUST validate that pairing
 - **AND** generic trigger orchestration MUST NOT branch on model family to choose it
 
+### Requirement: Sampling requests identify the generator and its policies
+Sampling requests SHALL identify the selected generator, supported domain
+parameters, work/output associations, relevant random-input policy, source/view
+consistency, destination, declared effects, and cancellation/partial-failure
+policy. Universal sampling inputs or outputs SHALL NOT require image dimensions,
+prompt strings, PIL images, or PNG.
+
+#### Scenario: A generator needs parameters other than an image size
+- **WHEN** a selected generator needs domain parameters that are not image dimensions or prompt strings
+- **THEN** its sampling request MUST identify the generator, its supported domain parameters and the request's random-input, consistency, destination, effect and cancellation policies
+- **AND** the request MUST NOT require image dimensions, prompt strings, PIL images or PNG
+
 ### Requirement: Sampling results distinguish generation publication and reporting
-Sampling results SHALL preserve request/attempt and output associations,
-actual input/source-state provenance, produced outputs, and actual published
-resources where requested. Generation, writing/publication, observation,
-cancellation, failure, and declared effects SHALL remain separately reportable
-where accepted consumers depend on them. Partial failure SHALL preserve known
-successful, failed, uncertain, and unattempted outcomes without claiming a
-job-wide transaction. A planned destination SHALL NOT prove a written output.
-Observation failure SHALL NOT erase accepted output or authorize regeneration;
-retry/reissue SHALL follow the accepted policy and actual outcome evidence.
-Sampling publication SHALL NOT by itself claim trained-artifact persistence
-or exact runtime restoration.
+Sampling results SHALL preserve request/attempt and output associations, actual
+input/source-state provenance, produced outputs, and actual published resources
+where requested. Generation, writing/publication, observation, cancellation,
+failure, and declared effects SHALL remain separately reportable where accepted
+consumers depend on them. A planned destination SHALL NOT prove a written
+output.
+
+#### Scenario: A selected generator produces non-image or related outputs
+- **WHEN** accepted generation returns text, audio/video, or several associated outputs
+- **THEN** selected schemas and publication implementations MUST retain their domain meaning and associations
+- **AND** generic coordination MUST NOT require an image-shaped payload or add model-family branches
+
+### Requirement: Sampling failures keep known outcomes
+Partial failure SHALL preserve known successful, failed, uncertain, and
+unattempted outcomes without claiming a job-wide transaction. Observation
+failure SHALL NOT erase accepted output or authorize regeneration; retry/reissue
+SHALL follow the accepted policy and actual outcome evidence. Sampling
+publication SHALL NOT by itself claim trained-artifact persistence or exact
+runtime restoration.
 
 #### Scenario: Output is saved before reporting fails
 - **WHEN** generation and output publication succeed but a tracker or other sink fails
@@ -345,29 +413,21 @@ or exact runtime restoration.
 - **THEN** the result MUST distinguish the published output from the generated-but-unpublished output and any unattempted work
 - **AND** successful resources MUST NOT be erased from the result or presented as a wholly completed request set
 
-#### Scenario: A selected generator produces non-image or related outputs
-- **WHEN** accepted generation returns text, audio/video, or several associated outputs
-- **THEN** selected schemas and publication implementations MUST retain their domain meaning and associations
-- **AND** generic coordination MUST NOT require an image-shaped payload or add model-family branches
-
 ### Requirement: Evaluation and generation use protected current state
 Validation and sampling SHALL execute only with current accepted input and
 source/view evidence and protected access satisfying their consistency,
 numerical, and derivative needs through actual completion. A trigger coordinate
-SHALL NOT stand for actual source-state provenance. That provenance MAY be a
-protected state, snapshot, or structured evidence over states/segments where
-the selected consistency policy permits it; attribution alone SHALL NOT make
-mixed-state work valid. Conflicting owner work SHALL wait, reject before use,
-or use supported isolation/synchronization under the existing accepted access
-relationships. Neither capability SHALL bypass readiness by unwrapping,
-moving, or recasting live state. Capability due/completion/failure relationships
-SHALL NOT be forced into one optimizer clock or a universal sample-then-validate
-sequence.
+SHALL NOT stand for actual source-state provenance.
 
-#### Scenario: Sampling conflicts with temporary parameter perturbation
-- **WHEN** a due sampling request would read state protected by an in-progress two-pass optimization region
-- **THEN** it MUST wait, reject before use, or use an accepted isolated view without observing the temporary perturbation as ordinary source state
-- **AND** stale inference views or uncertain handback MUST NOT authorize dependent use
+#### Scenario: Validation starts at a trigger coordinate
+- **WHEN** a trigger requests validation at some training coordinate
+- **THEN** validation MUST execute only with current accepted input and source evidence under protected access through actual completion
+- **AND** the trigger coordinate MUST NOT stand for the actual source-state provenance
+
+### Requirement: Evaluation provenance over several states needs an accepted policy
+Evaluation and generation provenance MAY be a protected state, snapshot, or
+structured evidence over states/segments where the selected consistency policy
+permits it; attribution alone SHALL NOT make mixed-state work valid.
 
 #### Scenario: Evaluation spans a source-state change
 - **WHEN** an evaluation requires a consistent source but training could change that source during traversal
@@ -375,30 +435,52 @@ sequence.
 - **AND** results MUST identify actual source provenance rather than label all work with the trigger's requested state
 - **AND** a multi-state measurement MAY execute only under an explicitly accepted consistency and attribution policy
 
+### Requirement: Evaluation waits for conflicting owner work and keeps its own clock
+Conflicting owner work SHALL wait, reject before use, or use supported
+isolation/synchronization under the existing accepted access relationships.
+Neither validation nor sampling SHALL bypass readiness by unwrapping, moving, or
+recasting live state. Capability due/completion/failure relationships SHALL NOT
+be forced into one optimizer clock or a universal sample-then-validate sequence.
+
+#### Scenario: Sampling conflicts with temporary parameter perturbation
+- **WHEN** a due sampling request would read state protected by an in-progress two-pass optimization region
+- **THEN** it MUST wait, reject before use, or use an accepted isolated view without observing the temporary perturbation as ordinary source state
+- **AND** stale inference views or uncertain handback MUST NOT authorize dependent use
+
 ### Requirement: Capability temporary projections have scoped cleanup
 Pipeline coordination SHALL establish and restore ordinary runtime projections
 and relevant placement, dtype, and RNG state under their accepted owners and
 numerical policy. Cleanup SHALL cover partial setup, execution failure,
 cancellation, and actual backend completion and preserve the prior relevant
 state rather than assume every module/optimizer returns to training mode.
-Unsupported RNG or mutable-state overlap SHALL NOT claim isolation or exact
-replay. Uncertain restoration SHALL keep dependent use unavailable until
-accepted recovery establishes validity; releasing exclusion alone SHALL NOT
-prove readiness. Primary and cleanup failures, known results/effects, and
-uncertainty SHALL remain distinct. Missing or invalid results SHALL NOT prove
-that no state effect occurred. Capability and selected algorithm owners SHALL
-contribute their continuation state without claiming that local cleanup alone
-establishes a coherent exact run snapshot.
 
 #### Scenario: Temporary setup fails after changing only some projections
 - **WHEN** validation or sampling changes a mode, placement, dtype, or RNG scope and then setup fails
 - **THEN** cleanup MUST restore the changed prior state or mark dependent use unsafe
 - **AND** later execution MUST NOT be admitted merely because cleanup released a scope
 
+### Requirement: Uncertain cleanup keeps dependent use unavailable
+Unsupported RNG or mutable-state overlap SHALL NOT claim isolation or exact
+replay. Uncertain restoration SHALL keep dependent use unavailable until
+accepted recovery establishes validity; releasing exclusion alone SHALL NOT
+prove readiness. Primary and cleanup failures, known results/effects, and
+uncertainty SHALL remain distinct. Missing or invalid results SHALL NOT prove
+that no state effect occurred.
+
 #### Scenario: Cleanup fails after work produced known results
 - **WHEN** selected evaluation/generation or publication reaches a known outcome and restoration later fails
 - **THEN** reporting MUST retain that outcome and separately report the cleanup failure and uncertain state
 - **AND** unsafe dependent work MUST remain stopped until accepted recovery
+
+### Requirement: Capabilities contribute continuation state without claiming exact snapshots
+Capability and selected algorithm owners SHALL contribute their continuation
+state without claiming that local cleanup alone establishes a coherent exact run
+snapshot.
+
+#### Scenario: A capability finishes cleanup during a snapshot request
+- **WHEN** a capability or selected algorithm owner finishes local cleanup while a runtime snapshot is requested
+- **THEN** it MUST contribute its continuation state to the coordinated snapshot
+- **AND** it MUST NOT claim that its local cleanup alone establishes a coherent exact run snapshot
 
 ### Requirement: Persistence and restoration remain distinct capabilities
 Trained-artifact persistence and exact runtime restoration SHALL use distinct
@@ -424,44 +506,60 @@ state they own.
 
 ### Requirement: Runtime snapshots declare accepted continuation coverage
 The accepted restoration policy SHALL identify its continuation guarantee,
-required owner contributions, state definitions and relevant dependencies,
-and consistency and publication requirements. Coverage SHALL follow the
-accepted whole-run arrangement, including authority, operation/region,
-capability, input, optimization, backend, and infrastructure state required
-for continuation. Contributors SHALL retain ownership of their own state.
-Accepted reconstruction rules SHALL be permitted instead of serialization
-where they establish the requested guarantee. Reconstruction SHALL preserve
-selected dynamic behavior, policies, wiring, and authority grants without
-requiring the strategy-authoring object or serialized Python object identity.
-Same-run continuation SHALL NOT by itself promise bit-identical replay;
-the reported guarantee SHALL match the accepted policy and available evidence.
+required owner contributions, state definitions and relevant dependencies, and
+consistency and publication requirements. Coverage SHALL follow the accepted
+whole-run arrangement, including authority, operation/region, capability, input,
+optimization, backend, and infrastructure state required for continuation.
+
+#### Scenario: Required continuation state is missing
+- **WHEN** model and optimizer state are captured but required input, adaptive operation, or backend state is absent without an accepted reconstruction rule
+- **THEN** the snapshot MUST report incomplete continuation coverage rather than exact-restoration support
+
+### Requirement: Contributors may reconstruct state instead of serializing it
+Contributors SHALL retain ownership of their own state. Accepted reconstruction
+rules SHALL be permitted instead of serialization where they establish the
+requested guarantee. Reconstruction SHALL preserve selected dynamic behavior,
+policies, wiring, and authority grants without requiring the strategy-authoring
+object or serialized Python object identity.
 
 #### Scenario: Adaptive behavior resumes without the authoring object
 - **WHEN** a snapshot covers the accepted objective's adaptive state, relevant RNG and dependencies, and the identified selected implementation is available
 - **THEN** restoration MUST reconstruct its accepted runtime behavior without consulting the former strategy-authoring interface
 - **AND** it MUST NOT silently replace that state with initialization defaults
 
-#### Scenario: Required continuation state is missing
-- **WHEN** model and optimizer state are captured but required input, adaptive operation, or backend state is absent without an accepted reconstruction rule
-- **THEN** the snapshot MUST report incomplete continuation coverage rather than exact-restoration support
-
 #### Scenario: Disposable work can be regenerated under the accepted guarantee
 - **WHEN** the accepted policy allows regeneration of specified unconsumed in-flight work and its required identity and dependency information is captured
 - **THEN** the snapshot MAY support same-run continuation under that policy
 - **AND** it MUST NOT claim bit-identical replay or silently weaken a stronger requested guarantee
 
+### Requirement: Same-run continuation reports its actual guarantee
+Same-run continuation SHALL NOT by itself promise bit-identical replay; the
+reported guarantee SHALL match the accepted policy and available evidence.
+
+#### Scenario: Transient execution will not replay bit-identically
+- **WHEN** a same-run continuation restores the accepted state but transient execution will not replay bit-identically
+- **THEN** the reported guarantee MUST match the accepted policy and the available evidence
+- **AND** the continuation MUST NOT be reported as a bit-identical replay
+
 ### Requirement: Snapshot contributions form a coherent recoverable cut
 Trainer/pipeline infrastructure SHALL coordinate required contributions into
 positions compatible with the accepted activity relationships, revisions,
-handoffs, progress, and known effects. Required contributions across participating
-ranks or replicas SHALL belong to that same coherent recoverable cut, without
-requiring identical state versions or progress coordinates where accepted
-relationships permit them to differ. Independent owners SHALL NOT be forced
-into one universal step clock or capture sequence. The supported capture
-policy SHALL establish safe boundaries, protected versions, or sufficient
-unfinished-work evidence, and SHALL protect reads through actual backend
-completion. A snapshot SHALL NOT claim coherent continuation from inconsistent
-owner positions, unsupported temporary state, or a half-published transition.
+handoffs, progress, and known effects. Required contributions across
+participating ranks or replicas SHALL belong to that same coherent recoverable
+cut, without requiring identical state versions or progress coordinates where
+accepted relationships permit them to differ.
+
+#### Scenario: Individually durable rank contributions disagree
+- **WHEN** required rank or replica contributions are durably published but their saved positions disagree under the accepted cross-owner relationships
+- **THEN** the snapshot MUST NOT report a coherent recoverable cut merely because each individual publication succeeded
+
+### Requirement: Capture policies establish safe boundaries
+Independent owners SHALL NOT be forced into one universal step clock or capture
+sequence. The supported capture policy SHALL establish safe boundaries,
+protected versions, or sufficient unfinished-work evidence, and SHALL protect
+reads through actual backend completion. A snapshot SHALL NOT claim coherent
+continuation from inconsistent owner positions, unsupported temporary state, or
+a half-published transition.
 
 #### Scenario: Alternating activities have different progress coordinates
 - **WHEN** discriminator work completed and generator work has not yet begun at a supported capture boundary
@@ -477,21 +575,13 @@ owner positions, unsupported temporary state, or a half-published transition.
 - **THEN** capture MUST wait for its supported unperturbed boundary or report that the requested capture is unavailable
 - **AND** intermediate perturbed state MUST NOT be published as an exact-restoration snapshot
 
-#### Scenario: Individually durable rank contributions disagree
-- **WHEN** required rank or replica contributions are durably published but their saved positions disagree under the accepted cross-owner relationships
-- **THEN** the snapshot MUST NOT report a coherent recoverable cut merely because each individual publication succeeded
-
 ### Requirement: Recovery preserves unfinished work and effect distinctions
-Snapshot and restoration coordination SHALL preserve produced, ready,
-admitted, handed-off, consumed, contributed, advanced, and durable positions
-where continuation depends on them. Each owner SHALL supply the accepted
-preserve, reconstruct, reissue, discard, or reconciliation rule for relevant
-unfinished work, with required work/source identity, dependency provenance,
-and associations to other owners. Required pending gradients, derivative
-continuations, retained versions, and backend state SHALL be recoverable with
-evidence or excluded by an established supported capture boundary. Uncertain
-external or optimization effects SHALL NOT imply safe replay, rollback,
-exactly-once execution, or an all-or-nothing update.
+Snapshot and restoration coordination SHALL preserve produced, ready, admitted,
+handed-off, consumed, contributed, advanced, and durable positions where
+continuation depends on them. Each owner SHALL supply the accepted preserve,
+reconstruct, reissue, discard, or reconciliation rule for relevant unfinished
+work, with required work/source identity, dependency provenance, and
+associations to other owners.
 
 #### Scenario: Producer lags optimization while work is in flight
 - **WHEN** a snapshot has Trainer policy P18, a producer view P17, ready results, and running or pending work
@@ -501,6 +591,13 @@ exactly-once execution, or an all-or-nothing update.
 #### Scenario: Production spans more than one source state
 - **WHEN** a recoverable product records portions generated using different accepted source versions
 - **THEN** restoration and admission MUST preserve its required structured provenance rather than substitute one requested launch version
+
+### Requirement: Pending gradients and uncertain effects need evidence to continue
+Required pending gradients, derivative continuations, retained versions, and
+backend state SHALL be recoverable with evidence or excluded by an established
+supported capture boundary. Uncertain external or optimization effects SHALL NOT
+imply safe replay, rollback, exactly-once execution, or an all-or-nothing
+update.
 
 #### Scenario: One optimization unit advanced before another failed
 - **WHEN** an attempt contains a known first-unit outcome and an uncertain second-unit outcome
@@ -514,17 +611,20 @@ exactly-once execution, or an all-or-nothing update.
 
 ### Requirement: Snapshot publication and restore readiness have separate outcomes
 The snapshot result SHALL report achieved coverage, consistency and guarantee,
-required publication outcomes, and known partial or uncertain effects.
-Capture success, durable publication, restore readiness, and trained-product
-persistence SHALL remain distinguishable. Required external dependencies
-SHALL be identified with their restoration requirements; complete publication
-SHALL NOT promise their permanent availability. Restore readiness SHALL require
-actual availability and compatibility of resources required at that checkpoint.
+required publication outcomes, and known partial or uncertain effects. Capture
+success, durable publication, restore readiness, and trained-product persistence
+SHALL remain distinguishable.
 
 #### Scenario: Only some required state resources are durable
 - **WHEN** a model shard is written but a required contributor, rank, or publication destination has not established success
 - **THEN** the snapshot MUST NOT report complete publication under a policy requiring that contribution or destination
 - **AND** reporting MUST preserve known local success and remote or contributor uncertainty separately
+
+### Requirement: Restore readiness requires available external dependencies
+Required external dependencies SHALL be identified with their restoration
+requirements; complete publication SHALL NOT promise their permanent
+availability. Restore readiness SHALL require actual availability and
+compatibility of resources required at that checkpoint.
 
 #### Scenario: Complete snapshot later loses a required external base
 - **WHEN** a complete snapshot references an identified compatible base that is unavailable during restoration
@@ -532,27 +632,29 @@ actual availability and compatibility of resources required at that checkpoint.
 - **AND** dependent execution MUST remain unavailable rather than substitute another base or silently start a new run
 
 ### Requirement: Coordinated restoration preserves logical identity with fresh readiness
-Restoration SHALL verify coverage and compatibility against accepted
-obligations and coordinate reconstruction of authority, participant,
-relationship, binding, route, arrangement, progress, and relevant revision
-state with required owner contributions. Correspondence SHALL use accepted
-semantic identity, membership, state definitions, and dependency evidence,
-not incidental wrapper identity or tensor ordering. Same-run restoration SHALL
-preserve participant and optimization incarnations while establishing new
-execution-session and attempt identity. Recreated backend objects SHALL
-establish fresh readiness for restored definitions; saved process handles and
-old attempt evidence SHALL NOT automatically be current. Backend remapping or
-state migration SHALL require explicitly supported correspondence.
-
-#### Scenario: Same run recreates model and optimizer wrappers
-- **WHEN** complete restoration rebuilds physical execution objects for the saved logical authority and accepted unit definitions
-- **THEN** participant, relationship, and optimization identities and applicable revisions MUST retain their saved meaning
-- **AND** affected routes MUST establish current preparation evidence before use under the new execution session
+Restoration SHALL verify coverage and compatibility against accepted obligations
+and coordinate reconstruction of authority, participant, relationship, binding,
+route, arrangement, progress, and relevant revision state with required owner
+contributions. Correspondence SHALL use accepted semantic identity, membership,
+state definitions, and dependency evidence, not incidental wrapper identity or
+tensor ordering.
 
 #### Scenario: Staged topology already contains an installed transformation
 - **WHEN** the saved arrangement records an installed component and completed stage transformation
 - **THEN** restoration MUST reconstruct that topology and its owner state before dependent execution
 - **AND** it MUST NOT repeat the transformation merely because fresh Python objects were constructed
+
+### Requirement: Same-run restoration keeps incarnations and establishes fresh readiness
+Same-run restoration SHALL preserve participant and optimization incarnations
+while establishing new execution-session and attempt identity. Recreated backend
+objects SHALL establish fresh readiness for restored definitions; saved process
+handles and old attempt evidence SHALL NOT automatically be current. Backend
+remapping or state migration SHALL require explicitly supported correspondence.
+
+#### Scenario: Same run recreates model and optimizer wrappers
+- **WHEN** complete restoration rebuilds physical execution objects for the saved logical authority and accepted unit definitions
+- **THEN** participant, relationship, and optimization identities and applicable revisions MUST retain their saved meaning
+- **AND** affected routes MUST establish current preparation evidence before use under the new execution session
 
 #### Scenario: Late result belongs to an earlier execution session
 - **WHEN** a prior attempt returns after restoration has established a new execution session
@@ -567,13 +669,9 @@ state migration SHALL require explicitly supported correspondence.
 ### Requirement: Failed restoration cannot expose a mixed continuation
 Fallible restoration SHALL occur while affected execution is unavailable.
 Coordinated publication and applicable readiness checks SHALL expose only
-compatible restored state, without requiring every optional route to be
-prepared before unrelated activity. Failure SHALL report unsatisfied coverage,
-known outcomes, and uncertainty and SHALL keep dependent unsafe work stopped.
-Process or rank termination SHALL NOT certify partial installation or automatic
-rollback. A new run initialized from available artifact state SHALL be a
-separate explicit request with new identities and lineage, not an implicit
-exact-restoration fallback.
+compatible restored state, without requiring every optional route to be prepared
+before unrelated activity. Failure SHALL report unsatisfied coverage, known
+outcomes, and uncertainty and SHALL keep dependent unsafe work stopped.
 
 #### Scenario: Required contributor fails after other owners restore
 - **WHEN** required input state restoration fails after model and optimization state were reconstructed
@@ -584,6 +682,17 @@ exact-restoration fallback.
 - **WHEN** restored training has satisfied its current checkpoint but an optional sampling route awaits preparation
 - **THEN** training MAY resume under its accepted readiness rules
 - **AND** sampling MUST remain unavailable until its own applicable checkpoint is satisfied
+
+### Requirement: A failed restoration never becomes a new run implicitly
+Process or rank termination SHALL NOT certify partial installation or automatic
+rollback. A new run initialized from available artifact state SHALL be a
+separate explicit request with new identities and lineage, not an implicit
+exact-restoration fallback.
+
+#### Scenario: Restoration fails while artifact state is available
+- **WHEN** exact restoration fails, or a process or rank terminates during installation, while trained artifact state is available
+- **THEN** the failure MUST NOT certify partial installation or automatic rollback
+- **AND** a new run initialized from that artifact state MUST require a separate explicit request with new identities and lineage
 
 ### Requirement: Capability results feed observation without transferring ownership
 Metadata, logging, metrics, reports, and resource systems MAY consume accepted

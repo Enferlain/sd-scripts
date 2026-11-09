@@ -104,9 +104,7 @@ participant, relationship, optimization-unit, execution-session/attempt,
 catalog/source/model-revision, realization/composition, and artifact identities
 when its consumers require them. Authored addresses, labels, roles, paths,
 source equality, and Python object identity SHALL NOT substitute for an
-authority-established runtime incarnation. Metadata SHALL validate and store
-durable projections without retaining live execution handles as canonical
-bindings or deciding current runtime readiness.
+authority-established runtime incarnation.
 
 #### Scenario: Retired address is used by a new participant
 - **WHEN** a retired participant's authored address is used for a new authority-established incarnation
@@ -123,25 +121,26 @@ bindings or deciding current runtime readiness.
 - **THEN** metadata MUST retain their distinct participant identities and explicit lineage or operational relationships
 - **AND** a shared role or source MUST NOT collapse them into one model participant
 
+### Requirement: Metadata stores durable projections, not live bindings
+Metadata SHALL validate and store durable projections without retaining live
+execution handles as canonical bindings or deciding current runtime readiness.
+
+#### Scenario: Metadata records a running participant
+- **WHEN** metadata validates and stores facts about a participant in a running run
+- **THEN** it MUST store durable projections without retaining live execution handles as canonical bindings
+- **AND** it MUST NOT decide current runtime readiness
+
 ### Requirement: Metadata history preserves observed revisions and accepted outcomes
-Required history SHALL retain the accepted source identity, relevant revision
-or state-provenance scope, and outcome to which each observation belongs.
+Required history SHALL retain the accepted source identity, relevant revision or
+state-provenance scope, and outcome to which each observation belongs.
 Successful accepted transitions SHALL remain distinct from failed, rejected,
-stale, or unpublished attempts. Historical observations SHALL NOT be rewritten
-as current state solely by ingestion order or wall-clock ordering. Consumers
-SHALL use supplied revision/dependency correspondence or report ambiguity when
-current meaning cannot be established. Ordinary mutable-state progression
-SHALL NOT automatically be treated as a topology or binding revision.
+stale, or unpublished attempts. Ordinary mutable-state progression SHALL NOT
+automatically be treated as a topology or binding revision.
 
 #### Scenario: Compatible replacement preserves identity
 - **WHEN** authority publication accepts a compatible binding replacement for an existing participant
 - **THEN** metadata MUST preserve its participant incarnation while recording the supplied changed state/revision associations
 - **AND** earlier accepted observations MUST retain their original meaning
-
-#### Scenario: Older observation is ingested last
-- **WHEN** an observation of revision 2 arrives after an accepted observation of revision 3 in the same ordered source scope
-- **THEN** a consumer claiming latest accepted state MUST NOT select revision 2 solely because it was ingested last
-- **AND** history MUST retain each observation's actual revision association
 
 #### Scenario: Prepared replacement result is stale
 - **WHEN** preparation or materialization completes but its result is rejected as stale and never published
@@ -152,14 +151,22 @@ SHALL NOT automatically be treated as a topology or binding revision.
 - **THEN** metadata MUST retain the capture's supplied state provenance
 - **AND** it MUST NOT manufacture a topology revision merely to distinguish the produced state
 
+### Requirement: Historical observations are not reordered into current state
+Historical observations SHALL NOT be rewritten as current state solely by
+ingestion order or wall-clock ordering. Consumers SHALL use supplied
+revision/dependency correspondence or report ambiguity when current meaning
+cannot be established.
+
+#### Scenario: Older observation is ingested last
+- **WHEN** an observation of revision 2 arrives after an accepted observation of revision 3 in the same ordered source scope
+- **THEN** a consumer claiming latest accepted state MUST NOT select revision 2 solely because it was ingested last
+- **AND** history MUST retain each observation's actual revision association
+
 ### Requirement: Artifact and restoration observations report their own achieved guarantees
 Metadata SHALL distinguish descriptive product/export facts from actual
 publication outcomes and preserve required product/member/resource scope,
 captured state/provenance, dependencies, and local/remote/partial/uncertain
-outcomes supplied by persistence coordination. Runtime snapshot capture,
-publication, restoration readiness, and trained-product outcomes SHALL remain
-distinct. A metadata-store snapshot SHALL NOT by itself establish an exact
-same-run recovery guarantee or become the live runtime authority.
+outcomes supplied by persistence coordination.
 
 #### Scenario: Export facts exist before a failed write
 - **WHEN** validated header/export facts are prepared and serialization subsequently fails
@@ -175,6 +182,12 @@ same-run recovery guarantee or become the live runtime authority.
 - **WHEN** persistence reports known local success and pending or failed remote publication
 - **THEN** metadata MUST preserve both outcomes under the accepted completion policy rather than claim all destinations succeeded
 
+### Requirement: Metadata snapshots do not establish recovery guarantees
+Runtime snapshot capture, publication, restoration readiness, and
+trained-product outcomes SHALL remain distinct. A metadata-store snapshot SHALL
+NOT by itself establish an exact same-run recovery guarantee or become the live
+runtime authority.
+
 #### Scenario: Metadata store is saved without required recovery state
 - **WHEN** collected metadata records are saved but required optimization, input, or operation continuation state is absent
 - **THEN** metadata MUST NOT report a complete runtime-recovery snapshot merely because its own storage succeeded
@@ -182,24 +195,27 @@ same-run recovery guarantee or become the live runtime authority.
 ### Requirement: Metadata delivery cannot change origin-owned truth
 Metadata validation, ingestion, export, or retry SHALL NOT establish live
 runtime identity, retry training work, or roll back a reached origin-owned
-transition or result. Required history/provenance/product/restoration facts
-SHALL follow their accepted coverage and durability requirements rather than
-being silently treated as optional droppable telemetry. Delivery failure SHALL
-remain distinguishable from origin failure, and retry SHALL preserve fact
-identity without creating another semantic transition. Where required coverage
-is unavailable, consumers SHALL report incompleteness rather than infer absent
-work or synthesize missing identity and outcome evidence.
+transition or result. Delivery failure SHALL remain distinguishable from origin
+failure, and retry SHALL preserve fact identity without creating another
+semantic transition.
 
 #### Scenario: Metadata filing fails after a binding was accepted
 - **WHEN** an accepted binding transition reaches its outcome but its durable observation cannot be filed
 - **THEN** metadata failure MUST NOT erase or reverse that accepted transition
 - **AND** required history coverage MUST be reported unavailable until an accepted delivery/recovery policy establishes it
 
+#### Scenario: One accepted transition is delivered again
+- **WHEN** a durable filing is retried for the same accepted transition
+- **THEN** consumers MUST NOT interpret that delivery as a second binding transition or a new incarnation
+
+### Requirement: Required metadata facts are not droppable telemetry
+Required history/provenance/product/restoration facts SHALL follow their
+accepted coverage and durability requirements rather than being silently treated
+as optional droppable telemetry. Where required coverage is unavailable,
+consumers SHALL report incompleteness rather than infer absent work or
+synthesize missing identity and outcome evidence.
+
 #### Scenario: Required artifact provenance cannot be durably published
 - **WHEN** the accepted product policy requires durable provenance and that filing fails after a resource write
 - **THEN** the product MUST NOT claim complete required coverage
 - **AND** result reporting MUST preserve its known resource-write outcome as reached rather than rolled back or never attempted
-
-#### Scenario: One accepted transition is delivered again
-- **WHEN** a durable filing is retried for the same accepted transition
-- **THEN** consumers MUST NOT interpret that delivery as a second binding transition or a new incarnation

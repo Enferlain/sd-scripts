@@ -144,18 +144,6 @@ later runtime capability request.
 - **WHEN** the system resumes the same logical run and must preserve its adapter participant identity and continuation state
 - **THEN** it MUST use the exact runtime-restoration contract rather than infer restoration from `peft.continue_from`
 
-### Requirement: Adapter target refs remain compatible during migration
-During the bounded migration to shared authority-qualified target references,
-adapter realization callers MAY expose existing adapter target fields alongside
-the shared refs. That compatibility surface SHALL remain transitional and SHALL
-NOT establish semantic targeting ownership, durable identity, or permission to
-inspect optimization grouping internals.
-
-#### Scenario: Existing adapter runtime reads target fields
-- **WHEN** a transitional adapter runtime reads `component`, `component_key`, `path`, or `module` from an adapter resolved target
-- **THEN** those fields MUST remain consistent with the accompanying accepted target reference and revision-pinned projection
-- **AND** the runtime MUST NOT treat those fields as an independent canonical binding or targeting policy
-
 ### Requirement: Adapter component scope derives from declared loaded components
 Governed adapter target resolution SHALL derive candidate top-level component
 scope from family-declared loaded components and accepted participant context
@@ -193,3 +181,13 @@ realization with later parameter grouping.
 integration, resolve it through governed PEFT realization against a coherent
 authority-qualified host projection, and pass the returned trainable parameter
 references to Trainer-owned optimization grouping.
+
+### Requirement: Adapter target refs remain compatible during migration
+
+**Reason**: The rework builds the new system new and never bridges to the code
+it replaces, so no transitional adapter runtime exists that would need old
+target fields alongside the shared target references.
+
+**Migration**: Adapter realization reads only `TargetRef` and its
+revision-pinned projection. Today's adapter target fields are covered by the
+design's coverage rows (D21) and are not kept.

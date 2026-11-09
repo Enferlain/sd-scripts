@@ -41,22 +41,10 @@ unrelated work's accepted owners intact.
 - **THEN** fulfillment MUST reject the unsupported guarantee rather than infer rollback or replay from one action boundary
 
 ### Requirement: Authors assemble strategies explicitly
-Strategy authors SHALL explicitly select and wire training intent,
-participants, relationships, objective behavior, features, capabilities, and
-bounded choices. Authored behavior MAY include stateful algorithms, schedules,
-reactions to observations, bounded decisions from live inputs, declared
-effects, and permitted authority-governed transitions. Authors SHALL declare
-the inputs, owned state, effect vocabulary and bounds, authority, and decision
-bounds needed to judge that behavior. Strategy fulfillment SHALL NOT silently
-select a missing implementation, add a dependency, or infer the intended
-arrangement.
-
-Where another owner, preparation, coordination, observation, or restoration
-depends on them, those declarations SHALL also preserve work and handoff
-relationships, gradient demands and routing, required numerical-state
-lifetimes, phase ownership, and completion/recovery meanings. Private
-implementation details SHALL NOT require universal graph nodes or public
-tensor operators merely because they exist.
+Strategy authors SHALL explicitly select and wire training intent, participants,
+relationships, objective behavior, features, capabilities, and bounded choices.
+Strategy fulfillment SHALL NOT silently select a missing implementation, add a
+dependency, or infer the intended arrangement.
 
 #### Scenario: Required behavior is missing
 - **WHEN** an authored definition omits a provider required by the features, capabilities, or bounded choices it selected
@@ -68,19 +56,34 @@ tensor operators merely because they exist.
 - **THEN** the request MAY parameterize that accepted capability within its declared bounds
 - **AND** it MUST NOT select a different internal implementation or assemble a new strategy feature
 
+### Requirement: Authored behavior declares what is needed to judge it
+Authored behavior MAY include stateful algorithms, schedules, reactions to
+observations, bounded decisions from live inputs, declared effects, and
+permitted authority-governed transitions. Authors SHALL declare the inputs,
+owned state, effect vocabulary and bounds, authority, and decision bounds needed
+to judge that behavior.
+
 #### Scenario: Author selects adaptive behavior
 - **WHEN** an authored algorithm changes later behavior from accepted runtime observations
 - **THEN** the strategy MUST identify the algorithm, its observation inputs, its owned state, and its possible effect vocabulary and bounds
 - **AND** it MUST NOT be rejected merely because its outputs cannot be fixed during authoring
 
-#### Scenario: Author selects several uses of one participant
-- **WHEN** an authored action invokes one participant through different roles, prepared views, or gradient paths
-- **THEN** the strategy MUST describe those uses and their dependencies without declaring duplicate participants merely to express the calls
-
 #### Scenario: Author selects an input policy
 - **WHEN** a strategy selects input sources, transformations, mixture or packing behavior, or bounded stage changes
 - **THEN** fulfillment MUST preserve the selected provider, consumer representation, state owner, dependency and admission meanings
 - **AND** it MUST NOT infer a universal image batch, epoch schedule, or hidden input fallback
+
+### Requirement: Declarations preserve cross-owner relationships
+Where another owner, preparation, coordination, observation, or restoration
+depends on them, authored declarations SHALL also preserve work and handoff
+relationships, gradient demands and routing, required numerical-state lifetimes,
+phase ownership, and completion/recovery meanings. Private implementation
+details SHALL NOT require universal graph nodes or public tensor operators
+merely because they exist.
+
+#### Scenario: Author selects several uses of one participant
+- **WHEN** an authored action invokes one participant through different roles, prepared views, or gradient paths
+- **THEN** the strategy MUST describe those uses and their dependencies without declaring duplicate participants merely to express the calls
 
 #### Scenario: Author requests differentiated work across owners
 - **WHEN** selected computation exposes outputs or derivatives to another accepted owner
@@ -88,15 +91,12 @@ tensor operators merely because they exist.
 - **AND** concrete backend evidence that is not yet available MUST remain an explicit readiness obligation rather than an author assertion of support
 
 ### Requirement: Strategy fulfillment produces acceptance or rejection
-The training contract system SHALL evaluate one complete authored strategy
-using the active contract version and execution/ownership profile. It SHALL
-return useful acceptance or rejection information and SHALL produce an
-accepted run arrangement only on success. Successful fulfillment SHALL
-specialize the general contract meanings into one authoritative, run-specific
-obligation set and seed the authority that governs those obligations. This
-requirement does not prescribe whether conformance rules are represented as
-contract data, shared validators, conformance implementations, or a
-combination.
+The training contract system SHALL evaluate one complete authored strategy using
+the active contract version and execution/ownership profile. It SHALL return
+useful acceptance or rejection information and SHALL produce an accepted run
+arrangement only on success. Fulfillment requirements do not prescribe whether
+conformance rules are represented as contract data, shared validators,
+conformance implementations, or a combination.
 
 #### Scenario: Complete definition is accepted
 - **WHEN** every selected concern and bounded choice is mutually compatible under the active contract
@@ -107,6 +107,11 @@ combination.
 - **WHEN** selected behavior is missing, incompatible, unknown as maintained behavior, or uses undeclared extension authority
 - **THEN** fulfillment MUST return detailed author-facing rejection information
 - **AND** no Trainer-acceptable arrangement or run authority may be produced
+
+### Requirement: Fulfillment specializes the contract into one run-specific obligation set
+Successful fulfillment SHALL specialize the general contract meanings into one
+authoritative, run-specific obligation set and produce the seed of the authority
+that governs those obligations.
 
 #### Scenario: Runtime evidence is intentionally deferred
 - **WHEN** the contract permits a declared participant or capability to become ready later
@@ -140,14 +145,16 @@ derive compatibility rules.
 Strategy fulfillment SHALL derive and record the readiness checkpoints that
 apply to the accepted arrangement and SHALL associate every obligation with the
 first checkpoint at which it must be fulfilled. A use SHALL remain unavailable
-while any obligation required by its checkpoint is unfulfilled. A bounded
-configuration choice known during fulfillment SHALL be evaluated then; a
-request deliberately made later SHALL be evaluated before its capability use
-begins against the same current obligations.
+while any obligation required by its checkpoint is unfulfilled.
 
 #### Scenario: Core execution requires a participant later
 - **WHEN** the contract permits a participant to remain declared and unbound after fulfillment but requires it for core execution
 - **THEN** the accepted arrangement MUST record that materialization and any required preparation as obligations of the core-execution readiness checkpoint
+
+### Requirement: Late choices are evaluated against current obligations
+A bounded configuration choice known during fulfillment SHALL be evaluated then;
+a request deliberately made later SHALL be evaluated before its capability use
+begins against the same current obligations.
 
 #### Scenario: Capability request is made after fulfillment
 - **WHEN** an accepted capability permits a bounded request to be supplied later

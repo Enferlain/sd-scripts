@@ -322,6 +322,30 @@ Repo-owned Kuro projections may carry portable catalog/revision/source/lineage i
 
 Unknown external metadata is preserved as source evidence when policy permits, with namespace/schema/trust information. It is not automatically promoted to a verified portable identity.
 
+### Decision: Integration uses the rework's concrete G5 types
+
+The rework's G5 decisions (D19–D21 in its design) now name the concrete
+boundary this change builds on. Task 4.1 checked this change against them:
+
+- The typed loading result is materialization evidence. A loader returns it
+  inside the rework's `MaterializationAttempt`, recording that attempt and the
+  revisions it started from. The run authority's materialization or
+  bound-state replacement transition publishes the binding.
+- A composition observation's correspondence to its originating accepted state
+  is the authority revision and the generation of the publication that made it
+  current. Deferred materialization is a declared-but-unbound participant
+  followed by a materialization transition.
+- Metadata consumes accepted facts and projections. A live structural resolver
+  reads a revision-pinned inspection view under a scoped lease and keeps no
+  live object.
+- Shared target references are the rework's `TargetRef`. This change's catalog
+  and structural path associations are optional fields on it and never replace
+  its semantic identity.
+- Sections 4 and 6 land with the rework's `tasks.md` sections 15, 16 and 18
+  (authority publication and loading evidence), section 12 with sections 16
+  and 19 (optimization and adapters), and sections 9–11 with section 25
+  (observability and metadata).
+
 ## Risks / Trade-offs
 
 - **[Full hashing adds startup I/O for unseen large sources]** → Stream content, check carried/recorded immutable evidence first, expose cost, perform the full hash once, and reuse versioned accepted results.

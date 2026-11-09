@@ -114,7 +114,9 @@ Trainer hub in a new all-purpose runtime object.
 The current `library/training/` package mixes several different owners. The
 target keeps training as the package for the training process, but it does not
 move these files wholesale or make the central Trainer class the owner of
-everything that moves under training coordination.
+everything that moves under training coordination. D21's coverage table
+lists what in the new system covers these files; this table records the
+analysis behind it.
 
 | Current source | Target responsibility |
 | --- | --- |
@@ -318,6 +320,55 @@ the main specification.
   owner of live participant identity.
 - Renaming provisional spike vocabulary into production without deriving the
   actual consumers and exchanges first.
+
+## Glossary
+
+These are the design's own terms, each with one meaning. Kuroiro's language
+words are listed in D16's vocabulary. Where a term comes from a spec, the spec
+stays normative.
+
+| Term | Meaning | Defined in |
+| --- | --- | --- |
+| Accepted run | The accepted program with its obligations, pinned versions and authority seed; only fulfillment produces one | D17 |
+| Activity | A named piece of work with its own lifetime, such as a producer, repeat, handler or parallel | D16 |
+| Advancement | What one window's completion did to a unit: synchronize, clip, step, schedule and zero | D9, D20 |
+| Attempt | A governed job with a basis: a materialization or a preparation | D19 |
+| Authoring | Writing strategies and recipes against the contract. It never includes fulfillment | D18 |
+| Binding | A participant's bound state | D6, D19 |
+| Checkpoint | Only the user-facing name of a save handler, not a design term; see cut and readiness checkpoint | D21 |
+| Claim | An item taken from a stream, settled exactly once by a disposition | D16 |
+| Contract | The composed, versioned registered vocabulary: everything a strategy may use. Bare "contract" always means this | D18 |
+| Cut | A coherent recoverable capture across owners, for exact restoration; each owner supplies its cut state | D16, G4.4 |
+| Definition | One contract entry: an operation, type, capability, feature contract or ownership profile. Not a Python `def` | D16, D18 |
+| Dependencies | What a projection or prepared realization relies on | D6, D19 |
+| Diagnostic | A source-attributed problem report: rule code, names, line, fragment and fix | D18 |
+| Evidence | Typed facts that a producer supplies later for an open obligation | D7, D19 |
+| Executable run | The realized run: prepared program, published generation and device adapters | D17 |
+| Feature contract | What a reusable tool offers and requires | D3, D12 |
+| Fulfillment | The IR system's acceptance step: read, normalize, verify and derive obligations. Launch runs it | D18 |
+| Generation | The coherent published state across owners | D19 |
+| Implementation | Selected code that does the math, declared with its contract and version | D16, D18 |
+| IR system | Kuroiro on xDSL: the language, its front end, fulfillment, reference semantics and runtime, in `library/workflow`. Older text calls it the workflow layer | D14, D16 |
+| Lease | The handle an access scope gives its body; it cannot leave the scope | D16 |
+| Obligation | Something verification requires the run to discharge, attached to a readiness checkpoint | D7, `training-contract` |
+| Operation contracts | An operation's region, flow, resource, realization and decision contracts: the parts of its entry that the IR system checks. Always written with the qualifier | D14 |
+| Owner | Holds one kind of state and realizes access to it at the owner seam | D16, D19 |
+| Participant | A model resource with identity | D6, D16 |
+| Projection | One consumer's coherent bundle of state, pinned to a generation or to exact dependencies | D6, D19 |
+| Readiness checkpoint | The named point at which an obligation must first be fulfilled | `training-contract` |
+| Realization | Concrete objects that realize an accepted meaning, such as a unit's optimizer objects. Governed realization is seed, materialize, prepare and publish | D9, D17 |
+| Recipe | A maintained composition that expands into Kuroiro words | D16 |
+| Reference | The opaque identity of one incarnation | D19 |
+| Route | A named way to call a participant | D6 |
+| Run authority | The owner of participant and relationship state | D6, D19 |
+| Snapshot | A fixed published version of some state, and the access mode that reads one | D16, D19 |
+| Strategy | Python that an author writes: a strategy function and its activities | D18 |
+| Tool | A reusable piece that strategies use, made of contract entries, implementations and optionally recipes. An adapter method is one | D16, D21 |
+| Transition | A typed proposal for a governed change | D7, D19 |
+| Unit | An independently advanced optimization responsibility | D9, D20 |
+| Version | Which state a use saw | D19 |
+| View | A typed look at one participant that is not a route | D6 |
+| Window | Contributions that advance a unit together | D17 |
 
 ## Decisions
 
@@ -2957,6 +3008,1587 @@ not implement the full language 0.1 catalogue or freeze serial-request limits
 as the final language. Section 5's production-shape tasks and production apply
 remain separately gated even after this research completes.
 
+### D15. Production architecture
+
+This decision begins G5. It gives the established system its production shape
+at package level: layers and dependency direction, runtime owners, the
+execution model on real hardware, the Trainer's role, and what existing code
+and the research packages become. Tasks 5.1–5.5 complete the types,
+representation, contract and authoring API, and module placement inside this
+frame; task 5.6 turns it into numbered milestones. Those tasks stay open until
+their own acceptance criteria and the G5 review are complete.
+
+The system is designed as a whole. Maintained families, PEFT methods,
+capabilities and data-only workflows are programs and registered
+implementations within it, not inputs that reshape it. As D14 already requires
+for the language, a case-specific branch in the workflow, run-state or training
+layers is a defect in the shared design.
+
+#### Layers and dependency direction
+
+```text
+  launch        train.py and the run config; composes the contract
+                     |
+  authoring     library/strategies: strategies and maintained recipes
+                     |
+  training      library/training: training's words, Trainer, optimization,
+                governed realization and preparation, input and
+                capability coordination
+                     |
+  run state     run authority: arrangement and obligation revisions,
+                participants, relationships, bindings, routes, views
+                     |
+  workflow      library/workflow, the IR system: Kuroiro, its Python
+                front end, fulfillment, reference semantics, runtime
+
+  libraries of selected implementations:
+    models, family behavior, adapters, data, optimization, objectives,
+    losses, timesteps, pipelines, performance
+  observability: metadata, logging
+  base: utils, constants, vendor    external: xDSL, PyTorch, backends
+```
+
+A layer imports only layers below it, observability and base. Launch,
+strategies and training also import the libraries; the run state and the IR
+system never do. Libraries of selected implementations import neither
+training nor strategies. D21 states the exact rules. Observability receives
+typed facts and results, owns no live run state (G4.5) and imports only base
+and the fact types it consumes.
+
+| Layer | Owns | Does not own |
+| --- | --- | --- |
+| Launch | Reading the run config; composing the contract and the installed implementations; selecting a maintained strategy and its options; running fulfillment; starting the Trainer | Automatic assembly, validity rules, run state |
+| Authoring | Strategies and maintained recipes: what authors write against the contract | The contract, fulfillment, execution, current run state |
+| Training | Training's words in the contract (its operations, ownership profiles, recognized capabilities and feature contracts) and their realization; the Trainer; optimization realization; governed realization and preparation coordination; input and capability coordination | Fulfillment, participant state, input policy, capability semantics, family behavior |
+| Run state | The run authority (D6–D7): arrangement and obligation revisions, participants, relationships, bindings, routes, views, freshness and transitions | Loading, backend work, optimizer state |
+| Workflow | The IR system (D14, D16): Kuroiro's common, data-flow and model-use operations, contract interfaces, the Python front end, fulfillment (reading, normalization, verification and obligation derivation), the accepted-run type, diagnostics, artifacts and cold loading; the reference semantics; the runtime | Domain meaning, live models |
+
+This direction removes today's import cycles. Training and strategies import
+each other; config imports adapters, data, models and optimization while each
+of those imports config; objectives, adapters, data and pipelines import
+training or strategies. In the target:
+
+- Only launch reads the run config, and it applies the config's values to the
+  strategy's declared parameters (D18). Below launch, code receives accepted
+  settings through the accepted run and its selected implementations, and
+  launch infrastructure such as output locations and logging sinks from the
+  launcher.
+  Feature and method settings types belong to their owners; config composes
+  them.
+- Nothing below launch imports a strategy. Training defines its words. The
+  launcher registers them with the other definitions as the contract,
+  imports the strategy and hands the strategy function to fulfillment in the
+  IR system. Fulfillment produces the accepted run, and the Trainer consumes
+  it.
+- Selected implementations are registered by explicit composition, never by
+  import-order discovery (D2). The runtime calls them by their registered
+  names without importing them.
+- The run authority sits below training. A workflow that uses models without
+  training does not import the training layer.
+- The workflow language and reference semantics never import Torch. The
+  runtime core does not either. Torch-facing pieces such as execution context,
+  device completion and tensor isolation for snapshots are adapters that load
+  only when a prepared target selects them.
+
+#### Runtime model
+
+The system runs on the CPU and drives the GPU. One coordinator per process
+executes the prepared run. Selected implementations perform the numerical work
+and launch device work. Owners hold state.
+
+- **Coordinator.** There is one per process, so one per rank. It admits work,
+  starts and settles activities, routes requests, and tracks claims,
+  reservations and protection. That control state is runtime state, never
+  semantic authority, and it stays with the coordinator.
+- **Visible boundaries.** The coordinator acts at the boundaries the program
+  exposes: activities, training actions, requests and protected uses. Inside a
+  boundary, prepared straight-line code runs the selected computation without
+  per-operation dispatch. Static choices are resolved before the hot path
+  (D10).
+- **Physical calls.** Selected implementations run on worker threads, and the
+  coordinator never blocks on them. Each call establishes its execution
+  context from its prepared call: grad mode, precision, device stream and
+  RNG. It never inherits ambient thread state.
+- **CPU/GPU hand-off.** A Python call returning means device work was queued,
+  not finished. The physical layer obtains completion from the device through
+  a backend adapter, using stream ordering and events rather than a CPU
+  synchronization after every call. Protection, snapshots and retained
+  products release on that completion fact. This is the device-ordering
+  evidence that `workflow-composition` requires for protected live reads.
+  Adapters cover host execution, where return is completion, PyTorch CUDA
+  streams and events, and the project's own backend through its completion
+  contract. Flow bounds and retained-product release also bound the device
+  memory held by produced items.
+- **Collectives.** On multi-rank targets, every rank must issue collective work
+  in the same order, or the ranks hang. The runtime orders collective-issuing
+  work identically on every rank, for example through one ordered lane per
+  process group. Scheduling decisions that determine what enters that order are
+  replicated-deterministic or decided once and distributed, realizing D14's
+  rank-consistency declarations. A single loop gets this ordering for free;
+  concurrent activities must establish it. Activities that issue no collectives
+  stay independent.
+- **No-GIL.** Running without the GIL is the performance target, never a
+  correctness mechanism. Correctness rests on the ownership rules, which hold
+  either way: one writer, protected access, explicit hand-offs and affine
+  claims. A selected implementation is presumed unsafe for concurrent use of
+  the same participant unless its declaration says otherwise, and the runtime
+  serializes such uses. Imports that would re-enable the GIL stay off the
+  default path and load only when a selected recipe needs them; a run reports
+  its actual GIL state. The
+  [blockers report](../../../cpython-314t-blockers-report.md) records the
+  current Triton, OpenCV and gRPC limits.
+- **Input production.** Producers run as activities in the same process, in
+  parallel with training when the GIL is off. A source may still use private
+  worker processes internally.
+
+#### The Trainer
+
+The Trainer has two roles:
+
+1. **Host.** It receives a fulfillment result, seeds the run authority from
+   it and sequences governed realization and preparation through their
+   coordinators, then publication, execution, interruption, failure
+   handling, cleanup and finalization. It does not own the state those steps
+   publish.
+2. **Standard-mechanics owner.** Under the standard profile it realizes the
+   training operations: progress, accumulation, synchronization, backward,
+   clipping, optimizer and scheduler advancement, zeroing, triggers and
+   observation (D10). An extension profile transfers named mechanics only
+   through an explicit grant (G3.2).
+
+The program's repeated training actions are the loop; there is no separate
+fixed loop. D5's "Trainer's loop" row is realized this way. Participant state
+belongs to the run authority, input policy to producers, capability semantics
+to capability implementations and model behavior to selected implementations.
+
+#### Runtime owners
+
+| State | Writer | Notes |
+| --- | --- | --- |
+| Arrangement, obligations, participants, relationships, bindings, routes, views, revisions | Run authority | Single writer; consumers receive scoped projections (D6) |
+| Progress, accumulation, synchronization, interruption, cleanup | Trainer | |
+| Optimization units and their definition revisions, realizations, optimizer and scheduler state | Trainer optimization | Optimizer and backend objects are realizations (D9) |
+| Backend coordination: wrappers, inseparable groups, distributed state | Trainer runtime infrastructure | Published with routes and optimization runtime in one coordinated publication (D8) |
+| Input policy, cursors and buffers; readiness, admission and hand-off records | Producers; input coordination | D5 input row |
+| Operation-owned state, such as adaptive objective or sampling state | Its accepted operation | Continuity rules in G2.6 |
+| Capability readiness, requests and results | Capability coordinators | G4 exchanges |
+| Metrics, validation history, traces | Observation owner | Metadata and logging consume facts |
+| Invocations, claims, reservations, requests, protection | Workflow coordinator | Runtime control state only |
+
+#### Representation and authoring
+
+These set the direction that tasks 5.3 and 5.4 complete and verify.
+
+- **Accepted run.** The accepted IR document, its obligation revision, the
+  contract and profile identity, and the selected implementations with their
+  versions. The Trainer seeds the run authority from it. Normalized and
+  prepared documents
+  derive from it. The prepared recipe is inspectable but never an independent
+  authority, and cold loading re-derives correspondence before any effect
+  (D14).
+- **Executable run.** The lowered runtime instance: the coordinator, owner
+  services and prepared code over currently published state. Live models,
+  tensors and optimizers never enter the IR; owners hold them and expose
+  scoped projections.
+- **Contract.** The contract is the IR system's registered vocabulary,
+  composed once by the launcher and read in one place. Each operation
+  definition carries its region, flow, resource and realization contracts.
+  Training adds its operations, ownership profiles, recognized capabilities
+  and feature contracts, which are D3's three surfaces. One body of knowledge
+  serves author guidance, verification and preparation.
+- **Fulfillment.** The IR system's acceptance step, which the launcher runs.
+  The authored strategy becomes proposed IR, which is normalized and verified
+  under the shared rules and the training rules registered with training's
+  definitions. The result is an accepted run, or diagnostics attributed to
+  their source. The normal launcher constructs the Trainer only from a
+  fulfillment result.
+- **Authoring.** Authors write strategies and maintained recipes against the
+  contract; fulfillment is never part of that work. Users select a maintained
+  strategy and set its options through the run config. D18 records how
+  strategies are written.
+
+#### What existing code becomes
+
+D21 lists what in the new system covers today's code, and where the research
+packages go.
+
+#### Acceptance and sequencing for the milestones
+
+- **Generality.** New families, methods, capabilities and workflows enter as
+  registered operations, implementations and maintained recipes. A milestone
+  that changes the workflow, run-state or training layers records why; a
+  case-specific branch there fails review.
+- **Feature cost.** Each milestone records what its typical feature required:
+  the layers touched and the declarations its author wrote. The design's
+  distinctions belong in shared machinery and defaults rather than in every
+  operation author's work.
+- **GPU early.** The CUDA completion adapter and one real SDXL training action
+  on GPU land in the earliest milestones, alongside the workflow core, rather
+  than after a complete CPU path. The Migration Plan's order otherwise stands.
+- **Conformance and cost.** G3.7's conformance and execution-cost criteria
+  apply to every milestone, measured on GPU for training paths.
+
+#### Work this frame leaves open
+
+- **Tasks 5.1–5.5:** concrete state and optimization types, the
+  representation, the contract and authoring API, module placement within
+  these packages, and the run authority's package. D16 and D17 record the
+  representation, D18 the contract and authoring API, D19 and D20 the state
+  and optimization types, and D21 the module placement and the run state's
+  package.
+- **Task 5.6:** the numbered implementation milestones.
+- **Targeted qualifications that do not block this frame:**
+  - the CUDA and own-backend completion adapters;
+  - the collective-ordering mechanism across ranks;
+  - concurrency safety of selected implementations without the GIL;
+  - the remaining vocabulary: grants, governed transitions, batching and
+    correlation, parallel merging, nested resources and coordinated cuts;
+  - exact restoration across owners;
+  - bounded retirement of workflow bookkeeping (`sd-scripts-syv.31.30`).
+
+### D16. The workflow layer and the Kuroiro language
+
+This decision gives D15's workflow layer its production design. It covers the
+workflow part of task 5.3: how the shared language turns an accepted
+description into a running run, and how domains extend it. The training side
+of 5.3, meaning what the Trainer consumes, builds on it, as does the Python
+authoring face that task 5.4 designs.
+
+#### Name and identity
+
+The shared language is called **Kuroiro**, a working name. Its operations print
+under the prefix **`iro`**. The name reads as 黒色, "kuro's color", the
+recognizable look of the project's own language. It also contains IR, with the
+"o" for ownership, which is what this IR adds over an ordinary one.
+
+The `iro` prefix stays separate from the `kuro.*` metadata namespace already
+written into saved models, so a later repository rename changes neither.
+`workflow-composition` remains the descriptive spec name, and D15's
+package name stays provisional.
+
+xDSL is the machinery underneath. Kuroiro's vocabulary, rules, written form,
+diagnostics and authoring surface belong to the project.
+
+#### What the layer does
+
+The layer turns a description of a run into a running run, then keeps the
+description's promises while it runs. It has no training, data or model
+meaning of its own beyond the shared data-flow and model-use operations D15
+places here. Domains plug in through four seams.
+
+```text
+  Python authoring
+     |  builds
+  proposed program
+     |  normalize  (expand recipes; make captures, requests and stops explicit)
+     |  verify     (lifetimes, ownership, access, admission)
+     |             -> source-attributed diagnostics, or:
+  ACCEPTED PROGRAM + obligations          saved with the run
+     |  prepare    (match installed implementations and a target;
+     |              check effects; fuse local chains)
+  PREPARED PROGRAM                        inspectable, never authoritative
+     |  lower      (runtime scopes, wiring, straight-line code)
+  RUNNING: coordinator and owner services; devices do the numerical work
+
+  reference semantics: executes the accepted program's lifecycles
+  independently; every runtime realization is checked against it
+```
+
+#### Four seams
+
+The layer's boundary consists of four seams. Its analyses query contracts
+through them and never select behavior by operation name, fixture or case.
+
+| Seam | What a domain supplies | Examples |
+| --- | --- | --- |
+| Definitions | Operations and types, each with region, flow, resource, realization and decision contracts (D14) | Training units, windows and advancement; data production and filtering; model invocation and views |
+| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence | The run authority for participants; Trainer optimization for weight updates; producers for their cursors and policies |
+| Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion | Family conditioning and denoiser calls, objectives, codecs, serializers |
+| Devices | Execution context and physical completion for one backend | Host execution; PyTorch CUDA streams and events; the project's own backend |
+
+Registration through every seam is explicit composition (D2).
+
+#### Extending the language
+
+The two kinds of extension have different costs:
+
+- **A new operation built on existing protocols.** This is the common case:
+  a new objective, transform, family, method or capability operation. It needs
+  a definition, an implementation and, where useful, a maintained recipe. The
+  workflow layer does not change.
+- **A new lifecycle protocol.** This is a new way for work to live, wait or
+  end, such as grants, governed transitions or correlation. It changes the
+  shared language and ships as one unit: the protocol's reference semantics,
+  verifier rules and runtime realization, with differential and interleaving
+  conformance tests.
+
+An implementation cannot introduce a lifecycle, an admission rule or an
+authority that its operation's protocol does not define (`training-contract`,
+`workflow-composition`).
+
+#### Correctness and artifacts
+
+- **Conformance.** Each protocol has one runtime realization. It is checked
+  against that protocol's reference state machine under explored
+  interleavings. Facts visible to owners must agree; private scheduling and
+  bookkeeping may differ (D14). A concurrency defect in a protocol's
+  realization then shows up as a conformance failure, not only in production.
+  That matters once the GIL is off.
+- **Obligations.** D7's run-specific obligation set is what verification
+  derives from the accepted program under the pinned definition and
+  implementation versions. Its revision changes only when a governed
+  amendment changes the accepted program or those versions. A saved
+  obligation summary is a projection and never authorizes execution on its
+  own.
+- **Artifacts.** The accepted program is saved as text with the run's outputs,
+  and snapshots reference it. The normalized and prepared forms are derived
+  from it and saved for inspection. Cold loading and restoration parse them
+  and re-derive them, checking correspondence before any effect (D14).
+
+#### Written form and vocabulary
+
+The research dialect prints in xDSL's generic form, which buries meaning in
+attribute dictionaries. Each production operation declares its own written
+form, following these rules:
+
+- Nesting reads as lifetime.
+- Relationships read as statements, for example
+  `iro.stop @producer after @consumer`.
+- Access modes appear on each use, and bounds and admission policies appear on
+  each stream.
+- Defaults are omitted, and source locations appear only on request.
+- Saved programs are parsed back on load, so the readable form is the saved
+  form. It must round-trip exactly.
+
+The vocabulary follows the design:
+
+- Every first-class concept has exactly one word, and nothing else gets one.
+  That word is the same in the design, in printed programs, in Python
+  authoring and in diagnostics.
+- Research names are aligned to that rule. For example, `program` becomes the
+  run. Claims receive a disposition rather than being "retired", because
+  retirement already means ending a participant's or unit's use.
+- Domain vocabularies print under the same name as sub-namespaces, for example
+  `iro.train.window`.
+- Diagnostics use the authored names, for example
+  `iro verify: stop @producer after @training does not cover @evaluation's
+  pending request`.
+
+#### The Kuroiro vocabulary
+
+The words come from the design's concepts. In the table, "exists" means the
+research dialect already has the concept, under the name shown; "planned"
+means production adds it.
+
+Applying the one-word rule turned up four collisions:
+
+- **capability:** D3 already uses it for Trainer-recognized capabilities such
+  as caching and validation. The handle an access scope gives its body is
+  therefore a **lease**.
+- **binding:** D6 already uses it for a participant's current bound object.
+  Selected code is therefore an **implementation**. Calls name it, and the run
+  header pins its version.
+- **retire:** D6 and D9 already use it for ending a participant's or unit's
+  use. A claim is therefore **disposed**, with a disposition.
+- **region:** this is xDSL's word for an operation's body. Kuroiro's word for
+  a named piece of work with its own lifetime is **activity**.
+
+| Area | Word | Meaning | Research name | Status |
+| --- | --- | --- | --- | --- |
+| Structure | `run` | The accepted program; the root of one run | `lang.program` | Exists |
+| Structure | activity | A named piece of work with its own lifetime, such as a named producer, repeat, handler or parallel; a concept, not an operation | — | Exists |
+| Structure | `once`, `sequence`, `parallel`, `repeat`, `choice` | Run a body once; run children in order; run children concurrently until all settle; repeat a body under a policy; run exactly one accepted alternative | Same names | Exists |
+| Structure | `recipe` | A maintained composition that expands into these words | `lang.recipe` | Exists |
+| Structure | `fused` | A prepared-only group of local stages; authors never write it | `lang.fused_local` | Exists |
+| Lifetimes | `producer` | An activity that keeps producing items into a stream | `lang.producer` | Exists |
+| Lifetimes | `handler`, `request` | An activity that serves requests from declared sources; an owned pending request for one | `lang.requests`, `lang.request` | Exists |
+| Lifetimes | `stop` | Close an activity's admission once another settles | `lang.stop_after` | Exists |
+| Lifetimes | `completed`, `settled` | Logical completion; everything finished, including physical work and dispositions | Boundary values | Exists |
+| Data | `stream` | A bounded flow of items with an admission policy; the spec's "flow" | `lang.stream`, `endpoint` | Exists |
+| Data | `take`, `claim`, `borrow`, `dispose` | Take the next admitted item as a claim; read a claim without owning it; settle the claim exactly once with a disposition such as consumed, forwarded, filtered_out or cancelled | Same names, `retire` | Exists |
+| Data | `filter`, `optional` | Turn one claim into zero or one items | Same names | Exists |
+| Data | `fork`, `transfer`, `batch`, `correlate` | Duplicate or hand over a claim; group items; join items by key | — | Planned |
+| Access | `access`, `lease` | Use a resource within a scope; the handle the scope gives its body, which cannot leave it | `lang.access`, `capability` | Exists |
+| Access | `snapshot`, `protected_current`, `owner_update`, `grant` | The closed set of access modes (D14); grant profiles come from domains | Mode values | Exists; `grant` planned |
+| Access | `current_at_start`, `published`, `initial` | Version selection, separate from the mode | Freshness values | Exists |
+| Access | `exact_current`, `bounded_lag`, `any_with_provenance` | Stream admission policies | Admission values | Exists |
+| Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its explicit release | `retained`, `release_product` | Exists |
+| Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
+| Calls | `uses` | The run header that pins each implementation's version | Per-call version | Exists, moved to the header |
+| Model | `participant`, `view`, `route`, `invoke` | A model resource with identity; its typed projections and execution routes (D6); invoke a route under an access mode | — | Planned |
+| Training | `unit`, `window`, `contribute` | An independently advanced optimization responsibility (D9); contributions advanced together; offer an addressed input to a unit | — | Planned |
+| Training | `advance`, `zero`, `trigger` | Advancement and zeroing, written only where a profile grants them and otherwise performed by the Trainer; a policy that makes requested work due | — | Planned |
+| Outputs | `persist`, `transition`, `cut` | Write a durable output and report what was written; propose a governed change; take a consistent cut at a declared boundary | — | Planned |
+| Declarations | reproducibility, rank rule, `quiescence` | Printed only when not the default | Attribute values | Exists |
+| Runtime | invocation, obligation, cancel | One occurrence of an activity; what verification requires the run to discharge; run cancellation, which closes admission while entered work settles | — | Exists |
+
+Conventions for the written form:
+
+- Activities list their captures explicitly. A capture keeps its name inside
+  the activity unless `as` renames it.
+- Local bodies such as access, recipe and choice use enclosing values
+  directly; parsing turns those uses into the same explicit operands.
+- Each statement in a `parallel` is one concurrent branch.
+- Types print by name. Literals print inline. Unused entry arguments and
+  default attributes are omitted. `//` starts a comment.
+
+The data-only program below is the research's accepted data-only fixture
+printed in this form. The training program is the research lifetime fixture
+written with the planned training words: its hand-written gradient and update
+calls become a window, a contribution and Trainer-owned advancement.
+
+```text
+// Data-only: score records under a selection policy that learns from
+// feedback.
+iro.run @score_records uses(@select v1, @score v1, @feedback v1) {
+  %policy  = iro.resource @policy
+  %records = iro.stream @records : record
+               bounds(outstanding 3, ready 2)
+               admit any_with_provenance(@policy)
+
+  iro.parallel @activities capture(%records, %policy) {
+    iro.producer @producer into %records capture(%policy) {
+    ^(%index: index):
+      %record = iro.access %policy protected_current current_at_start {
+      ^(%lease):
+        iro.call @select(%lease, %index) -> record
+      }
+      iro.yield %record
+    }
+
+    iro.repeat @consumer 4 times capture(%records, %policy) {
+      %claim = iro.take %records
+      %value = iro.borrow %claim
+      %score = iro.recipe @score.recipe {
+        iro.call @score(%value) -> scalar
+      }
+      iro.access %policy owner_update {
+      ^(%lease):
+        iro.call @feedback(%lease, %score)
+      }
+      iro.dispose %claim consumed
+    }
+
+    iro.stop @producer after @consumer
+  }
+}
+```
+
+```text
+// Training: learn from produced records, then evaluate once on request.
+iro.run @learn_then_evaluate
+    uses(@encode v1, @objective v1, @equal v1, @measure v1) {
+  %encoder = iro.resource @encoder : participant
+  %model   = iro.resource @model : participant
+  %unit    = iro.train.unit @learner of %model optimizer @sgd
+  %records = iro.stream @records : encoded_record
+               bounds(outstanding 3, ready 2)
+               admit any_with_provenance(@encoder)
+
+  iro.parallel @activities capture(%records, %encoder, %model, %unit) {
+    iro.producer @producer into %records capture(%encoder) {
+    ^(%index: index):
+      %encoded = iro.access %encoder snapshot published initial {
+      ^(%lease):
+        iro.call @encode(%lease, %index) -> encoded_record
+      }
+      iro.yield %encoded
+    }
+
+    iro.parallel @consumers capture(%records, %model, %unit) {
+      iro.repeat @training 2 times capture(%records, %model, %unit) {
+      ^(%iteration: index):
+        // The Trainer advances %unit each time a window completes.
+        iro.train.window %unit members 2 {
+          %claim = iro.take %records
+          %value = iro.borrow %claim
+          %loss = iro.access %model protected_current current_at_start {
+          ^(%lease):
+            iro.call @objective(%lease, %value) -> loss
+          }
+          iro.train.contribute %loss to %unit
+          iro.dispose %claim consumed
+        }
+        %due = iro.call @equal(%iteration, 1)
+        iro.choice %due {
+          iro.request @evaluation(%iteration) from @training at settled_success
+        }
+      }
+
+      iro.handler @evaluation sources [@training] max 1
+          capture(%records, %model) {
+        %claim = iro.take %records
+        %value = iro.borrow %claim
+        iro.access %model protected_current current_at_start {
+        ^(%lease):
+          iro.call @measure(%lease, %value)
+        }
+        iro.dispose %claim consumed
+      }
+    }
+
+    iro.stop @producer after @consumers
+  }
+}
+```
+
+#### Production work in this layer
+
+Milestones 6–11 established the core. The research dialect has structure,
+producer, request, filtering, access, call, claim and retained-product
+operations, with verification, reference semantics, preparation and cold
+loading. Production work:
+
+1. Rebuild the core as `iro`, with the four seams as explicit interfaces and a
+   declared written form for every operation, starting from the vocabulary
+   above. The written-form grammar is completed in this step.
+2. Build the domain vocabularies, training first. The connected candidate
+   already established training's semantics: units, windows, gradient routing,
+   advancement and grants. The xDSL slice drove training only through fixture
+   implementations.
+3. Add what a real run needs:
+   - durable outputs that report what was actually written;
+   - a consistent cut for checkpoint and resume, realizing the quiescence
+     declarations;
+   - rank-consistent collective ordering (D15).
+4. Add the device adapters, starting with PyTorch CUDA (D15).
+5. Bound runtime bookkeeping for long runs (`sd-scripts-syv.31.30`). The
+   research keeps every finished invocation's facts for inspection, which a
+   long run cannot afford.
+
+### D17. Accepted and executable training runs
+
+This decision completes the representation half of task 5.3 for training. It
+covers what fulfillment hands the Trainer, what the Trainer publishes and
+executes, and how a Kuroiro program becomes a training run on GPU. The
+workflow layer (D16) supplies the program, verification and runtime; this
+decision adds the training content and the Trainer's use of it.
+
+#### What the Trainer consumes
+
+The Trainer consumes exactly these inputs:
+
+1. **An accepted run.** Only fulfillment produces one; in tests, a test-only
+   builder may (D1).
+2. **Launch settings** from the launcher: output locations, logging sinks, and
+   the device and rank topology.
+3. **The installed implementations**, which the launcher composes explicitly
+   (D2).
+4. **For a resume only, the snapshot to restore from.**
+
+It receives no strategy object, no run config and no mode. Every choice those
+used to carry is now in the accepted program.
+
+#### The accepted run
+
+An accepted run is immutable and holds no live objects. It records a content
+identity for its program and pinned versions. The run's own identity comes
+from the run authority it seeds, so two runs of the same program remain
+distinct runs (D6).
+
+| Part | What it is |
+| --- | --- |
+| Program | The accepted Kuroiro program: participants and how each one materializes, relationships, units with their optimizer policy, streams, activities, triggers and capability handlers. Configuration values are attributes in the program. |
+| Pinned versions | The contract and ownership profile, and every implementation with its version |
+| Obligations | The revisioned set that verification derives from the program under those versions (D16), including the readiness checkpoints that fulfillment derives |
+| Authority seed | The declared participants and relationships, still unbound, under the program and obligation revisions. It is derived from the program, and the Trainer creates the run authority from it at the start of realization (D6, D19) |
+
+The program is the source. The other parts are derived from it and kept for
+convenience, never as independent authority.
+
+An accepted run says that the run is meaningful and permitted, and what must
+be shown before each use. It says nothing yet about loaded models or devices.
+
+#### Realization and the executable run
+
+As host, the Trainer carries an accepted run to execution:
+
+```text
+  accepted run
+     |  seed         create the run authority from the program's
+     |               declarations
+     |  materialize  run each participant's declared materializer as a
+     |               governed job; the run authority publishes the bindings
+     |  prepare      one coherent attempt (D8): placement, casting, wrapping,
+     |               compilation and unit realization (optimizers, groups,
+     |               schedulers), plus workflow preparation of the program
+     |  publish      one coordinated publication of routes and views (run
+     |               authority), optimization runtime (Trainer optimization)
+     |               and backend state
+  executable run
+     |  execute      the coordinator runs the lowered program; owners serve it
+     |  finalize     settle and report outcomes
+```
+
+An executable run exists only after publication. It holds:
+
+- the prepared program and its lowered runtime instance;
+- the published projections it runs against, identified by the authority,
+  obligation and preparation-attempt revisions they came from;
+- the selected device adapters;
+- the evidence accepted for its readiness checkpoints.
+
+An executable run is single-use:
+
+- **Governed transitions.** A transition, for example attaching an adapter
+  mid-run, re-enters preparation under D8 and publishes a new executable
+  state. Results from the old state cannot publish against the new one.
+- **Restoration.** Restoration realizes the same accepted run from a cut,
+  using contributors' state instead of fresh initialization (G4.4). Creating a
+  new run instead requires a separate request.
+
+#### How training operations reach the Trainer
+
+The Trainer joins the workflow layer through the owner seam. Trainer
+optimization owns every unit and realizes the training operations as its
+owner protocol:
+
+| The program says | Trainer optimization does |
+| --- | --- |
+| `iro.train.contribute %loss to %unit` | Backward from the loss into the unit's gradient accumulation, deferring synchronization until the window's last member |
+| The end of `iro.train.window` | Synchronize, clip, step the optimizer and scheduler, zero, and record progress (standard profile) |
+| `iro.train.trigger @every_500 on %unit` | Evaluate the trigger policy over training progress; the program then requests the capability work that is due |
+| `iro.access %unit grant(profile) { ... }` | Hand the profile's named mechanics to the granted implementation for that scope, and verify the handback before resuming its own mechanics (G3.2) |
+
+A window is a maintained recipe over existing protocols: a repeat over
+members, then an owner update of the unit. It needs no new lifecycle protocol.
+
+Capability work such as validation, sampling and persistence runs as handlers
+that triggers request, and capability coordinators own its state (D5). Reads
+of model weights use `protected_current`, so no advancement races a read in
+another activity, such as validation's.
+
+#### On GPU
+
+- **Execution.** A window's body runs as prepared straight-line code on a
+  worker thread: take, forward, loss, contribute. The coordinator acts only at
+  window and request boundaries.
+- **Completion.** Completion comes from the device. Releasing protection after
+  an optimizer step waits on that step's event, not on a CPU synchronization
+  (D15).
+- **Hand-off.** Items carrying device tensors are handed over with an event.
+  The consumer's stream waits on that event, and the producer's memory stays
+  reserved until the consumer's use completes.
+- **Multiple ranks.** DDP's gradient reduction, validation metrics and
+  checkpoint gathers all issue collectives in the rank-consistent order that
+  D15 requires.
+
+#### An SDXL fine-tune, in outline
+
+```text
+iro.run @sdxl_finetune uses(...) {
+  %unet  = iro.resource @unet : participant materialize(@load_sdxl_unet)
+  %te1   = iro.resource @text_encoder_1 : participant materialize(...)
+  %te2   = iro.resource @text_encoder_2 : participant materialize(...)
+  %vae   = iro.resource @vae : participant materialize(...)
+  %unit  = iro.train.unit @denoiser of %unet optimizer @adamw
+  %batch = iro.stream @batches : latent_batch bounds(outstanding 4, ready 2)
+
+  iro.parallel @activities capture(...) {
+    iro.producer @data into %batch capture(%vae, %te1, %te2) {
+      ... decode, augment, encode latents and conditioning ...
+    }
+    iro.parallel @consumers capture(...) {
+      iro.repeat @training until @max_steps capture(...) {
+        iro.train.window %unit members 4 {
+          ... take, predict with @sdxl_denoise, loss with @ddpm,
+              contribute, dispose ...
+        }
+        ... triggers request @validation, @sampling and @checkpoint ...
+      }
+      iro.handler @validation sources [@training] max 1 ...
+      iro.handler @sampling sources [@training] max 1 ...
+      iro.handler @checkpoint sources [@training] max 1 ...
+    }
+    iro.stop @data after @consumers
+  }
+}
+```
+
+#### Acceptance and readiness stay distinct
+
+The two types make the distinction structural:
+
+- An accepted run cannot execute.
+- An executable run exists only after the evidence for its readiness
+  checkpoints is accepted and its state is published.
+- Fulfillment rejects known incompatibilities. Contingent failures in
+  loading, the backend or devices stop realization, and nobody reinterprets
+  the program (D5).
+
+| Task 5.3 requirement | Where it lives |
+| --- | --- |
+| Acceptance distinct from readiness | The accepted run versus the executable run |
+| Authoritative obligation revision | Derived by verification, pinned in the accepted run, referenced by every published projection |
+| Maintained and custom structure | Maintained recipes expand during normalization; custom operations enter through D16's first kind of extension |
+| Imperative regions | `grant` access with a profile and a verified handback |
+| Capability state | Capability coordinators, acting as owners in the executable run |
+| Binding authority | The run authority, seeded from the accepted run |
+| Prepared routes | Preparation proposals that the run authority publishes |
+| Optimization runtime | Trainer optimization's unit realizations, published with the routes |
+| Readability | The printed accepted program and the inspectable prepared recipe |
+| Hot path | Static resolution before execution, coordination only at boundaries, and G3.7 measurement |
+
+D19 and D20 give the concrete run-state and optimization types for tasks 5.1
+and 5.2. D18 covers how fulfillment builds the accepted run and how
+construction outside fulfillment is prevented.
+
+### D18. The training contract, fulfillment and authoring
+
+This decision answers task 5.4. It covers what the contract is, how
+maintainers write strategies against it, and how fulfillment turns a strategy
+into an accepted run (D17). It also places each piece of that logic.
+
+#### The contract
+
+The contract is the IR system's registered vocabulary: everything a strategy
+may use, in one versioned list that is read in one place. In xDSL, a parser
+and verifier know only the dialects registered with them, and the contract is
+that registration. The launcher makes it once, explicitly, before any
+strategy is read. `train.py`, help, the doctor and tests all use the same
+composition.
+
+Each entry describes one piece: what it does, what it takes, what it connects
+to and its rules. There are four kinds of entry:
+
+- **Operations and types,** such as `stream`, `window` and `unit`. An
+  operation's region, flow, resource and realization contracts (D14, D16) are
+  the parts of its entry that the IR system checks.
+- **Recognized capabilities:** validation, sampling, caching, persistence and
+  restoration, each with its request, result, readiness and failure meanings
+  (D5, G4).
+- **Feature contracts:** what a reusable tool offers and requires, such as an
+  adapter method, an EMA or a distillation recipe (D12).
+- **Ownership profiles:** the standard profile's advancement policies (G3.1)
+  and the extension grants (G3.2), each with its phase owners, state access,
+  effect bounds, handback and failure meanings.
+
+Each entry's rules are the rules the verifier runs, so what a reader sees is
+what gets checked. An entry's code sits with the piece it describes, in the
+module D21 gives, and nobody needs to look there to read the contract. One place to read does not mean one large object: the contract has
+no rules of its own beyond its entries.
+
+#### Authoring: the Python face of Kuroiro
+
+Writing a strategy is where everything trainable starts, so starting one must
+not be a challenge. A strategy is still real code that states how the run
+works. It is not a detailed configuration for a hidden engine. Configuration
+is a user-facing filter: it only narrows the choices and parameters a strategy
+declares.
+
+A strategy contains three kinds of code, and an author always knows which kind
+they are writing:
+
+- **Activities** are plain Python functions that say what one piece of work
+  does over its lifetime. Examples are a producer that yields items, a
+  training activity that takes batches and contributes, and a handler that
+  answers requests. The system reads their source into Kuroiro, the way Triton
+  and Taichi read kernels. Their loops, branches, takes, yields and requests
+  become the program's structure.
+- **Implementations** are ordinary Python and PyTorch functions that do the
+  math, such as encoding, denoising and evaluation. They run as written and
+  are called through their declarations.
+- **The strategy function** is ordinary Python that runs once while the
+  program is built. It declares participants, units and streams, and starts
+  activities together with their relationships. Its parameters are what
+  configuration can filter.
+
+```python
+@iro.producer
+def produce(dataset, vae, text):
+    for item in dataset.shuffled():           # runs ahead of training
+        yield encode(vae.snapshot, text.snapshot, item)
+
+
+@iro.activity
+def train(batches, unet, unit, max_steps):
+    for step in range(max_steps):
+        for batch in unit.window(batches, members=4):
+            unit.contribute(denoise(unet.protected_current, batch))
+        if step % 500 == 0:
+            validate.request(step)
+
+
+@iro.handler
+def validate(step, unet, heldout):
+    return evaluate(unet.protected_current, heldout)
+
+
+@iro.strategy
+def sdxl_finetune(model_path, dataset, heldout, max_steps: int = 20_000):
+    unet, text, vae = sdxl.participants(model_path)   # declared, not loaded
+    unit = iro.train.unit("denoiser", of=unet.attention,
+                          optimizer=adamw(lr=1e-4))
+    batches = iro.stream("batches", prefetch=8)
+    with iro.parallel():
+        produce(dataset, vae, text, into=batches)
+        train(batches, unet, unit, max_steps)
+        validate.serve(unet=unet, heldout=heldout)
+        iro.stop(produce, after=train)
+```
+
+Reading activities follows fixed rules:
+
+- `for step in range(n)` becomes a repeat.
+- `yield` in a producer emits into its stream.
+- An item taken from a stream or a window is a claim. Passing it to an
+  implementation borrows it. Unless the activity disposes it explicitly, it is
+  disposed as consumed when its scope ends normally. If the scope ends early,
+  it gets the failure or cancellation disposition instead.
+- `handler.request(...)` is a request.
+- An `if` on a runtime value is a choice.
+- Attribute access such as `.protected_current` or `.snapshot` on a
+  participant selects the access mode.
+
+Activities are a restricted subset of Python. They may call implementations,
+use participants and use the language's words, and may do nothing else with
+hidden effects. Anything outside the subset is rejected, with its line.
+
+Pieces connect only to what the author hands them. Activities and strategies
+can be reused, and a strategy can build on another without forking it.
+
+Implementations are declared with a decorator that records their contract:
+signature, version, effects, concurrency safety and completion. The decorator
+has no registration side effect; the launcher installs implementations
+explicitly (D2).
+
+```python
+@iro.implementation(version=1, reads=["unet"])
+def denoise(unet: ModelLease, batch: LatentBatch) -> Loss:
+    ...  # the selected PyTorch computation
+```
+
+The design reads source rather than recording builder calls, because
+recording would need a special call for every decision made at run time. The
+choice affects only the front end. Both approaches produce the same Kuroiro
+program, so verification and the runtime do not depend on it. The first real
+maintained strategy confirms the direction, and the front end defines the
+subset's exact boundaries.
+
+#### Authoring support
+
+Four aids help an author write a strategy that works with what is allowed:
+
+- **The contract** itself, readable as a reference: every entry with its
+  parameters, connections, needs and rules.
+- **Help and the guide.** CLI help lists the strategies, their parameters and
+  each word. The written guide explains how to write a strategy, with worked
+  examples. The guide is not part of the contract: it explains the contract,
+  and the contract decides. Its reference parts are generated from the
+  contract and the doctor checks its examples, so it cannot drift. Help also
+  lists every method in the repository with its status: allowed under the
+  current contract, or present but not yet allowed, with the reason.
+- **The doctor.** It runs fulfillment's checks on a strategy without loading
+  anything, prints the program, and explains each problem in the strategy's
+  own names, with its line and a fix. It can also step through the run's
+  lifecycle in the reference interpreter with stand-in implementations. That
+  shows, for example, that data runs ahead, that training takes batch 3, and
+  that validation is requested at step 500, all before any GPU is involved.
+- **Guided construction, later.** Every entry declares what it connects to,
+  so a guided builder can offer only the choices that fit at each point.
+
+Something the contract allows cannot fail a run just because a strategy uses
+it. What the system cannot support is not allowed, so fulfillment refuses it
+with a diagnostic. What depends on loaded state is checked at its readiness
+checkpoint, before training starts.
+
+#### From run config to accepted run
+
+```text
+  run config        strategy name, plus values for its declared parameters
+     |  launcher    compose the contract; import the strategy; hand the
+     |              strategy function and the config's values to fulfillment
+     |  fulfill     the IR system: run the strategy function once and read
+     |              its activities into the proposed program; normalize;
+     |              verify under the shared rules and the training rules;
+     |              check parameters against their declared bounds; derive
+     |              obligations and readiness checkpoints
+     v
+  accepted run (D17), or a rejection with every diagnostic found
+     |  Trainer     seed the run authority and begin realization
+```
+
+Fulfillment is the system's step, not the author's. The launcher runs it,
+and the doctor runs the same checks earlier. Fulfillment never fills a gap.
+It never selects a missing implementation, adds a dependency, or calls the
+strategy back. Config can set only the choices the strategy declared, and
+only within their bounds (`training-contract`). One contract version and
+profile govern the run for its lifetime.
+
+#### Diagnostics
+
+A rejection reports every independent problem it finds. Each problem gives
+its rule code, the authored names involved, the Python source line where the
+offending element was written, the printed fragment and a suggested fix:
+
+```text
+iro verify [iro-life-004] strategies/sdxl/finetune.py:88
+  stop @data after @training does not cover @validation's pending
+  request; @validation still takes from @batches.
+  fix: stop @data after @consumers, or give @validation its own stream.
+```
+
+A diagnostic distinguishes invalid meaning, which is a semantic error, from a
+valid program that the selected target cannot realize. The second is a target
+limit, reported at the earliest point where it is known (D14).
+
+#### Bypass prevention
+
+Only fulfillment produces an accepted run on the normal path, and the normal
+launcher reaches the Trainer only through fulfillment. A saved program, for a
+resume or a cold load, goes back through the same checks at the launcher,
+under the versions it pins, before the Trainer sees it (D16). The Trainer
+re-derives nothing, because it has neither the contract nor that job. It
+checks only what it can know: that the installed implementations it receives
+match the versions the accepted run pins. Otherwise it refuses to start.
+Tests may build accepted runs with a test-only builder, which the normal
+launcher never uses (D1). Selected Python is trusted (D14), so this is a
+boundary on the normal path, not a defense against deliberately forged
+objects.
+
+#### Placement of contract logic
+
+| Concern | Where it lives |
+| --- | --- |
+| The contract | One composition, made by the launcher before any strategy is read, versioned and read in one place |
+| The code of each entry's rules | With the piece it describes, in the modules D21 gives. Readers never need it, because the composed contract shows every entry |
+| Fulfillment | The IR system (D21). The launcher runs it, and the doctor runs the same checks earlier. Authors never do |
+| Checks that need later facts | Some rules can be checked only once things exist, such as whether the loaded UNet has the layers a LoRA targets. The rule's entry includes its check. The run authority or preparation runs it when the facts arrive, at the rule's readiness checkpoint |
+| Diagnostics | One shared format in the IR system. Each rule carries its own code and message, such as `iro-life-004`, and whichever tool ran the check prints them |
+
+None of these is a separate validator system. Together they form one contract
+system, organized by its entries.
+
+This settles the deferred question of how custom operations are authored, as
+a narrow combination:
+
+- strategy functions in ordinary Python, with activity functions that the
+  system reads;
+- a declaration-only decorator for implementations;
+- for new operations, xDSL definitions with contract traits, each with its
+  own Python form.
+
+### D19. Run state types
+
+This decision answers task 5.1. It gives run state concrete types: an owner
+pattern shared by every owner of run state, and the run authority's instance
+of it. D20 gives Trainer optimization's instance for task 5.2. Both decisions
+are written against D15–D18, so they already include the reconciliation that
+the G5 gate requires of independently developed shapes.
+
+The names follow the design's vocabulary (D6–D9, D16). Classes from the
+research candidates, such as `Stamp`, `Image`, `RunState`, `UnitRuntime` and
+`UnitOutcome`, remain evidence and do not carry over. The fields named here
+are the ones the settled rules require, and D21 places them in modules.
+This decision also answers three deferred production-shape choices: the type
+names, how references are represented, and installation as a generation
+switch over immutable sections.
+
+#### What changes, and how often
+
+Participants and optimization units have the same four layers, and each layer
+changes at its own rate:
+
+| Layer | Participant | Optimization unit | Changes when |
+| --- | --- | --- | --- |
+| Identity | A reference to one incarnation | A reference to one incarnation | Never. A change of identity creates a new incarnation |
+| Meaning | The declaration: what it is and how it materializes | The definition: members, groups and policies | A governed change: rare, checked and all-or-nothing |
+| Realization | The binding, which is the loaded state, and the routes and views prepared from it | The prepared unit: optimizer, scheduler and groups | A materialization or preparation attempt |
+| Live state | The numeric version: which weights | Progress, optimizer state and the gradient window | Every step, by the owner with update access; the authority's records stay unchanged |
+
+An optimizer step changes live state only. The authority's records change
+when meaning or realization does: on materialization, bound-state
+replacement, attachment, preparation, retirement and restoration. Those
+happen at startup, at governed transitions and on resume, outside the hot
+path, so the authority can check every change in full.
+
+#### Where the IR system meets these types
+
+These types realize what the accepted Kuroiro program declares:
+
+- Participants are the program's participant declarations, such as
+  `iro.resource @unet : participant`, and units are its `iro.train.unit`
+  operations. At the start of realization the Trainer creates the run
+  authority from those declarations (D17). Trainer optimization reads its
+  unit definitions from the same program (D20).
+- The run authority and Trainer optimization are owners at D16's owner seam.
+  When the running program reaches `iro.access %unet protected_current`, the
+  coordinator obtains the lease from the authority's current generation.
+  `iro.train.contribute` and the end of a window go to Trainer
+  optimization's owner protocol (D17).
+- A governed change and a resume cut appear in programs as the planned
+  `iro.transition` and `iro.cut` words. At run time they are a `Transition`
+  and each owner's cut state.
+- The IR system never holds live objects (D15). It refers to state through
+  references, versions and dependencies, which access and admission check.
+
+#### The owner pattern
+
+Every owner of run state uses the same shared types: the run authority,
+Trainer optimization, and later owners such as an EMA or a capability
+coordinator. A new owner fills these types in and adds no machinery to the
+run-state layer (D15).
+
+| Type | What it is |
+| --- | --- |
+| Reference | One incarnation of something an owner manages, as an opaque value made of the run identity, a kind and a serial number. Only its owner creates one, by minting it or by restoring it from a cut; other code only compares references, and none is ever reused. The authority mints the run identity when the accepted run seeds it (D17), and mints `ParticipantRef` and `RelationshipRef`; Trainer optimization mints `UnitRef` (D20). Cuts and facts store a reference as a string of its three parts and parse it back exactly. |
+| `Version` | Which state a use saw: a reference, the revision of what is bound and a numeric version. Snapshot reads return it, produced items carry it as provenance, and stream admission policies compare it with the current version (D16). |
+| `Dependencies` | What a projection or prepared realization relies on. The default is its whole source section; an exact set of revisions is the narrower alternative (D6). |
+| Evidence | A typed value, one kind per obligation kind, declared beside the evaluator that judges it (D18). Each value records the attempt that produced it and the revisions it was produced under. A producer's own claim, or a Boolean, is never evidence. |
+| Attempt | A governed job's identity, its basis (the revisions it started from) and whether it replaces state or mutates it in place. Its result is bound to it. `MaterializationAttempt` and `PreparationAttempt` are the two kinds. |
+| `Generation` | The coherent published state: one section per owner, under a generation number. |
+| `Publication` | The single swap that installs the next generation. |
+| Cut state | An owner's part of a coherent recoverable cut (D16's `cut`; G4.4), with the identities and revisions its continuation needs. |
+
+#### Publication
+
+Each owner builds and checks its section of the next generation off to the
+side: the authority its records, Trainer optimization its prepared units, and
+backend coordination its wrappers and inseparable groups. One `Publication`
+then installs every section by swapping the current generation. Every
+fallible step has already run, so the swap does no fallible work and calls no
+observers (D8).
+
+- **Reading.** Code holds a generation without locking. A freshness check
+  compares revision numbers, so routine checks at boundaries stay cheap
+  (G3.7). A lease taken from one generation stays valid for its scope. A
+  publication that conflicts with an outstanding protected use waits for it,
+  is rejected or uses supported isolation (`training-runtime-preparation`).
+- **Withdrawal.** Each owner's section can withdraw the realizations that
+  depend on changed revisions without fallible work. An authority transition
+  and the withdrawals it causes therefore publish in one generation, and
+  dependent work pauses until a preparation attempt publishes replacements
+  (G3.5).
+- **Layering.** `Generation` lives in the run-state layer, and owners register
+  their section types with it. Training-side preparation coordination drives
+  publication for training runs (D8). A workflow without training has no
+  optimization section, and the run-state layer never imports training (D15).
+- **Ranks.** Every rank publishes the same sequence of generations with the
+  same revisions; only process-local objects differ. A publication swaps only
+  after rank agreement, in the collective order that D15 requires. A rank lost
+  at the swap aborts the in-process run, and recovery goes through
+  restoration.
+- **Concurrency.** Each section has one writer, published sections never
+  change in place, and the swap is a single store. Correctness therefore does
+  not depend on the GIL. The types hold live objects without importing Torch;
+  Torch-specific evidence and evaluators live with the definitions that need
+  them (D15).
+
+#### The run authority's records
+
+| Type | What it is |
+| --- | --- |
+| `Participant` | The authority's record: reference and authored address, declaration, lifecycle (declared, bound or retired), binding, routes, views and lineage |
+| `Binding` | A participant's bound state: the loaded object, its binding revision and the evidence it was accepted with |
+| `Route` | A named way to call the participant, such as `normal` or a route that a capability needs: its current prepared callable, route revision, dependencies and refresh rule |
+| `View` | A typed, revision-pinned look at one participant that is not a route: original, unwrapped, inspection, metadata or artifact |
+| `Relationship` | Reference and address, endpoints, kind, operational state, revision and history. It changes independently of its endpoints |
+| `TargetRef` | A reference into a participant's structure: the participant, the selected component, module or parameter substructure, its public selector and any declared component provenance. It holds no live object (`optimization-target-refs`). Where `expand-model-metadata-identity-and-structure` has resolved them, it also carries optional catalog and structural path associations, which never replace the semantic identity. Optimization, PEFT targeting and persistence share it, and sharing it makes none of them the owner of targeting (D12) |
+| `Obligations` | The obligation set at its revision. Each entry names its subject, the readiness checkpoint at which it must first be fulfilled, the evidence kind it needs, its evaluator and the program location it came from (`training-contract`) |
+| Authority section | The authority's part of a generation: these records at one authority revision. The specs call it the authority snapshot |
+
+Four details follow from D6 and D7:
+
+- "Binding" means only the bound state (D16). D6's one current binding per
+  participant/route pair is one current prepared callable per route over the
+  participant's single binding.
+- A state-only participant, such as an injected adapter, has no route. A
+  derived route under the same participant states its refresh rule.
+- `declared` is D7's declared-but-unbound state. It is never a fake `None`
+  candidate.
+- Lineage records succession, merge or fold, and initialization from another
+  run's artifact, separately from identity.
+
+#### Changing the records
+
+Producers never write records. They submit a `Transition`, the typed proposal
+that D7 describes: the target identity, its kind, the attempt identity, the
+expected revisions, the candidate and the evidence. The authority builds the
+prospective section, checks the expected revisions and runs the evaluator of
+every affected obligation. It returns `Published`, with the new revisions and
+the realizations that the change invalidates, or `Rejected`, with diagnostics
+and no change.
+
+The kinds are a closed set: D6's operations plus D8's withdrawal.
+
+| Kind | Effect |
+| --- | --- |
+| Declaration | Adds a declared, unbound participant or relationship under an arrangement amendment; the authority seed supplies the initial ones (D17) |
+| Materialization | Gives a declared participant its first binding |
+| Bound-state replacement | Installs a new binding that still fulfills the participant's accepted meaning; otherwise retirement and a new declaration are required |
+| Route rebinding | Installs a route's new prepared callable |
+| Relationship transition | Changes a relationship's operational state |
+| Arrangement amendment | Changes declarations under the same contract and profile, and re-derives the affected obligations in the same transition |
+| Merge or fold | Folds one participant's state or effect into another, with lineage and optional retirement |
+| Retirement | Ends current use of a participant or relationship; its reference and history remain |
+| Withdrawal | Withdraws guarantees before destructive work, under the attempt's own identity (D8) |
+
+#### Attempts
+
+A `MaterializationAttempt` runs declared materializers, such as loaders, as
+one governed job. Its basis records the authority and obligation revisions it
+started from. It produces materialization or bound-state replacement
+transitions with their evidence. Loading weights into an existing bound
+object is in-place work, so such an attempt publishes its withdrawal first.
+
+A `PreparationAttempt` is D8's one coherent job, derived from one generation.
+Its request names:
+
+- the requested routes and views;
+- every required participant, including frozen ones that still need
+  movement, casting, wrapping or compilation;
+- every inseparable backend group it overlaps, complete;
+- the permitted mutation;
+- the unit definitions to realize (D20).
+
+Its `PreparationResult` keeps D8's five parts apart: route rebinding
+proposals and typed views, both for the authority; prepared units for Trainer
+optimization; backend coordination state; and the source revisions,
+constraints, guarantees, facts and structured failures. A result publishes
+only while its basis is current. An older optimistic result can never restore
+guarantees that a destructive attempt withdrew.
+
+#### Projections
+
+Consumers never receive the authority, a section or a generation. Each kind
+of consumer receives its own projection type, pinned to one generation or to
+exact dependencies:
+
+| Consumer | What its projection holds |
+| --- | --- |
+| Execution | The leases that the coordinator hands out at boundaries, for call sites wired before the hot path (D16) |
+| Preparation and Trainer optimization | The bindings, routes, target structure and backend groups that preparation and unit resolution need |
+| Persistence | For each product, the artifact views and semantic state that the product covers (D11) |
+| Capabilities | The accepted state that their requests are declared over, read through protected access (G4) |
+| Observability and metadata | Accepted facts and history, without live objects (G4.5). Live structural resolution reads a revision-pinned inspection view under a scoped lease and keeps no live object |
+
+No method returns a participant by its address. Addresses only locate
+declarations during fulfillment and transitions. Downstream code sees the
+accepted program's consequences, never the strategy or a general query over
+run state, so it has nothing to reinterpret.
+
+#### The authority's part of a cut
+
+The authority's cut state holds the run identity, the accepted program's
+content identity, its obligation revision and the current stage. It also
+holds every participant and relationship reference with its lifecycle and
+revisions, each participant's named routes, lineage, and each binding's
+contents at the cut. A snapshot read captures those contents; a participant
+whose state never changed may record the source it re-materializes from
+instead. Restoration re-materializes bindings into new objects under the same
+references, then prepares and publishes as usual. Missing facts leave
+restoration incomplete, and it never becomes a new run
+(`run-participant-state`, G4.4).
+
+#### Checking the run-state rules
+
+| Settled rule | Where the types enforce it |
+| --- | --- |
+| One authority, with no competing canonical copies (`run-participant-state`) | Only the authority writes its section; everyone else holds read-only projections |
+| Address and incarnation differ, and roles never establish identity (D6) | The authority mints `ParticipantRef`; addresses only locate declarations; references carry no role |
+| Materialization, replacement, preparation, wrapping and compilation keep the reference (D6) | They change a `Binding` or a `Route` under the same `Participant`; only an amendment, a redeclaration or an incompatible replacement mints a reference |
+| Retired references are never revived or reassigned (D6) | Minting is monotonic; retirement is a lifecycle state kept in history |
+| One binding per participant/route pair, views apart from routes and no fake routes (D6) | One `Binding` per participant, one prepared callable per `Route`, `View` as a separate type, and optional routes |
+| Participant, optimization and relationship lifecycles stay independent (D6) | Lifecycle on `Participant`, trainability on units (D20) and operational state on `Relationship` |
+| Transitions are revision-checked and atomic (`run-participant-state`) | `Transition` carries expected revisions; the authority publishes the whole prospective section or nothing |
+| Freshness is conservative by default (D6) | `Dependencies` defaults to the whole source section |
+| Consumers get scoped projections instead of lookup (D6) | One projection type per consumer, and no lookup by address |
+| Initial and later changes share one enforcement direction (D7) | Both are transitions judged against the same `Obligations` |
+| Evidence is typed, not a fact dictionary or a Boolean (D7) | Evidence kinds declared beside their evaluators |
+| Deferred state is declared-but-unbound, never `None` (D7) | The `declared` lifecycle state |
+| Preparation is one attempt with separated results (D8) | `PreparationAttempt`, and the five parts of `PreparationResult` |
+| Fallible work precedes an unobservable publication (D8) | Owners build sections before the swap; `Publication` only swaps |
+| Destructive work withdraws guarantees first, and older candidates cannot restore them (D8) | The withdrawal transition, and results bound to their attempt's basis |
+| Inseparable groups are prepared whole and evicted together (D8) | Preparation requests cover every overlapped group; retiring a member withdraws the whole group |
+| Exact restoration keeps identities, and missing facts leave it incomplete (`run-participant-state`) | The authority's cut state; restoration re-materializes under the same references |
+
+### D20. Optimization types
+
+This decision answers task 5.2. Trainer optimization is an owner in D19's
+pattern: it mints unit references, publishes prepared units in its section of
+each generation and supplies its part of each cut. Optimizer, scheduler and
+backend objects remain realizations (D9).
+
+#### The types
+
+| Type | What it is |
+| --- | --- |
+| `UnitRef` | One unit incarnation, minted by Trainer optimization. A split, merge, retirement or recreation mints new references (D9) |
+| `UnitDefinition` | The accepted meaning at a definition revision: members as `TargetRef`s, logical groups, optimizer and scheduler policy, accumulation and completion rule, scheduler trigger, clipping scope, synchronization requirements, zeroing rule and semantic dependencies |
+| `OptimizationPlan` | The accepted program's units as typed definitions, plus what spans units: joint windows with their advancement order, joint clipping scopes and the standard rule that ownership does not overlap. It derives from the program and is never a second recipe |
+| `UnitCandidate` | Provisional resolution inside one preparation attempt: resolved parameters with provenance, tied aliases consolidated, execution groups mapped to logical groups, trainability, clipping and synchronization membership, the optimizer and scheduler (built or as a recipe), and correspondence evidence after backend transformations (G3.4) |
+| `PreparedUnit` | The runtime that a preparation result carries for one unit and that a generation publishes: its reference and definition revision, resolved members, optimizer, scheduler, execution groups, membership in a backend synchronization group, optimizer-local lifecycle transitions and dependencies |
+| `Advancement` | One window's record: the contributions it included; each mechanic reached, namely synchronization, unscaling, clipping, the optimizer call (returned, skipped, uncertain or not attempted), the scheduler and zeroing; which owner performed each; and the unit's progress afterwards |
+| Unit cut state | The unit's part of a cut: reference, definition revision, member correspondence, optimizer and scheduler state, progress and window position. Pending gradients appear only when the cut is not taken at a quiescent boundary (G3.1). Backend scaling and synchronization state belongs to the backend coordination owner's cut state, together with its correspondence to the unit (G4.4) |
+
+The program's structure decides where contributions come from and when
+windows run: its contributions, windows and triggers (D17). D9's "checkpoint
+ownership" is the unit's cut state together with the other owners' parts.
+
+```text
+  accepted program   units, windows, contributions and triggers
+     |  fulfillment
+  OptimizationPlan   unit definitions at their definition revisions
+     |  preparation attempt (D19)
+  UnitCandidate      members resolved, optimizer built, evidence collected
+     |  preparation result, then publication
+  PreparedUnit       current in optimization's section of the generation
+     |  each window end, under the standard profile
+  Advancement        mechanics reached, their outcomes and progress
+     |  at a cut
+  unit cut state
+```
+
+#### Live state and progress
+
+A unit's optimizer state, progress and open gradient window are live state,
+and only Trainer optimization changes them. An ordinary advancement changes
+them and its members' numeric versions. It publishes nothing and triggers no
+re-preparation (D9, G3.5).
+
+Each unit counts its own progress. Attempted optimizer calls and
+backend-confirmed non-skipped advancements are counted apart, because a
+scheduler policy may follow either (G3.1). Triggers and reports name the unit
+whose progress they follow (D17), and today's `global_step` becomes that
+progress. A one-unit run reads as before, and a multi-unit run gets no
+invented shared clock.
+
+#### Train and evaluation modes
+
+Module runtime mode is not unit state. Validation runs as its own activity
+alongside training (D17), so a run-wide switch into evaluation mode has no
+right moment. Each call's prepared execution context sets its module's mode
+on entry, as it sets grad mode, and changes it only when the previous call
+left a different mode (D15). The runtime serializes calls on one participant,
+so no activity sees another activity's mode. Optimizer-local transitions,
+such as a schedule-free optimizer's switch to its evaluation point, remain
+with the unit. They are owner updates at accepted lifecycle points, under
+protection.
+
+#### What covers today's flags and mode queries
+
+Each current flag, use of the primary trainable, synchronization handle and
+repeated mode query has exactly one replacement:
+
+| Today | Replacement |
+| --- | --- |
+| `Trainer._train_denoiser`, `_train_text_encoder`, `FineTuneMode._te_train_flags`, `should_train_text_encoder()` | Unit membership in the accepted plan. Config only filters the strategy's declared parameters (D18) |
+| `train_text_encoder=` and `train_denoiser=` passed through conditioning, validation and batch processing | Grad mode from each call's prepared context (D15). Live versus cached encoding is program structure, and verification rejects a detached path through a trained encoder (G3.6) |
+| `Trainer._primary_trainable`, through `trainable_model`, when saving | Product persistence over a persistence projection (D11) |
+| `trainable_model` passed into `process_batch` and `calculate_val_loss` | Leases for the participants each call declares (D16) |
+| `all_reduce_trainable(accelerator, trainable_model)` | Synchronization in the window, through the unit's backend synchronization group |
+| `Trainer._grad_sync_handle` and `accelerator.accumulate(...)` | The prepared unit's membership in its backend synchronization group; the window defers synchronization until its last member (D17). The handle itself is backend coordination state |
+| `Trainer._accumulation_counter` | The unit's window position, in its live state and its cut state |
+| `TrainingMode.get_trainable_params()`, for clipping | The prepared unit's resolved members within its clipping scope |
+| `TrainingMode.set_train()`, `set_eval()` | Module mode from each call's prepared context; optimizer-local transitions as unit owner updates |
+| `TrainingMode.on_epoch_start()`, `on_step_start()` | Repeats, windows and triggers in the accepted program. A method's own epoch or step behavior becomes a selected implementation call that the program makes at that point |
+| `TrainingMode.on_step_end()`, such as weight-norm regularization | Selected post-advancement behavior under its declared effect authority, reporting observations (G3.1) |
+| `TrainingMode.prepare_trainables()` | Materialization of declared participants including adapter state, relationship transitions for attachment, and merge or fold transitions for merged base weights (D19) |
+| `TrainingMode.configure_trainable_precision()`, `setup_gradient_training()` | Preparation under component constraints (D8). Freezing and trainability come from unit membership |
+| `TrainingMode.build_optimizer_params()` | `UnitCandidate` construction from the plan |
+| `TrainingMode.prepare_with_accelerator()` | The preparation attempt and its publication |
+| `TrainingMode.register_state_hooks()` | Each owner's cut state (D19) |
+| `TrainingMode.save_checkpoint()`, `checkpoint_artifact_role`, `resolve_checkpoint_artifact_format()` | Product persistence and its serializer (D11) |
+| `TrainingMode.get_diagnostics_components()` | Observation facts (G4.5) |
+| `OptimizationPlan`, `LogicalParameterGroup` and `ParameterGroup` in `library/optimization/types.py` | Their logical and execution split moves into candidate resolution and `PreparedUnit`. The name `OptimizationPlan` passes to the semantic plan in the same milestone (D13) |
+| `OptimizationTargetRef.obj` | Leaves the reference. Live objects exist only in revision-pinned projections and candidates (`optimization-target-refs`) |
+
+#### Checking the optimization rules
+
+| Settled rule | Where the types enforce it |
+| --- | --- |
+| Address, incarnation, definition revision, realization and mutable state stay separate (D9) | `UnitRef` with its address, the `UnitDefinition` revision, `PreparedUnit` and live state |
+| Membership is authority-qualified, never `nn.Parameter` identity (D9) | Members are `TargetRef`s; parameters appear only in candidates and prepared units |
+| Only changes of meaning revise a definition; new wrappers, parameters, optimizer objects and processes do not (D9) | Only a governed change revises `UnitDefinition`; preparation publishes new `PreparedUnit`s at the same revision |
+| Split, merge, retirement and recreation make new identities (D9) | New `UnitRef`s |
+| Standard ownership does not overlap, and tied aliases consolidate (`training-optimization`) | Candidate resolution applies the plan's no-overlap rule and keeps alias provenance |
+| Logical and execution groups stay distinct (`training-optimization`) | Logical groups in `UnitDefinition`, execution groups in the candidate, and the mapping between them |
+| Accepted meaning precedes physical construction, in either order (G3.4) | The plan is fixed before the attempt; a candidate may build optimizer-first or wrapper-first |
+| Every optimizer targets its final members or has an evidenced rebind (`training-runtime-preparation`) | Correspondence evidence in the candidate, judged before publication |
+| Realization and preparation form one publication (`training-optimization`) | `PreparedUnit`s publish in the same generation as routes and backend state |
+| Binding changes invalidate the affected runtime (`training-optimization`) | `PreparedUnit` dependencies; the next generation withdraws it |
+| Identity continuity does not imply state continuity (`training-optimization`) | A transition states the preserve, migrate, reset or unavailable treatment, and readiness requires its evidence |
+| Trainer owns standard mechanics, and only profiles transfer them (G3.1, G3.2) | `Advancement` records who performed each mechanic; grants come only from accepted profiles |
+| Contributions and reached mechanics are reported separately, with no atomic joint step (`training-optimization`) | One `Advancement` per unit, with returned, skipped, uncertain and not-attempted outcomes |
+| Exact restoration keeps unit identity within one run (`training-optimization`) | The unit's cut state; restored optimizer state is matched to restored members before continuation |
+
+G3.5's first trace reads directly in these types. The denoiser's compatible
+replacement is a bound-state replacement that moves its binding from revision
+4 to 5. The `main` unit's prepared unit depends on binding 4, so the
+generation that publishes the replacement withdraws it. A preparation attempt
+based on binding 5 builds a candidate for incarnation 10 at definition
+revision 3, once the accepted optimizer-state treatment is satisfied, and the
+next publication installs it. A result from an attempt based on binding 4 can
+no longer publish, because its basis is stale.
+
+### D21. System map and module placement
+
+This decision answers task 5.5. It is the one place that says where each
+piece of the production system lives. The other decisions define what the
+pieces are and point here for their packages and modules. Every package and
+module name below is a working name; renaming one later changes no boundary.
+Following the repository's placement rule, a module exists only for a stage
+with several instances and shared rules.
+
+#### The system map
+
+```text
+  strategies and recipes, written by authors            library/strategies
+     |
+  launch                                         train.py, library/launch
+     read the run config; compose the contract and the installed
+     implementations; import the strategy and hand it to fulfillment
+     |
+  the IR system: Kuroiro on xDSL                        library/workflow
+     fulfillment: read, normalize, verify, derive obligations
+     -> the accepted run, or diagnostics
+     |
+  the Trainer, as host                                  library/training
+     seed the run authority; materialize; prepare; publish
+     |
+  the running program
+     the IR runtime: coordinator, streams, leases       library/workflow
+     owners that serve it:
+       the run authority: participants                  library/runstate
+       Trainer optimization: units                      library/training
+       backend coordination, capability coordinators,
+       the observation owner                            library/training
+     implementations that do the math                   the libraries
+     facts for metadata and logging                     observability
+```
+
+| Component | Role | Package | Defined in |
+| --- | --- | --- | --- |
+| Strategies and maintained recipes | Written by authors | `library/strategies` | D18 |
+| Run config | Written by users and read only by launch | `library/config` | D18 |
+| Presets, config application, contract composition, help and the doctor | Run by the system at launch | `library/launch`, `train.py` | D18 |
+| Kuroiro, its front end, fulfillment, the accepted run, diagnostics, the reference interpreter, preparation and lowering, the runtime and device adapters | Run by the system | `library/workflow` | D14, D16–D18 |
+| The owner pattern, the run authority, generations and publication | Holds state | `library/runstate` | D19 |
+| Training's words, the Trainer, Trainer optimization, preparation and backend coordination, capability coordinators and the observation owner | Run by the system; holds state | `library/training` | D17, D20 |
+| Models and family behavior, adapter methods, objectives, losses, timesteps, data, optimizer machinery, generation pipelines and backend infrastructure | Implementations the runtime calls | The libraries | D15 |
+| Metadata and logging | Consume facts | `library/metadata`, `library/logging` | G4.5 |
+| Utilities, constants and vendored code | Base | `library/utils`, `library/constants.py`, `library/vendor` | D15 |
+
+#### Dependency rules
+
+These rules make D15's direction exact:
+
+- Launch may import everything below it. `library/config` belongs to launch:
+  it composes the settings types that their owners define, and nothing below
+  launch imports it.
+- Strategies may import training's words, the run state, the IR system, the
+  libraries and base.
+- Training may import the run state, the IR system, the libraries,
+  observability and base. It never imports strategies or config.
+- Libraries may import the run state, the IR system, observability fact
+  types, base and lower libraries. From the bottom, the library order is
+  performance, models, losses, timesteps, objectives, data, optimization,
+  adapters and pipelines. Libraries never import training, strategies,
+  launch or config.
+- The run state may import only the IR system, observability fact types and
+  base. It never imports the libraries or Torch.
+- The IR system may import only xDSL, observability fact types and base.
+  Torch loads only in its device adapters.
+- Observability imports only base, and base imports nothing in `library`.
+- New code never imports the code it replaces, or a `_deprecated/` folder.
+
+These rules were checked mechanically. The module map's intended imports form
+93 package edges, with no upward import and no cycle. Today's code has 81
+package edges, and all 16 packages sit in one import cycle. Of those edges, 27
+break these rules; the coverage rows below note each one. The rules apply to
+the modules in the module map from their first line, and to a kept library
+module once the new system uses it. Today's code is never edited to follow
+them.
+
+#### Module map
+
+`library/workflow`, the IR system, is rewritten from the research
+`xdsl_language` package and the `execution_candidate` runtime:
+
+| Module | Holds | Origin |
+| --- | --- | --- |
+| `words/` | Kuroiro's core operations and types: structure, lifetimes, data, access, calls and model use | `dialects.py`, `filter_contracts.py`, `product_contracts.py` |
+| `operation_contracts.py` | Region, flow, resource, realization and decision contracts | `contracts.py` |
+| `composition.py` | The contract: registration, version, queries and the readable printout | New (D18) |
+| `frontend/` | The `iro` decorators and the reader that turns a strategy into a proposed program | New (D18) |
+| `normalize.py` | Recipe expansion, and explicit captures, requests and stops | `normalize.py` |
+| `verify.py` | Verification, the `Obligations` type and readiness checkpoints | `verify.py` |
+| `diagnostics.py` | The shared diagnostic type | New (D18) |
+| `fulfill.py` | Fulfillment, from strategy function to accepted run | New (D18) |
+| `accepted.py` | The accepted run and its authority seed | New (D17) |
+| `text.py` | The written form: printer, parser and cold loading | New (D16) |
+| `reference/` | The reference semantics, for conformance and the doctor's dry run | `reference.py`, `product_reference.py`, `standins.py` |
+| `prepare/` | Implementation matching, effect checks, fusion and lowering | `prepare.py`, `local_rewrite.py`, `target.py`, `target_bindings.py` |
+| `runtime/` | The coordinator, invocations, streams and admission, claims, leases and protection, requests, the cut protocol and bounded bookkeeping | The research `*_runtime.py` modules; `access.py`, `progress.py` and `workers.py` from `execution_candidate` |
+| `seams.py` | The owner, implementation and device seams | New (D16) |
+| `devices/` | Device adapters for the host, PyTorch CUDA and the project's backend | New (D15) |
+
+The research fixtures, stand-ins and qualification cases become the IR
+system's conformance suite under `tests/`. Research names, fixture vocabulary
+and the reference target's limits do not carry over as API.
+
+`library/runstate`, the run state, is new; D15 left this package open:
+
+| Module | Holds | Origin |
+| --- | --- | --- |
+| `owners.py` | The owner pattern: references, `Version`, `Dependencies`, evidence, attempts and cut state | New (D19) |
+| `generation.py` | `Generation`, section registration, `Publication` and the executable run that reads through them | `execution_candidate` `state.py`, split |
+| `preparation.py` | `PreparationAttempt`, `PreparationResult`, and the route and view preparation that a workflow without training also needs | `execution_candidate` `prepare.py`, split |
+| `targets.py` | `TargetRef` | New; checked against `library/optimization/targets.py` |
+| `projections.py` | One projection type per consumer | New (D19) |
+| `authority/` | `Participant`, `Binding`, `Route`, `View`, `Relationship`, the authority section, transitions, `MaterializationAttempt` and the authority's cut state | `execution_candidate` `state.py`, split |
+
+The authority holds the `Obligations` that the IR system's verifier defines.
+
+`library/training`:
+
+| Module | Holds | Origin |
+| --- | --- | --- |
+| `words/` | Training's words (unit, window, contribute, advance, zero, trigger and grant), ownership profiles, recognized capabilities and feature contracts | New (D17, D18) |
+| `trainer.py` | The Trainer: its host sequence and the standard mechanics | New; checked against `runners/trainer.py` |
+| `optimization/` | Trainer optimization: D20's types, candidate resolution and grouping, and the owner protocol for training's words | New; checked against `library/optimization/grouping.py`, `phases/optimizer.py`, `phases/training_loop.py` and `modes/` |
+| `preparation.py` | Training's preparation coordination, which adds unit candidates and backend groups to D19's attempt | New; checked against `phases/model_prep.py`, `trainer_utils.py` and each mode's `prepare_with_accelerator` |
+| `backend.py` | Backend coordination: wrappers, inseparable groups, distributed state and their cut state | New; checked against `trainer_utils.py` and the modes' synchronization handles |
+| `capabilities/` | Coordinators for validation, sampling, caching, persistence and restoration | New; checked against `phases/validation.py`, `phases/caching.py`, `sample_generation.py`, `checkpointing.py` and `orchestration_helpers.py` |
+| `observation.py` | The observation owner: metrics, validation history and traces, as facts | New; checked against the Trainer's metric fields and `training/metadata.py` |
+| `interrupts.py` | Interruption handling for the host | New; checked against `interrupts.py` |
+
+`phases/`, `modes/`, `diffusion.py`, `noise_utils.py` and `execution.py`
+retire from the package, as the coverage rows say.
+
+`library/strategies`:
+
+| Module | Holds |
+| --- | --- |
+| `<family>/` | That family's maintained strategies |
+| `recipes/` | Maintained recipes shared across strategies, such as adapters, EMA, validation, sampling and caching |
+| `shared/` | Activities shared across families |
+
+`library/launch` is new:
+
+| Module | Holds | Origin |
+| --- | --- | --- |
+| `compose.py` | The one composition of the contract and the installed implementations | New (D18) |
+| `presets.py` | Transitional presets, such as today's `mode`, resolved into a maintained strategy before fulfillment | New; checked against `training/modes/factory.py` |
+| `run.py` | Config application, fulfillment and starting the Trainer | New; checked against `train.py` |
+| `help.py`, `doctor.py` | The help and doctor commands | New (D18) |
+
+The libraries keep their packages:
+
+| Package | Holds once the rework is done |
+| --- | --- |
+| `library/models` | Components; loaders as materializers; materialization evidence; and each family's behavior in `models/<family>/`: loading, conditioning, encoding, tokenization, denoising, serializers and preparation constraints |
+| `library/adapters` | Adapter methods, shared targeting and attachment code, their contract entries and evaluators, and serializers |
+| `library/objectives`, `losses`, `timesteps` | Objective, loss and timestep implementations |
+| `library/data` | Sources, manifests, bucketing, captions and cache storage |
+| `library/optimization` | Optimizer and scheduler construction and wrappers, without target references, a plan or a grouping policy |
+| `library/pipelines` | Generation for sampling |
+| `library/performance` | Backend infrastructure for preparation and device adapters |
+
+Observability (`library/metadata`, `library/logging`) and base
+(`library/utils`, `library/constants.py`, `library/vendor`) keep their
+packages.
+
+#### Public and internal surfaces
+
+| Package | Public to the layers above | Internal |
+| --- | --- | --- |
+| `library/workflow` | The `iro` words and decorators, composition, fulfillment, the accepted run, the runtime entry, the seams and diagnostics | Passes, verifier and lowering internals |
+| `library/runstate` | The owner pattern, the authority's proposal and projection interfaces, and publication | Record storage and section internals; nothing returns a record by address |
+| `library/training` | Training's words, for strategies and recipes; the Trainer entry, for launch | Optimization, preparation, backend and the coordinators |
+| The libraries | Their declared implementations, evidence types and contract entries | Everything else |
+| `library/launch` | The launch, help and doctor entry points | Composition details |
+
+#### Coverage of today's code
+
+This table is the checklist for not forgetting anything. Each row names a
+piece of today's code and what in the new system covers its
+responsibilities. The new system is built new. Today's code is read, and may
+be run for comparison, only to check these rows. It never decides how the
+new code is shaped, and new code never imports it.
+
+Today's code may stay where it is while the new system is written, as long as
+it is identifiable and stays out of the way:
+
+- The module map above is the boundary. Code it does not list is not part of
+  the new system, and nothing in the new system depends on it.
+- Checks for the new work, such as the dependency rules, lint, type checks
+  and tests, apply to the new system. When the new work breaks one of today's
+  tests, that test moves to `tests/_deprecated/` instead of being fixed.
+- A new module may take an old file's path. If the old file is still wanted
+  for reading, it is first copied into its package's local `_deprecated/`
+  folder; comparisons can run it from the pinned baseline revision.
+
+Once an area's rows are checked, its replaced code moves to its package's
+`_deprecated/` folder. Old code moves earlier when new work would otherwise
+break it, and its rows are then checked against the `_deprecated/` copy or the
+pinned baseline (Migration Plan). Final validation deletes the folders this
+change creates. Lint, type checks and test collection already exclude them.
+The data pipeline rework shows why nothing may import them:
+`library/config/config_util.py` and three tools still import
+`library/data/_deprecated`, so that retirement is unfinished.
+
+D20 covers the Trainer's fields and the `TrainingMode` methods individually.
+Rows note today's import crossings; none of them exists in the new code.
+
+| Today | Covered by |
+| --- | --- |
+| `train.py` | A thin entry over `library/launch` |
+| `cfg.mode` and `training/modes/factory.py` | A transitional preset in `launch/presets.py`, resolved to a maintained strategy before fulfillment. No mode reaches the accepted run |
+| `TrainingStrategy` and `strategies/base/` | Strategy functions and recipes cover the facets, contract entries cover `contracts.py`, and invocation inputs carry the facts in `context.py` |
+| `strategies/factory.py` | Launch selection and fulfillment |
+| Behavior modules in `strategies/<family>/` | Family behavior in `models/<family>/`, and sampling in `pipelines`. New strategies are written in the same package |
+| `TrainingMode`, `FineTuneMode` and `AdapterMode` | Unit declarations cover subjects, and Trainer optimization covers mechanics. A recipe covers adapter intent, an authority transition covers resolution, and the adapters library covers realization (D12, D20) |
+| `training/runners/trainer.py` | `training/trainer.py`, holding only the host sequence and the standard mechanics |
+| `training/phases/` | The program's repeats and windows cover the loop, and Trainer optimization covers its mechanics. Capability coordinators cover caching, validation and sampling, and preparation covers model preparation |
+| `training/checkpointing.py` | Two owners. The persistence coordinator and serializers cover trained products; each owner's cut state and the IR system's cut protocol cover resume state (D11) |
+| `training/diffusion.py` and `noise_utils.py` | Family behavior covers latent preparation, and objectives cover noise regularization (today's `objectives → training`) |
+| `training/execution.py` | The IR runtime. Its experiment tests remain research evidence |
+| `training/metadata.py` | The observation owner's facts |
+| `LoadedModelComponent` | Materialization evidence from loaders; the canonical bound state is the authority's `Binding` |
+| `OptimizationTargetRef` | `TargetRef` in `runstate/targets.py`, which keeps the semantic part and holds no live object (today's `adapters ↔ optimization` cycle) |
+| `optimization/grouping.py` | Trainer optimization's candidate resolution and grouping |
+| `OptimizationPlan` and its groups | `UnitCandidate` and `PreparedUnit` cover the logical and execution split, and the name passes to the semantic plan (D20) |
+| `ModelConditioning`, in `strategies/base/contracts.py` and used by `data` | The conditioning payload types in `models` (today's `data → strategies`) |
+| `pool_workaround`, in `strategies/sdxl/encoding.py` and used by `pipelines` | SDXL family behavior in `models` (today's `pipelines → strategies`) |
+| TLoRA's call to `current_strategy_context()` | Not needed: the method receives what its call declares (today's `adapters → strategies`) |
+| The use of `training.checkpointing` in `adapters/shared/state_io.py` | Adapter state's cut state, through the owner pattern; serializers stay in adapters (today's `adapters → training`) |
+| EDM2's learned loss weights, whose optimizer `losses/edm2/factory.py` builds | A learned participant with its own unit (D9), while losses keep the weighting math (today's `losses → optimization`) |
+| Imports of `library.config` below launch | Each owner defines its settings type, and config composes them (today's 12 crossings into config, including `utils → config`) |
+| The import of metadata keys in `constants.py` | Not needed: base imports nothing above it |
+| `metadata/builders/run.py` and `logging/summaries.py` reading adapters, data, objectives, models and optimization | Facts and projections only (G4.5; today's six crossings) |
+| The import of `TrainingStrategy` in `training/runners/trainer.py` | Not needed: the new Trainer receives an accepted run, not a strategy (today's `training → strategies`) |
+| Research `xdsl_language` | Rewritten as `library/workflow` |
+| Research `execution_candidate` | Its owner machinery is rewritten as the IR runtime and the owners. Its asyncio coordination and worker model are the starting implementation, qualified on GPU in the first milestones. `RunState` splits into the run state and training's owners, `Lowering` into the IR system's preparation and runtime, and its older `graph.Contract` language is superseded |
+| `xdsl_candidate`, `pliron_candidate` and `executable_spike` | Research evidence; no production code imports them |
+
+#### Adapter placement
+
+Task 5.5 names these placements explicitly. Adapters are one tool among
+others, so none of these placements puts adapter-specific code in the IR
+system, the run state or the Trainer:
+
+| Item | Home |
+| --- | --- |
+| The reusable adapter integration | Maintained recipes in `strategies/recipes/`, plus the adapters library's contract entries |
+| Per-strategy method support | The strategy's declared method parameter, bounded to the methods it supports; help shows each method's status |
+| Semantic target intent | Target selectors written in the strategy or recipe |
+| Governed target resolution | An authority relationship transition, judged by the adapters library's evaluator against the loaded structure |
+| Policy-neutral target references | `TargetRef` in `runstate/targets.py`, outside the `optimization` namespace |
+| Method realization | The adapters library |
+| Parameter grouping | Trainer optimization |
+| `FineTuneMode` | Dissolved into unit declarations plus standard optimization and preparation |
+| Artifact product choice | Persistence products, chosen independently of how training treats the participant |
+| Direct plus adapter training | Allowed wherever the contract allows it, with units covering base substructure and adapter participants |
+| A mode axis | None: launch consumes presets before fulfillment |
+
+#### Choices flagged for review
+
+- Family behavior joins its family's package in `library/models`, beside the
+  loaders, rather than a separate families package.
+- `library/runstate` and `library/launch` are new packages. Like
+  `library/workflow`, their names are working names.
+
 ## Representative Case Matrix
 
 No single maintained family defines the core. The design gates use the
@@ -3635,6 +5267,17 @@ D14 records the working xDSL substrate choice. The bounded language milestones
 are completed. Their research contract types and runtime adapters do not close
 G5 or become production interfaces by default.
 
+D15 records the production architecture: layers and dependency direction,
+runtime owners, the execution model, the Trainer's role, and what existing code
+and the research packages become. Tasks 5.1–5.6 complete its types,
+representation, contract and authoring API, module placement and milestones.
+D16 records the workflow layer and the Kuroiro language. D17 records accepted
+and executable training runs. Together they cover task 5.3's representation.
+D18 records the training contract, fulfillment and authoring for task 5.4.
+D19 and D20 record the run-state and optimization types for tasks 5.1 and
+5.2, and D21 the system map and module placement for task 5.5. None of these
+decisions satisfies this gate by itself.
+
 Tasks 5.1/5.2 can develop independently from the completed exchanges; the
 6–11 dependency applies to tasks 5.3/5.4, not every production-design task.
 Any independently developed shapes still require reconciliation with those
@@ -3679,8 +5322,9 @@ Trainer responsibility
 - **Hot-loop abstraction hurts performance** → Resolve static composition and
   validation before execution; benchmark representative standard and extension
   paths during the first production milestone.
-- **Old and new authorities coexist** → Migrate coherent vertical run paths and
-  remove displaced writes/projections in the same milestone.
+- **Old and new machinery mix** → They never do. New code never imports,
+  bridges to or keeps alive the code it replaces; today's code is only read or
+  run as a sanity check (D21, Migration Plan).
 - **Metadata identity and runtime identity collapse** → Runtime authority owns
   participant incarnations; metadata stores intentional durable projections;
   artifacts and catalog/model revisions retain their own identities.
@@ -3692,39 +5336,52 @@ Trainer responsibility
 
 ## Migration Plan
 
-This section defines migration rules, not final code milestones. G5 replaces
-the outline with exact reviewed slices.
+This section defines how the work is done. The numbered milestones are
+`tasks.md` sections 12–28, which replace the outline below. Despite the
+section's name, nothing is migrated.
 
-Old and new launch paths may coexist temporarily for different runs during a
-bounded migration, but one run uses exactly one authority topology. A run
-accepted into the new arrangement must not fall through to active-strategy
-callbacks, `TrainingMode` ownership, or old Trainer binding state. Until a full
-vertical cutover is ready, the old path remains independently selected rather
-than serving as the hidden executor behind a partially installed new contract.
+The new system is built new. Today's code is a checklist for not forgetting
+anything, through D21's coverage table, and it never shapes the new design.
+It is not kept working, bridged to or maintained, and new code never imports
+it. It may stay in the tree while the new system is written, as long as it
+stays identifiable and out of the way (D21). Reading it, or running it to
+compare results, is a sanity check. Kept libraries, such as model components,
+data sources and optimizers, are used where they fit and follow D21's rules
+once the new system uses them.
+
+Before any production code is written, a baseline is pinned (`tasks.md`
+section 12). The last revision where today's trainer works is tagged, and
+short runs, a few training steps' inputs and outputs, and the G3.7 cost-probe
+numbers are recorded on the target GPU. Every later sanity check compares
+against those recordings, or reruns the pinned revision outside the working
+tree.
+
+New code is written in place, at its target path. Replaced code moves to its
+package's local `_deprecated/` folder once its coverage rows are checked, or
+earlier when new work would break it (D21). The folders this change creates
+are deleted after final validation. Intermediate revisions need not train,
+and no run ever mixes old and new machinery.
 
 1. Complete and review G1–G4 inside this change. No production code changes.
 2. Choose production types and an accepted-arrangement boundary from the
    completed consumers rather than copying the isolated spike.
-3. Construct the training-side run-state, realization, preparation,
+3. Write the training-side run-state, realization, preparation,
    optimization, capability, and Trainer-consumption surfaces against explicit
-   test-only accepted inputs. This is a dependency order for the code, not a
-   requirement that every intermediate repository revision remain runnable,
-   and it must not introduce a production bypass or an old-strategy adapter
-   disguised as the new boundary.
-4. Establish contract-guided authoring and strategy fulfillment that produces
-   those same accepted inputs for one maintained SDXL path.
-5. Cut over one coherent SDXL run path so the accepted arrangement and its
-   authority become the only current-state source; remove the displaced mode,
-   strategy callback, and Trainer projection writes for that path in the same
-   milestone.
+   test-only accepted inputs. This is a dependency order for the code, and it
+   must not introduce a production bypass or a bridge to today's strategies.
+4. Write contract-guided authoring and strategy fulfillment that produce
+   those same accepted inputs for one maintained SDXL strategy.
+5. Make one SDXL training run work end to end on the new system. Check its
+   coverage rows, then move the replaced code to `_deprecated/`.
 6. Add adapter behavior through the same accepted participant/relationship,
    optimization, persistence, and restoration boundaries; do not create a
    second adapter orchestration authority.
-7. Migrate SD and SD3 with conformance scenarios proving that the core did not
-   inherit SDXL cardinality or objective assumptions.
-8. Complete capability and research-extension migration, remove compatibility
-   paths whose consumers are gone, and archive the change only after all main
-   specs and acceptance tests agree.
+7. Write the SD and SD3 strategies with conformance scenarios proving that the
+   core did not inherit SDXL cardinality or objective assumptions.
+8. Complete the capability and research-extension work, check the remaining
+   coverage rows, and delete the `_deprecated/` folders after final
+   validation. Archive the change only after all main specs and acceptance
+   tests agree.
 
 Rollback is performed at coherent milestone boundaries. Runtime recovery from
 a failed preparation attempt follows D8; source-code rollback does not pretend
@@ -3743,3 +5400,7 @@ shapes:
   switch, or another equivalent internal mechanism; and
 - whether custom-operation authoring uses ordinary composition, a descriptor,
   a decorator, or a narrow combination.
+
+D15 now fixes package-level placement. Names and modules within those
+packages, and the remaining items above, are answered by tasks 5.1–5.5. D18
+answers the custom-operation authoring item.
