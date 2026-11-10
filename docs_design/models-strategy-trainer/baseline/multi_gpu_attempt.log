@@ -1,0 +1,57 @@
+W1110 23:18:30.809000 23020 .venv\Lib\site-packages\torch\distributed\elastic\multiprocessing\redirects.py:29] NOTE: Redirects are currently not supported in Windows or MacOs.
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\accelerate\commands\launch.py", line 1245, in <module>
+    main()
+    ~~~~^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\accelerate\commands\launch.py", line 1241, in main
+    launch_command(args)
+    ~~~~~~~~~~~~~~^^^^^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\accelerate\commands\launch.py", line 1226, in launch_command
+    multi_gpu_launcher(args)
+    ~~~~~~~~~~~~~~~~~~^^^^^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\accelerate\commands\launch.py", line 853, in multi_gpu_launcher
+    distrib_run.run(args)
+    ~~~~~~~~~~~~~~~^^^^^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\run.py", line 981, in run
+    elastic_launch(
+    ~~~~~~~~~~~~~~~
+        config=config,
+        ~~~~~~~~~~~~~~
+        entrypoint=cmd,
+        ~~~~~~~~~~~~~~~
+    )(*cmd_args)
+    ~^^^^^^^^^^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\launcher\api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\launcher\api.py", line 308, in launch_agent
+    result = agent.run()
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\metrics\api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\agent\server\api.py", line 731, in run
+    result = self._invoke_run(role)
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\agent\server\api.py", line 902, in _invoke_run
+    self._initialize_workers(self._worker_group)
+    ~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\metrics\api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\agent\server\api.py", line 699, in _initialize_workers
+    self._rendezvous(worker_group)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\metrics\api.py", line 134, in wrapper
+    result = f(*args, **kwargs)
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\agent\server\api.py", line 514, in _rendezvous
+    rdzv_info = spec.rdzv_handler.next_rendezvous()
+  File "D:\Projects\sd-scripts\.venv\Lib\site-packages\torch\distributed\elastic\rendezvous\static_tcp_rendezvous.py", line 67, in next_rendezvous
+    self._store = TCPStore(  # type: ignore[call-arg]
+                  ~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^
+        self.master_addr,
+        ^^^^^^^^^^^^^^^^^
+    ...<4 lines>...
+        multi_tenant=True,
+        ^^^^^^^^^^^^^^^^^^
+    )
+    ^
+torch.distributed.DistStoreError: use_libuv was requested but PyTorch was built without libuv support, run with USE_LIBUV=0 to disable it.
+EXIT=1
