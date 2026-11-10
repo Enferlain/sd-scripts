@@ -372,7 +372,7 @@ stays normative.
 | Run | One execution of a strategy: first the accepted run, then the executable run as it executes | D17, D21 |
 | Run authority | The owner of participant and relationship state | D6, D19 |
 | Snapshot | A fixed published version of some state, and the access mode that reads one | D16, D19 |
-| Strategy | Python that an author writes to define a run: a strategy function and its activities. Its read, accepted and prepared forms are the same strategy at later stages. Training, evaluation, caching and sampling runs all have strategies. A maintained strategy ships with the repository for one thing trained, with adapters, EMA and similar as choices inside it | D18, D21 |
+| Strategy | Python that an author writes to define a run: a strategy function, its activities and any implementations of its own. Its read, accepted and prepared forms are the same strategy at later stages. Training, evaluation, caching and sampling runs all have strategies. A maintained strategy ships with the repository for one thing trained, with adapters, EMA and similar as choices inside it | D18, D21 |
 | Transition | A typed proposal for a governed change | D7, D19 |
 | Unit | An independently advanced optimization responsibility | D9, D20 |
 | Version | Which state a use saw | D19 |
@@ -2783,13 +2783,58 @@ and protected live access.
 
 Snapshot selection names a published-version rule or current-at-start
 materialization; the latter requires atomically resolving and isolating that
-version before use. Protected live reads select current-at-start freshness;
+version before use. Protected live reads select current-at-start freshness,
+or the version at the request for requested work (below);
 owner updates and grants carry their owning protocol's freshness requirements.
 Concurrent producer and update activities may progress between protected uses,
 but an incompatible mutation cannot race a protected use. A target rejects an
 unsupported realization/selection combination rather than substituting one.
 The existing owner engine's protected production epochs realize
 `protected_current`; snapshot realization is new work.
+
+**Requested work may select the version at its request.** A use inside a
+handler may select the version of owner state that was current when its
+request was made (working spelling `at_request`), in place of the version
+current when the handler starts. A request is made at the point its
+obligation is first owned: by the emitting invocation while it waits for
+request capacity, or by acceptance. It is never the later point at which the
+handler is admitted. From that point two things exist, with different
+lifetimes:
+
+- The request's dependency on that version stays with the request and its
+  results until they settle.
+- A reservation keeps the live state at that version. The coordinator holds
+  it with the request, as it holds other reservations and protection (D15);
+  it is not participant or authority state. The owner stays the authority
+  for which version exists and is current, and cooperates by making
+  conflicting updates wait while the reservation stands. Where the use
+  selects protected live access, the reservation ends when the work's uses
+  complete. Where a detached realization holds the version, such as a
+  selected snapshot or a product's capture, it ends as soon as that
+  realization is complete, and updates proceed.
+
+No lease leaves its scope, and the handler still takes its lease when it
+runs. A request that ends with a cancelled or unfulfilled disposition
+releases the reservation. A target that can establish neither a live
+reservation nor a detached realization rejects the selection. Products still
+record the version actually observed, which here is the requested one. The
+selection removes the dependence on when the handler runs. It does not remove
+a dependence on when the request is made: where another activity can update
+the same state around that point, the composition's reproducibility class
+still reports it.
+
+**State selection, admission and placement are independent.** Which version a
+use observes, whether work may be admitted onto a device beside other work
+(D15), and where work runs are three separate decisions. None is inferred
+from another: work on the same device does not thereby see the same version,
+a snapshot does not make work concurrent, and work on another device does not
+thereby see an older version. They are independent in meaning, not in
+progress, because a reservation and a device admission can wait on each
+other. Two rules cover this. Preparation rejects a combination whose wait
+cycle it can prove, as a target limit. At run time, work never waits while
+holding a device for something that may need that device to progress: it
+obtains its state conditions and admitted inputs first, or gives up the
+device while it waits.
 
 **Flows declare version admission.** A flow whose products depend on versioned
 owner state declares exact-current, bounded-lag or any-with-provenance
@@ -3129,6 +3174,23 @@ and launch device work. Owners hold state.
   streams and events, and the project's own backend through its completion
   contract. Flow bounds and retained-product release also bound the device
   memory held by produced items.
+- **Device capacity.** What fits on a device is not a question about state,
+  so it is decided apart from which version a use observes (D14). A strategy
+  states only meaning: whether work of different activities may overlap. It
+  cannot command that the work fits. Work is presumed not to overlap unless
+  the strategy permits it. Preparation and the coordinator decide whether
+  permitted overlap is realized on the selected target, from the facts the
+  device adapter supplies and the measured peaks in resource observation;
+  otherwise the runtime runs the work in turn. A strategy whose meaning
+  requires work to be live together on a device that cannot hold it is
+  rejected as a target limit (D18). Implementations declare that they use a
+  device (D18). Work that holds no device memory needs no admission: a save
+  holds the device only while it captures state, not while it serializes and
+  writes. Preparation and the coordinator also decide the extent that one
+  admission covers, such as a call, a window or a handler's traversal. The
+  adapter only supplies device facts and realizes acquisition and
+  completion. The extent is settled in `tasks.md` section 14, under D14's
+  rule on waiting.
 - **Collectives.** On multi-rank targets, every rank must issue collective work
   in the same order, or the ranks hang. The runtime orders collective-issuing
   work identically on every rank, for example through one ordered lane per
@@ -3315,7 +3377,7 @@ through them and never select behavior by operation name, fixture or case.
 | Definitions | Operations and types, each with region, flow, resource, realization and decision contracts (D14) | Training units, windows and advancement; data production and filtering; model invocation and views |
 | Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence | The run authority for participants; Trainer optimization for weight updates; producers for their cursors and policies |
 | Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion | Family conditioning and denoiser calls, objectives, codecs, serializers |
-| Devices | Execution context and physical completion for one backend | Host execution; PyTorch CUDA streams and events; the project's own backend |
+| Devices | Execution context and physical completion for one backend, and what it knows of the device's capacity | Host execution; PyTorch CUDA streams and events; the project's own backend |
 
 Registration through every seam is explicit composition (D2).
 
@@ -3422,6 +3484,7 @@ Applying the one-word rule turned up four collisions:
 | Access | `access`, `lease` | Use a resource within a scope; the handle the scope gives its body, which cannot leave it | `lang.access`, `capability` | Exists |
 | Access | `snapshot`, `protected_current`, `owner_update`, `grant` | The closed set of access modes (D14); grant profiles come from domains | Mode values | Exists; `grant` planned |
 | Access | `current_at_start`, `published`, `initial` | Version selection, separate from the mode | Freshness values | Exists |
+| Access | `at_request` | Version selection for requested work: the version current when the request was made; a reservation held with the request keeps it until the work completes or a detached realization holds it (D14); a working spelling | — | Planned |
 | Access | `exact_current`, `bounded_lag`, `any_with_provenance` | Stream admission policies | Admission values | Exists |
 | Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its explicit release | `retained`, `release_product` | Exists |
 | Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
@@ -3671,6 +3734,17 @@ capability's implementations own their state (D5, D21). Reads
 of model weights use `protected_current`, so no advancement races a read in
 another activity, such as validation's.
 
+Which weights such work sees is stated, never left to scheduling. The shared
+rhythm in `strategies/features/` requests validation, sampling and saving
+with the version at the request (D14), so work requested at one point in a
+unit's progress observes the weights of that point. The rhythm's handlers
+read with protected live access by default, so advancement waits until that
+work completes. A strategy that selects a snapshot instead lets training
+continue once the snapshot holds that version, on the same device or
+another. A save reserves the version only until its capture completes (D11).
+A strategy that wants the weights current when the handler starts selects
+`current_at_start` instead.
+
 #### On GPU
 
 - **Execution.** A window's body runs as prepared straight-line code on a
@@ -3785,20 +3859,27 @@ its own beyond its entries.
 #### Authoring: the Python face of Kuroiro
 
 Writing a strategy is where everything trainable starts, so starting one must
-not be a challenge. A strategy is still real code that states how the run
-works. It is not a detailed configuration for a hidden engine. Configuration
-is a user-facing filter: it only narrows the choices and parameters a strategy
-declares.
+not be a challenge. A strategy is still code that someone writes: the
+repository's maintainers, or whoever is training something. It states how the
+run works, and it is not a detailed configuration for a hidden engine. Not all
+such code is part of the repository, and a strategy may hold code that is
+relevant only to it, such as an implementation that no other strategy uses.
+That code is part of the strategy.
+Adding to what the system offers every strategy is the separate topic of
+extending the system (D21). Configuration is a user-facing filter: it only
+narrows the choices and parameters a strategy declares.
 
 A strategy contains three kinds of code, and an author always knows which kind
 they are writing:
 
-- **Activities** are plain Python functions that say what one piece of work
-  does over its lifetime. Examples are a producer that yields items, a
-  training activity that takes batches and contributes, and a handler that
-  answers requests. The system reads their source into Kuroiro, the way Triton
-  and Taichi read kernels. Their loops, branches, takes, yields and requests
-  become the strategy's structure in Kuroiro.
+- **Activities** are functions, written in a subset of Python, that say what
+  one piece of work does over its lifetime. Examples are a producer that
+  yields items, a training activity that takes batches and contributes, and a
+  handler that answers requests. The system reads their source into Kuroiro,
+  the way Triton and Taichi read kernels. Their loops, branches, takes, yields
+  and requests become the strategy's structure in Kuroiro. An activity is
+  read, never run as written: what a run executes is the strategy as it was
+  read and accepted (D16).
 - **Implementations** are ordinary Python and PyTorch functions that do the
   math, such as encoding, denoising and evaluation. They run as written and
   are called through their declarations.
@@ -3854,23 +3935,36 @@ Reading activities follows fixed rules:
 - Attribute access such as `.protected_current` or `.snapshot` on a
   participant selects the access mode.
 
-Activities are a restricted subset of Python. They may call implementations,
-use participants and use the language's words, and may do nothing else with
-hidden effects. Anything outside the subset is rejected, with its line.
+Activities are written in a restricted subset of Python. They may call
+implementations, use participants and use the language's words, and may do
+nothing else with hidden effects. Anything outside the subset is rejected,
+with its line. Code that has to run as ordinary Python belongs in an
+implementation or in the strategy function.
 
 Pieces connect only to what the author hands them. Activities and strategies
 can be reused, and a strategy can build on another without forking it.
 
 Implementations are declared with a decorator that records their contract:
-signature, version, effects, concurrency safety and completion. The decorator
-has no registration side effect; the launcher installs implementations
-explicitly (D2).
+signature, version, effects, concurrency safety and completion. Which
+participants a call reads or updates is not written a second time. The lease
+types in the signature say it, and verification checks each call site's
+access mode against them (D14). The decorator states only what the signature
+cannot show, such as use of randomness, external input or output,
+collectives, use of a device, anything kept beyond the call, and state
+private to the implementation. The decorator has no registration side effect;
+the launcher installs implementations explicitly (D2).
 
 ```python
-@iro.implementation(version=1, reads=["unet"])
-def denoise(unet: ModelLease, batch: LatentBatch) -> Loss:
-    ...  # the selected PyTorch computation
+@iro.implementation(version=1, effects=["device"])
+def denoise(unet: ReadLease, batch: LatentBatch) -> Loss:
+    ...  # the selected PyTorch computation; the lease type says it reads
 ```
+
+Implementations remain trusted numerical code (D14). The system guarantees
+coordination according to these typed and declared effects; it does not
+sandbox Python. Qualification tests may detect some undeclared mutation, such
+as an in-place write through a read lease, and reject the implementation, but
+that detection is never part of the guarantee.
 
 The design reads source rather than recording builder calls, because
 recording would need a special call for every decision made at run time. The
@@ -3878,6 +3972,16 @@ choice affects only the front end. Both approaches produce the same Kuroiro
 form, so verification and the runtime do not depend on it. The first real
 maintained strategy confirms the direction, and the front end defines the
 subset's exact boundaries.
+
+The authored activity is never executed as the run's code, although that
+would make debugging direct. What a run executes must be exactly the accepted
+strategy that was printed and saved, on a first launch and on a resume.
+Executing the Python beside it would make the function a second authority
+that could differ from what was accepted without anyone seeing it. Instead,
+every operation keeps its origin through normalization and preparation (D14),
+and lowered code carries the authored file and line wherever one authored
+line corresponds. Runtime failures, traces and debuggers then point at
+authored lines.
 
 #### Authoring support
 
@@ -4081,6 +4185,8 @@ observers (D8).
   (G3.7). A lease taken from one generation stays valid for its scope. A
   publication that conflicts with an outstanding protected use waits for it,
   is rejected or uses supported isolation (`training-runtime-preparation`).
+  A reservation held for a pending request counts as outstanding use here
+  (D14).
 - **Withdrawal.** Each owner's section can withdraw the realizations that
   depend on changed revisions without fallible work. An authority transition
   and the withdrawals it causes therefore publish in one generation, and
@@ -4624,7 +4730,8 @@ Launch also runs strategies the repository did not make, written from what
 the contract offers; how it finds them is settled when launch is built
 (`tasks.md` 17.1). Extending the system with new features, implementations
 or operations from outside the repository is a different topic and is still
-open.
+open. A strategy's own code, including an implementation only it uses, is
+part of that strategy and is not an extension.
 
 `library/launch` is new:
 
@@ -4785,7 +4892,8 @@ the strategy's business:
 - Working names: the component kinds, the assemblies' folder,
   `library/workflow`, `library/runstate`, `library/launch`,
   `library/conditioning`, `library/artifacts`, `library/evaluation`, and the
-  spelling `iro.derived` for the derived-word operation.
+  spellings `iro.derived` for the derived-word operation and `at_request`
+  for the version selection of requested work.
 
 ## Representative Case Matrix
 

@@ -289,6 +289,13 @@ substitute another realization or freshness guarantee.
 - **AND** the owner's updates MUST NOT be required to wait for that use
 - **AND** current-at-start snapshot selection MUST establish coherent isolation/publication before the snapshot is used
 
+#### Scenario: Requested work selects the version at its request
+- **WHEN** a use inside requested work selects the version of owner state that was current when its request obligation was first owned
+- **THEN** that version MUST remain available until the request's required uses complete or a detached realization holds it, by making conflicting updates wait or by isolating a snapshot of it
+- **AND** handler admission MUST NOT be the point at which that version is selected
+- **AND** a target unable to establish either MUST reject the selection rather than let the work observe a later version
+- **AND** the use's product MUST still record the actual state version it observed
+
 ### Requirement: Flow admission declares its version policy
 A flow whose products depend on versioned owner state SHALL declare an
 admission policy over the actual production version: exact current, bounded
