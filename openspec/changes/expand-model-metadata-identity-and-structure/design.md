@@ -45,7 +45,7 @@ The design must also respect these product decisions:
 - Give portable catalog identity one durable assignment/resolution boundary backed by accepted metadata records.
 - Preserve source, component materialization, transformation, realization, output, revision, and lineage provenance.
 - Represent evolving realization composition as immutable ordered observations with explicit finalization.
-- Provide canonical component identities, revision/realization structural path bindings, observation-scoped object/storage evidence, source-key mappings, and descriptors at selectable granularity.
+- Provide canonical component identities, revision/realization structural path associations, observation-scoped object/storage evidence, source-key mappings, and descriptors at selectable granularity.
 - Support inexpensive recorded lookups and bounded on-demand resolution through the shared query system.
 - Make completeness, source limitations, evidence strength, derivation version, cost, and freshness explicit.
 - Reuse accepted structural identities in optimization and resource facts.
@@ -74,7 +74,7 @@ The system will represent at least these identity layers:
 4. **Source selection identity**: the selected state/component namespace extracted from a representation, such as EMA versus non-EMA weights or one component within a multi-object checkpoint.
 5. **Run realization identity**: the run-scoped composition materialized for execution, potentially from several source selections.
 6. **Produced artifact identity**: one serialized output.
-7. **Structural binding and observation identities**: qualified revision or realization paths plus observation-scoped live-object/storage evidence.
+7. **Structural association and observation identities**: qualified revision or realization paths plus observation-scoped live-object/storage evidence.
 
 An exact file digest proves representation equality, not source-selection, revision, catalog-lineage, or general model equality. One checkpoint representation may contain several selectable states. A canonical state fingerprint may prove equality under one declared normalization policy. A lineage edge states derivation or descent; it does not prove equal behavior. A realization describes execution composition and may combine selections from more than one source representation, catalog model, or revision.
 
@@ -156,7 +156,7 @@ The model-loading contract will return a typed result rather than a tuple. It co
 - a common ordered collection of configured/resolved source observations;
 - a common ordered collection of source selections, including immutable revision/variant/subfolder and selected-state/namespace evidence when applicable;
 - exact representation artifact or manifest evidence when available;
-- a common ordered collection of component-to-selection bindings;
+- a common ordered collection of component-to-selection associations;
 - a common ordered collection of typed loading decisions and transformations covering fallback outcomes, omissions, external replacements, and conversions;
 - catalog resolution or enough evidence for the catalog boundary to resolve it;
 - explicit evidence limitations.
@@ -170,7 +170,7 @@ realization observations. Live module objects remain in scoped candidate or
 current consumer projections and are never stored as metadata or retained in a
 competing Trainer-owned binding collection.
 
-All families produce this same loading-result schema. SD and SDXL populate it with their selected local-checkpoint or Diffusers sources, external VAE bindings, conversions, and fallback decisions. SD3 populates the same collections with its unified checkpoint plus any independently selected CLIP-L, CLIP-G, T5, VAE, or deferred denoiser sources. A future family may declare different component topology and namespaced operation details, but it does not define a family-specific provenance shape or require a central family-name branch.
+All families produce this same loading-result schema. SD and SDXL populate it with their selected local-checkpoint or Diffusers sources, external VAE associations, conversions, and fallback decisions. SD3 populates the same collections with its unified checkpoint plus any independently selected CLIP-L, CLIP-G, T5, VAE, or deferred denoiser sources. A future family may declare different component topology and namespaced operation details, but it does not define a family-specific provenance shape or require a central family-name branch.
 
 Alternative considered: reconstruct provenance from config after loading. Rejected because config expresses intent, not the successful source, fallback, conversion, or component composition.
 
@@ -190,7 +190,7 @@ One stable run-scoped realization identity owns an ordered sequence of immutable
 
 - a monotonically increasing revision;
 - lifecycle state (`initial`, `intermediate`, or `final`);
-- observed component identities/presence/component-to-selection bindings in family declaration order;
+- observed component identities/presence/component-to-selection associations in family declaration order;
 - the lifecycle boundary and timestamp/order evidence;
 - links to the preceding revision and applicable source/materialization facts.
 
@@ -225,7 +225,7 @@ durable coverage without undoing a reached runtime publication; delivery retry
 does not repeat the publication.
 
 Shared target references follow the rework's policy-neutral semantics and
-revision-pinned live access. Catalog and structural path-binding associations
+revision-pinned live access. Catalog and structural path associations
 are optional evidence where available, not a prerequisite for an otherwise
 valid live view. Consumers retain distinct path provenance and handle physical
 aliases under their own accepted ownership/grouping policy. Metadata does not
@@ -238,7 +238,7 @@ Alternative considered: mutate the first realization/component records. Rejected
 
 ### Decision: Model structure uses qualified identities and scoped inventories
 
-Structural path-binding identities derive from an accepted catalog revision or realization and the family-declared top-level component identity. Revision-qualified and realization-qualified bindings are separate typed forms: revision bindings describe reusable accepted state, while realization bindings describe what exists in one execution after its selected materialization and runtime replacements. Below that boundary they preserve kind and component-local path:
+Structural path-association identities derive from an accepted catalog revision or realization and the family-declared top-level component identity. Revision-qualified and realization-qualified associations are separate typed forms: revision associations describe reusable accepted state, while realization associations describe what exists in one execution after its selected materialization and runtime replacements. Below that boundary they preserve kind and component-local path:
 
 ```text
 <owner>/component/<component-key>/module/<path>
@@ -247,7 +247,7 @@ Structural path-binding identities derive from an accepted catalog revision or r
 <owner>/component/<component-key>/tensor/<source-key>
 ```
 
-Each qualified path remains a distinct binding identity. A live observation may relate several path bindings to one observation-scoped tensor/parameter object identity, and several live objects may relate to one observation-scoped storage-group identity. Serialized source-key bindings are separate again and may map one-to-many or many-to-one to runtime path bindings after conversion. Object pointers may help deduplicate within an observation but are never persisted as durable identity. Optimization deduplication continues to use live-object semantics rather than assuming path-binding count equals unique trainable-object count.
+Each qualified path remains a distinct association identity. A live observation may relate several path associations to one observation-scoped tensor/parameter object identity, and several live objects may relate to one observation-scoped storage-group identity. Serialized source-key associations are separate again and may map one-to-many or many-to-one to runtime path associations after conversion. Object pointers may help deduplicate within an observation but are never persisted as durable identity. Optimization deduplication continues to use live-object semantics rather than assuming path-association count equals unique trainable-object count.
 
 An inventory declares:
 
@@ -281,7 +281,7 @@ This distinction is important:
 - **file** accepts it into durable metadata;
 - **query** selects relevant accepted facts and, when explicitly allowed, coordinates resolution.
 
-Execution-owning code may use recorded immutable entity facts when validity is established. It should use live domain state for mutable execution decisions whose recorded observation may be stale. There is no blanket rule that execution code must always re-inspect live model state.
+Execution-owning code may use recorded immutable entity facts when validity is established. It should use live domain state, read through its owner's accepted projection, for mutable execution decisions whose recorded observation may be stale. There is no blanket rule that execution code must always re-inspect live model state.
 
 ### Decision: Structural metadata consumes the shared query capability
 
@@ -325,7 +325,7 @@ Unknown external metadata is preserved as source evidence when policy permits, w
 ### Decision: Integration uses the rework's concrete G5 types
 
 The rework's G5 decisions (D19–D21 in its design) now name the concrete
-boundary this change builds on. Task 4.1 checked this change against them:
+boundary this change builds on. Task 4.1 checks this change against them:
 
 - The typed loading result is materialization evidence. A loader returns it
   inside the rework's `MaterializationAttempt`, recording that attempt and the
@@ -337,14 +337,20 @@ boundary this change builds on. Task 4.1 checked this change against them:
   followed by a materialization transition.
 - Metadata consumes accepted facts and projections. A live structural resolver
   reads a revision-pinned inspection view under a scoped lease and keeps no
-  live object.
+  live object. The work that runs the resolver obtains that lease from the
+  run authority through the rework's coordinator and hands the resolver the
+  view for its scope; metadata code never acquires a lease itself.
 - Shared target references are the rework's `TargetRef`. This change's catalog
   and structural path associations are optional fields on it and never replace
   its semantic identity.
 - Sections 4 and 6 land with the rework's `tasks.md` sections 15, 16 and 18
-  (authority publication and loading evidence), section 12 with sections 16
-  and 19 (optimization and adapters), and sections 9–11 with section 25
-  (observability and metadata).
+  (authority publication and loading evidence). Task 4.7 completes at its
+  section 21, once SD and SD3 exist, and task 6.6 needs product persistence
+  from its section 23.
+- Section 5 lands with the rework's new loaders: SDXL in its section 18, SD
+  and SD3 in its section 21. Today's loaders are not edited.
+- Sections 9–11 land with its section 25 (observability and metadata).
+  Section 12 depends on them, so it lands with or after section 25.
 
 ## Risks / Trade-offs
 
@@ -361,13 +367,13 @@ boundary this change builds on. Task 4.1 checked this change against them:
 
 1. Freeze current model-realization behavior and loader-source fixtures before changing contracts.
 2. Add catalog/provenance/composition types and persistent registration behind additive central APIs.
-3. Migrate SD, SDXL, and SD3 loading to typed results and file initial/final composition observations.
+3. Have the rework's new SD, SDXL, and SD3 loaders return typed results (its `tasks.md` sections 18 and 21) and file initial/final composition observations.
 4. Enable portable identity and exact unseen-source digest registration, then carry selected identity/provenance through Kuro projections.
-5. Verify restart, rename, fallback, override, deferred-loading, conflict, and lineage behavior; retain the old run-realization projection during compatibility migration.
+5. Verify restart, rename, fallback, override, deferred-loading, conflict, and lineage behavior on the new loaders, comparing the run-realization projection with the rework's pinned baseline instead of keeping the old one running.
 6. Pause at the documented handoff until the shared query and qualified resource-component dependencies are accepted.
 7. Add qualified structural inventories/descriptors/resolvers, then integrate optimization and resource consumers.
 8. Introduce fingerprint policies incrementally; keep the first canonical-state policy candidate-only even after its fixture matrix passes. Fixture evidence may inform a future explicitly accepted policy/spec change; it does not itself grant automatic equality or merge authority.
-9. Remove only superseded active seams after parity and migration-ledger checks. `tools/` and textual inversion remain untouched.
+9. Remove only superseded metadata seams after parity and migration-ledger checks; today's loaders retire with the rework's coverage rows. `tools/` and textual inversion remain untouched.
 
 The active library must not depend on `tools/` for catalog, provenance, or structure behavior. If the audit finds such a dependency, the active caller is migrated to a library-owned boundary or the milestone stops; `tools/` itself is not edited to complete this change. The dedicated textual-inversion runtime is explicitly exempt from the new typed loading contract during this change and remains a deferred legacy path rather than evidence that the active migration is incomplete.
 

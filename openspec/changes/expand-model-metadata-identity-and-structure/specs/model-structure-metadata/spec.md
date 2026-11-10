@@ -1,16 +1,16 @@
 ## ADDED Requirements
 
-### Requirement: Model structure separates path bindings, live objects, storage, and source keys
-The metadata system SHALL represent revision-qualified and realization-qualified component/module/parameter/buffer path bindings as separate typed identities while keeping observation-local live-object, storage-group, and serialized source-key identities distinct.
+### Requirement: Model structure separates path associations, live objects, storage, and source keys
+The metadata system SHALL represent revision-qualified and realization-qualified component/module/parameter/buffer path associations as separate typed identities while keeping observation-local live-object, storage-group, and serialized source-key identities distinct.
 
 #### Scenario: Same local path exists in two components
 - **WHEN** two components each contain a tensor path such as `weight`
-- **THEN** their structural path-binding identities MUST remain distinct through owner and component qualification
+- **THEN** their structural path-association identities MUST remain distinct through owner and component qualification
 - **AND** the component-local path MUST remain a queryable fact
 
 #### Scenario: Revision and realization expose the same path
 - **WHEN** one accepted revision path is materialized in a run realization
-- **THEN** the revision-qualified reusable binding and realization-qualified runtime binding MUST remain distinct typed identities
+- **THEN** the revision-qualified reusable association and realization-qualified runtime association MUST remain distinct typed identities
 - **AND** an explicit relationship MAY connect them when materialization evidence supports it
 
 #### Scenario: Live object is replaced between runs
@@ -20,8 +20,8 @@ The metadata system SHALL represent revision-qualified and realization-qualified
 
 #### Scenario: Several paths name one live object
 - **WHEN** one live parameter or tensor object is reachable through multiple qualified paths
-- **THEN** every path MUST remain a distinct binding identity
-- **AND** the live observation MAY relate those bindings to one observation-scoped object identity
+- **THEN** every path MUST remain a distinct association identity
+- **AND** the live observation MAY relate those associations to one observation-scoped object identity
 
 #### Scenario: Shared storage is observed
 - **WHEN** multiple live tensor names share storage and the source supports detecting it
@@ -29,9 +29,9 @@ The metadata system SHALL represent revision-qualified and realization-qualified
 - **AND** shared storage MUST NOT cause the tensor names to collapse into one structural identity
 
 #### Scenario: Source/runtime mapping is non-bijective
-- **WHEN** conversion maps one serialized source key to several runtime bindings or several source keys to one runtime binding
+- **WHEN** conversion maps one serialized source key to several runtime associations or several source keys to one runtime association
 - **THEN** the metadata graph MUST preserve the one-to-many or many-to-one mapping explicitly
-- **AND** it MUST NOT collapse source-key identity, path-binding identity, live-object identity, or storage identity
+- **AND** it MUST NOT collapse source-key identity, path-association identity, live-object identity, or storage identity
 
 ### Requirement: Structural inventories declare dimension-scoped coverage
 Every structural inventory SHALL declare its owner, source type, included kinds, path/traversal policy, derivation version, cost class, and a typed collection of coverage claims whose dimension/scope, status, evidence basis, and omissions can vary independently.

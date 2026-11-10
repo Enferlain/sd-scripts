@@ -100,13 +100,13 @@ conformance implementations, or a combination.
 
 #### Scenario: Complete definition is accepted
 - **WHEN** every selected concern and bounded choice is mutually compatible under the active contract
-- **THEN** fulfillment MUST produce one semantically accepted run arrangement with its authoritative obligations and one seeded run authority
+- **THEN** fulfillment MUST produce one semantically accepted run arrangement with its authoritative obligations and one authority seed
 - **AND** it MUST distinguish that semantic acceptance from fulfilled executable readiness
 
 #### Scenario: Complete definition is rejected
 - **WHEN** selected behavior is missing, incompatible, unknown as maintained behavior, or uses undeclared extension authority
 - **THEN** fulfillment MUST return detailed author-facing rejection information
-- **AND** no Trainer-acceptable arrangement or run authority may be produced
+- **AND** no Trainer-acceptable arrangement or authority seed may be produced
 
 ### Requirement: Fulfillment specializes the contract into one run-specific obligation set
 Successful fulfillment SHALL specialize the general contract meanings into one
@@ -154,7 +154,7 @@ while any obligation required by its checkpoint is unfulfilled.
 ### Requirement: Late choices are evaluated against current obligations
 A bounded configuration choice known during fulfillment SHALL be evaluated then;
 a request deliberately made later SHALL be evaluated before its capability use
-begins against the same current obligations.
+begins against the run's current obligations.
 
 #### Scenario: Capability request is made after fulfillment
 - **WHEN** an accepted capability permits a bounded request to be supplied later

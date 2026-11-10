@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Every family uses one uniform loading-result schema
-Model loading SHALL preserve the source that actually succeeded through one shared typed loading-result schema containing ordered source observations, source selections, component-to-selection bindings, loading decisions, transformations, and evidence limitations.
+Model loading SHALL preserve the source that actually succeeded through one shared typed loading-result schema containing ordered source observations, source selections, component-to-selection associations, loading decisions, transformations, and evidence limitations.
 
 #### Scenario: Local checkpoint is loaded
 - **WHEN** a family loader successfully loads a local checkpoint
@@ -15,17 +15,17 @@ Model loading SHALL preserve the source that actually succeeded through one shar
 
 #### Scenario: Component uses an external override
 - **WHEN** a VAE, text encoder, denoiser, or future component is loaded from a source different from the primary source
-- **THEN** that component MUST have its own component-to-selection binding and replacement/materialization evidence
+- **THEN** that component MUST have its own component-to-selection association and replacement/materialization evidence
 - **AND** the realization MUST NOT imply that every component came from the primary source
 
 #### Scenario: Source evidence is unavailable
 - **WHEN** a loader cannot determine a source fact reliably
 - **THEN** it MUST record the limitation or omit the unsupported claim according to validation
-- **AND** it MUST NOT fabricate a revision, digest, component binding, or source kind
+- **AND** it MUST NOT fabricate a revision, digest, component association, or source kind
 
 #### Scenario: Future family has different topology
 - **WHEN** a future family declares components or source layout unlike SD, SDXL, or SD3
-- **THEN** it MUST populate the same source, selection, binding, decision, transformation, and limitation collections
+- **THEN** it MUST populate the same source, selection, association, decision, transformation, and limitation collections
 - **AND** it MUST NOT require family-specific provenance fields or a central family-name branch
 
 ### Requirement: Materialization provenance is selection-aware, component-aware, and ordered
@@ -33,13 +33,13 @@ The metadata system SHALL represent how selected state within source representat
 
 #### Scenario: Unified artifact supplies several components
 - **WHEN** one source artifact supplies multiple declared components
-- **THEN** each realized component MUST retain a binding to its source selection and extraction/materialization evidence
+- **THEN** each realized component MUST retain an association to its source selection and extraction/materialization evidence
 - **AND** components MUST remain distinct accepted identities
 
 #### Scenario: One checkpoint supplies EMA and non-EMA state
 - **WHEN** separate loads select EMA and non-EMA state from the same exact checkpoint representation
 - **THEN** both loading results MUST reference the same source-representation identity
-- **AND** their source-selection and component-binding evidence MUST remain distinct
+- **AND** their source-selection and component-association evidence MUST remain distinct
 
 #### Scenario: Declared component is omitted
 - **WHEN** a family-declared component is intentionally absent or deferred
@@ -79,7 +79,7 @@ immutability of the run or current readiness for a later checkpoint.
 #### Scenario: Initial loading completes
 - **WHEN** the first loading candidates become authority-published state
 - **THEN** the system MUST file composition revision 1 with `initial` state
-- **AND** it MUST preserve component presence and component-to-selection bindings in family declaration order
+- **AND** it MUST preserve component presence and component-to-selection associations in family declaration order
 
 #### Scenario: Deferred component materializes
 - **WHEN** a later authority publication accepts a previously absent component

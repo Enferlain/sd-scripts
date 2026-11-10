@@ -299,7 +299,7 @@ cache-production traversal remains with caching coordination.
 - **AND** an incomplete contribution MUST NOT be reported as an exact recoverable input position
 
 ### Requirement: Input handoffs preserve work identity and boundaries
-Each handoff SHALL preserve the work and logical-example identity, provenance,
+Each input handoff SHALL preserve the work and logical-example identity, provenance,
 dependency revisions, consumer representation, and boundaries required by the
 selected computation, accounting, or restoration policy. The core exchange SHALL
 NOT require universal image, token, epoch, or fixed-batch fields.
@@ -498,8 +498,8 @@ require the same state.
 
 ### Requirement: Conflicting work waits, is rejected or is isolated
 Conflicting work SHALL wait, be rejected, or use a supported isolation policy.
-Freshness checks alone SHALL NOT substitute for protection, and current-use
-protection SHALL NOT require a particular lock.
+Freshness checks alone SHALL NOT substitute for protection. This requirement
+SHALL NOT prescribe a particular lock.
 
 #### Scenario: A conflicting publication follows a successful freshness check
 - **WHEN** an admitted use still needs current state and another owner proposes an incompatible edit or publication
@@ -538,7 +538,8 @@ safety checks SHALL remain in the measured scope.
 - **AND** dispatch-only or CPU-local results MUST NOT claim full Trainer, granted-region, or backend performance
 
 ### Requirement: Cost budgets cover required coordination and scale with due work
-New required coordination or guards SHALL be present in both compared paths and
+New required coordination or guards SHALL be present in both the measured
+path and its matched reference and
 receive a separately justified budget rather than be omitted to fit an earlier
 scope. Dispatch cost SHALL scale with due work and its relevant dependencies
 rather than with unrelated dormant arrangement size. Numerical tolerances and

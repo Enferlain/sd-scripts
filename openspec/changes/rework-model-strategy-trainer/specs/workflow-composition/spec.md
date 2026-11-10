@@ -3,7 +3,7 @@
 Define the shared composition language for stateful, heterogeneous data and
 model work: region, flow, resource and realization contracts; invocation,
 pending work and settlement; access modes and version admission; ownership of
-items and scoped capabilities; and the reference semantics that realizations
+items and leases; and the reference semantics that realizations
 conform to. Training is one domain that composes these contracts; a data-only
 composition is valid without any training meaning.
 
@@ -48,15 +48,16 @@ SHALL use an explicit applicable rule rather than inherit ordered assumptions.
 - **THEN** ordered-value verification MUST preserve that recurrence
 - **AND** a sibling region's entry or a later local result MUST NOT substitute for the declared argument
 
-### Requirement: One selected binding contract bounds resource effects
-Installed binding contracts SHALL declare required resource reads/updates and
-possible additional unknown effects. Preparation and transformation legality
+### Requirement: One implementation contract bounds resource effects
+Installed implementation contracts SHALL state required resource reads/updates
+through their typed argument positions and declare possible additional unknown
+effects. Preparation and transformation legality
 SHALL consume that declaration, separately from invocation authority, actual
 reported effects/outcomes and physical settlement. Requirements SHALL follow
 actual argument positions and resource identities, not an enclosing scope alone.
 
-#### Scenario: An update binding receives a read capability
-- **WHEN** an actual argument cannot satisfy its binding's declared update requirement
+#### Scenario: An update position receives a read lease
+- **WHEN** an actual argument cannot satisfy its implementation's update requirement
 - **THEN** preparation MUST reject the mismatch before dependent readiness or effects
 - **AND** the bounded corruption control MUST reject before resource factories or physical work enter
 - **AND** runtime active-authority/current-version checks MUST remain in force for executed calls
@@ -67,7 +68,7 @@ actual argument positions and resource identities, not an enclosing scope alone.
 - **AND** the unrelated writer MUST NOT supply the missing authority
 
 #### Scenario: Unknown effects accompany otherwise valid selected work
-- **WHEN** a valid binding declares additional unknown effects
+- **WHEN** a valid implementation declares additional unknown effects
 - **THEN** ordinary execution MAY proceed under its declared authority and completion rules
 - **AND** transformations MUST conservatively honor the unknown effects
 - **AND** neither unknown nor undeclared effects may authorize an otherwise undeclared resource update
@@ -164,14 +165,14 @@ from input waits and initialized feedback.
 - **AND** queue capacity alone MUST NOT be treated as proof of progress or termination
 
 ### Requirement: Prepared realizations preserve semantic correspondence
-Normalized documents, prepared fragments and cold-loaded artifacts SHALL
-correspond to the verified accepted structure, captures, bindings, lifetimes
+Normalized documents, prepared fragments and cold-loaded written forms SHALL
+correspond to the verified accepted structure, captures, implementations, lifetimes
 and request contracts they realize. Rejection SHALL distinguish invalid
 accepted meaning from valid meaning that the selected target cannot realize,
 and SHALL report each at its earliest authoritative boundary.
 
 #### Scenario: A saved prepared claim omits an enclosing request obligation
-- **WHEN** normalization or cold loading presents a prepared claim inconsistent with the verified source, capture, binding, lifetime or request contracts
+- **WHEN** normalization or cold loading presents a prepared claim inconsistent with the verified source, capture, implementation, lifetime or request contracts
 - **THEN** that claim MUST NOT publish dependent readiness, authorize execution or permit effects depending on it
 - **AND** stored hashes and observation summaries MUST NOT stand in for semantic correspondence
 
@@ -185,15 +186,15 @@ and SHALL report each at its earliest authoritative boundary.
 - **THEN** the first rejection MUST identify the violated semantic contract
 - **AND** the second MUST be reported as a realization limitation of that target without changing the accepted meaning or the language-wide rules
 
-### Requirement: Item claims and scoped capabilities follow an ownership discipline
-Admitted item claims and scoped capabilities SHALL be checked as owned values,
+### Requirement: Item claims and leases follow an ownership discipline
+Admitted item claims and leases SHALL be checked as owned values,
 not ordinary copyable results. Along every execution path an item claim SHALL be
 consumed, transferred, explicitly forked or given a disposition exactly once.
-A scoped capability SHALL NOT outlive its scope except through an accepted
+A lease SHALL NOT outlive its scope except through an accepted
 owner transfer. These checks SHALL derive from types and region contracts, not
 per-composition rules.
 
-#### Scenario: A scoped capability escapes through a result or nested capture
+#### Scenario: A lease escapes through a result or nested capture
 - **WHEN** an authored yield or capture would outlive the protected scope without an accepted owner transfer retaining every required use
 - **THEN** conformance MUST reject that escape before the dependent use becomes executable
 - **AND** physical settlement of the producing call alone MUST NOT prove that a retained derivative or consumer use has ended
@@ -203,7 +204,7 @@ per-composition rules.
 - **THEN** conformance MUST reject the duplicated claim
 - **AND** sharing the payload value MUST remain permitted where its contract allows it
 
-#### Scenario: Mutually exclusive branches each retire the same claim
+#### Scenario: Mutually exclusive branches each dispose the same claim
 - **WHEN** an accepted choice routes one item claim into alternatives of which exactly one executes per invocation
 - **THEN** each alternative MAY consume the claim
 - **AND** the check MUST rely on the choice's region contract rather than on SSA use counts
@@ -216,7 +217,7 @@ completion SHALL NOT release obligations needed by dependent physical uses.
 Actual storage SHALL remain outside semantic IR.
 
 #### Scenario: A scoped retained product is borrowed by later physical work
-- **WHEN** a selected call produces a scoped retained product from declared capabilities or earlier retained products
+- **WHEN** a selected call produces a scoped retained product from declared leases or earlier retained products
 - **THEN** consumers MUST retain the actual dependencies and observed versions through physical settlement
 - **AND** read-only borrowing MUST NOT authorize mutation or an undeclared owner transfer
 - **AND** explicit release MUST follow every dependent use and derived retained product
@@ -224,7 +225,7 @@ Actual storage SHALL remain outside semantic IR.
 #### Scenario: A scoped retained product escapes or is reused prematurely
 - **WHEN** a retained product leaves its declared body extent, is used after release, or conflicts with a known update to its retained owner
 - **THEN** verification or preparation MUST reject the invalid claim before dependent execution
-- **AND** cold correspondence MUST check the declared retention against installed binding contracts
+- **AND** cold correspondence MUST check the declared retention against installed implementation contracts
 
 #### Scenario: Cancellation interrupts an entered retained consumer
 - **WHEN** cancellation closes admission while a consumer still physically uses a retained product

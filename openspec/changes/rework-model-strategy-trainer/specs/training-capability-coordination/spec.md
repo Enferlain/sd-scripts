@@ -224,8 +224,8 @@ existing accepted obligations before use.
 - **AND** stored validity MUST NOT override the consumer's accepted requirements
 
 ### Requirement: Each coordinator admits its own consumption
-Training input coordination SHALL perform those consumer checks for training
-inputs; relevant capability coordination SHALL perform them for its own
+Training input coordination SHALL perform each consumer's admission checks
+for training inputs; relevant capability coordination SHALL perform them for its own
 consumption, directly or through shared input coordination, without creating
 another acceptance policy or a universal training-input gateway. Required
 source/storage guarantees SHALL remain protected through dependent use.
@@ -314,7 +314,8 @@ metric from returned batch values.
 
 ### Requirement: Validation traversal leaves input-provider continuation alone
 Outer evaluation traversal SHALL NOT transfer a selected input provider's
-private selection, packing, or continuation ownership to the coordinator.
+private selection, packing, or continuation ownership to whatever coordinates
+that traversal.
 
 #### Scenario: Evaluation uses a bounded input stream
 - **WHEN** accepted evaluation has no finite dataset length and uses a bounded coverage/stopping rule

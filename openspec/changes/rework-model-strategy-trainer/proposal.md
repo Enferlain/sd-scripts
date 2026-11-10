@@ -17,9 +17,14 @@ notes.
   Trainer engine.
 - Derive the contract from the intended Trainer and deliberately supported
   pipeline capabilities without making it code-owned by a Trainer instance.
-  The contract guides authoring; a strategy-side acceptance mechanism checks
-  the completed authored strategy and returns acceptance or detailed rejection
-  without assembling a strategy or inferring missing selections.
+  The contract guides authoring; fulfillment, the IR system's acceptance step
+  that the launcher runs, checks the completed authored strategy and returns
+  acceptance or detailed rejection without assembling a strategy or inferring
+  missing selections.
+- Build the IR system, Kuroiro on xDSL, in `library/workflow`: the language
+  and its Python front end, fulfillment, the reference semantics and the
+  runtime that executes accepted strategies. Add `library/runstate` for the
+  run authority and `library/launch` for contract composition and launch.
 - Preserve selected model-, objective-, capability-, and algorithm-specific
   behavior in the accepted arrangement so ordinary execution does not retain
   or call back into the authored strategy object.
@@ -59,11 +64,11 @@ notes.
 
 ## Capabilities
 
-The next bounded language milestone qualifies scoped resource-backed products:
-explicit storage/state dependencies survive producing-call completion until
-retained consumers physically settle. It uses buffer/view and real CPU
-autograd cases to inform G5; it does not adopt production ownership APIs or
-solve continuous-run bookkeeping reclamation.
+The bounded language milestones (tasks 6–11) are complete. The last one
+qualified scoped resource-backed products: explicit storage/state dependencies
+survive producing-call completion until retained consumers physically settle.
+They inform G5; they do not adopt production ownership APIs or solve
+continuous-run bookkeeping reclamation.
 
 ### New Capabilities
 
@@ -78,7 +83,7 @@ solve continuous-run bookkeeping reclamation.
   and model work, of which training is one domain: region, flow, resource and
   realization contracts; invocation, pending requests and settlement;
   producer-stop coverage; a closed set of access modes including live shared
-  reads; version admission; affine item claims and region-scoped capabilities;
+  reads; version admission; affine item claims and region-scoped leases;
   reproducibility, quiescence and rank-consistency declarations; and an
   executable reference semantics that realizations conform to.
 - `run-participant-state`: Authority-scoped participant and relationship
@@ -141,6 +146,7 @@ The rework affects `train.py`, `library/strategies/`,
 `library/training/`, `library/objectives/`, `library/optimization/`, model
 loading, adapter integration, checkpointing/restoration, metadata, and the
 selected caching, validation, sampling, persistence, and observability paths.
+It adds `library/workflow/`, `library/runstate/` and `library/launch/`.
 Existing family and domain implementations should be retained where their
 responsibilities fit, but their whole-Trainer and active-strategy boundaries
 will change. The system itself is built new: today's Trainer, strategy and
@@ -155,8 +161,8 @@ research cases constrain the design before implementation. The active
 loading, provenance, and restoration concerns and must be reconciled rather
 than silently superseded.
 
-The next executable design evidence is the bounded xDSL language slice in
-`design.md` D14 and tasks 6–9, tracked by `sd-scripts-syv.31.26`. It remains under
-`docs_design/models-strategy-trainer/`, using existing owner services and
-independent expectations. Tasks 5.1–5.7 still govern the production types,
-placement, implementation milestones and implementation-readiness decision.
+The bounded xDSL language slice in `design.md` D14 and tasks 6–11 is complete
+and remains under `docs_design/models-strategy-trainer/` as evidence.
+`design.md` D15–D21 record the production design. Tasks 5.1–5.7 govern closing
+it and the implementation-readiness decision, and `tasks.md` sections 12–28
+are the implementation milestones.

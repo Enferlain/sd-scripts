@@ -1,7 +1,7 @@
 ## ADDED Requirements
 
 ### Requirement: Structural model resources use accepted qualified owners
-Resource intelligence SHALL relate model-structural quantities to accepted qualified model/component identities, revision- or realization-scoped structural path bindings, or observation-scoped live-object/storage-group identities when those identities are available.
+Resource intelligence SHALL relate model-structural quantities to accepted qualified model/component identities, revision- or realization-scoped structural path associations, or observation-scoped live-object/storage-group identities when those identities are available.
 
 #### Scenario: Component structural bytes are recorded
 - **WHEN** resource intelligence records parameter or buffer bytes for a cataloged model component
@@ -10,7 +10,7 @@ Resource intelligence SHALL relate model-structural quantities to accepted quali
 
 #### Scenario: Tensor structural bytes are recorded
 - **WHEN** resource intelligence records a size for an accepted tensor descriptor
-- **THEN** the resource fact MUST reference the applicable qualified path-binding identity and observation-local object/storage evidence when relevant
+- **THEN** the resource fact MUST reference the applicable qualified path-association identity and observation-local object/storage evidence when relevant
 - **AND** it MUST preserve whether the quantity is structural, estimated, measured, or derived
 
 #### Scenario: Qualified owner is unavailable

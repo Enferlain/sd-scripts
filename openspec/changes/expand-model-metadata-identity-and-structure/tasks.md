@@ -28,9 +28,9 @@
 ## 4. Typed Model Loading And Provenance Contract
 
 - [ ] 4.1 Before production work in this section, verify this change against the concrete identity/state/projection types selected by `rework-model-strategy-trainer` G5. Its G4.6 reconciliation records the shared ownership rules and restores the `Model loading completes` scenario; do not treat those planning corrections as completion of this implementation gate. Compare both overlapping delta sets and amend concrete integration assumptions without weakening loading, provenance, realization, or structural requirements. Validate both changes strictly, obtain the required review, and stop if the shared boundary is not ready.
-- [ ] 4.2 Replace the evidence-free loading tuple with a shared typed loading-evidence result containing model version, family-declared component candidates, ordered source observations, source selections, component-to-selection bindings, loading decisions, limitations, and transformations classified as source/materialization, runtime observation, or persisted lineage/revision evidence. Do not make the result a competing canonical live-binding store.
+- [ ] 4.2 Replace the evidence-free loading tuple with a shared typed loading-evidence result containing model version, family-declared component candidates, ordered source observations, source selections, component-to-selection associations, loading decisions, limitations, and transformations classified as source/materialization, runtime observation, or persisted lineage/revision evidence. Do not make the result a competing canonical live-binding store.
 - [ ] 4.3 Define typed deferred-materialization evidence and updates that preserve prior loading evidence and integrate through the accepted participant transition boundary selected by the rework.
-- [ ] 4.4 Add central builders for source representations, selections, component-to-selection bindings, materialization attempts/results, and transformation facts without retaining live modules or accessing metadata storage.
+- [ ] 4.4 Add central builders for source representations, selections, component-to-selection associations, materialization attempts/results, and transformation facts without retaining live modules or accessing metadata storage.
 - [ ] 4.5 Add central emitters, registry routes, relationships, and validation for the new provenance facts.
 - [ ] 4.6 Integrate typed loading/catalog evidence at the accepted-arrangement and Trainer boundary selected by the rework while preserving family-declared component views and avoiding a competing canonical binding authority.
 - [ ] 4.7 Add contract tests proving SD/SDXL/SD3 and future families populate the same collection-based schema without family-specific provenance fields or central family-name branches, and that live state is consumed through the rework's accepted projections.
@@ -38,16 +38,16 @@
 
 ## 5. Active Family Source Capture
 
-- [ ] 5.1 Migrate SD loading to report local-checkpoint versus Diffusers source, successful revision/layout, checkpoint conversion, external VAE replacement, and RamTorch/runtime-only transformation classification.
-- [ ] 5.2 Migrate SDXL loading to report local-checkpoint versus Diffusers source, variant attempt/fallback, immutable revision/layout, conversions, external VAE replacement, and runtime-only transformations.
-- [ ] 5.3 Migrate SD3 loading to populate the same source/selection/binding collections with its unified checkpoint and any independent CLIP-L, CLIP-G, T5, VAE, and denoiser sidecar/deferred sources and omissions.
+- [ ] 5.1 Have the rework's new SD loaders (its `tasks.md` section 21) report local-checkpoint versus Diffusers source, successful revision/layout, checkpoint conversion, external VAE replacement, and RamTorch/runtime-only transformation classification.
+- [ ] 5.2 Have the rework's new SDXL loaders (its section 18) report local-checkpoint versus Diffusers source, variant attempt/fallback, immutable revision/layout, conversions, external VAE replacement, and runtime-only transformations.
+- [ ] 5.3 Have the rework's new SD3 loaders (its section 21) populate the same source/selection/association collections with its unified checkpoint and any independent CLIP-L, CLIP-G, T5, VAE, and denoiser sidecar/deferred sources and omissions.
 - [ ] 5.4 Add family fixture coverage for successful sources, fallbacks, missing/deferred components, overrides, conversions, and evidence limitations without requiring GPU-heavy training runs.
-- [ ] 5.5 Verify existing model-loading/component behavior and compatibility output remain unchanged apart from the new typed evidence.
+- [ ] 5.5 Compare the new loaders' model-loading/component behavior and compatibility output with the rework's pinned baseline; today's loaders are not edited or kept running beside them.
 - [ ] 5.6 Run section 5 quality gates, `review-mcp`, and hand off active-family provenance before section 6.
 
 ## 6. Revisioned Realization Composition
 
-- [ ] 6.1 Add accepted realization-composition observation facts with stable realization identity, transactionally unique monotonic revision, `initial`/`intermediate`/`final` state qualified by the relevant readiness checkpoint, ordered component-to-selection bindings, prior-revision link, and originating accepted-state correspondence. Finalization must permit later accepted changes; filing order must not redefine semantic history.
+- [ ] 6.1 Add accepted realization-composition observation facts with stable realization identity, transactionally unique monotonic revision, `initial`/`intermediate`/`final` state qualified by the relevant readiness checkpoint, ordered component-to-selection associations, prior-revision link, and originating accepted-state correspondence. Finalization must permit later accepted changes; filing order must not redefine semantic history.
 - [ ] 6.2 Add separate materialization/publication-attempt evidence distinguishing loading success from accepted, rejected, unpublished, and uncertain publication outcomes, with links to the effective/prior and resulting accepted composition when available. A successfully loaded candidate alone must not establish composition history.
 - [ ] 6.3 Add validation and views for latest accepted and checkpoint-finalized composition using originating revision/state correspondence rather than attempt, arrival, or backend iteration order; report missing or ambiguous correspondence without inventing current state.
 - [ ] 6.4 File the first authority-published composition as revision 1 and retain its accepted identity associations without keeping live bindings in metadata.
@@ -74,8 +74,8 @@
 
 ## 9. Structural Identity And Inventory Schema
 
-- [ ] 9.1 Add separate revision- and realization-qualified path-binding identities plus observation-scoped live-object/storage-group and serialized source-key identities for modules, parameters, and persistent/non-persistent buffers.
-- [ ] 9.2 Add explicit many-to-one/one-to-many relationships among path bindings, live objects, storage groups, and source keys without persisting object pointers.
+- [ ] 9.1 Add separate revision- and realization-qualified path-association identities plus observation-scoped live-object/storage-group and serialized source-key identities for modules, parameters, and persistent/non-persistent buffers.
+- [ ] 9.2 Add explicit many-to-one/one-to-many relationships among path associations, live objects, storage groups, and source keys without persisting object pointers.
 - [ ] 9.3 Add inventory facts for owner/source/scope, included kinds, traversal/duplicate policy, cost class, derivation version, lifecycle observation, and extensible dimension-scoped coverage claims with status/basis/omissions.
 - [ ] 9.4 Add typed tensor descriptors for shape/rank/dtype, layout/stride/device/source location when knowable, trainability/persistence, numel, element size, byte estimates, and storage evidence.
 - [ ] 9.5 Add central builders, emitters, registry routes, relationships, validation, and views for structural facts without retaining live tensors/modules.
@@ -84,17 +84,17 @@
 
 ## 10. Live And Artifact Structural Resolvers
 
-- [ ] 10.1 Refactor reusable traversal semantics from `library/models/parameter_dump.py` into typed live inventory/descriptor resolution while retaining the text renderer as a projection/consumer.
+- [ ] 10.1 Refactor reusable traversal semantics from `library/models/parameter_dump.py` into typed live inventory/descriptor resolution while retaining the text renderer as a projection/consumer. Live structure is read only through the rework's revision-pinned inspection view, under a scoped lease that the calling work obtains.
 - [ ] 10.2 Implement safetensors header resolution for selected keys, shapes, dtypes, offsets, and metadata without loading tensor values.
 - [ ] 10.3 Define and enforce the trust policy for non-safetensors checkpoint inspection, including safe refusal when bounded trusted inspection is unavailable.
-- [ ] 10.4 Preserve live versus artifact source, lifecycle, duplicate/path-binding versus live-object traversal, persistence, source-key mapping, storage-sharing, and dimension-scoped coverage in resolver outputs.
+- [ ] 10.4 Preserve live versus artifact source, lifecycle, duplicate/path-association versus live-object traversal, persistence, source-key mapping, storage-sharing, and dimension-scoped coverage in resolver outputs.
 - [ ] 10.5 Add bounded single-tensor, selected-subtree, component, and complete-inventory tests across live modules and safetensors fixtures.
 - [ ] 10.6 Run section 10 quality gates, `review-mcp`, and hand off resolvers before query integration.
 
 ## 11. Shared Typed Query Integration
 
 - [ ] 11.1 Add model structural selectors/results to the implemented shared query surface without adding a model-only dispatcher, cache, or ambiguity policy.
-- [ ] 11.2 Register live and artifact resolvers with explicit availability, trust, cost, scope, and persistence policy.
+- [ ] 11.2 Register live and artifact resolvers with explicit availability, trust, cost, scope, and persistence policy. A live resolver receives the inspection view for its lease's scope and keeps no live object.
 - [ ] 11.3 Prefer valid accepted immutable descriptors when owner evidence, requested coverage claims, and policy version satisfy a query; invoke resolution only when allowed and needed.
 - [ ] 11.4 Support optional filing/reuse of resolved durable descriptors and invalidate reuse when source evidence, scope, coverage, algorithm, or policy version changes.
 - [ ] 11.5 Add tests for one-tensor lookup, recorded reuse without reinspection, bounded resolver fallback, ambiguity, unavailable/trust-denied sources, cost rejection, and stale-policy resolution.
@@ -102,10 +102,10 @@
 
 ## 12. Optimization And Resource Consumer Integration
 
-- [ ] 12.1 Relate shared policy-neutral component/module/parameter target refs to accepted catalog/structural path-binding identities when available, preserving selectors and revision-pinned consumer access without requiring catalog resolution for a valid live view. Preserve distinct alias provenance; optimization consolidates same-unit/group aliases and rejects unsupported cross-unit/group overlap under its accepted policy rather than deduplicating semantic ownership globally.
-- [ ] 12.2 Migrate structural resource facts from bare component owners to accepted model/component, structural path-binding, and observation-local object/storage identities using the completed dependency boundary.
+- [ ] 12.1 Relate shared policy-neutral component/module/parameter target refs to accepted catalog/structural path-association identities when available, preserving selectors and revision-pinned consumer access without requiring catalog resolution for a valid live view. Preserve distinct alias provenance; optimization consolidates same-unit/group aliases and rejects unsupported cross-unit/group overlap under its accepted policy rather than deduplicating semantic ownership globally.
+- [ ] 12.2 Migrate structural resource facts from bare component owners to accepted model/component, structural path-association, and observation-local object/storage identities using the completed dependency boundary.
 - [ ] 12.3 Align component/parameter/buffer size summaries with accepted descriptors and preserve measured/structural/estimated/derived semantics.
-- [ ] 12.4 Keep early/legacy paths at their current behavior with explicit unresolved ownership when accepted identities are unavailable; degrade resource linkage rather than failing execution or inventing qualified IDs.
+- [ ] 12.4 When accepted identities are unavailable, record explicit unresolved ownership and degrade resource linkage rather than failing execution or inventing qualified IDs.
 - [ ] 12.5 Add integration tests across model inventory, target refs, structural resource facts, accounting evidence, and recorded descriptor reuse.
 - [ ] 12.6 Run section 12 quality gates, `review-mcp`, and hand off consumer integration before fingerprint work.
 

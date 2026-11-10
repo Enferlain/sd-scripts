@@ -175,7 +175,7 @@ semantic merge, delta, pruning, or quantization from incidental runtime state.
 - **THEN** the product plan MUST declare the merge/fold transformation and resulting lineage before serializer mechanics run
 
 ### Requirement: Product compatibility is judged under the accepted obligations
-Product compatibility SHALL be evaluated under the same accepted obligations at
+Product compatibility SHALL be evaluated under the run's accepted obligations at
 the earliest authoritative evidence point. Training compatibility SHALL NOT be
 treated as evidence that every export transformation is compatible.
 

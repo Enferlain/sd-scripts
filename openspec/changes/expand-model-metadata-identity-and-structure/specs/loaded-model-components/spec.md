@@ -4,7 +4,7 @@
 The model-loading boundary SHALL produce one shared typed loading result
 containing the model version, family-declared top-level component candidates,
 ordered source observations, source selections, component-to-selection
-bindings, loading decisions, transformations, and known limitations rather
+associations, loading decisions, transformations, and known limitations rather
 than a fixed `text_encoders/vae/denoiser` tuple, evidence-free component tuple,
 or family-specific provenance fields. The loaded-component surface SHALL remain
 the authoritative top-level
@@ -30,6 +30,6 @@ collection.
 - **AND** the accepted arrangement or its scoped loading/provenance projection MUST retain the typed evidence required for catalog resolution and realization-composition filing
 
 #### Scenario: Deferred loading updates components
-- **WHEN** a deferred materialization boundary changes component presence or component-to-selection binding
+- **WHEN** a deferred materialization boundary changes component presence or component-to-selection association
 - **THEN** it MUST return a typed loading result or update that preserves prior loading evidence and reports the new candidate and materialization evidence
 - **AND** the candidate MUST become current only through an accepted participant transition rather than direct replacement of a Trainer-owned component collection

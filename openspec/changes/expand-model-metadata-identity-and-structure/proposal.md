@@ -6,9 +6,9 @@ The current metadata system can describe a model family and one run-scoped loade
 
 - Introduce portable catalog identity for known and previously unseen models, with explicit evidence strength/trust, versioned recognition policy, durable relationship/lineage records, and exact artifact hashing that deterministically identifies unseen source representations.
 - Preserve distinct identities for logical catalog lineages, immutable model revisions, serialized source representations, selected states within those representations, run-scoped realizations, components, and produced descendants instead of treating a filename or one file hash as all of them.
-- Extend every model family through one uniform typed loading-result schema containing ordered sources, source selections, component bindings, loading decisions, transformations, and limitations.
+- Extend every model family through one uniform typed loading-result schema containing ordered sources, source selections, component associations, loading decisions, transformations, and limitations.
 - Record realization composition as append-only successful observations and materialization attempts as separate events so an initially loaded realization can be finalized after deferred materialization without rewriting accepted history or treating failure as model state.
-- Add model structure metadata for components, revision/realization path bindings, observation-local live objects/storage groups, parameters, persistent and non-persistent buffers, serialized/unknown source keys, tensor descriptors, and dimension-scoped coverage claims.
+- Add model structure metadata for components, revision/realization path associations, observation-local live objects/storage groups, parameters, persistent and non-persistent buffers, serialized/unknown source keys, tensor descriptors, and dimension-scoped coverage claims.
 - Add versioned structural and state fingerprint evidence that can progressively recognize exact artifacts, converted representations, and related model revisions without claiming general functional equivalence.
 - Integrate model descriptors with the shared typed metadata query capability and qualified resource/optimization identities once those prerequisite changes are complete; this change will not create a model-only query subsystem.
 - Preserve compatibility projections as projections of accepted facts and leave `tools/` and the low-priority textual-inversion path outside the migration scope.
@@ -18,15 +18,15 @@ The current metadata system can describe a model family and one run-scoped loade
 ### New Capabilities
 
 - `model-catalog-identity`: Portable catalog identity, source-representation and source-selection identity, persistent evidence resolution, recognition policy, typed relationships, immutable revisions, and lineage.
-- `model-source-provenance`: Uniform typed source/selection/component-binding evidence, materialization-attempt events, transformations, and append-only successful realization composition.
-- `model-structure-metadata`: Scoped structural binding/object/storage inventories, dimension-specific coverage claims, tensor descriptors, fingerprints, and query integration.
+- `model-source-provenance`: Uniform typed source/selection/component-association evidence, materialization-attempt events, transformations, and append-only successful realization composition.
+- `model-structure-metadata`: Scoped structural association/object/storage inventories, dimension-specific coverage claims, tensor descriptors, fingerprints, and query integration.
 
 ### Modified Capabilities
 
 - `loaded-model-components`: Model loading returns source/materialization evidence alongside the authoritative family-declared component surface.
 - `model-family-metadata`: Run realizations link to catalog/revision/source-representation/source-selection identities and separate successful composition observations from attempt events.
 - `optimization-target-refs`: Durable model structure identities become available alongside live execution references without changing grouping policy.
-- `resource-intelligence`: Structural resource facts reference accepted model/component, structural path-binding, and observation-local object/storage identities when those identities exist.
+- `resource-intelligence`: Structural resource facts reference accepted model/component, structural path-association, and observation-local object/storage identities when those identities exist.
 
 ## Impact
 
