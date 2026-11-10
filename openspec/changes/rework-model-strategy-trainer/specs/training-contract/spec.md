@@ -104,9 +104,14 @@ conformance implementations, or a combination.
 - **AND** it MUST distinguish that semantic acceptance from fulfilled executable readiness
 
 #### Scenario: Complete definition is rejected
-- **WHEN** selected behavior is missing, incompatible, unknown as maintained behavior, or uses undeclared extension authority
+- **WHEN** selected behavior is missing, incompatible, has no definition in the active contract, or uses undeclared extension authority
 - **THEN** fulfillment MUST return detailed author-facing rejection information
 - **AND** no Trainer-acceptable arrangement or authority seed may be produced
+
+#### Scenario: A choice is untested or conflicts with a declared meaning
+- **WHEN** a selected combination would run but is untested, lacks provenance, or conflicts with a component's declared meaning
+- **THEN** fulfillment MUST accept it and report it
+- **AND** it MUST NOT reject a choice for those reasons alone
 
 ### Requirement: Fulfillment specializes the contract into one run-specific obligation set
 Successful fulfillment SHALL specialize the general contract meanings into one
@@ -123,6 +128,11 @@ that governs those obligations.
 - **WHEN** authored behavior chooses among alternatives from changing inputs or accepted owned state
 - **THEN** fulfillment MUST evaluate the decision policy, the bounds of its alternatives, their authority, and their possible effects against the active contract and profile
 - **AND** when accepted, the arrangement MUST preserve that policy for execution rather than replacing it with one authoring-time outcome
+
+#### Scenario: The strategy declares a mid-run transition
+- **WHEN** an authored strategy declares a transition that changes the arrangement
+- **THEN** fulfillment MUST verify the arrangement after that transition and derive its obligations, each with its readiness checkpoint
+- **AND** those obligations MUST come into force only when the transition takes effect
 
 ### Requirement: Obligations are evaluated at the earliest authoritative evidence point
 Every contract obligation SHALL be evaluated at the earliest lifecycle point
@@ -221,7 +231,7 @@ representation and code ownership of checking logic remain to be derived.
 - **AND** any target-specific restriction MUST remain an explicit realization limitation rather than a silently weaker meaning
 
 #### Scenario: A callable is offered without the required region protocol
-- **WHEN** an implementation binding would introduce input admission, pending work or authority beyond the maintained operation's declared boundary
+- **WHEN** an implementation would introduce input admission, pending work or authority beyond the maintained operation's declared boundary
 - **THEN** fulfillment MUST reject that missing contract or require a supported semantic extension
 - **AND** registering the callable MUST NOT itself establish the missing lifecycle or authority meaning
 

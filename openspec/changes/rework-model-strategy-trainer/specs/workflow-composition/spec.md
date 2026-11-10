@@ -195,7 +195,7 @@ owner transfer. These checks SHALL derive from types and region contracts, not
 per-composition rules.
 
 #### Scenario: A lease escapes through a result or nested capture
-- **WHEN** an authored yield or capture would outlive the protected scope without an accepted owner transfer retaining every required use
+- **WHEN** an authored yield or capture would outlive the protected scope without a retained dependency or accepted owner transfer keeping every required use protected
 - **THEN** conformance MUST reject that escape before the dependent use becomes executable
 - **AND** physical settlement of the producing call alone MUST NOT prove that a retained derivative or consumer use has ended
 
@@ -228,7 +228,7 @@ Actual storage SHALL remain outside semantic IR.
 - **AND** the result MUST NOT be yielded into a flow or captured by another activity
 
 #### Scenario: A scoped retained product escapes or is reused prematurely
-- **WHEN** a retained product leaves its declared body extent, is used after release, or conflicts with a known update to its retained owner
+- **WHEN** a retained product leaves its activity, is used after release, or conflicts with a known update to its retained owner
 - **THEN** verification or preparation MUST reject the invalid claim before dependent execution
 - **AND** cold correspondence MUST check the declared retention against installed implementation contracts
 
@@ -300,13 +300,35 @@ substitute another realization or freshness guarantee.
 - **THEN** that version MUST remain available until the request's required uses complete or a detached realization holds it, by making conflicting updates wait or by isolating a snapshot of it
 - **AND** handler admission MUST NOT be the point at which that version is selected
 - **AND** a target unable to establish either MUST reject the selection rather than let the work observe a later version
+- **AND** a request that ends cancelled or unfulfilled MUST release that version
 - **AND** the use's product MUST still record the actual state version it observed
+
+### Requirement: Version selection, device admission and placement are independent
+Which version a use observes, whether work is admitted onto a device beside
+other work, and where work runs SHALL be decided separately; none SHALL be
+inferred from another. A strategy SHALL state only whether work of different
+activities may overlap on a device; the selected target SHALL decide whether
+permitted overlap is realized. Work SHALL NOT wait while holding a device for
+something that may need that device to progress.
+
+#### Scenario: Permitted overlap does not fit the device
+- **WHEN** a strategy permits two activities' work to overlap on a device that cannot hold both
+- **THEN** the runtime MUST run that work in turn without changing which versions it observes
+
+#### Scenario: Meaning requires work to be live together
+- **WHEN** a strategy's meaning requires work to be live together on a device that cannot hold it
+- **THEN** preparation MUST reject it as a realization limitation
+
+#### Scenario: A reserved version and a device admission would wait on each other
+- **WHEN** the work that would release a reserved version needs a device held by work that waits on that version
+- **THEN** preparation MUST reject a combination whose wait cycle it can prove
+- **AND** at run time waiting work MUST obtain its state conditions and admitted inputs before the device, or give the device up while it waits
 
 ### Requirement: Flow admission declares its version policy
 A flow whose products depend on versioned owner state SHALL declare an
 admission policy over the actual production version: exact current, bounded
 lag, or any version with recorded provenance. Admission SHALL evaluate the
-version actually observed during production, not the version requested when
+version actually observed during production, not a version assumed when
 the work began. The policy SHALL name owner/incarnation, version lineage, lag metric and
 the comparison boundary.
 

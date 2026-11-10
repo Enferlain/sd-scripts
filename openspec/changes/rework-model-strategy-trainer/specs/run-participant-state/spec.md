@@ -85,11 +85,17 @@ require a fabricated execution route.
 #### Scenario: A host route depends on an attached adapter
 - **WHEN** an adapter acts inside its host through an accepted relationship
 - **THEN** an access through the host's route MUST protect the adapter's state and record its version together with the host's
+- **AND** a version reserved for requested work through that route MUST include the adapter's
 - **AND** a use that must not see the adapter MUST go through a different route
 
 #### Scenario: An adapter has its own callable execution
 - **WHEN** an adapter is called on its own
 - **THEN** it MUST have its own route and be accessed like any participant
+
+#### Scenario: A unit's evaluation point is read
+- **WHEN** validation or sampling reads a participant at a unit's evaluation point, such as averaged weights
+- **THEN** it MUST use a named route whose dependencies are that unit state
+- **AND** where the only realization is an in-place swap, the swap MUST last only for the lease and MUST NOT count as a competing update
 
 #### Scenario: Sampling needs a distinct compiled representation
 - **WHEN** a selected sampling capability requires a separately prepared callable representation

@@ -98,15 +98,15 @@ seams.
 - **AND** Trainer/pipeline orchestration MUST own lifecycle timing rather than `AdapterMode`
 
 ### Requirement: Method-local adapter config owns runtime settings translation
-Authored strategy construction SHALL select an adapter method from the
-strategy's declared supported set. The forward PEFT config surface MAY provide
+Authored strategy construction SHALL select an adapter method that the active
+contract offers. The forward PEFT config surface MAY provide
 that explicit selection as strategy-construction input and SHALL translate the
 matching method-local subtree into repo-owned runtime settings. Configuration
-SHALL NOT independently expand method support or remain a runtime selection
-authority after fulfillment.
+SHALL NOT add a method the contract does not offer or remain a runtime
+selection authority after fulfillment.
 
 #### Scenario: Building runtime settings from the active method subtree
-- **WHEN** strategy construction selects a supported adapter method using `peft.method`
+- **WHEN** strategy construction selects an adapter method the active contract offers using `peft.method`
 - **THEN** the matching `peft.<method>` config subtree MUST be translated into `AdapterRuntimeSpec(adapter_type, settings)` or its accepted successor
 - **AND** the adapter method MUST consume normalized settings rather than raw Hydra/dataclass config objects
 

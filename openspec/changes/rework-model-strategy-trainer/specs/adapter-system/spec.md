@@ -19,7 +19,7 @@ settings, state representation, constraints, and specialized operations.
 - **THEN** it MUST expose the concrete adapter state and typed transition/projection information needed for authority acceptance and optimization realization
 
 #### Scenario: Method uses the shared PEFT integration
-- **WHEN** an authored strategy selects a repository PEFT method from its declared supported set
+- **WHEN** an authored strategy selects a repository PEFT method that the active contract offers
 - **THEN** common participant, relationship, targeting-input, training-subject, preparation, persistence, and restoration meanings MUST come from the maintained PEFT integration
 - **AND** the method implementation MUST supply only the behavior and constraints that differ for that method
 
@@ -69,16 +69,20 @@ SHALL use explicit accepted transitions and results.
 - **THEN** attachment MUST transition the accepted adapter/host relationship
 - **AND** it MUST NOT create the adapter participant implicitly or hide the effect as arbitrary module mutation
 
-### Requirement: Strategies declare the adapter methods they support
+### Requirement: Strategies declare the adapter methods they maintain
 An authored strategy that adopts repository-maintained PEFT integration SHALL
-declare the method set it currently supports. When strategy construction
-includes an adapter participant for a run, it SHALL select that participant's
-method from the declared set. Repository availability alone SHALL NOT silently
-add support to an existing strategy.
+declare the method set it maintains. A run MAY select another installed method
+whose declared requirements the strategy's hosts meet; that selection SHALL be
+allowed and reported as outside the maintained set. Repository availability
+alone SHALL NOT add a method to a strategy's maintained set.
 
-#### Scenario: Undeclared PEFT method is selected
-- **WHEN** strategy construction requests a repository PEFT method outside that strategy's declared supported set
-- **THEN** strategy fulfillment MUST reject the selection before adapter realization
+#### Scenario: A method outside the maintained set is selected
+- **WHEN** strategy construction requests an installed PEFT method outside that strategy's maintained set and the hosts meet the method's declared requirements
+- **THEN** strategy fulfillment MUST accept the selection and report it as outside the maintained set
+
+#### Scenario: A selected method's requirements cannot be met
+- **WHEN** the hosts cannot meet a selected method's declared requirements, or the active contract has no definition for the method
+- **THEN** strategy fulfillment MUST reject the selection before adapter realization and name the requirement that fails
 
 ### Requirement: Adapter products, artifact loading, and exact restoration are distinct
 The adapter domain SHALL distinguish publishing an adapter artifact, loading an

@@ -351,6 +351,9 @@ boundary this change builds on. Task 4.1 checks this change against them:
   and SD3 in its section 21. Today's loaders are not edited.
 - Sections 9–11 land with its section 25 (observability and metadata).
   Section 12 depends on them, so it lands with or after section 25.
+- Section 7 lands with or after its section 23, where products are saved.
+  Sections 8, 13 and 14 follow section 25, and section 14's final audit runs
+  alongside its section 28.
 
 ## Risks / Trade-offs
 
@@ -377,7 +380,7 @@ boundary this change builds on. Task 4.1 checks this change against them:
 
 The active library must not depend on `tools/` for catalog, provenance, or structure behavior. If the audit finds such a dependency, the active caller is migrated to a library-owned boundary or the milestone stops; `tools/` itself is not edited to complete this change. The dedicated textual-inversion runtime is explicitly exempt from the new typed loading contract during this change and remains a deferred legacy path rather than evidence that the active migration is incomplete.
 
-Rollback is additive through the provenance milestones: callers can temporarily ignore new catalog/provenance records while retaining the existing realization/artifact path. Once loader return contracts and persistent schema migrations land, rollback requires restoring the preceding contract/schema version while leaving append-only new records readable or explicitly unsupported; migrations must not destructively rewrite catalog history.
+Rollback is to the previous milestone revision of the rework. The provenance milestones are additive, so records already written stay readable. Once loader return contracts and persistent schema migrations land, rollback requires restoring the preceding contract/schema version while leaving append-only new records readable or explicitly unsupported; migrations must not destructively rewrite catalog history.
 
 ## Open Questions
 

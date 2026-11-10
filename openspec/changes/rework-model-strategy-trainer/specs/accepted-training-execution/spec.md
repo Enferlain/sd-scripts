@@ -170,7 +170,7 @@ change a binding.
 
 #### Scenario: One base is used with and without an adapter
 - **WHEN** one accepted base participant supplies a no-gradient teacher use and a differentiable adapted student use in one action
-- **THEN** both uses MUST retain the same base participant identity and their distinct view and gradient requirements
+- **THEN** both uses MUST retain the same base participant identity and their distinct route or view and gradient requirements
 - **AND** realization MUST verify that current preparation can provide both uses without unsafe overlapping view changes
 
 #### Scenario: Two views toggle shared mutable adapter state
@@ -464,7 +464,7 @@ accepted readiness and freshness dependencies.
 - **THEN** execution MUST stop using that route until an accepted current replacement is published
 
 #### Scenario: Behavior requests an authority-governed transition
-- **WHEN** accepted runtime behavior requests a permitted change to participants, relationships, bindings, preparation, optimization, or capability state
+- **WHEN** accepted runtime behavior requests a change the accepted arrangement declares to participants, relationships, bindings, preparation, optimization, or capability state
 - **THEN** the request MUST pass through the applicable run-authority transition and republication path
 - **AND** the operation MUST NOT mutate canonical run state merely because its ordinary computation is dynamic
 

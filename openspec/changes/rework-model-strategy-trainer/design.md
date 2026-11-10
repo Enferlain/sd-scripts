@@ -3,7 +3,9 @@
 This is the governing design record for the model–strategy–Trainer rework. See
 [proposal.md](proposal.md) for motivation and scope.
 
-Production implementation is not ready merely because this OpenSpec has all
+The design gates G1–G5 closed on 2026-11-11. Production work still needs a
+separately requested apply workflow. Until then the rule stood that
+production implementation is not ready merely because this OpenSpec has all
 standard artifact files. The settled architecture is recorded here now; the
 remaining Trainer-consumption, execution, optimization, capability, and
 production-shape decisions are completed through the numbered design gates
@@ -60,7 +62,7 @@ prevent their older wording from returning as a requirement.
 | EX-007 and EX-017 **superseded**: ordinary author-supplied compatibility clauses or validators | D2, D7 | [`training-contract`](specs/training-contract/spec.md): known behavior uses shared conformance knowledge; custom behavior uses an explicit conformance or extension path |
 | EX-015 **superseded**: a separate transferable `CompatibilityAssessment` | D7 | [`run-participant-state`](specs/run-participant-state/spec.md): transition acceptance and structured rejection remain with the authority; no separate assessment authority is required |
 | EX-018 **superseded** active-strategy topology; EX-029 corrected accepted-arrangement topology | D4, D7 | [`training-contract`](specs/training-contract/spec.md): fulfillment establishes the arrangement; [`accepted-training-execution`](specs/accepted-training-execution/spec.md): execution survives the authoring object |
-| EX-019, EX-020: explicit assembly and one accepted contract/version per authority | D1–D2, D7 | [`training-contract`](specs/training-contract/spec.md): authors assemble explicitly, one accepted contract governs the run; [`run-participant-state`](specs/run-participant-state/spec.md): permitted amendments update obligations atomically |
+| EX-019, EX-020: explicit assembly and one accepted contract/version per authority | D1–D2, D7 | [`training-contract`](specs/training-contract/spec.md): authors assemble explicitly, one accepted contract governs the run; [`run-participant-state`](specs/run-participant-state/spec.md): declared amendments bring their obligations into force atomically |
 | EX-021, EX-022: one attempt-scoped preparation job and non-failing final installation | D8 | [`training-runtime-preparation`](specs/training-runtime-preparation/spec.md): coherent job, fallible work before publication, replacement-only and destructive failure paths |
 | EX-024: exact same-run restoration versus a new run | D6, D11 | [`run-participant-state`](specs/run-participant-state/spec.md): authority identity and lineage; [`training-artifact-persistence`](specs/training-artifact-persistence/spec.md): runtime restoration distinct from trained artifacts |
 | EX-030, EX-031: structured and imperative execution; representation form remains open | D10 | [`accepted-training-execution`](specs/accepted-training-execution/spec.md): explicit structure and effects, custom structured operations, authority-bounded imperative regions |
@@ -346,7 +348,7 @@ stays normative.
 | Component | A part of a model with its own identity, such as an autoencoder, text encoder or denoiser. Arranged by kind in `library/models`; the model that introduced it does not own it | D21 |
 | Contract | The composed, versioned registered vocabulary: everything a strategy may use. Bare "contract" always means this | D18 |
 | Cut | A coherent recoverable capture across owners, for exact restoration; each owner supplies its cut state | D16, G4.4 |
-| Declaration | What a component or feature states about itself, in three layers: its meaning, what a use requires, and provenance or guidance | D21 |
+| Declaration | What something states about itself. A component or feature declares in three layers: its meaning, what a use requires, and provenance or guidance. A participant's or relationship's declaration is what the strategy states it is and how it materializes | D19, D21 |
 | Definition | One contract entry: an operation, type, capability, feature contract or ownership profile. Not a Python `def` | D16, D18 |
 | Dependencies | What a projection or prepared realization relies on | D6, D19 |
 | Derived word | A word defined by expanding into other words during normalization, such as `window`. The research called it a recipe | D16 |
@@ -606,7 +608,7 @@ that task 1.4 already specified the input-specific exchange.
 | Materialize and bind | Accepted declarations, relationships, lifecycle permissions, source intent, obligations, and expected revisions | Training lifecycle coordination derives the request from accepted obligations and current state; a selected domain producer returns a candidate plus typed evidence; the run authority alone accepts and publishes a new or revised binding | Loading or construction may perform declared I/O before publication. Failure or stale evidence publishes no candidate; destructive replacement follows the separately accepted transition rules. |
 | Prepare runtime | One coherent revision-pinned projection of every required participant, route/view, constraint, joint group, mutation permission, and obligation | Training-side preparation coordination derives the complete job and coordinates verification and final installation; its candidate separates authority-owned route/view changes, Trainer-owned backend state, and optimization runtime | Backend work may allocate, wrap, shard, compile, or communicate before publication. Replacement-only and destructive failures follow D8 and never expose a mixed current state. |
 | Realize optimization | Accepted training subjects and units, grouping/policy meaning, current bindings, and preparation constraints | Trainer optimization infrastructure resolves live membership, trainability, logical/execution groups, optimizer/scheduler state, clipping, synchronization, and lifecycle projections | Optimizer/backend construction may allocate or communicate. Failure installs no partial runtime; later relevant revisions invalidate or require re-realization. |
-| Produce and hand off input | Accepted source, selection, transformation, and packing meaning; current input-policy state; producer dependencies; and the consumer's representation and readiness obligations | Selected input behavior produces model-ready values with the identity, provenance, and logical boundaries required by the consumer; training input coordination checks admission and records handoff without owning the provider's internal policy state | Production may progress independently and perform I/O before handoff. Not-ready, failed, stale, misidentified, or incompatible input cannot be silently substituted or delivered as accepted work. |
+| Produce and hand off input | Accepted source, selection, transformation, and packing meaning; current input-policy state; producer dependencies; and the consumer's representation and readiness obligations | Selected input behavior produces model-ready values with the identity, provenance, and logical boundaries required by the consumer; input coordination checks admission and records handoff without owning the provider's internal policy state | Production may progress independently and perform I/O before handoff. Not-ready, failed, stale, misidentified, or incompatible input cannot be silently substituted or delivered as accepted work. |
 | Execute training | Accepted execution structure, current prepared projections, prepared optimization runtime, changing inputs/coordinates, and granted authority | Accepted behavior returns declared computation outputs, optimization inputs, observations, owned-state updates, effects, or transition requests; Trainer performs retained mechanics | Only accepted effects may cross the execution boundary. Failure follows the active ownership profile, stops unsafe advancement, and cannot mutate canonical state outside an accepted transition. |
 | Coordinate caching | Selected capability, data scope, representation/conditioning behavior, writable destination, and coherent dependency projection | Pipeline traversal/storage and selected codecs produce cache records plus dependency/readiness facts recorded as capability state | Cache writes are external effects. Failure or partial output is reported explicitly and cannot advertise stale or incomplete cache readiness. |
 | Coordinate validation | Selected capability, trigger, evaluation-ready projections, accepted input/RNG and measurement policy | Trainer/pipeline traversal and accepted evaluation behavior produce typed evaluation results, observations, and declared owned-state effects | Evaluation may consume resources but has no undeclared training-state effect. Failure restores temporary projections or gates unsafe use, and cannot fabricate a completed measurement. |
@@ -629,7 +631,7 @@ or folders.
 | Materialize and bind | Training lifecycle coordination derives a candidate job from accepted obligations/current revisions; the selected domain loader or constructor supplies evidence; only the run authority publishes binding/relationship changes. | `run-participant-state`: “Initial realization and later transitions share one enforcement direction”, “Transitions are revision-checked and atomic”; `loaded-model-components`: “Model loading returns the loaded-component surface”. |
 | Prepare runtime | Training-side preparation coordination derives one complete attempt-scoped job and coordinates final publication of authority-owned routes/views with Trainer-owned backend/optimization state; neither side exposes a half-installed result. | `training-runtime-preparation`: “Preparation derives one coherent attempt-scoped job”, “Preparation results separate ownership surfaces”, “Fallible work precedes final publication”, “Stale results never publish against newer state”. |
 | Realize optimization | Trainer optimization derives candidates from accepted subjects/units and current projections; the joint preparation coordinator publishes the prepared optimization runtime with the corresponding authority routes and Trainer backend state. | `training-optimization`: “Trainer owns standard realization and mechanics”, “Realization and preparation form one publication attempt”, “Binding changes invalidate affected optimization runtime”. |
-| Produce and hand off input | Training input coordination manages producer lifecycle, readiness, admission, delivery, and failure routing under accepted obligations; selected input behavior owns live-source traversal, selection/packing policy, and private continuation state. Cache-production traversal remains with caching coordination. An admitted handoff is not proof of action completion or optimization advancement. | `training-contract`: “Authors assemble strategies explicitly”, “Obligations are evaluated at the earliest authoritative evidence point”; `accepted-training-execution`: “Input handoff retains identity and admission meaning”, “Cross-owner action facts remain correlatable”; `training-capability-coordination`: “Caching separates semantics from storage orchestration”, “Cache publication and consumer admission are distinct”, “Independent cache production has bounded lifecycle and owned continuation”. G4.1 files the cache-production exchange below; task 4.4 completes coordinated exact-restoration protocols. |
+| Produce and hand off input | Input coordination, which the IR runtime's streams realize (D15), manages producer lifecycle, readiness, admission, delivery, and failure routing under accepted obligations; selected input behavior owns live-source traversal, selection/packing policy, and private continuation state. Cache-production traversal remains with caching coordination. An admitted handoff is not proof of action completion or optimization advancement. | `training-contract`: “Authors assemble strategies explicitly”, “Obligations are evaluated at the earliest authoritative evidence point”; `accepted-training-execution`: “Input handoff retains identity and admission meaning”, “Cross-owner action facts remain correlatable”; `training-capability-coordination`: “Caching separates semantics from storage orchestration”, “Cache publication and consumer admission are distinct”, “Independent cache production has bounded lifecycle and owned continuation”. G4.1 files the cache-production exchange below; task 4.4 completes coordinated exact-restoration protocols. |
 | Execute training | Trainer's loop supplies time/input and current prepared projections; accepted behavior executes only its granted operations, while Trainer commits its retained mechanics and the authority handles any requested canonical transition. | `accepted-training-execution`: “Accepted execution survives the authoring object”, “Execution uses current prepared state”, “The standard profile retains generic Trainer mechanics”. |
 | Coordinate caching | The caching capability's implementation derives work from an accepted request and current data/representation dependencies; it publishes readiness only for completed, fresh cache results. | `training-capability-coordination`: “Capability readiness derives from accepted state”, “Caching separates semantics from storage orchestration”, “Cache requests and results preserve the selected computation”, “Cache freshness follows actual computation dependencies”, “Cache publication and consumer admission are distinct”, “Cache storage lifecycle preserves outstanding use”, “Independent cache production has bounded lifecycle and owned continuation”. |
 | Coordinate validation | Trainer/pipeline scheduling derives the request from accepted scope, measurement policy, and current protected projections; validation coordination publishes completed measurements only when their accepted coverage/reduction boundary succeeds. Partial outcomes and declared effects remain separately reportable through their owners. | `training-capability-coordination`: “Validation separates evaluation semantics from traversal”, “Validation results preserve measurement and effect meaning”, “Evaluation and generation use protected current state”, “Capability temporary projections have scoped cleanup”. G4.2 completes the exchange below. |
@@ -986,7 +988,7 @@ concrete result types and permitted effects.
 | Materialize/bind | Governed semantic state; only the run authority publishes bindings, relationships, and revisions from accepted candidates. | Preparation, optimization, execution, capabilities, metadata/observation. |
 | Prepare | Governed routes/views via run authority; Trainer execution/backend and optimization state via their owners in one coordinated publication. | Trainer loop, accepted operations, capabilities, observability. |
 | Optimize | Optimization state via Trainer optimization; binding-dependent readiness coordinated with preparation publication. | Trainer loop, artifact/restoration coordination, observability. |
-| Produce/handoff input | Input state; selected input behavior writes its policy and producer continuation state, while training input coordination records readiness/admission and handoff under accepted obligations. | Accepted computation, Trainer scheduling/accounting, caching, observability, restoration. |
+| Produce/handoff input | Input state; selected input behavior writes its policy and producer continuation state, while input coordination records readiness/admission and handoff under accepted obligations. | Accepted computation, Trainer scheduling/accounting, caching, observability, restoration. |
 | Execute | Accepted-behavior state via its accepted operation; Trainer execution/progress via Trainer; canonical transitions via authority only. | Optimization, capability triggers, observability, restoration. |
 | Cache | Capability state and input/cache records via caching coordination; no direct authority binding write. | Input preparation, accepted execution/validation, observability. |
 | Validate | Capability state and observation state via validation coordination and observation owner respectively. | Trainer scheduling, accepted adaptive consumers, observability/reporting. |
@@ -1692,7 +1694,7 @@ contract and run authority:
 | Compatible participant binding replacement or accepted parameter surgery that preserves its participant meaning and the unit's semantic selector, grouping, policy, and dependencies | Same participant and unit identities; same unit definition revision, even if new physical parameters resolve under the accepted selector. | Binding/substructure dependencies and affected prepared routes/units become non-current. Re-resolve members, aliases, trainability, and backend preparation. Mutable optimizer state follows an accepted preserve/migrate/reset rule, never object-order inference. |
 | Relationship transition, such as activating an adapter effect | Participant and relationship incarnations remain; a unit's definition stays the same *only if* its accepted subject and semantic dependency definitions stay the same. | Invalidate every relationship-dependent route/view/unit and any inseparable backend group. If the transition changes accepted unit membership or meaning, revise the unit as in the next row. |
 | Accepted training-subject, optimizer-significant grouping, optimizer/scheduler, advancement-policy, or semantic-dependency-definition change | Preserve an independently managed unit's identity but advance its accepted-definition revision. An ordinary bounded runtime policy choice does not count as a definition change. | Old unit runtime cannot advance under the new definition. Replan membership and state-continuity treatment, then prepare and publish the complete new runtime. A transient train/eval or backend `requires_grad` setting does not itself amend the accepted subjects. |
-| Surgery or arrangement amendment changes semantic member selection, or creates/splits/merges/replaces an independently managed responsibility | Revise a continuing unit if its responsibility remains the same; split, merge, retirement/recreation, or replacement establishes new unit identities. An incompatible participant replacement likewise needs a new participant incarnation. | Withdraw affected current guarantees, resolve the new accepted obligations and unit meanings, and prepare from the resulting state. No old optimizer state is silently assigned to a new unit or incompatible member. |
+| Surgery or arrangement amendment changes semantic member selection, or creates/splits/merges/replaces an independently managed responsibility | Revise a continuing unit if its responsibility remains the same; split, merge, retirement/recreation, or replacement establishes new unit identities. An incompatible participant replacement likewise needs a new participant incarnation. | Withdraw affected current guarantees, bring the declared obligations and unit meanings into force, and prepare from the resulting state. No old optimizer state is silently assigned to a new unit or incompatible member. |
 
 For parameter surgery, the accepted selector's meaning matters. A selector
 that deliberately covers a changing substructure may resolve new physical
@@ -1808,7 +1810,7 @@ not wait for, or produce, a training action.
 | Boundary | What must cross it | Owner and consequence |
 | --- | --- | --- |
 | Due work and readiness | The accepted activity/action and current coordinates, bounded policy decision and its owned state, required dependencies, and the current readiness result. | Run coordination invokes the accepted due policy and gates dependent work; the policy owner advances its state under its accepted rule. Different activities may have different clocks; a due choice is not proof that work ran. |
-| Independent producer to consumer | Requested work identity, produced identity and actual source dependencies, selected payload and required logical-example/packing boundaries, readiness, admission, handoff, and producer failure. | Selected input behavior owns its queue/workers and continuation; training input coordination owns lifecycle and admission against the current consumer obligation. A ready value may be rejected or await a declared policy. Handoff is not action consumption. |
+| Independent producer to consumer | Requested work identity, produced identity and actual source dependencies, selected payload and required logical-example/packing boundaries, readiness, admission, handoff, and producer failure. | Selected input behavior owns its queue/workers and continuation; input coordination owns lifecycle and admission against the current consumer obligation. A ready value may be rejected or await a declared policy. Handoff is not action consumption. |
 | Coordination to accepted operation or region | Admitted input values, changing coordinates, current prepared participant uses/routes/views, accepted owned-state projection, and only the authority granted to this work. | The selected implementation executes; Trainer does not reconstruct its model/objective algorithm or call the authored strategy for choices. Freshness and backend guarantees are checked where the relevant state may have changed, without rediscovering static wiring on every invocation. |
 | Selected work to its consumers | Addressed computation outputs; optimization offers when its profile uses Trainer-owned optimization; observations and accounting values; operation-owned state changes; declared external effects; and proposed authority-governed transitions. These are distinct meanings even if one implementation produces several. | The operation/region owns its selected computation and permitted state/effects. An optimization offer identifies its accepted source, destination unit(s), and gradient requirements but neither steps an optimizer nor certifies advancement. An observation is routed to its declared consumer; a transition proposal cannot publish canonical state itself. |
 | Optimization and region handback | For each unit or transferred phase: contribution/window status, gradient and synchronization readiness, actual attempted mechanics, backend-supported skip/return/uncertain outcome, scheduler/zeroing status, and any required clean-handback evidence. | Trainer owns standard mechanics and per-unit progress; an imperative region owns only its explicitly transferred phases. Trainer checks a region's handback before retained work. A returned optimizer call does not prove numerical parameter change. |
@@ -2787,7 +2789,8 @@ and protected live access.
 | `owner_update` | Mutation through the owning protocol | The owner's ordinary update protocol |
 | `grant(profile)` | Scoped delegated authority | The profile's phase and handback evidence |
 
-Snapshot selection names a published-version rule or current-at-start
+Snapshot selection names a published-version rule, the version at the
+request for requested work (below), or current-at-start
 materialization; the latter requires atomically resolving and isolating that
 version before use. Protected live reads select current-at-start freshness,
 or the version at the request for requested work (below);
@@ -3183,7 +3186,10 @@ and launch device work. Owners hold state.
   so it is decided apart from which version a use observes (D14). A strategy
   states only meaning: whether work of different activities may overlap. It
   cannot command that the work fits. Work is presumed not to overlap unless
-  the strategy permits it. Preparation and the coordinator decide whether
+  the strategy permits it. `parallel` is not that permission: it only makes
+  activities live at the same time, and how the permission is written is
+  settled with the extent of one admission. Preparation and the coordinator
+  decide whether
   permitted overlap is realized on the selected target, from the facts the
   device adapter supplies and the measured peaks in resource observation;
   otherwise the runtime runs the work in turn. A strategy whose meaning
@@ -3232,7 +3238,8 @@ The Trainer has two roles:
 2. **Standard-mechanics owner.** Under the standard profile it realizes the
    training operations: progress, accumulation, synchronization, backward,
    clipping, optimizer and scheduler advancement, zeroing, triggers and
-   observation (D10). An extension profile transfers named mechanics only
+   observation (D10). It does so through Trainer optimization, which holds
+   each unit's state, and its facts go to the observation owner. An extension profile transfers named mechanics only
    through an explicit grant (G3.2).
 
 The strategy's repeated training actions are the loop; there is no separate
@@ -3248,7 +3255,7 @@ to capability implementations and model behavior to selected implementations.
 | Interruption, cleanup | Trainer | |
 | Optimization units and their definition revisions, realizations, optimizer and scheduler state, and each unit's progress and accumulation window | Trainer optimization | Optimizer and backend objects are realizations (D9); progress is counted per unit (D20) |
 | Backend coordination: wrappers, inseparable groups, distributed state | Trainer runtime infrastructure | Published with routes and optimization runtime in one coordinated publication (D8) |
-| Input policy, cursors and buffers | Producers, in `library/data`, each with its cut state | D5 input row |
+| Input policy, cursors and buffers, and each producer's progress through its passes | Producers, in `library/data`, each with its cut state | D5 input row; triggers may follow that progress (D17) |
 | Input readiness, admission and hand-off records | The IR runtime's streams, in `library/workflow` | D5 input row; D21 |
 | Operation-owned state, such as adaptive objective or sampling state | Its accepted operation | Continuity rules in G2.6 |
 | Capability readiness, requests and results | The IR runtime's request and handler protocol, with each capability's implementations | G4 exchanges; D21 |
@@ -3309,6 +3316,12 @@ packages go.
   than after a complete CPU path. The Migration Plan's order otherwise stands.
 - **Conformance and cost.** G3.7's conformance and execution-cost criteria
   apply to every milestone, measured on GPU for training paths.
+- **No inherited shape.** Writing today's families on the new system must not
+  decide how later strategies are written. Whether a maintained strategy or
+  the contract carries a shape only because today's code had it becomes
+  visible only once they exist. Each section's review therefore asks it of
+  what that section wrote, and it is asked again when the first strategy for
+  something today's code never trained is written.
 
 #### Work this frame leaves open
 
@@ -3418,7 +3431,9 @@ Two shared rules fix what a lease protects and for how long.
   keeps the state protected after the access body ends, until the result's
   last use. Authors write no release: normalization places it after the last
   use, which for a loss is the end of backward inside `contribute`, and the
-  normalized form shows it. Such a result may leave its access body but not
+  normalized form shows it. A contribution accumulates into the unit and
+  does not update the leased state; advancement, which does, comes after the
+  release. Such a result may leave its access body but not
   its activity; it is never yielded into a stream or captured by another
   activity. The lease itself still never leaves its scope. This extends
   D14's first retained-product profile by one step.
@@ -3523,7 +3538,7 @@ Applying the one-word rule turned up four collisions:
 | Access | `current_at_start`, `published`, `initial` | Version selection, separate from the mode | Freshness values | Exists |
 | Access | `at_request` | Version selection for requested work: the version current when the request was made; a reservation held with the request keeps it until the work completes or a detached realization holds it (D14); a working spelling | — | Planned |
 | Access | `exact_current`, `bounded_lag`, `any_with_provenance` | Stream admission policies | Admission values | Exists |
-| Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its explicit release | `retained`, `release_product` | Exists |
+| Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its release, placed by normalization after the last use and shown in the normalized form | `retained`, `release_product` | Exists |
 | Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
 | Calls | `uses` | The strategy header that pins each implementation's version | Per-call version | Exists, moved to the header |
 | Model | `resource`, `materialize` | Declare something an owner holds, such as a participant; name the implementation that materializes it | `lang.resource` | Exists; `materialize` planned |
@@ -3752,8 +3767,8 @@ An executable run exists only after publication. It holds:
 
 An executable run is single-use:
 
-- **Governed transitions.** A transition, for example attaching an adapter
-  mid-run, re-enters preparation under D8 and publishes a new executable
+- **Governed transitions.** A transition, for example attaching a declared
+  adapter mid-run, re-enters preparation under D8 and publishes a new executable
   state. Results from the old state cannot publish against the new one.
 - **Restoration.** Restoration realizes the same accepted run from a cut,
   using contributors' state instead of fresh initialization (G4.4). The cut's
@@ -3800,7 +3815,7 @@ owner protocol:
 | --- | --- |
 | `iro.train.contribute %loss to %unit` | Backward from the loss into the unit's gradient accumulation, deferring synchronization until the window's last member |
 | The end of `iro.train.window` | Synchronize, clip, step the optimizer and scheduler, zero, and record progress (standard profile) |
-| `iro.train.trigger @every_500 on %unit` | Evaluate the trigger policy over training progress; the strategy then requests the capability work that is due |
+| `iro.train.trigger @every_500 on %unit` | Evaluate the trigger policy over the unit's progress, or over a producer's where the trigger names one; the strategy then requests the capability work that is due |
 | `iro.access %unit grant(profile) { ... }` | Hand the profile's named mechanics to the granted implementation for that scope, and verify the handback before resuming its own mechanics (G3.2) |
 
 A window is a maintained derived word over existing protocols: a repeat over
@@ -4046,12 +4061,13 @@ participants a call reads or updates is not written a second time. The lease
 types in the signature say it, and verification checks each call site's
 access mode against them (D14). The decorator states only what the signature
 cannot show, such as use of randomness, external input or output,
-collectives, use of a device, anything kept beyond the call, and state
-private to the implementation. The decorator has no registration side effect;
+collectives, use of a device, a result that keeps a dependency on a lease
+(D16), anything else kept beyond the call, and state private to the
+implementation. The decorator has no registration side effect;
 the launcher installs implementations explicitly (D2).
 
 ```python
-@iro.implementation(version=1, effects=["device"])
+@iro.implementation(version=1, effects=["device"], result_keeps=["unet"])
 def denoise(unet: ReadLease, batch: LatentBatch) -> Loss:
     ...  # the selected PyTorch computation; the lease type says it reads
 ```
@@ -4114,10 +4130,27 @@ combinations and community practice, produces help and logs, never a refusal
 declared meaning, such as fine-tuning an eps model toward v-prediction, is
 allowed and logged. What depends on loaded state is checked at its readiness
 checkpoint: for loaded models before training starts, and for a capability
-when it is requested. Some spec rules still reject choices that would not
-fail, such as a PEFT method outside a strategy's declared set
-(`adapter-system`). The rejection-rule audit (task 5.7) brings each such rule
-under this one or records the failure it prevents.
+when it is requested.
+
+The rejection-rule audit (task 5.7) reviewed every rejection in the delta
+specs under this rule. Two rules refused choices that would not fail, and
+both were changed. A PEFT method outside a strategy's maintained set is now
+allowed and reported when the hosts meet its declared requirements
+(`adapter-system`). Fulfillment no longer rejects behavior for being
+"unknown as maintained"; it rejects behavior that has no definition in the
+contract (`training-contract`). Every other rejection refuses a failure, in
+one of these groups:
+
+| What is refused | The failure it prevents |
+| --- | --- |
+| Wiring that cannot connect or settle | A use before its definition, an unsettled claim, a lease that escapes, a producer stopped while a consumer still needs it |
+| Authority the profile does not grant | A second owner of a mechanic the Trainer keeps, an undeclared effect, a guarantee the profile cannot give |
+| Something the strategy or contract does not declare | A product, capability, change or runtime choice outside what was accepted |
+| State the work was not based on | A stale proposal or result, a superseded revision, a value outside its stream's admission policy |
+| Two owners of one thing | Parameters claimed by two units, or component ancestry that the provenance does not establish |
+| A silent substitution | A cached value standing in for a different computation, a detached gradient path, another access mode than the one selected |
+| A target that cannot realize a valid strategy | A backend that cannot report or protect what the strategy needs, or ranks that cannot agree; reported as a target limit |
+| A combined effect nobody defined | Several adapter methods on overlapping targets with no declared way to compose |
 
 #### From run config to accepted run
 
@@ -4349,7 +4382,7 @@ The kinds are a closed set: D6's operations plus D8's withdrawal.
 | --- | --- |
 | Declaration | Creates a declared, unbound incarnation of a participant or relationship that the accepted strategy declares. The authority seed supplies the initial ones; a later one is a successor at a declared address, never a new declaration (D17) |
 | Materialization | Gives a declared participant its first binding |
-| Bound-state replacement | Installs a new binding that still fulfills the participant's accepted meaning; otherwise retirement and a new declaration are required |
+| Bound-state replacement | Installs a new binding that still fulfills the participant's accepted meaning; otherwise the participant is retired and a successor incarnation is declared at an address the strategy declares |
 | Route rebinding | Installs a route's new prepared callable |
 | Relationship transition | Changes a relationship's operational state |
 | Arrangement amendment | Applies a change the accepted strategy declares as a `transition`, such as retiring participants and declaring their successors together. It brings the obligations that fulfillment derived for that change into force in the same transition and never derives new ones (D17) |
@@ -4428,7 +4461,7 @@ restoration incomplete, and it never becomes a new run
 | --- | --- |
 | One authority, with no competing canonical copies (`run-participant-state`) | Only the authority writes its section; everyone else holds read-only projections |
 | Address and incarnation differ, and roles never establish identity (D6) | The authority mints `ParticipantRef`; addresses only locate declarations; references carry no role |
-| Materialization, replacement, preparation, wrapping and compilation keep the reference (D6) | They change a `Binding` or a `Route` under the same `Participant`; only an amendment, a redeclaration or an incompatible replacement mints a reference |
+| Materialization, replacement, preparation, wrapping and compilation keep the reference (D6) | They change a `Binding` or a `Route` under the same `Participant`; only a successor declared after retirement mints a reference |
 | Retired references are never revived or reassigned (D6) | Minting is monotonic; retirement is a lifecycle state kept in history |
 | One binding per participant/route pair, views apart from routes and no fake routes (D6) | One `Binding` per participant, one prepared callable per `Route`, `View` as a separate type, and optional routes |
 | Participant, optimization and relationship lifecycles stay independent (D6) | Lifecycle on `Participant`, trainability on units (D20) and operational state on `Relationship` |
@@ -4438,10 +4471,10 @@ restoration incomplete, and it never becomes a new run
 | Initial and later changes share one enforcement direction (D7) | Both are transitions judged against the same `Obligations` |
 | Evidence is typed, not a fact dictionary or a Boolean (D7) | Evidence kinds declared beside their evaluators |
 | Deferred state is declared-but-unbound, never `None` (D7) | The `declared` lifecycle state |
-| Preparation is one attempt with separated results (D8) | `PreparationAttempt`, and the five parts of `PreparationResult` |
+| Preparation is one attempt with separated results (D8) | `PreparationAttempt`, and `PreparationResult`'s parts kept apart by owner, five in a training run |
 | Fallible work precedes an unobservable publication (D8) | Owners build sections before the swap; `Publication` only swaps |
 | Destructive work withdraws guarantees first, and older candidates cannot restore them (D8) | The withdrawal transition, and results bound to their attempt's basis |
-| Inseparable groups are prepared whole and evicted together (D8) | Preparation requests cover every overlapped group; retiring a member withdraws the whole group |
+| Inseparable groups are prepared whole and evicted together (D8) | Training's contribution to a preparation request covers every overlapped group; retiring a member withdraws the whole group |
 | Exact restoration keeps identities, and missing facts leave it incomplete (`run-participant-state`) | The authority's cut state; restoration re-materializes under the same references |
 
 ### D20. Optimization types
@@ -4497,8 +4530,8 @@ re-preparation (D9, G3.5).
 
 Each unit counts its own progress. Attempted optimizer calls and
 backend-confirmed non-skipped advancements are counted apart, because a
-scheduler policy may follow either (G3.1). Triggers and reports name the unit
-whose progress they follow (D17), and today's `global_step` becomes that
+scheduler policy may follow either (G3.1). Triggers and reports name the owner
+whose progress they follow, a unit or a producer (D17), and today's `global_step` becomes that
 progress. A one-unit run reads as before, and a multi-unit run gets no
 invented shared clock.
 
@@ -4803,7 +4836,7 @@ The authority holds the `Obligations` that the IR system's verifier defines.
 | `words/` | Training's words (unit, window, contribute, advance, zero, trigger and grant) and ownership profiles | New (D17, D18) |
 | `trainer.py` | The Trainer: its host sequence and the standard mechanics | New; checked against `runners/trainer.py` |
 | `optimization/` | Trainer optimization: D20's types, candidate resolution and grouping, and the owner protocol for training's words | New; checked against `library/optimization/grouping.py`, `phases/optimizer.py`, `phases/training_loop.py` and `modes/` |
-| `preparation.py` | Training's preparation coordination, which adds unit candidates and backend groups to D19's attempt | New; checked against `phases/model_prep.py`, `trainer_utils.py` and each mode's `prepare_with_accelerator` |
+| `preparation.py` | Training's preparation coordination, which contributes unit definitions and backend groups to D19's attempt | New; checked against `phases/model_prep.py`, `trainer_utils.py` and each mode's `prepare_with_accelerator` |
 | `backend.py` | Backend coordination: wrappers, inseparable groups, distributed state and their cut state | New; checked against `trainer_utils.py` and the modes' synchronization handles |
 | `observation.py` | The observation owner: metrics, validation history and traces, as facts | New; checked against the Trainer's metric fields and `training/metadata.py` |
 | `interrupts.py` | Interruption handling for the host | New; checked against `interrupts.py` |
@@ -4988,7 +5021,7 @@ the strategy's business:
 | --- | --- |
 | Adapter methods, attachment and merge mechanics, evaluators and file formats | `library/adapters` |
 | Bringing adapters into a run: the adapter participant, its attachment and its unit | A reusable piece in `strategies/features/` |
-| Per-strategy method support | The strategy's declared method parameter; help shows which methods are maintained. `adapter-system` still requires a declared supported set and rejects other methods, which the rejection-rule audit (task 5.7) reviews under D18's refusal rule |
+| Per-strategy method support | The strategy's declared method parameter; help shows which methods are maintained. The declared set is the maintained set: another installed method whose requirements the hosts meet is allowed and reported (`adapter-system`, D18) |
 | Semantic target intent | Target selectors written in the strategy or a reusable piece |
 | Governed target resolution | An authority relationship transition, judged by the adapters package's evaluator against the loaded structure |
 | Policy-neutral target references | `TargetRef` in `runstate/targets.py`, outside the `optimization` namespace |
@@ -5722,7 +5755,10 @@ and names. Every production milestone must identify the code it writes, the
 replaced code whose coverage rows it checks, requirements/scenarios, tests,
 performance checks, and review boundary.
 
-The gate is satisfied only after strict OpenSpec validation, user review of the
+The gate was satisfied on 2026-11-11: both changes pass strict validation,
+the required review ran and its findings were addressed, the rejection-rule
+audit is recorded in D18, and the user signed off on the design and the task
+breakdown. It required strict OpenSpec validation, user review of the
 architecture, required review tooling, and a complete trace:
 
 ```text

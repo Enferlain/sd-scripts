@@ -166,6 +166,7 @@ external work or callbacks.
 - **WHEN** an otherwise valid candidate would replace or mutate state still required by execution, derivative work, or another accepted owner
 - **THEN** publication MUST respect the shared current-use protocol through completion, rejection, or supported isolation
 - **AND** source freshness alone MUST NOT permit conflicting publication during that use
+- **AND** a version reserved for a pending request MUST count as such a use
 
 ### Requirement: Replacement-only failure preserves still-valid prior state
 Preparation that cannot mutate authoritative inputs in place SHALL keep its

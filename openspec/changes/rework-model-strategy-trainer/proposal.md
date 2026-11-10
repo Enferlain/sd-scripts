@@ -146,10 +146,10 @@ The rework affects `train.py`, `library/strategies/`,
 `library/training/`, `library/objectives/`, `library/optimization/`, model
 loading, adapter integration, checkpointing/restoration, metadata, and the
 selected caching, validation, sampling, persistence, and observability paths.
-It adds `library/workflow/`, `library/runstate/` and `library/launch/`.
-Existing family and domain implementations should be retained where their
-responsibilities fit, but their whole-Trainer and active-strategy boundaries
-will change. The system itself is built new: today's Trainer, strategy and
+It adds `library/workflow/`, `library/runstate/`, `library/launch/`,
+`library/conditioning/`, `library/artifacts/` and `library/evaluation/`.
+Kept libraries, such as model components, data sources and optimizers, are
+used where they fit under D21's rules. The system itself is built new: today's Trainer, strategy and
 mode code is a checklist and a sanity-check reference, never migrated.
 
 The change is tracked by bead `sd-scripts-syv`. It is one governing
