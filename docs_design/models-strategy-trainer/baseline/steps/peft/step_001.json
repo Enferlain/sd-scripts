@@ -1,0 +1,226 @@
+{
+ "batch/latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "batch/captions": [
+  "mangshuo, original ||| artist logo, blue sky, cloud, cumulonimbus cloud, evening, highres, logo, no humans, outdoors, scenery, sky, sky focus",
+  "109kpm, evil neuro-sama, neuro-sama, indie virtual youtuber, virtual youtuber ||| 2girls, ahoge, bare arms, bare shoulders, blue eyes, blue skirt, blush, bound, bound wrists, bow, brown hair, closed mouth, collared shirt, crop top, dual persona, hair between eyes, hair ornament, hair ribbon, heart, heart hair ornament, highres, holding hands, light brown hair, long hair, looking at viewer, multiple girls, necktie, one side up, pink background, pleated skirt, red eyes, red ribbon, red skirt, ribbon, shirt, short sleeves, skirt, skull hair ornament, sleeveless, sleeveless shirt, smile, two side up, very long hair, white shirt"
+ ],
+ "batch/image_ids": [
+  "651ba0042ce40f4c6a8ab943760cec7c_17729f5d",
+  "3e9da759e2e29a7b3496375bc32a80c9_bb0421e6"
+ ],
+ "batch/bucket_reso": [
+  1024,
+  1024
+ ],
+ "batch/conditionings/0/original_size_hw": [
+  2000,
+  2000
+ ],
+ "batch/conditionings/0/crop_top_left": [
+  0,
+  0
+ ],
+ "batch/conditionings/0/target_size_hw": [
+  1024,
+  1024
+ ],
+ "batch/conditionings/1/original_size_hw": [
+  1200,
+  1200
+ ],
+ "batch/conditionings/1/crop_top_left": [
+  0,
+  0
+ ],
+ "batch/conditionings/1/target_size_hw": [
+  1024,
+  1024
+ ],
+ "batch/loss_weights": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.float32"
+ },
+ "batch/flippeds": [
+  false,
+  false
+ ],
+ "batch/alpha_masks": null,
+ "batch/text_encoder_outputs/hidden_state1": {
+  "shape": [
+   2,
+   77,
+   768
+  ],
+  "dtype": "torch.float16"
+ },
+ "batch/text_encoder_outputs/hidden_state2": {
+  "shape": [
+   2,
+   77,
+   1280
+  ],
+  "dtype": "torch.float16"
+ },
+ "batch/text_encoder_outputs/pool2": {
+  "shape": [
+   2,
+   1280
+  ],
+  "dtype": "torch.float16"
+ },
+ "noise": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "noisy_latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "timesteps": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "model_call_0/arg0": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.bfloat16",
+  "same_as": "noisy_latents"
+ },
+ "model_call_0/arg1": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "model_call_0/arg2": {
+  "shape": [
+   2,
+   77,
+   2048
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "model_call_0/arg3": {
+  "shape": [
+   2,
+   2816
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "model_call_0/output": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32",
+  "same_as": "batch/latents"
+ },
+ "text_encoder_conds/0": {
+  "shape": [
+   2,
+   77,
+   768
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "text_encoder_conds/1": {
+  "shape": [
+   2,
+   77,
+   1280
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "text_encoder_conds/2": {
+  "shape": [
+   2,
+   1280
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "noise_pred": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32",
+  "same_as": "model_call_0/output"
+ },
+ "target": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "weighting": null,
+ "loss": {
+  "shape": [],
+  "dtype": "torch.float64"
+ },
+ "per_sample_loss": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.float64"
+ },
+ "loss_timesteps": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "final_loss": {
+  "shape": [],
+  "dtype": "torch.float64"
+ },
+ "learning_rates": [
+  1e-05
+ ],
+ "global_step": 1,
+ "model_calls": 1,
+ "param_present": {
+  "same_as": "grad_present"
+ }
+}

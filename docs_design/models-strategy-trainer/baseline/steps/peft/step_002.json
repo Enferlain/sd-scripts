@@ -1,0 +1,226 @@
+{
+ "batch/latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "batch/captions": [
+  "akaitera, charizard, charmander, charmeleon, red (pokemon), nintendo, pokemon ||| 1boy, baseball cap, dragon, epic, evolutionary line, fire, flame-tipped tail, gen 1 pokemon, hat, highres, pokemon (creature), tail",
+  "honnryou hanaru, original ||| 1boy, 1girl, brown eyes, brown hair, carrying, closed eyes, highres, princess carry, school uniform, simple background, skirt, white background"
+ ],
+ "batch/image_ids": [
+  "3d130840208111623551e13d16e584ba_67276df9",
+  "4f7a83d5f9a1a5a2dffea4a96a55b450_37651b71"
+ ],
+ "batch/bucket_reso": [
+  1024,
+  1024
+ ],
+ "batch/conditionings/0/original_size_hw": [
+  1645,
+  1653
+ ],
+ "batch/conditionings/0/crop_top_left": [
+  2,
+  0
+ ],
+ "batch/conditionings/0/target_size_hw": [
+  1024,
+  1024
+ ],
+ "batch/conditionings/1/original_size_hw": [
+  1913,
+  1930
+ ],
+ "batch/conditionings/1/crop_top_left": [
+  4,
+  0
+ ],
+ "batch/conditionings/1/target_size_hw": [
+  1024,
+  1024
+ ],
+ "batch/loss_weights": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.float32"
+ },
+ "batch/flippeds": [
+  false,
+  false
+ ],
+ "batch/alpha_masks": null,
+ "batch/text_encoder_outputs/hidden_state1": {
+  "shape": [
+   2,
+   77,
+   768
+  ],
+  "dtype": "torch.float16"
+ },
+ "batch/text_encoder_outputs/hidden_state2": {
+  "shape": [
+   2,
+   77,
+   1280
+  ],
+  "dtype": "torch.float16"
+ },
+ "batch/text_encoder_outputs/pool2": {
+  "shape": [
+   2,
+   1280
+  ],
+  "dtype": "torch.float16"
+ },
+ "noise": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "noisy_latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "timesteps": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "model_call_0/arg0": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.bfloat16",
+  "same_as": "noisy_latents"
+ },
+ "model_call_0/arg1": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "model_call_0/arg2": {
+  "shape": [
+   2,
+   77,
+   2048
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "model_call_0/arg3": {
+  "shape": [
+   2,
+   2816
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "model_call_0/output": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32",
+  "same_as": "batch/latents"
+ },
+ "text_encoder_conds/0": {
+  "shape": [
+   2,
+   77,
+   768
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "text_encoder_conds/1": {
+  "shape": [
+   2,
+   77,
+   1280
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "text_encoder_conds/2": {
+  "shape": [
+   2,
+   1280
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "noise_pred": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32",
+  "same_as": "model_call_0/output"
+ },
+ "target": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "weighting": null,
+ "loss": {
+  "shape": [],
+  "dtype": "torch.float64"
+ },
+ "per_sample_loss": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.float64"
+ },
+ "loss_timesteps": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "final_loss": {
+  "shape": [],
+  "dtype": "torch.float64"
+ },
+ "learning_rates": [
+  1e-05
+ ],
+ "global_step": 2,
+ "model_calls": 1,
+ "param_present": {
+  "same_as": "grad_present"
+ }
+}

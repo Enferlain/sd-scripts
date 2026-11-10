@@ -1,0 +1,226 @@
+{
+ "batch/latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "batch/captions": [
+  "taro-k, arjuna (fate), arjuna alter (fate), arjuna alter (festival outfit) (fate), fate (series), fate/grand order ||| 1boy, alternate costume, alternate hairstyle, black eyes, book, braid, dark skin, dark-skinned male, desk, earrings, elbow rest, flower, gloves, hand on own cheek, hand on own face, highres, horns, indoors, jewelry, male focus, open book, parted bangs, reading, simple background, solo, upper body, vase, white hair",
+  "revok, leva (girls' frontline 2), ump45 (girls' frontline), girls' frontline, girls' frontline 2: exilium ||| 1girl, balancing, black bow, black jacket, bow, brown eyes, brown hair, collared shirt, dress shirt, gun, h&k ump, hair bow, handgun, holster, jacket, long hair, looking at viewer, loose necktie, mechanical arms, necktie, one eye closed, one side up, open clothes, open jacket, open mouth, partially unbuttoned, prosthesis, prosthetic arm, rock balancing, scar, scar across eye, scar on face, shirt, shoulder holster, simple background, single mechanical arm, smile, solo, submachine gun, teeth, upper body, upper teeth only, weapon, white background, white shirt, yellow necktie"
+ ],
+ "batch/image_ids": [
+  "2dbc78cf1c1098b7912e4376db2ac76a_46494723",
+  "667abed2ef227012b93966837982f35d_886f010f"
+ ],
+ "batch/bucket_reso": [
+  1024,
+  1024
+ ],
+ "batch/conditionings/0/original_size_hw": [
+  1417,
+  1417
+ ],
+ "batch/conditionings/0/crop_top_left": [
+  0,
+  0
+ ],
+ "batch/conditionings/0/target_size_hw": [
+  1024,
+  1024
+ ],
+ "batch/conditionings/1/original_size_hw": [
+  1000,
+  1000
+ ],
+ "batch/conditionings/1/crop_top_left": [
+  0,
+  0
+ ],
+ "batch/conditionings/1/target_size_hw": [
+  1024,
+  1024
+ ],
+ "batch/loss_weights": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.float32"
+ },
+ "batch/flippeds": [
+  false,
+  false
+ ],
+ "batch/alpha_masks": null,
+ "batch/text_encoder_outputs/hidden_state1": {
+  "shape": [
+   2,
+   77,
+   768
+  ],
+  "dtype": "torch.float16"
+ },
+ "batch/text_encoder_outputs/hidden_state2": {
+  "shape": [
+   2,
+   77,
+   1280
+  ],
+  "dtype": "torch.float16"
+ },
+ "batch/text_encoder_outputs/pool2": {
+  "shape": [
+   2,
+   1280
+  ],
+  "dtype": "torch.float16"
+ },
+ "noise": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "noisy_latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "timesteps": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "model_call_0/arg0": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.bfloat16",
+  "same_as": "noisy_latents"
+ },
+ "model_call_0/arg1": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "model_call_0/arg2": {
+  "shape": [
+   2,
+   77,
+   2048
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "model_call_0/arg3": {
+  "shape": [
+   2,
+   2816
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "model_call_0/output": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "latents": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32",
+  "same_as": "batch/latents"
+ },
+ "text_encoder_conds/0": {
+  "shape": [
+   2,
+   77,
+   768
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "text_encoder_conds/1": {
+  "shape": [
+   2,
+   77,
+   1280
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "text_encoder_conds/2": {
+  "shape": [
+   2,
+   1280
+  ],
+  "dtype": "torch.bfloat16"
+ },
+ "noise_pred": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32",
+  "same_as": "model_call_0/output"
+ },
+ "target": {
+  "shape": [
+   2,
+   4,
+   128,
+   128
+  ],
+  "dtype": "torch.float32"
+ },
+ "weighting": null,
+ "loss": {
+  "shape": [],
+  "dtype": "torch.float64"
+ },
+ "per_sample_loss": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.float64"
+ },
+ "loss_timesteps": {
+  "shape": [
+   2
+  ],
+  "dtype": "torch.int64"
+ },
+ "final_loss": {
+  "shape": [],
+  "dtype": "torch.float64"
+ },
+ "learning_rates": [
+  1e-05
+ ],
+ "global_step": 0,
+ "model_calls": 1,
+ "param_present": {
+  "same_as": "grad_present"
+ }
+}

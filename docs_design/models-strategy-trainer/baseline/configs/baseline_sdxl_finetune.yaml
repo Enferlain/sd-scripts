@@ -1,0 +1,49 @@
+# @package _global_
+# Baseline SDXL fine-tune.
+#
+# The fine-tune runs recorded up to 2026-05-14 used
+# `tests/test_peft_resource_sampled` with the defaults of `tests/test_core`
+# switched by hand from `/benchmarks/benchmark_sdxl` to
+# `/benchmarks/benchmark_sdxl_finetune`. This file is that composition written
+# out, so the pinned checkout's tracked configs stay untouched. Pass it with
+# `--config-dir <this folder> --config-name=baseline_sdxl_finetune`.
+#
+# Since 2026-05-28 `benchmark_sdxl_finetune` composes `/_defaults/default`,
+# which adds an `adapter` section that fine-tune mode rejects at validation.
+# `adapter: null` below restores what the recorded runs had.
+
+defaults:
+  - /benchmarks/benchmark_sdxl_finetune
+  - _self_
+
+adapter: null
+
+# From tests/test_core
+output:
+  saving:
+    output_dir: "D:/Projects/sd-scripts/tests/test_output"
+    output_name: "test_peft_resource_sampled"
+  logging:
+    logging_dir: "D:/Projects/sd-scripts/tests/test_logs"
+    # From tests/test_peft_resource_sampled
+    benchmark_report:
+      enabled: true
+    resource_monitor:
+      enabled: true
+      mode: "sampled"
+      rank_scope: "main"
+      log_every_n_steps: 0
+      sample_interval_sec: 0.5
+      output_jsonl: "resource_monitor.jsonl"
+
+data:
+  caching:
+    cache_dir: "D:/Projects/sd-scripts/benchmark_cache"
+
+# From tests/test_peft_resource_sampled
+optimizer:
+  optimizer_type: AdamW8bit
+  learning_rates:
+    base: null
+    denoiser: 1e-5
+    text_encoders: [0.0, 0.0]

@@ -1,0 +1,389 @@
+{
+  "environment": {
+    "python": "3.14.5",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+    "processor": "",
+    "gc_enabled": true,
+    "clock": "perf_counter_ns",
+    "iterations": 10000,
+    "repeats": 7
+  },
+  "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+  "current_loop": {
+    "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+    "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+    "scope": "actual call expression with direct fixture facade; argument dispatch only"
+  },
+  "timing_us_per_call": {
+    "harness_floor": {
+      "median": 0.0258701,
+      "min": 0.023992899999999998,
+      "max": 0.0432173,
+      "samples": [
+        0.0248873,
+        0.0244643,
+        0.0310416,
+        0.036685899999999994,
+        0.0432173,
+        0.0258701,
+        0.023992899999999998
+      ]
+    },
+    "candidate_1_cheap": {
+      "median": 2.7198044,
+      "min": 2.5303006999999997,
+      "max": 4.6876894,
+      "samples": [
+        2.5303006999999997,
+        2.6645607,
+        2.6980313999999996,
+        4.6876894,
+        4.4825856,
+        2.7198044,
+        2.9173549
+      ]
+    },
+    "direct_1_cheap": {
+      "median": 1.5266384,
+      "min": 1.4524043999999998,
+      "max": 3.4396246,
+      "samples": [
+        1.4524043999999998,
+        1.5185692,
+        1.5223362999999999,
+        3.4396246,
+        2.8618441,
+        1.5266384,
+        1.5849183
+      ]
+    },
+    "candidate_4_cheap": {
+      "median": 3.9219268,
+      "min": 3.7514765000000003,
+      "max": 7.4941214,
+      "samples": [
+        3.7514765000000003,
+        3.7563643,
+        3.9390139,
+        7.4941214,
+        6.839676000000001,
+        3.9219268,
+        3.9126105
+      ]
+    },
+    "direct_4_cheap": {
+      "median": 1.7354268,
+      "min": 1.6115761,
+      "max": 3.2616072,
+      "samples": [
+        1.7490971,
+        1.6115761,
+        1.7343435,
+        3.2616072,
+        3.1389647,
+        1.7224403,
+        1.7354268
+      ]
+    },
+    "candidate_16_cheap": {
+      "median": 9.247449000000001,
+      "min": 8.317395000000001,
+      "max": 16.410641199999997,
+      "samples": [
+        10.180547800000001,
+        8.317395000000001,
+        9.247449000000001,
+        16.410641199999997,
+        14.671205400000002,
+        8.8340454,
+        8.997871
+      ]
+    },
+    "direct_16_cheap": {
+      "median": 2.5068663,
+      "min": 2.2190601,
+      "max": 3.9025341,
+      "samples": [
+        2.6931124,
+        2.2190601,
+        2.5068663,
+        3.9025341,
+        3.8300081,
+        2.3689362999999997,
+        2.4993306
+      ]
+    },
+    "candidate_4_compute": {
+      "median": 42.2926615,
+      "min": 38.629587099999995,
+      "max": 58.1327328,
+      "samples": [
+        42.7824207,
+        38.629587099999995,
+        39.7820929,
+        58.1327328,
+        42.2926615,
+        42.389354399999995,
+        42.097557699999996
+      ]
+    },
+    "direct_4_compute": {
+      "median": 39.519006999999995,
+      "min": 36.0234673,
+      "max": 42.274324500000006,
+      "samples": [
+        36.0234673,
+        38.8242143,
+        37.9491122,
+        39.519006999999995,
+        42.274324500000006,
+        40.4099048,
+        39.8709961
+      ]
+    },
+    "current_loop_4_cheap_dispatch": {
+      "median": 2.4969504000000002,
+      "min": 2.3201176,
+      "max": 3.4341247,
+      "samples": [
+        2.3201176,
+        2.3342372,
+        2.3205934999999998,
+        2.5108226,
+        3.4341247,
+        2.5413802999999997,
+        2.4969504000000002
+      ]
+    },
+    "workflow_tick": {
+      "median": 11.418852999999999,
+      "min": 10.5969233,
+      "max": 18.2716719,
+      "samples": [
+        10.5969233,
+        11.0123293,
+        11.0647202,
+        11.5619594,
+        18.2716719,
+        11.418852999999999,
+        12.2949596
+      ]
+    },
+    "workflow_lookup": {
+      "median": 0.0878666,
+      "min": 0.0829224,
+      "max": 0.1455177,
+      "samples": [
+        0.08482550000000001,
+        0.0878666,
+        0.0879646,
+        0.0852085,
+        0.1455177,
+        0.0829224,
+        0.0952828
+      ]
+    },
+    "input_admission": {
+      "median": 0.2924334,
+      "min": 0.29088749999999997,
+      "max": 0.5775444,
+      "samples": [
+        0.29088749999999997,
+        0.29637759999999996,
+        0.2919605,
+        0.29120240000000003,
+        0.5775444,
+        0.2924334,
+        0.3179518
+      ]
+    },
+    "attempt_correlation": {
+      "median": 2.4199984,
+      "min": 2.3012125,
+      "max": 4.6631646,
+      "samples": [
+        2.3231265,
+        2.4484383,
+        2.4340105,
+        2.3069688,
+        4.6631646,
+        2.3012125,
+        2.4199984
+      ]
+    },
+    "workflow_tick_dormant_256": {
+      "median": 11.1296072,
+      "min": 10.6783488,
+      "max": 13.664346499999999,
+      "samples": [
+        10.6783488,
+        11.227296599999999,
+        11.2217072,
+        11.102103999999999,
+        13.664346499999999,
+        10.9737867,
+        11.1296072
+      ]
+    },
+    "workflow_tick_dormant_1024": {
+      "median": 11.364148199999999,
+      "min": 10.481854199999999,
+      "max": 13.653171200000001,
+      "samples": [
+        11.7143038,
+        10.971083199999999,
+        10.481854199999999,
+        10.627182000000001,
+        11.529416600000001,
+        13.653171200000001,
+        11.364148199999999
+      ]
+    },
+    "workflow_tick_units_2": {
+      "median": 11.543871800000002,
+      "min": 11.209295899999999,
+      "max": 14.080692800000001,
+      "samples": [
+        11.209295899999999,
+        11.6838632,
+        11.3251008,
+        11.702932800000001,
+        11.543871800000002,
+        14.080692800000001,
+        11.2928164
+      ]
+    },
+    "workflow_tick_units_16": {
+      "median": 20.780883999999997,
+      "min": 19.6060779,
+      "max": 28.7425502,
+      "samples": [
+        20.780883999999997,
+        19.957176800000003,
+        21.8451251,
+        19.6060779,
+        21.842023,
+        28.7425502,
+        19.8502801
+      ]
+    }
+  },
+  "allocations": {
+    "candidate_1_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1704,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_1_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1728,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_16_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1824,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_16_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_compute": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 2024,
+      "retained_extra_bytes_before_gc": 1192,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_compute": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1164,
+      "retained_extra_bytes_before_gc": 680,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "current_loop_4_cheap_dispatch": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1492,
+      "retained_extra_bytes_before_gc": 848,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_lookup": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 184,
+      "retained_extra_bytes_before_gc": 184,
+      "retained_extra_bytes_after_gc": 4096
+    },
+    "input_admission": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 15272,
+      "retained_extra_bytes_before_gc": 14904,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "attempt_correlation": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 16856,
+      "retained_extra_bytes_before_gc": 15168,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_256": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_1024": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_2": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18520,
+      "retained_extra_bytes_before_gc": 15968,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_16": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 19640,
+      "retained_extra_bytes_before_gc": 16304,
+      "retained_extra_bytes_after_gc": 4192
+    }
+  },
+  "paired_candidate_minus_direct_us": {
+    "1_cheap": {
+      "median": 1.1931660000000002
+    },
+    "4_cheap": {
+      "median": 2.1994865
+    },
+    "16_cheap": {
+      "median": 6.740582700000001
+    },
+    "4_compute": {
+      "median": 1.9794495999999953
+    }
+  }
+}

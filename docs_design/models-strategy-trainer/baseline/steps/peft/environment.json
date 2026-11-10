@@ -1,0 +1,19 @@
+{
+ "python": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+ "platform": "Windows-11-10.0.26340-SP0",
+ "gil_enabled": true,
+ "torch": "2.11.0+cu130",
+ "cuda": "13.0",
+ "cudnn": 91900,
+ "devices": [
+  "NVIDIA GeForce RTX 3090"
+ ],
+ "argv": [
+  "--config-name=tests/test_peft_resource_sampled",
+  "training.max_train_steps=3",
+  "output.saving.output_dir=D:/Projects/sd-scripts/outputs/rmst-baseline/peft-steps-a",
+  "output.logging.logging_dir=D:/Projects/sd-scripts/outputs/rmst-baseline/peft-steps-a/logs",
+  "hydra.run.dir=outputs/rmst-baseline/peft-steps-a/hydra"
+ ],
+ "steps": 3
+}

@@ -1,0 +1,326 @@
+mode: finetune
+training:
+  train_batch_size: 2
+  max_token_length: 225
+  max_train_steps: 50
+  max_train_epochs: null
+  seed: 42
+  gradient_accumulation_steps: 1
+  clip_skip: null
+  dry_run: false
+  initial_epoch: null
+  initial_step: null
+  skip_until_initial_step: false
+optimizer:
+  optimizer_type: AdamW8bit
+  use_8bit_adam: false
+  use_lion_optimizer: false
+  learning_rates:
+    base: null
+    denoiser: 1.0e-05
+    text_encoders:
+    - 0.0
+    - 0.0
+    groups_file: null
+    groups: []
+  scheduler:
+    lr_scheduler: constant
+    lr_scheduler_type: ''
+    lr_scheduler_args: []
+    lr_warmup_steps: 0
+    lr_decay_steps: 0
+    lr_scheduler_num_cycles: 1
+    lr_scheduler_power: 1.0
+    lr_scheduler_timescale: null
+    lr_scheduler_min_lr_ratio: null
+  max_grad_norm: 1.0
+  optimizer_args:
+  - weight_decay=0.01
+  - betas=0.9, 0.999
+  fused_backward_pass: false
+  optimizer_schedulefree_wrapper: false
+  schedulefree_wrapper_args: null
+  fused_optimizer_groups: null
+data:
+  source:
+    train_data_dir: D:/Projects/sd-scripts/tests/assets/training_images
+    reg_data_dir: null
+    val_data_dir: null
+    dataset_config: null
+    in_json: null
+    dataset_class: null
+    dataset_repeats: 1
+    subsets: []
+  preprocessing:
+    resolution: 1024,1024
+    resize_interpolation: null
+    alpha_mask: false
+    flip_aug: false
+    color_aug: false
+    random_crop: false
+    random_crop_padding_percent: 0.05
+    face_crop_aug_range: null
+    debug_dataset: false
+  caption:
+    caption_extension: .txt
+    caption_extention: null
+    caption_separator: ','
+    shuffle_caption: false
+    keep_tokens: 0
+    keep_tokens_separator: '|||'
+    secondary_separator: null
+    enable_wildcard: false
+    caption_prefix: null
+    caption_suffix: null
+    caption_dropout_rate: 0.0
+    caption_dropout_every_n_epochs: 0
+    caption_tag_dropout_rate: 0.0
+    weighted_captions: false
+    token_warmup_min: 1
+    token_warmup_step: 0.0
+  bucketing:
+    enable_bucket: true
+    min_bucket_reso: 256
+    max_bucket_reso: 1024
+    bucket_reso_steps: 64
+    bucket_no_upscale: false
+  caching:
+    cache_dir: D:/Projects/sd-scripts/benchmark_cache
+    tokenizer_cache_dir: null
+    cache_latents: true
+    cache_latents_to_disk: true
+    cache_text_encoder_outputs: true
+    cache_text_encoder_outputs_to_disk: true
+    disable_mmap_load_safetensors: false
+    vae_batch_size: 2
+    te_batch_size: 8
+    num_workers: 4
+    skip_cache_check: false
+    cache_tokens_per_epoch: false
+  loader:
+    num_workers: 0
+    persistent_workers: true
+    prefetch_factor: 2
+    pin_memory: true
+model:
+  model_type: sdxl
+  pretrained_model_name_or_path: D:/stable-diffusion-webui-reForge/models/Stable-diffusion/21862-seele_pop3_v-pred.safetensors
+  vae: null
+  vae_conv2d_padding_mode: zeros
+objective:
+  path: ddpm
+  prediction: v_prediction
+adapter: null
+textual_inversion: null
+output:
+  saving:
+    output_dir: D:/Projects/sd-scripts/outputs/rmst-baseline/finetune-run2
+    output_name: test_peft_resource_sampled
+    save_precision: fp16
+    save_every_n_epochs: 999999
+    save_every_n_steps: 999999
+    save_n_epoch_ratio: null
+    save_last_n_epochs: null
+    save_last_n_epochs_state: null
+    save_last_n_steps: null
+    save_last_n_steps_state: null
+    save_state: false
+    save_state_on_train_end: false
+    resume: null
+    save_model_as: safetensors
+    use_safetensors: false
+    no_metadata: false
+    hash_algorithm: sha256
+  logging:
+    logging_dir: D:/Projects/sd-scripts/outputs/rmst-baseline/finetune-run2/logs
+    log_with: null
+    log_prefix: null
+    log_tracker_name: null
+    wandb_run_name: null
+    log_tracker_config: {}
+    wandb_api_key: null
+    log_config: false
+    console_log_level: null
+    console_log_file: null
+    console_log_simple: false
+    log_every_n_steps: 1
+    log_timestep_distribution_every_n_steps: null
+    live_plot_port: null
+    benchmark_report:
+      enabled: true
+      output_dir: null
+      filename_prefix: benchmark_report
+      include_full_config: true
+    resource_monitor:
+      enabled: true
+      mode: sampled
+      log_every_n_steps: 0
+      sample_interval_sec: 0.5
+      rank_scope: main
+      device_scope: local
+      output_jsonl: resource_monitor.jsonl
+      jsonl_flush_mode: auto
+      jsonl_flush_every_n_events: 50
+      queue_maxsize: 1024
+      drop_policy: drop_oldest
+      max_collection_ms: 0.0
+      phase_summary: default
+      component_breakdown: true
+      deep_window_steps: 0
+      deep_window_seconds: 0.0
+  huggingface:
+    huggingface_repo_id: null
+    huggingface_repo_type: null
+    huggingface_path_in_repo: null
+    huggingface_token: null
+    huggingface_repo_visibility: null
+    save_state_to_huggingface: false
+    resume_from_huggingface: false
+    async_upload: false
+  sampling:
+    sample_every_n_steps: 0
+    sample_at_first: false
+    sample_every_n_epochs: null
+    sample_prompt: null
+    sample_prompt_file: null
+    sample_negative_prompt: null
+    sample_width: null
+    sample_height: null
+    sample_steps: null
+    sample_cfg_scale: null
+    sample_seed: null
+    sample_sampler: ddim
+    sample_flow_shift: null
+    sample_vae_dtype: fp16
+  metadata:
+    training_comment: null
+    metadata_title: null
+    metadata_author: null
+    metadata_description: null
+    metadata_license: null
+    metadata_tags: null
+    metadata_usage_hint: null
+    metadata_thumbnail: null
+    metadata_merged_from: null
+    metadata_trigger_phrase: null
+    metadata_preprocessor: null
+    metadata_is_negative_embedding: null
+performance:
+  precision:
+    mixed_precision: bf16
+    full_fp16: false
+    full_bf16: false
+    fp8_base: false
+    fp8_base_unet: false
+    no_half_vae: true
+    disable_cuda_reduced_precision_operations: false
+    enable_cuda_reduced_precision_operations: false
+  memory:
+    gradient_checkpointing: true
+    cpu_offload_checkpointing: false
+    lowram: false
+    highvram: false
+    use_ramtorch: false
+    direct_ramtorch: false
+    offload_text_encoders: false
+  attention:
+    mem_eff_attn: false
+    xformers: true
+    sdpa: false
+    diffusers_xformers: false
+  compilation:
+    torch_compile: false
+    dynamo_backend: inductor
+  distributed:
+    ddp_timeout: null
+    ddp_gradient_as_bucket_view: false
+    ddp_static_graph: false
+  deepspeed:
+    deepspeed: false
+    zero_stage: 2
+    offload_optimizer_device: null
+    offload_optimizer_nvme_path: null
+    offload_param_device: null
+    offload_param_nvme_path: null
+    zero3_init_flag: false
+    zero3_save_16bit_model: false
+    fp16_master_weights_and_gradients: false
+loss:
+  loss_type: l2
+  loss_scale: 1.0
+  loss_multiplier: null
+  prior_loss_weight: 1.0
+  v_parameterization: true
+  huber:
+    huber_schedule: snr
+    huber_c: 0.1
+    huber_scale: 1.0
+  snr:
+    min_snr_gamma: 5.0
+    scale_v_pred_loss_like_noise_pred: false
+    v_pred_like_loss: null
+    debiased_estimation_loss: false
+  masked:
+    masked_loss: false
+    conditioning_data_dir: null
+  regularization:
+    noise_offset: null
+    noise_offset_random_strength: false
+    multires_noise_iterations: null
+    multires_noise_discount: 0.3
+    ip_noise_gamma: null
+    ip_noise_gamma_random_strength: false
+    adaptive_noise_scale: null
+    zero_terminal_snr: true
+  edm2:
+    enabled: false
+    laplace_timestep_sampling: false
+    num_channels: 128
+    initial_weights: null
+    optimizer:
+      type: torch.optim.AdamW
+      lr: 0.02
+      args: '{''weight_decay'': 0, ''betas'': (0.9,0.999)}'
+      use_scheduler: false
+      warmup_percent: 0.1
+      constant_percent: 0.1
+      decay_scaling: 1.0
+    importance:
+      enabled: false
+      max_weight: 10.0
+      min_snr_gamma: 1.0
+      safety_override: false
+    visualization:
+      enabled: false
+      every_n_steps: 20
+      output_dir: null
+      y_limit: null
+      y_scale: linear
+timestep:
+  timestep_sampling: uniform
+  min_timestep: 0
+  max_timestep: 1000
+  dynamic_timestep_schedule: null
+  training_shift: 1.0
+  rf_loss_weighting_scheme: uniform
+  logit_mean: 0.0
+  logit_std: 1.0
+  cosine_shape_scale: 1.29
+  adaptive_log_snr:
+    bins: 32
+    ema_beta: 0.9
+    temperature: 0.5
+    prior_weight: 0.25
+    min_prob: 0.0001
+    warmup_steps: 2000
+    entropy_floor: 0.7
+    uniform_mix_when_low_entropy: 0.1
+validation:
+  validation_split: 0.0
+  validation_seed: null
+  run_at_start: false
+  run_at_end: false
+  validate_every_n_steps: null
+  validate_every_n_epochs: null
+  max_validation_steps: null
+  validation_timesteps: '[50, 350, 500, 650, 950]'

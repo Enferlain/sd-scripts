@@ -1,0 +1,389 @@
+{
+  "environment": {
+    "python": "3.14.5",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+    "processor": "",
+    "gc_enabled": true,
+    "clock": "perf_counter_ns",
+    "iterations": 10000,
+    "repeats": 7
+  },
+  "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+  "current_loop": {
+    "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+    "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+    "scope": "actual call expression with direct fixture facade; argument dispatch only"
+  },
+  "timing_us_per_call": {
+    "harness_floor": {
+      "median": 0.0291375,
+      "min": 0.024321000000000002,
+      "max": 0.0614651,
+      "samples": [
+        0.024321000000000002,
+        0.0342054,
+        0.0296331,
+        0.0291375,
+        0.0245113,
+        0.0614651,
+        0.0253943
+      ]
+    },
+    "candidate_1_cheap": {
+      "median": 2.7262606000000003,
+      "min": 2.5325519,
+      "max": 3.1359108,
+      "samples": [
+        2.5325519,
+        2.6760956,
+        2.6836109,
+        3.0644291,
+        2.7262606000000003,
+        3.1359108,
+        2.9609381
+      ]
+    },
+    "direct_1_cheap": {
+      "median": 1.5517066,
+      "min": 1.4526044,
+      "max": 1.7909688000000001,
+      "samples": [
+        1.4526044,
+        1.5184081,
+        1.5257113999999998,
+        1.5517066,
+        1.5560508,
+        1.5683635,
+        1.7909688000000001
+      ]
+    },
+    "candidate_4_cheap": {
+      "median": 3.9425475999999997,
+      "min": 3.6810701,
+      "max": 6.3889753,
+      "samples": [
+        3.6810701,
+        3.9216417999999997,
+        3.9425475999999997,
+        3.7422684,
+        6.3889753,
+        3.9786916999999997,
+        4.3053476
+      ]
+    },
+    "direct_4_cheap": {
+      "median": 1.6969092000000001,
+      "min": 1.6259493,
+      "max": 2.8518607,
+      "samples": [
+        1.6259493,
+        1.7359489000000001,
+        2.8518607,
+        1.6502977,
+        2.7532988,
+        1.6969092000000001,
+        1.6838844999999998
+      ]
+    },
+    "candidate_16_cheap": {
+      "median": 8.8332172,
+      "min": 8.3302231,
+      "max": 13.007327799999999,
+      "samples": [
+        8.3302231,
+        8.971276900000001,
+        8.7327243,
+        8.8332172,
+        13.007327799999999,
+        9.289770500000001,
+        8.4890824
+      ]
+    },
+    "direct_16_cheap": {
+      "median": 2.4197217999999996,
+      "min": 2.2198022,
+      "max": 4.0718105,
+      "samples": [
+        2.2306048,
+        2.4510846,
+        2.2973405,
+        3.3042313,
+        4.0718105,
+        2.4197217999999996,
+        2.2198022
+      ]
+    },
+    "candidate_4_compute": {
+      "median": 40.755561900000004,
+      "min": 38.491676700000006,
+      "max": 43.6023719,
+      "samples": [
+        38.491676700000006,
+        40.7240396,
+        43.1380986,
+        43.274289700000004,
+        43.6023719,
+        40.755561900000004,
+        39.315960700000005
+      ]
+    },
+    "direct_4_compute": {
+      "median": 38.9495841,
+      "min": 37.4905028,
+      "max": 62.5206702,
+      "samples": [
+        37.4905028,
+        38.9495841,
+        37.9641624,
+        62.5206702,
+        52.529338100000004,
+        40.473636400000004,
+        38.213867
+      ]
+    },
+    "current_loop_4_cheap_dispatch": {
+      "median": 2.4632680000000002,
+      "min": 2.3791157,
+      "max": 4.0455014,
+      "samples": [
+        2.7040037000000003,
+        2.3791157,
+        2.3891781,
+        4.0455014,
+        3.2571645,
+        2.426555,
+        2.4632680000000002
+      ]
+    },
+    "workflow_tick": {
+      "median": 11.1071493,
+      "min": 10.544349200000001,
+      "max": 18.8222025,
+      "samples": [
+        11.1071493,
+        11.2033647,
+        10.544349200000001,
+        18.8222025,
+        11.2190169,
+        10.8220301,
+        10.8137907
+      ]
+    },
+    "workflow_lookup": {
+      "median": 0.0865955,
+      "min": 0.08368540000000001,
+      "max": 0.13602099999999998,
+      "samples": [
+        0.0897946,
+        0.0963839,
+        0.0841803,
+        0.13602099999999998,
+        0.08497350000000001,
+        0.0865955,
+        0.08368540000000001
+      ]
+    },
+    "input_admission": {
+      "median": 0.2905021,
+      "min": 0.2860439,
+      "max": 0.44483819999999996,
+      "samples": [
+        0.2893357,
+        0.2914048,
+        0.2860439,
+        0.44483819999999996,
+        0.2928862,
+        0.28875510000000004,
+        0.2905021
+      ]
+    },
+    "attempt_correlation": {
+      "median": 2.3816987,
+      "min": 2.2611104999999996,
+      "max": 3.854478,
+      "samples": [
+        2.5804933,
+        2.3816987,
+        2.2611104999999996,
+        3.7898338,
+        3.854478,
+        2.2883708,
+        2.3297484
+      ]
+    },
+    "workflow_tick_dormant_256": {
+      "median": 11.4683177,
+      "min": 10.814571299999999,
+      "max": 20.9314722,
+      "samples": [
+        12.0478497,
+        11.4134683,
+        10.814571299999999,
+        20.9314722,
+        12.8051204,
+        11.4683177,
+        10.897277
+      ]
+    },
+    "workflow_tick_dormant_1024": {
+      "median": 11.6807889,
+      "min": 10.5626719,
+      "max": 19.948416,
+      "samples": [
+        11.724761699999998,
+        11.6807889,
+        11.544566699999999,
+        19.948416,
+        11.0546168,
+        12.168856100000001,
+        10.5626719
+      ]
+    },
+    "workflow_tick_units_2": {
+      "median": 12.1808581,
+      "min": 11.1081841,
+      "max": 12.302672000000001,
+      "samples": [
+        12.302672000000001,
+        12.1808581,
+        12.296983299999999,
+        11.1081841,
+        11.8879149,
+        12.22395,
+        11.1128081
+      ]
+    },
+    "workflow_tick_units_16": {
+      "median": 20.5750737,
+      "min": 19.997091700000002,
+      "max": 22.0227171,
+      "samples": [
+        22.0227171,
+        20.5750737,
+        20.702590400000002,
+        20.3386649,
+        19.997091700000002,
+        21.0009895,
+        20.127741399999998
+      ]
+    }
+  },
+  "allocations": {
+    "candidate_1_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1704,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_1_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1728,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_16_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1824,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_16_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_compute": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 2024,
+      "retained_extra_bytes_before_gc": 1192,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_compute": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1164,
+      "retained_extra_bytes_before_gc": 680,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "current_loop_4_cheap_dispatch": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1492,
+      "retained_extra_bytes_before_gc": 848,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_lookup": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 184,
+      "retained_extra_bytes_before_gc": 184,
+      "retained_extra_bytes_after_gc": 4096
+    },
+    "input_admission": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 15272,
+      "retained_extra_bytes_before_gc": 14904,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "attempt_correlation": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 16856,
+      "retained_extra_bytes_before_gc": 15168,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_256": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_1024": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_2": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18520,
+      "retained_extra_bytes_before_gc": 15968,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_16": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 19640,
+      "retained_extra_bytes_before_gc": 16304,
+      "retained_extra_bytes_after_gc": 4192
+    }
+  },
+  "paired_candidate_minus_direct_us": {
+    "1_cheap": {
+      "median": 1.1699692999999998
+    },
+    "4_cheap": {
+      "median": 2.1856928999999994
+    },
+    "16_cheap": {
+      "median": 6.435383799999999
+    },
+    "4_compute": {
+      "median": 1.0011739000000048
+    }
+  }
+}

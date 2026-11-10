@@ -1,0 +1,389 @@
+{
+  "environment": {
+    "python": "3.14.5",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+    "processor": "",
+    "gc_enabled": true,
+    "clock": "perf_counter_ns",
+    "iterations": 10000,
+    "repeats": 7
+  },
+  "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+  "current_loop": {
+    "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+    "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+    "scope": "actual call expression with direct fixture facade; argument dispatch only"
+  },
+  "timing_us_per_call": {
+    "harness_floor": {
+      "median": 0.0244223,
+      "min": 0.024117200000000002,
+      "max": 0.0281904,
+      "samples": [
+        0.0244192,
+        0.0244102,
+        0.0276814,
+        0.0281904,
+        0.024117200000000002,
+        0.0263954,
+        0.0244223
+      ]
+    },
+    "candidate_1_cheap": {
+      "median": 2.5850821,
+      "min": 2.5272181999999996,
+      "max": 2.7173157,
+      "samples": [
+        2.663041,
+        2.5850821,
+        2.5641371,
+        2.5272181999999996,
+        2.5312644,
+        2.6355645,
+        2.7173157
+      ]
+    },
+    "direct_1_cheap": {
+      "median": 1.4876633,
+      "min": 1.4576589,
+      "max": 1.5347641,
+      "samples": [
+        1.4996958999999999,
+        1.4698855000000002,
+        1.4576589,
+        1.5347641,
+        1.4876633,
+        1.4712022999999999,
+        1.5158067000000002
+      ]
+    },
+    "candidate_4_cheap": {
+      "median": 3.8793856,
+      "min": 3.7375286,
+      "max": 4.3340518,
+      "samples": [
+        3.8819618,
+        3.7992557000000002,
+        3.7716644,
+        3.9933945,
+        3.7375286,
+        3.8793856,
+        4.3340518
+      ]
+    },
+    "direct_4_cheap": {
+      "median": 1.6964675999999999,
+      "min": 1.6460902000000002,
+      "max": 1.7530523,
+      "samples": [
+        1.6989869000000002,
+        1.6460902000000002,
+        1.6468013000000001,
+        1.6964675999999999,
+        1.6483865,
+        1.7530523,
+        1.7359714
+      ]
+    },
+    "candidate_16_cheap": {
+      "median": 8.8025857,
+      "min": 8.4680529,
+      "max": 9.056428400000001,
+      "samples": [
+        8.704942800000001,
+        8.5513011,
+        8.4680529,
+        8.8025857,
+        8.810054000000001,
+        9.056428400000001,
+        8.9916798
+      ]
+    },
+    "direct_16_cheap": {
+      "median": 2.3737752999999997,
+      "min": 2.283979,
+      "max": 2.6727023,
+      "samples": [
+        2.3750326,
+        2.283979,
+        2.3120421,
+        2.5040141,
+        2.3302288,
+        2.6727023,
+        2.3737752999999997
+      ]
+    },
+    "candidate_4_compute": {
+      "median": 39.5449012,
+      "min": 39.222280700000006,
+      "max": 48.0004707,
+      "samples": [
+        39.4778467,
+        39.5421451,
+        40.8400919,
+        39.5449012,
+        48.0004707,
+        47.930531,
+        39.222280700000006
+      ]
+    },
+    "direct_4_compute": {
+      "median": 39.098276899999995,
+      "min": 36.440781799999996,
+      "max": 67.4327644,
+      "samples": [
+        39.463951200000004,
+        36.440781799999996,
+        37.569873099999995,
+        39.098276899999995,
+        67.4327644,
+        52.6331156,
+        39.0255892
+      ]
+    },
+    "current_loop_4_cheap_dispatch": {
+      "median": 2.4581338,
+      "min": 2.3310724,
+      "max": 4.5656576,
+      "samples": [
+        2.5974417,
+        2.3310724,
+        2.3900853,
+        2.463444,
+        4.5656576,
+        2.4134645,
+        2.4581338
+      ]
+    },
+    "workflow_tick": {
+      "median": 10.828790000000001,
+      "min": 10.594647199999999,
+      "max": 19.7978652,
+      "samples": [
+        10.8017535,
+        10.594647199999999,
+        10.828790000000001,
+        10.607916999999999,
+        19.7978652,
+        11.0674709,
+        11.4627525
+      ]
+    },
+    "workflow_lookup": {
+      "median": 0.08459019999999999,
+      "min": 0.0824941,
+      "max": 0.15651140000000002,
+      "samples": [
+        0.0824941,
+        0.0825892,
+        0.08459019999999999,
+        0.0839462,
+        0.15651140000000002,
+        0.0883067,
+        0.0956641
+      ]
+    },
+    "input_admission": {
+      "median": 0.2965768,
+      "min": 0.279209,
+      "max": 0.4195323,
+      "samples": [
+        0.279209,
+        0.2955528,
+        0.300566,
+        0.2869443,
+        0.4195323,
+        0.2965768,
+        0.3043372
+      ]
+    },
+    "attempt_correlation": {
+      "median": 2.3250221,
+      "min": 2.261795,
+      "max": 3.9465041999999997,
+      "samples": [
+        2.2762087,
+        2.2765567,
+        2.3250221,
+        2.261795,
+        3.9465041999999997,
+        2.5933081000000002,
+        2.4340526
+      ]
+    },
+    "workflow_tick_dormant_256": {
+      "median": 11.067667799999999,
+      "min": 10.590699,
+      "max": 12.755316,
+      "samples": [
+        10.719895000000001,
+        10.590699,
+        10.915023999999999,
+        11.067667799999999,
+        12.755316,
+        11.610387300000001,
+        11.404946299999999
+      ]
+    },
+    "workflow_tick_dormant_1024": {
+      "median": 10.777355400000001,
+      "min": 10.564665699999999,
+      "max": 16.846352,
+      "samples": [
+        10.564665699999999,
+        10.6242007,
+        10.777355400000001,
+        11.5279408,
+        11.8178483,
+        16.846352,
+        10.675449500000001
+      ]
+    },
+    "workflow_tick_units_2": {
+      "median": 11.9146364,
+      "min": 10.983958699999999,
+      "max": 15.9535736,
+      "samples": [
+        10.983958699999999,
+        11.449314399999999,
+        11.995673199999999,
+        12.152802,
+        11.9146364,
+        15.9535736,
+        11.267003
+      ]
+    },
+    "workflow_tick_units_16": {
+      "median": 20.6975053,
+      "min": 19.468927,
+      "max": 21.2344907,
+      "samples": [
+        19.468927,
+        20.164266199999997,
+        21.145607199999997,
+        21.2344907,
+        19.6286383,
+        20.7590444,
+        20.6975053
+      ]
+    }
+  },
+  "allocations": {
+    "candidate_1_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1704,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_1_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1728,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_16_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1824,
+      "retained_extra_bytes_before_gc": 896,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_16_cheap": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 964,
+      "retained_extra_bytes_before_gc": 480,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_compute": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 2024,
+      "retained_extra_bytes_before_gc": 1192,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_compute": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1164,
+      "retained_extra_bytes_before_gc": 680,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "current_loop_4_cheap_dispatch": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 1492,
+      "retained_extra_bytes_before_gc": 848,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_lookup": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 184,
+      "retained_extra_bytes_before_gc": 184,
+      "retained_extra_bytes_after_gc": 4096
+    },
+    "input_admission": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 15272,
+      "retained_extra_bytes_before_gc": 14904,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "attempt_correlation": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 16856,
+      "retained_extra_bytes_before_gc": 15168,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_256": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_1024": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18440,
+      "retained_extra_bytes_before_gc": 15944,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_2": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 18520,
+      "retained_extra_bytes_before_gc": 15968,
+      "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_16": {
+      "batch_calls": 100,
+      "peak_extra_bytes": 19640,
+      "retained_extra_bytes_before_gc": 16304,
+      "retained_extra_bytes_after_gc": 4192
+    }
+  },
+  "paired_candidate_minus_direct_us": {
+    "1_cheap": {
+      "median": 1.1151966
+    },
+    "4_cheap": {
+      "median": 2.1531655
+    },
+    "16_cheap": {
+      "median": 6.329910200000001
+    },
+    "4_compute": {
+      "median": 0.19669150000000712
+    }
+  }
+}

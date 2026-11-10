@@ -1,0 +1,3 @@
+- training.max_train_steps=3
+- output.saving.output_dir=D:/Projects/sd-scripts/outputs/rmst-baseline/peft-steps-a
+- output.logging.logging_dir=D:/Projects/sd-scripts/outputs/rmst-baseline/peft-steps-a/logs
