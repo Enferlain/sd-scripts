@@ -21,7 +21,7 @@ notes.
   that the launcher runs, checks the completed authored strategy and returns
   acceptance or detailed rejection without assembling a strategy or inferring
   missing selections.
-- Build the IR system, Kuroiro on xDSL, in `library/workflow`: the language
+- Build the IR system, Kuroiro on xDSL, in `library/iro`: the language
   and its Python front end, fulfillment, the reference semantics and the
   runtime that executes accepted strategies. Add `library/runstate` for the
   run authority and `library/launch` for contract composition and launch.
@@ -146,7 +146,7 @@ The rework affects `train.py`, `library/strategies/`,
 `library/training/`, `library/objectives/`, `library/optimization/`, model
 loading, adapter integration, checkpointing/restoration, metadata, and the
 selected caching, validation, sampling, persistence, and observability paths.
-It adds `library/workflow/`, `library/runstate/`, `library/launch/`,
+It adds `library/iro/`, `library/runstate/`, `library/launch/`,
 `library/conditioning/`, `library/artifacts/` and `library/evaluation/`.
 Kept libraries, such as model components, data sources and optimizers, are
 used where they fit under D21's rules. The system itself is built new: today's Trainer, strategy and

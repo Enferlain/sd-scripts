@@ -361,7 +361,7 @@ stays normative.
 | Generation | The coherent published state across owners | D19 |
 | Guidance | What is known rather than required: provenance, tested combinations, recommended settings and community practice. It produces help and logs, never a refusal | D21 |
 | Implementation | Selected code that does the math, declared with its contract and version | D16, D18 |
-| IR system | Kuroiro on xDSL: the language, its front end, fulfillment, reference semantics and runtime, in `library/workflow`. Older text calls it the workflow layer | D14, D16 |
+| IR system | Kuroiro on xDSL: the language, its front end, fulfillment, reference semantics and runtime, in `library/iro`. Older text calls it the workflow layer | D14, D16 |
 | Lease | The handle an access scope gives its body; it cannot leave the scope | D16 |
 | Machinery | Code that runs whatever approach a strategy chooses, such as preparation, FP8 casting, optimizer construction and data loading | D21 |
 | Obligation | Something verification requires the run to discharge, attached to a readiness checkpoint | D7, `training-contract` |
@@ -3101,7 +3101,7 @@ run-state or training layers is a defect in the shared design.
   run state     run authority: arrangement and obligation revisions,
                 participants, relationships, bindings, routes, views
                      |
-  workflow      library/workflow, the IR system: Kuroiro, its Python
+  workflow      library/iro, the IR system: Kuroiro, its Python
                 front end, fulfillment, reference semantics, runtime
 
   libraries: artifacts, models (components and assemblies), conditioning,
@@ -3256,7 +3256,7 @@ to capability implementations and model behavior to selected implementations.
 | Optimization units and their definition revisions, realizations, optimizer and scheduler state, and each unit's progress and accumulation window | Trainer optimization | Optimizer and backend objects are realizations (D9); progress is counted per unit (D20) |
 | Backend coordination: wrappers, inseparable groups, distributed state | Trainer runtime infrastructure | Published with routes and optimization runtime in one coordinated publication (D8) |
 | Input policy, cursors and buffers, and each producer's progress through its passes | Producers, in `library/data`, each with its cut state | D5 input row; triggers may follow that progress (D17) |
-| Input readiness, admission and hand-off records | The IR runtime's streams, in `library/workflow` | D5 input row; D21 |
+| Input readiness, admission and hand-off records | The IR runtime's streams, in `library/iro` | D5 input row; D21 |
 | Operation-owned state, such as adaptive objective or sampling state | Its accepted operation | Continuity rules in G2.6 |
 | Capability readiness, requests and results | The IR runtime's request and handler protocol, with each capability's implementations | G4 exchanges; D21 |
 | Metrics, validation history, traces | Observation owner | Metadata and logging consume facts |
@@ -3358,8 +3358,9 @@ recognizable look of the project's own language. It also contains IR, with the
 
 The `iro` prefix stays separate from the `kuro.*` metadata namespace already
 written into saved models, so a later repository rename changes neither.
-`workflow-composition` remains the descriptive spec name, and D15's
-package name stays provisional.
+`workflow-composition` remains the descriptive spec name. The package,
+`library/iro`, takes the prefix's name; like every package name in D21 it is
+a working name.
 
 xDSL is the machinery underneath. Kuroiro's vocabulary, rules, written form,
 diagnostics and authoring surface belong to the project.
@@ -4721,7 +4722,7 @@ anything.
      read the run config; compose the contract and the installed
      implementations; import the strategy and hand it to fulfillment
      |
-  the IR system: Kuroiro on xDSL                        library/workflow
+  the IR system: Kuroiro on xDSL                        library/iro
      fulfillment: read, normalize, verify, derive obligations
      -> the accepted run, or diagnostics
      |
@@ -4730,7 +4731,7 @@ anything.
      |
   the run, as it executes
      the IR runtime: coordinator, streams, leases,
-     requests and handlers                              library/workflow
+     requests and handlers                              library/iro
      owners that serve it:
        the run authority: participants                  library/runstate
        Trainer optimization: units                      library/training
@@ -4746,7 +4747,7 @@ anything.
 | Strategies, their reusable pieces and the readable contract | Strategies and the pieces they share, written by authors and maintainers; the readable contract and the guide | `library/strategies` | D18, D21 |
 | Run config | Written by users and read only by launch | `library/config` | D18 |
 | Presets, config application, contract composition, help and the doctor | Run by the system at launch | `library/launch`, `train.py` | D18 |
-| Kuroiro, its front end, fulfillment, the accepted run, diagnostics, the reference interpreter, preparation and lowering, the runtime and device adapters | Run by the system | `library/workflow` | D14, D16–D18 |
+| Kuroiro, its front end, fulfillment, the accepted run, diagnostics, the reference interpreter, preparation and lowering, the runtime and device adapters | Run by the system | `library/iro` | D14, D16–D18 |
 | The owner pattern, the run authority, generations and publication | Holds state | `library/runstate` | D19 |
 | Training's words, the Trainer, Trainer optimization, preparation and backend coordination and the observation owner | Run by the system; holds state | `library/training` | D17, D20 |
 | Components and assemblies | What models are: their modules, weights, interfaces and declarations | `library/models` | D21 |
@@ -4791,7 +4792,7 @@ edited to follow them.
 
 #### Module map
 
-`library/workflow`, the IR system, is rewritten from the research
+`library/iro`, the IR system, is rewritten from the research
 `xdsl_language` package and the `execution_candidate` runtime:
 
 | Module | Holds | Origin |
@@ -4933,7 +4934,7 @@ packages.
 
 | Package | Public to the layers above | Internal |
 | --- | --- | --- |
-| `library/workflow` | The `iro` words and decorators, composition, fulfillment, the accepted run, the runtime entry, the seams and diagnostics | Passes, verifier and lowering internals |
+| `library/iro` | The `iro` words and decorators, composition, fulfillment, the accepted run, the runtime entry, the seams and diagnostics | Passes, verifier and lowering internals |
 | `library/runstate` | The owner pattern, the authority's proposal and projection interfaces, and publication | Record storage and section internals; nothing returns a record by address |
 | `library/training` | Training's words, for strategies; the Trainer entry, for launch | Optimization, preparation and backend |
 | `library/strategies` | Maintained strategies, their reusable pieces, the readable contract and the guide, for launch and for authors | The pieces' internals |
@@ -5006,7 +5007,7 @@ Rows note today's import crossings; none of them exists in the new code.
 | The import of metadata keys in `constants.py` | Not needed: base imports nothing above it |
 | `metadata/builders/run.py` and `logging/summaries.py` reading adapters, data, objectives, models and optimization | Facts and projections only (G4.5; today's six crossings) |
 | The import of `TrainingStrategy` in `training/runners/trainer.py` | Not needed: the new Trainer receives an accepted run, not a strategy (today's `training → strategies`) |
-| Research `xdsl_language` | Rewritten as `library/workflow` |
+| Research `xdsl_language` | Rewritten as `library/iro` |
 | Research `execution_candidate` | Its owner machinery is rewritten as the IR runtime and the owners. Its asyncio coordination and worker model are the starting implementation, qualified on GPU in the first milestones. `RunState` splits into the run state and training's owners, `Lowering` into the IR system's preparation and runtime, and its older `graph.Contract` language is superseded |
 | `xdsl_candidate`, `pliron_candidate` and `executable_spike` | Research evidence; no production code imports them |
 
@@ -5048,7 +5049,7 @@ the strategy's business:
   implementation of the sampling capability; it would use a product rather
   than live state.
 - Working names: the component kinds, the assemblies' folder,
-  `library/workflow`, `library/runstate`, `library/launch`,
+  `library/iro`, `library/runstate`, `library/launch`,
   `library/conditioning`, `library/artifacts`, `library/evaluation`, and the
   spellings `iro.derived` for the derived-word operation and `at_request`
   for the version selection of requested work.
