@@ -4010,6 +4010,12 @@ def sdxl_finetune(model_path, dataset, heldout, max_steps: int = 20_000):
         iro.stop(produce, after=train)
 ```
 
+The example is kept short and is not the maintained rhythm. Its handler reads
+the weights current when it starts, traverses the held-out data inside one
+implementation and returns its result without reporting it. The shared rhythm
+selects the version at the request, traverses in the handler and reports to
+the observation owner (D17).
+
 Reading activities follows fixed rules:
 
 - `for step in range(n)` becomes a repeat.
