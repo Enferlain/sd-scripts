@@ -82,6 +82,15 @@ require a fabricated execution route.
 - **THEN** its state MUST remain independently identifiable and persistable
 - **AND** no fake route may be created for it
 
+#### Scenario: A host route depends on an attached adapter
+- **WHEN** an adapter acts inside its host through an accepted relationship
+- **THEN** an access through the host's route MUST protect the adapter's state and record its version together with the host's
+- **AND** a use that must not see the adapter MUST go through a different route
+
+#### Scenario: An adapter has its own callable execution
+- **WHEN** an adapter is called on its own
+- **THEN** it MUST have its own route and be accessed like any participant
+
 #### Scenario: Sampling needs a distinct compiled representation
 - **WHEN** a selected sampling capability requires a separately prepared callable representation
 - **THEN** it MAY use a named route with declared refresh dependencies
@@ -125,8 +134,8 @@ invalidation changes together or none of them.
 - **THEN** no new participant, relationship, or retirement from that amendment may become current
 
 #### Scenario: Permitted amendment changes applicable obligations
-- **WHEN** an arrangement amendment is permitted under the existing contract and profile
-- **THEN** the authority MUST derive and evaluate the affected obligation revision as part of the same atomic transition
+- **WHEN** an arrangement amendment that the accepted arrangement declares takes effect
+- **THEN** the authority MUST bring the obligations derived for it at fulfillment into force and evaluate them as part of the same atomic transition
 - **AND** consumers MUST NOT use evidence or projections derived from the superseded obligation revision
 
 ### Requirement: Freshness is explicit and conservative by default

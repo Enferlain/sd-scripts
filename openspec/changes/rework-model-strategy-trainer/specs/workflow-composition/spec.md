@@ -222,6 +222,11 @@ Actual storage SHALL remain outside semantic IR.
 - **AND** read-only borrowing MUST NOT authorize mutation or an undeclared owner transfer
 - **AND** explicit release MUST follow every dependent use and derived retained product
 
+#### Scenario: A result that depends on a lease outlives the access body
+- **WHEN** a selected call's result is declared to depend on leased state and is used after that access body ends, within the same activity
+- **THEN** the leased state MUST stay protected until that result's last use, with its release explicit in the normalized form
+- **AND** the result MUST NOT be yielded into a flow or captured by another activity
+
 #### Scenario: A scoped retained product escapes or is reused prematurely
 - **WHEN** a retained product leaves its declared body extent, is used after release, or conflicts with a known update to its retained owner
 - **THEN** verification or preparation MUST reject the invalid claim before dependent execution

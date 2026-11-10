@@ -254,13 +254,18 @@ contract extension or execution/ownership profile.
 One contract version and execution/ownership profile SHALL govern an accepted
 run authority for its lifetime. The authority SHALL identify the current
 arrangement and run-specific obligation revision. Permitted arrangement
-amendments SHALL derive and re-evaluate affected obligations under that same
-contract. A different contract version or Trainer extension SHALL require new
+amendments SHALL be ones the accepted arrangement declares, with obligations
+derived at fulfillment under that same contract. A different contract version or Trainer extension SHALL require new
 strategy fulfillment unless an explicit migration contract is later defined.
 
 #### Scenario: Arrangement amendment retains the contract
-- **WHEN** an accepted run adds or retires participants through a permitted amendment
-- **THEN** all affected obligations MUST be re-evaluated under the authority's existing contract and profile
+- **WHEN** an accepted run brings declared participants into use or retires them through a permitted amendment
+- **THEN** all affected obligations MUST be evaluated under the authority's existing contract and profile
+
+#### Scenario: A change the arrangement does not declare is requested
+- **WHEN** a running authority receives a change that its accepted arrangement does not declare
+- **THEN** the authority MUST reject it without deriving new obligations
+- **AND** making that change MUST require a new run with its own strategy fulfillment
 
 #### Scenario: Caller requests another contract version
 - **WHEN** live runtime behavior would require another core contract version or ownership profile

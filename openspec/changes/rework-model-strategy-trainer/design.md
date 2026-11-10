@@ -1243,9 +1243,10 @@ constructs the prospective state, applies the accepted obligations, verifies
 revisions, and publishes or rejects the whole transition.
 
 The obligation set is authoritative and revisioned rather than independently
-mutable or permanently frozen. A permitted arrangement amendment derives and
-re-evaluates the affected obligations under the same contract version and
-execution/ownership profile. Every proposal and derived projection identifies
+mutable or permanently frozen. A permitted arrangement amendment is one the
+accepted strategy declares (D17). Fulfillment derives its obligations under
+the same contract version and execution/ownership profile, and the amendment
+brings them into force and evaluates them. Every proposal and derived projection identifies
 the exact authority and obligation revisions on which it depends. Evidence is
 checked at its earliest authoritative availability; initial realization and
 continued enforcement differ in lifecycle and continuity constraints, not in
@@ -3194,7 +3195,9 @@ and launch device work. Owners hold state.
   admission covers, such as a call, a window or a handler's traversal. The
   adapter only supplies device facts and realizes acquisition and
   completion. The extent is settled in `tasks.md` section 14, under D14's
-  rule on waiting.
+  rule on waiting. A participant resident on a device counts toward its
+  capacity, and a strategy may declare that a participant leaves the device
+  between uses; how that is realized is settled in the same section.
 - **Collectives.** On multi-rank targets, every rank must issue collective work
   in the same order, or the ranks hang. The runtime orders collective-issuing
   work identically on every rank, for example through one ordered lane per
@@ -3405,6 +3408,33 @@ An implementation cannot introduce a lifecycle, an admission rule or an
 authority that its operation's protocol does not define (`training-contract`,
 `workflow-composition`).
 
+#### What an access covers
+
+Two shared rules fix what a lease protects and for how long.
+
+- **Until the last use of what depends on it.** An implementation declares
+  when its result keeps a dependency on leased state, such as a loss that
+  still carries its graph (D18). That result is a retained product (D14). It
+  keeps the state protected after the access body ends, until the result's
+  last use. Authors write no release: normalization places it after the last
+  use, which for a loss is the end of backward inside `contribute`, and the
+  normalized form shows it. Such a result may leave its access body but not
+  its activity; it is never yielded into a stream or captured by another
+  activity. The lease itself still never leaves its scope. This extends
+  D14's first retained-product profile by one step.
+- **Everything its route depends on.** An access to a participant goes
+  through a route, the normal one unless another is named, and covers what
+  that route depends on (D19). The lease protects all of it, the use records
+  each version, and a reservation for requested work holds each version
+  (D14). An adapter that acts inside its host makes the host's normal route
+  depend on it, so a host access covers the adapter. A use that must not see
+  the adapter goes through a different route. A unit's evaluation point is a
+  route too (D20).
+
+Neither rule limits what a participant can be. An adapter that is called on
+its own has its own route and is accessed like any participant, and one that
+does both is reached both ways.
+
 #### Correctness and saved forms
 
 - **Conformance.** Each protocol has one runtime realization. It is checked
@@ -3415,8 +3445,9 @@ authority that its operation's protocol does not define (`training-contract`,
   That matters once the GIL is off.
 - **Obligations.** D7's run-specific obligation set is what verification
   derives from the accepted strategy under the pinned definition and
-  implementation versions. Its revision changes only when a governed
-  amendment changes the accepted strategy or those versions. A saved
+  implementation versions. The accepted strategy and those versions never
+  change during a run. The set's revision advances when a declared transition
+  brings further obligations into force or ends some (D17). A saved
   obligation summary is a projection and never authorizes execution on its
   own.
 - **Saved forms.** The accepted strategy is saved in its written form with the run's outputs,
@@ -3481,7 +3512,7 @@ Applying the one-word rule turned up four collisions:
 | Structure | `fused` | A prepared-only group of local stages; authors never write it | `lang.fused_local` | Exists |
 | Lifetimes | `producer` | An activity that keeps producing items into a stream | `lang.producer` | Exists |
 | Lifetimes | `handler`, `request` | An activity that serves requests from declared sources; an owned pending request for one | `lang.requests`, `lang.request` | Exists |
-| Lifetimes | `stop` | Close an activity's admission once another settles | `lang.stop_after` | Exists |
+| Lifetimes | `stop` | Close an activity's admission once another settles, or on an interrupt the strategy names (D17) | `lang.stop_after` | Exists; the interrupt source is planned |
 | Lifetimes | `completed`, `settled` | Logical completion; everything finished, including physical work and dispositions | Boundary values | Exists |
 | Data | `stream` | A bounded flow of items with an admission policy; the spec's "flow" | `lang.stream`, `endpoint` | Exists |
 | Data | `take`, `claim`, `borrow`, `dispose` | Take the next admitted item as a claim; read a claim without owning it; settle the claim exactly once with a disposition such as consumed, forwarded, filtered_out or cancelled | Same names, `retire` | Exists |
@@ -3500,7 +3531,7 @@ Applying the one-word rule turned up four collisions:
 | Model | `relationship` | A declared relation between participants, such as an attachment, with its own identity and state (D6) | — | Planned |
 | Training | `unit`, `window`, `contribute` | An independently advanced optimization responsibility (D9), whose attributes include its members, optimizer policy, joint windows and clipping scope (D20); contributions advanced together; offer an addressed input to a unit | — | Planned |
 | Training | `advance`, `zero`, `trigger` | Advancement and zeroing, written only where a profile grants them and otherwise performed by the Trainer; a policy that makes requested work due | — | Planned |
-| Outputs | `persist`, `transition`, `cut` | Write a durable output and report what was written; propose a governed change; take a consistent cut at a declared boundary | — | Planned |
+| Outputs | `persist`, `transition`, `cut` | Write a durable output and report what was written; propose a governed change that the strategy declares; take a consistent cut at a declared boundary | — | Planned |
 | Declarations | reproducibility, rank rule, `quiescence` | Printed only when not the default | Attribute values | Exists |
 | Runtime | invocation, obligation, cancel | One occurrence of an activity; what verification requires the run to discharge; run cancellation, which closes admission while entered work settles | — | Exists |
 
@@ -3671,7 +3702,7 @@ distinct runs (D6).
 
 | Part | What it is |
 | --- | --- |
-| Strategy | The accepted strategy, in Kuroiro: participants and how each one materializes, relationships, units with their optimizer policy, streams, activities, triggers and capability handlers. Configuration values are attributes in the strategy. |
+| Strategy | The accepted strategy, in Kuroiro: participants and how each one materializes, relationships, units with their optimizer policy, streams, activities, transitions, triggers and capability handlers. Configuration values are attributes in the strategy. |
 | Pinned versions | The contract and ownership profile, and every implementation with its version |
 | Obligations | The revisioned set that verification derives from the strategy under those versions (D16), including the readiness checkpoints that fulfillment derives |
 | Authority seed | The declared participants and relationships, still unbound, under the strategy and obligation revisions. It is derived from the strategy, and the Trainer creates the run authority from it at the start of realization (D6, D19) |
@@ -3703,6 +3734,14 @@ As host, the Trainer carries an accepted run to execution:
      |  finalize     settle and report outcomes
 ```
 
+Participants that the strategy's first activities use are materialized
+before execution. A participant first used later is materialized by a
+declared transition (below). Resources that name the same materializer are
+materialized in one attempt, as when one released checkpoint supplies several
+participants. A materializer that needs another participant's loaded
+structure, such as an adapter's after its host, takes that participant's
+inspection view, so the order follows from that access (D19).
+
 An executable run exists only after publication. It holds:
 
 - the prepared strategy and its lowered runtime instance;
@@ -3717,8 +3756,39 @@ An executable run is single-use:
   mid-run, re-enters preparation under D8 and publishes a new executable
   state. Results from the old state cannot publish against the new one.
 - **Restoration.** Restoration realizes the same accepted run from a cut,
-  using contributors' state instead of fresh initialization (G4.4). Creating a
-  new run instead requires a separate request.
+  using contributors' state instead of fresh initialization (G4.4). The cut's
+  current stage says which transitions have taken effect, and so which
+  obligations are in force. Creating a new run instead requires a separate
+  request.
+
+#### Everything a run can become is declared
+
+A run changes only in ways its strategy already wrote. Every participant,
+relationship and unit a run may ever have is declared in the accepted
+strategy, and every change to the arrangement is a `transition` the strategy
+states. Nothing is declared while a run executes.
+
+- **Fulfillment verifies the whole strategy, including each transition's
+  after-state,** as it verifies every alternative of a `choice`. It derives
+  the obligations each transition brings and keeps them in the accepted run,
+  each with the readiness checkpoint at which it first has to be met.
+- **A transition brings those obligations into force.** The run authority
+  evaluates evidence against them in the same atomic transition (D19). It
+  derives nothing, so the Trainer needs neither the contract nor the verifier
+  while a run executes (D18), and the accepted run stays immutable.
+- **What depends on run-time facts is still declared.** When a transition
+  happens, which declared targets it applies to within stated bounds, and
+  which external file it loads may all be decided while running. The file is
+  evidence, checked when it arrives.
+- **Growth uses declared-but-unbound participants.** A strategy that adds an
+  expert whenever error passes a threshold declares its experts up to a
+  maximum, all unbound, and materializes the next one when the condition
+  holds (D19).
+
+Two kinds of change cannot be declared: one nobody planned, such as a person
+deciding mid-run to add an adapter, and one that needs code or definitions
+the run did not pin. Each is a new run, with its own fulfillment, started
+from the earlier run's products with lineage (D11).
 
 #### How training operations reach the Trainer
 
@@ -3752,6 +3822,16 @@ continue once the snapshot holds that version, on the same device or
 another. A save reserves the version only until its capture completes (D11).
 A strategy that wants the weights current when the handler starts selects
 `current_at_start` instead.
+
+A trigger may follow a producer's progress, such as the end of a pass over
+its data, as it follows a unit's. Reporting a value, such as a step loss or a
+validation result, is an owner update on the observation owner (D15); it
+needs no word of its own.
+
+An interrupt is an orderly stop, not a cancellation. The host closes
+admission of the activity the strategy names for it, usually its training
+repeat, and the rest of the strategy, such as a final save, runs as written.
+A second interrupt cancels the run.
 
 #### On GPU
 
@@ -3941,7 +4021,9 @@ Reading activities follows fixed rules:
 - `handler.request(...)` is a request.
 - An `if` on a runtime value is a choice.
 - Attribute access such as `.protected_current` or `.snapshot` on a
-  participant selects the access mode.
+  participant selects the access mode. The lease lasts for the call it is
+  passed to, and a result declared to depend on it keeps the state protected
+  until that result's last use (D16).
 
 Activities are written in a restricted subset of Python. They may call
 implementations, use participants and use the language's words, and may do
@@ -4224,7 +4306,7 @@ observers (D8).
 | --- | --- |
 | `Participant` | The authority's record: reference and authored address, declaration, lifecycle (declared, bound or retired), binding, routes, views and lineage |
 | `Binding` | A participant's bound state: the loaded object, its binding revision and the evidence it was accepted with |
-| `Route` | A named way to call the participant, such as `normal` or a route that a capability needs: its current prepared callable, route revision, dependencies and refresh rule |
+| `Route` | A named way to call the participant, such as `normal` or a route that a capability needs: its current prepared callable, route revision, dependencies and refresh rule. Its dependencies include participants that act inside this one through a relationship, and an access through the route covers them (D16) |
 | `View` | A typed, revision-pinned look at one participant that is not a route: original, unwrapped, inspection, metadata or artifact |
 | `Relationship` | Reference and address, endpoints, kind, operational state, revision and history. It changes independently of its endpoints |
 | `TargetRef` | A reference into a participant's structure: the participant, the selected component, module or parameter substructure, its public selector and any declared component provenance. It holds no live object (`optimization-target-refs`). Where `expand-model-metadata-identity-and-structure` has resolved them, it also carries optional catalog and structural path associations, which never replace the semantic identity. Optimization, PEFT targeting and persistence share it, and sharing it makes none of them the owner of targeting (D12) |
@@ -4236,8 +4318,10 @@ Four details follow from D6 and D7:
 - "Binding" means only the bound state (D16). D6's one current binding per
   participant/route pair is one current prepared callable per route over the
   participant's single binding.
-- A state-only participant, such as an injected adapter, has no route. A
-  derived route under the same participant states its refresh rule.
+- A state-only participant, such as an injected adapter, has no route; its
+  state is reached through the routes that depend on it (D16). An adapter
+  that is called on its own has a route like any participant. A derived
+  route under the same participant states its refresh rule.
 - `declared` is D7's declared-but-unbound state. It is never a fake `None`
   candidate.
 - Lineage records succession, merge or fold, and initialization from another
@@ -4257,12 +4341,12 @@ The kinds are a closed set: D6's operations plus D8's withdrawal.
 
 | Kind | Effect |
 | --- | --- |
-| Declaration | Adds a declared, unbound participant or relationship under an arrangement amendment; the authority seed supplies the initial ones (D17) |
+| Declaration | Creates a declared, unbound incarnation of a participant or relationship that the accepted strategy declares. The authority seed supplies the initial ones; a later one is a successor at a declared address, never a new declaration (D17) |
 | Materialization | Gives a declared participant its first binding |
 | Bound-state replacement | Installs a new binding that still fulfills the participant's accepted meaning; otherwise retirement and a new declaration are required |
 | Route rebinding | Installs a route's new prepared callable |
 | Relationship transition | Changes a relationship's operational state |
-| Arrangement amendment | Changes declarations under the same contract and profile, and re-derives the affected obligations in the same transition |
+| Arrangement amendment | Applies a change the accepted strategy declares as a `transition`, such as retiring participants and declaring their successors together. It brings the obligations that fulfillment derived for that change into force in the same transition and never derives new ones (D17) |
 | Merge or fold | Folds one participant's state or effect into another, with lineage and optional retirement |
 | Retirement | Ends current use of a participant or relationship; its reference and history remain |
 | Withdrawal | Withdraws guarantees before destructive work, under the attempt's own identity (D8) |
@@ -4270,7 +4354,9 @@ The kinds are a closed set: D6's operations plus D8's withdrawal.
 #### Attempts
 
 A `MaterializationAttempt` runs declared materializers, such as loaders, as
-one governed job. Its basis records the authority and obligation revisions it
+one governed job. One materializer may supply several participants, and one
+that needs another participant's loaded structure reads its inspection view
+(D17). Its basis records the authority and obligation revisions it
 started from. It produces materialization or bound-state replacement
 transitions with their evidence. Loading weights into an existing bound
 object is in-place work, so such an attempt publishes its withdrawal first.
@@ -4422,7 +4508,12 @@ such as a schedule-free optimizer's switch to its evaluation point, remain
 with the unit. They are owner updates at accepted lifecycle points, under
 protection. Parameter averaging such as EMA works the same way: the averaged
 weights are unit state, sampling and validation read them as the unit's
-evaluation point, and a product may save them (G4.3).
+evaluation point, and a product may save them (G4.3). The evaluation point
+is a route on the participant whose dependencies are that unit state (D16).
+Trainer optimization realizes it with separate averaged weights where they
+exist. Where an optimizer can only swap in place, the swap is made when the
+lease is taken and undone when it ends, so it is the route's realization and
+never a competing update.
 
 #### What covers today's flags and mode queries
 
