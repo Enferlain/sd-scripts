@@ -602,6 +602,15 @@ wheels = [
 ]
 
 [[package]]
+name = "immutabledict"
+version = "4.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/1d/e6/718471048fea0366c3e3d1df3acfd914ca66d571cdffcf6d37bbcd725708/immutabledict-4.3.1.tar.gz", hash = "sha256:f844a669106cfdc73f47b1a9da003782fb17dc955a54c80972e0d93d1c63c514", size = 7806, upload-time = "2026-02-15T10:32:34.668Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a3/ce/f9018bf69ae91b273b6391a095e7c93fa5e1617f25b6ba81ad4b20c9df10/immutabledict-4.3.1-py3-none-any.whl", hash = "sha256:c9facdc0ff30fdb8e35bd16532026cac472a549e182c94fa201b51b25e4bf7bf", size = 5000, upload-time = "2026-02-15T10:32:33.672Z" },
+]
+
+[[package]]
 name = "importlib-metadata"
 version = "8.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1220,6 +1229,15 @@ wheels = [
 ]
 
 [[package]]
+name = "ordered-set"
+version = "4.1.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/4c/ca/bfac8bc689799bcca4157e0e0ced07e70ce125193fc2e166d2e685b7e2fe/ordered-set-4.1.0.tar.gz", hash = "sha256:694a8e44c87657c59292ede72891eb91d34131f6531463aab3009191c77364a8", size = 12826, upload-time = "2022-01-26T14:38:56.6Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/33/55/af02708f230eb77084a299d7b08175cff006dea4f2721074b92cdb0296c0/ordered_set-4.1.0-py3-none-any.whl", hash = "sha256:046e1132c71fcf3330438a539928932caf51ddbc582496833e23de611de14562", size = 7634, upload-time = "2022-01-26T14:38:48.677Z" },
+]
+
+[[package]]
 name = "packaging"
 version = "26.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1774,6 +1792,7 @@ dependencies = [
     { name = "transformers" },
     { name = "voluptuous" },
     { name = "wandb" },
+    { name = "xdsl" },
 ]
 
 [package.optional-dependencies]
@@ -1837,6 +1856,7 @@ requires-dist = [
     { name = "transformers", specifier = ">=5.19.0,<6" },
     { name = "voluptuous", specifier = ">=0.16.0,<0.17" },
     { name = "wandb", specifier = ">=0.30.0,<0.31" },
+    { name = "xdsl", specifier = ">=0.75.0,<0.76" },
 ]
 provides-extras = ["onnx-cpu", "onnx-gpu"]
 
@@ -2232,6 +2252,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/5a/70/1469ef1d3542ae7c2c7b72bd5e3a4e6ee69d7978fa8a3af05a38eca5becf/werkzeug-3.1.5.tar.gz", hash = "sha256:6a548b0e88955dd07ccb25539d7d0cc97417ee9e179677d22c7041c8f078ce67", size = 864754, upload-time = "2026-01-08T17:49:23.247Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ad/e4/8d97cca767bcc1be76d16fb76951608305561c6e056811587f36cb1316a8/werkzeug-3.1.5-py3-none-any.whl", hash = "sha256:5111e36e91086ece91f93268bb39b4a35c1e6f1feac762c9c822ded0a4e322dc", size = 225025, upload-time = "2026-01-08T17:49:21.859Z" },
+]
+
+[[package]]
+name = "xdsl"
+version = "0.75.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "immutabledict" },
+    { name = "ordered-set" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/5d/7b943b8f23fd9d012541789984624a76c9d067eafd1adb66d23859bd5fb5/xdsl-0.75.0.tar.gz", hash = "sha256:549656b4ab43d9ad9712a7e8ea6bb02b08376f952a7a1060ae43fde1d90c5eb5", size = 4348987, upload-time = "2026-11-06T15:12:59.9Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/09/bb/0ee60b34b5e4249476a2e20fbf413777637f862a8395a25bb9f313ac31c4/xdsl-0.75.0-py3-none-any.whl", hash = "sha256:bce296e862b65077e413cbb08bd8ef33c6f863d49d396dcf46c65831c8a0ca48", size = 4641722, upload-time = "2026-11-06T15:12:57.93Z" },
 ]
 
 [[package]]

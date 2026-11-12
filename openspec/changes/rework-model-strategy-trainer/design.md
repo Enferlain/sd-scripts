@@ -362,7 +362,7 @@ stays normative.
 | Guidance | What is known rather than required: provenance, tested combinations, recommended settings and community practice. It produces help and logs, never a refusal | D21 |
 | Implementation | Selected code that does the math, declared with its contract and version | D16, D18 |
 | IR system | Kuroiro on xDSL: the language, its front end, fulfillment, reference semantics and runtime, in `library/iro`. Older text calls it the workflow layer | D14, D16 |
-| Lease | The handle an access scope gives its body; it cannot leave the scope | D16 |
+| Lease | The handle an access scope gives its body for one resource; it cannot leave the scope | D16 |
 | Machinery | Code that runs whatever approach a strategy chooses, such as preparation, FP8 casting, optimizer construction and data loading | D21 |
 | Obligation | Something verification requires the run to discharge, attached to a readiness checkpoint | D7, `training-contract` |
 | Operation contracts | An operation's region, flow, resource, realization and decision contracts: the parts of its entry that the IR system checks. Always written with the qualifier | D14 |
@@ -379,6 +379,7 @@ stays normative.
 | Run authority | The owner of participant and relationship state | D6, D19 |
 | Snapshot | A fixed published version of some state, and the access mode that reads one | D16, D19 |
 | Strategy | Python that an author writes to define a run: a strategy function, its activities and any implementations of its own. Its read, accepted and prepared forms are the same strategy at later stages. Training, evaluation, caching and sampling runs all have strategies. A maintained strategy ships with the repository for one thing trained, with adapters, EMA and similar as choices inside it | D18, D21 |
+| Transfer | A claim moving with a capture into an activity or a yield out of one. It is not an operation; the verifier follows it to the claim's disposition | D16 |
 | Transition | A typed proposal for a governed change | D7, D19 |
 | Unit | An independently advanced optimization responsibility | D9, D20 |
 | Version | Which state a use saw | D19 |
@@ -2803,7 +2804,7 @@ The existing owner engine's protected production epochs realize
 
 **Requested work may select the version at its request.** A use inside a
 handler may select the version of owner state that was current when its
-request was made (working spelling `at_request`), in place of the version
+request was made (`at_request`), in place of the version
 current when the handler starts. A request is made at the point its
 obligation is first owned: by the emitting invocation while it waits for
 request capacity, or by acceptance. It is never the later point at which the
@@ -3359,8 +3360,8 @@ recognizable look of the project's own language. It also contains IR, with the
 The `iro` prefix stays separate from the `kuro.*` metadata namespace already
 written into saved models, so a later repository rename changes neither.
 `workflow-composition` remains the descriptive spec name. The package,
-`library/iro`, takes the prefix's name; like every package name in D21 it is
-a working name.
+`library/iro`, takes the prefix's name; task 13.5 confirmed it with its
+modules (D21).
 
 xDSL is the machinery underneath. Kuroiro's vocabulary, rules, written form,
 diagnostics and authoring surface belong to the project.
@@ -3451,6 +3452,18 @@ Neither rule limits what a participant can be. An adapter that is called on
 its own has its own route and is accessed like any participant, and one that
 does both is reached both ways.
 
+One access may name several resources, each with its own mode, version
+selection and route or view, and its body receives one lease per resource
+in that order. The leases are taken together: the body starts once all of
+them are available, and none is held while another is awaited. Nested
+accesses would instead hold one lease while waiting for the next, in an
+order the author never chose, and preparation would have to rule out the
+wait cycles that order can form (D14). The execution candidate's blocks
+already take one reservation over every participant their work uses. Each
+lease then follows the two rules above. A call passed several leases is
+read as one such access (D18). Nesting remains for a lease that has to cover
+a longer body.
+
 #### Correctness and saved forms
 
 - **Conformance.** Each protocol has one runtime realization. It is checked
@@ -3523,7 +3536,7 @@ Applying the one-word rule turned up four collisions:
 | --- | --- | --- | --- | --- |
 | Structure | `strategy` | The accepted strategy: the root operation, which one run executes | `lang.program` | Exists |
 | Structure | activity | A named piece of work with its own lifetime, such as a named producer, repeat, handler or parallel; a concept, not an operation | — | Exists |
-| Structure | `once`, `sequence`, `parallel`, `repeat`, `choice` | Run a body once; run children in order; run children concurrently until all settle; repeat a body under a policy; run exactly one accepted alternative | Same names | Exists |
+| Structure | `sequence`, `parallel`, `repeat`, `choice` | Run a body's steps in order, once; run children concurrently until all settle; repeat a body under a policy; run exactly one of two alternatives, chosen by a boolean or by whether an `optional` holds a value, which the first alternative then receives. A choice's results are what the alternative that ran yields | Same names | Exists; choosing on an `optional` planned |
 | Structure | `derived` | A derived word: one defined by expanding into other words, such as `window` | `lang.recipe` | Exists |
 | Structure | `fused` | A prepared-only group of local stages; authors never write it | `lang.fused_local` | Exists |
 | Lifetimes | `producer` | An activity that keeps producing items into a stream | `lang.producer` | Exists |
@@ -3533,23 +3546,33 @@ Applying the one-word rule turned up four collisions:
 | Data | `stream` | A bounded flow of items with an admission policy; the spec's "flow" | `lang.stream`, `endpoint` | Exists |
 | Data | `take`, `claim`, `borrow`, `dispose` | Take the next admitted item as a claim; read a claim without owning it; settle the claim exactly once with a disposition such as consumed, forwarded, filtered_out or cancelled | Same names, `retire` | Exists |
 | Data | `filter`, `optional` | Turn one claim into zero or one items | Same names | Exists |
-| Data | `fork`, `transfer`, `batch`, `correlate` | Duplicate or hand over a claim; group items; join items by key | — | Planned |
-| Access | `access`, `lease` | Use a resource within a scope; the handle the scope gives its body, which cannot leave it | `lang.access`, `capability` | Exists |
+| Data | `fork`, `batch`, `correlate` | Split a claim into forks that each settle exactly once, the item settling when all have; group items; join items by key | — | Planned |
+| Access | `access`, `lease` | Use one or more resources within a scope; the handle the scope gives its body for each, which cannot leave it | `lang.access`, `capability` | Exists; several resources planned |
 | Access | `snapshot`, `protected_current`, `owner_update`, `grant` | The closed set of access modes (D14); grant profiles come from domains | Mode values | Exists; `grant` planned |
 | Access | `current_at_start`, `published`, `initial` | Version selection, separate from the mode | Freshness values | Exists |
-| Access | `at_request` | Version selection for requested work: the version current when the request was made; a reservation held with the request keeps it until the work completes or a detached realization holds it (D14); a working spelling | — | Planned |
+| Access | `at_request` | Version selection for requested work: the version current when the request was made; a reservation held with the request keeps it until the work completes or a detached realization holds it (D14) | — | Planned |
 | Access | `exact_current`, `bounded_lag`, `any_with_provenance` | Stream admission policies | Admission values | Exists |
 | Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its release, placed by normalization after the last use and shown in the normalized form | `retained`, `release_product` | Exists |
 | Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
 | Calls | `uses` | The strategy header that pins each implementation's version | Per-call version | Exists, moved to the header |
 | Model | `resource`, `materialize` | Declare something an owner holds, such as a participant; name the implementation that materializes it | `lang.resource` | Exists; `materialize` planned |
-| Model | `participant`, `view`, `route`, `invoke` | A model resource with identity; its typed projections and execution routes (D6); invoke a route under an access mode | — | Planned |
+| Model | `participant`, `view`, `route` | A model resource with identity; its typed projections and its execution routes (D6). An access names a view, or a route other than the normal one; a call reaches the route through its lease | — | Planned |
 | Model | `relationship` | A declared relation between participants, such as an attachment, with its own identity and state (D6) | — | Planned |
 | Training | `unit`, `window`, `contribute` | An independently advanced optimization responsibility (D9), whose attributes include its members, optimizer policy, joint windows and clipping scope (D20); contributions advanced together; offer an addressed input to a unit | — | Planned |
 | Training | `advance`, `zero`, `trigger` | Advancement and zeroing, written only where a profile grants them and otherwise performed by the Trainer; a policy that makes requested work due | — | Planned |
 | Outputs | `persist`, `transition`, `cut` | Write a durable output and report what was written; propose a governed change that the strategy declares; take a consistent cut at a declared boundary | — | Planned |
 | Declarations | reproducibility, rank rule, `quiescence` | Printed only when not the default | Attribute values | Exists |
 | Runtime | invocation, obligation, cancel | One occurrence of an activity; what verification requires the run to discharge; run cancellation, which closes admission while entered work settles | — | Exists |
+
+A claim moves with a capture into an activity and with a yield out of one.
+This hand-over is a **transfer**. It is not an operation: the verifier
+follows it to the claim's disposition, and diagnostics name it. It happens
+where an item is settled outside the body that took it: in a filter, in a
+choice whose alternatives settle the item differently, in an activity that
+returns the item, in the branches a fork's results are captured into, and in
+`batch` and `correlate`. Ordinary use takes, borrows and disposes a claim in
+one body. An activity that ends early while holding a transferred claim
+gives it the failure or cancellation disposition (D18).
 
 Conventions for the written form:
 
@@ -3560,6 +3583,72 @@ Conventions for the written form:
 - Each statement in a `parallel` is one concurrent branch.
 - Types print by name. Literals print inline. Unused entry arguments and
   default attributes are omitted. `//` starts a comment.
+- Value types use Python's names where Python has one: a literal `1` is an
+  `int`, `0.5` a `float`, `true` a `bool` and `"name"` a `str`, and the
+  positions a producer or repeat supplies are `int`s, as `range` gives in
+  Python. A literal of another type is written `(0.5 : scalar)`.
+- A local body's value is its last statement's results, so it needs no
+  yield; any other body that yields nothing omits its yield. Unused results
+  are not named.
+- The printer writes one layout: `=` aligns across a run of statements
+  without bodies, a stream's bounds and admission continue on their own
+  lines, and a header longer than 80 columns continues its last clauses on
+  the next line. Printing a parsed strategy gives the same text.
+- An entry list shows only what the protocol supplies, such as a repeat's
+  iteration or a handler's request. Captured and carried values are named by
+  their clauses, so claim and lease types never print.
+- A repeat names its carried values after its captures, and its results are
+  their final values:
+  `%last = iro.repeat @turns 4 times capture(%x) carry(%c = %first) { ... iro.yield %c }`.
+- `iro.sequence @setup capture(%a) { ... }` runs its steps in order, once,
+  as a named activity; a derived word expands into one.
+- A filter's body receives the item's value and yields whether to keep it;
+  its result is an `optional`, and the claim is settled `forwarded` or
+  `filtered_out`: `%kept = iro.filter %claim capture(%p) { ^(%value: record): ... }`.
+- Every number names what it bounds, as in `bounds(outstanding 3, ready 2)`
+  and a handler's `max 1`: `admit exact_current(@policy)`,
+  `admit bounded_lag(@policy, max 2)`. A handler runs one request at a time.
+- Declarations follow as clauses when they are not the default:
+  `reproducibility(schedule_independent)`, `rank_rule(local)`,
+  `assumes("fixed seed")` and `quiescence(between_settled_iterations)`.
+- Source locations, printed only on request, end the statement:
+  `loc("strategies/sdxl/finetune.py":88)`. The saved accepted form requests
+  them, so a resumed run still points at authored lines (D18).
+- A version selection that is its mode's default is omitted, as
+  `current_at_start` is for `protected_current`.
+- A choice's second alternative follows `else`, which is omitted when that
+  alternative is empty and nothing is yielded. A choice on an `optional`
+  gives the first alternative the value as its entry argument.
+- An access over several resources lists them separated by commas, each
+  with its mode and version selection; its body's entry arguments are the
+  leases in that order. After the resource, `route @name` names a route
+  other than the normal one and `view <kind>` names a view.
+- A fork's results are its forks: `%a, %b = iro.fork %claim`.
+- A relationship prints its kind as its type:
+  `iro.relationship @lora_on_unet : attachment from %lora to %unet`.
+- A materializer that reads another participant's structure names that
+  participant's inspection view among its arguments:
+  `materialize(@build_lora, %unet view inspection)`.
+
+For example, latents read from a cache and encoded live on a miss, then
+conditioning from two text encoders taken in one access:
+
+```text
+%cached = iro.call @read_latent_cache(%items) -> optional latents
+%latents = iro.choice %cached {
+^(%hit: latents):
+  iro.yield %hit
+} else {
+  iro.access %vae snapshot published initial {
+  ^(%lease):
+    iro.call @encode_latent(%lease, %items) -> latents
+  }
+}
+%cond = iro.access %te1 protected_current, %te2 protected_current {
+^(%l1, %l2):
+  iro.call @encode_sdxl_text(%l1, %l2, %items) -> retained conditioning
+}
+```
 
 The data-only strategy below is the research's accepted data-only fixture
 printed in this form. The training strategy is the research lifetime fixture
@@ -3577,8 +3666,8 @@ iro.strategy @score_records uses(@select v1, @score v1, @feedback v1) {
 
   iro.parallel @activities capture(%records, %policy) {
     iro.producer @producer into %records capture(%policy) {
-    ^(%index: index):
-      %record = iro.access %policy protected_current current_at_start {
+    ^(%index: int):
+      %record = iro.access %policy protected_current {
       ^(%lease):
         iro.call @select(%lease, %index) -> record
       }
@@ -3616,7 +3705,7 @@ iro.strategy @learn_then_evaluate
 
   iro.parallel @activities capture(%records, %encoder, %model, %unit) {
     iro.producer @producer into %records capture(%encoder) {
-    ^(%index: index):
+    ^(%index: int):
       %encoded = iro.access %encoder snapshot published initial {
       ^(%lease):
         iro.call @encode(%lease, %index) -> encoded_record
@@ -3626,19 +3715,19 @@ iro.strategy @learn_then_evaluate
 
     iro.parallel @consumers capture(%records, %model, %unit) {
       iro.repeat @training 2 times capture(%records, %model, %unit) {
-      ^(%iteration: index):
+      ^(%iteration: int):
         // The Trainer advances %unit each time a window completes.
         iro.train.window %unit members 2 {
           %claim = iro.take %records
           %value = iro.borrow %claim
-          %loss = iro.access %model protected_current current_at_start {
+          %loss = iro.access %model protected_current {
           ^(%lease):
             iro.call @objective(%lease, %value) -> loss
           }
           iro.train.contribute %loss to %unit
           iro.dispose %claim consumed
         }
-        %due = iro.call @equal(%iteration, 1)
+        %due = iro.call @equal(%iteration, 1) -> bool
         iro.choice %due {
           iro.request @evaluation(%iteration) from @training at settled_success
         }
@@ -3648,7 +3737,7 @@ iro.strategy @learn_then_evaluate
           capture(%records, %model) {
         %claim = iro.take %records
         %value = iro.borrow %claim
-        iro.access %model protected_current current_at_start {
+        iro.access %model protected_current {
         ^(%lease):
           iro.call @measure(%lease, %value)
         }
@@ -4041,11 +4130,14 @@ Reading activities follows fixed rules:
   disposed as consumed when its scope ends normally. If the scope ends early,
   it gets the failure or cancellation disposition instead.
 - `handler.request(...)` is a request.
-- An `if` on a runtime value is a choice.
+- An `if` on a runtime value is a choice. A test of whether an optional
+  value is present chooses on the `optional`, and the branch where it is
+  present receives the value.
 - Attribute access such as `.protected_current` or `.snapshot` on a
   participant selects the access mode. The lease lasts for the call it is
   passed to, and a result declared to depend on it keeps the state protected
-  until that result's last use (D16).
+  until that result's last use (D16). A call passed several leases takes
+  them in one access (D16).
 
 Activities are written in a restricted subset of Python. They may call
 implementations, use participants and use the language's words, and may do
@@ -4617,7 +4709,9 @@ no longer publish, because its basis is stale.
 This decision answers task 5.5. It is the one place that says where each
 piece of the production system lives. The other decisions define what the
 pieces are and point here for their packages and modules. Every package and
-module name below is a working name; renaming one later changes no boundary.
+module name below is a working name until the section that first writes it
+confirms it, as task 13.5 did for `library/iro` and its modules. Renaming one
+later changes no boundary.
 Following the repository's placement rule, a module exists only for a stage
 with several instances and shared rules.
 
@@ -5049,10 +5143,8 @@ the strategy's business:
   implementation of the sampling capability; it would use a product rather
   than live state.
 - Working names: the component kinds, the assemblies' folder,
-  `library/iro`, `library/runstate`, `library/launch`,
-  `library/conditioning`, `library/artifacts`, `library/evaluation`, and the
-  spellings `iro.derived` for the derived-word operation and `at_request`
-  for the version selection of requested work.
+  `library/runstate`, `library/launch`, `library/conditioning`,
+  `library/artifacts` and `library/evaluation`.
 
 ## Representative Case Matrix
 

@@ -82,6 +82,11 @@ dependencies = [
     "rich>=15.0.0,<16",
     "sentencepiece>=0.2.2,<0.3",
 
+    # xDSL is the IR machinery under library/iro (Kuroiro). Its APIs change
+    # between minor releases. The language research qualified 0.74; 0.75 adds
+    # RegionBranchOpInterface, which normalization may use for last-use analysis.
+    "xdsl>=0.75.0,<0.76",
+
     # Torch 2.14.1 + CUDA 13 is the single supported Torch generation.
     # Eager CUDA has been verified on CPython 3.14t with the GIL remaining
     # disabled. Triton-backed paths such as torch.compile currently re-enable

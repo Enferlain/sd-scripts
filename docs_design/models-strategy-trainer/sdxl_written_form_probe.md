@@ -19,7 +19,10 @@ The outline can be deleted once the findings are handled.
 Status, 2026-11-11: findings 1–8 were settled with the user the same day and
 written into the governing design (D15–D20), two specs and the task list.
 Findings 9–12 are spellings that the milestones building those words decide.
-The outline below is as first written: it shows the nesting that finding 1
+Findings 9 and 12 were settled on 2026-11-12 for section 13 and written into
+D16 and D18: `choice` yields values and can choose on an `optional`, and one
+access takes several resources' leases together. Findings 10 and 11 remain
+with tasks 16.5 and 23.5. The outline below is as first written: it shows the nesting that finding 1
 removed, and it does not use the evaluation-point route from finding 3.
 
 ## The run written out
