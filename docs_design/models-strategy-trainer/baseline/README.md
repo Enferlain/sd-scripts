@@ -298,8 +298,10 @@ runs of the baseline's configuration:
 | Fine-tune (`FineTuneMode`) | 14 | 2026-05-05 to 2026-05-14 | 1.42 (1.35–1.52) |
 
 These span many revisions and whatever else the machine was doing at the
-time. The six runs recorded here fall inside the PEFT range and at or below
-the fine-tune range.
+time, and not every run had an ideal setup. Read the range accordingly: a
+slow run may only reflect its conditions, while a fast run shows a speed the
+trainer can reach, so the fast end is never an outlier. The six runs recorded
+here fall inside the PEFT range and at or below the fine-tune range.
 
 One caveat applies to any comparison: these runs use Python 3.13.5 and torch
 2.11 on Windows, and the repository now targets Python 3.14t and torch
