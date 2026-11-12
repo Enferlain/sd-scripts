@@ -1,5 +1,9 @@
 # Project Instructions for AI Agents
 
+## Subagents
+
+- Use Sonnet Medium agents for reviewing sections.
+
 ## Environment
 
 **Python Virtual Environment:**
@@ -15,14 +19,15 @@ uv run python
 uv run pytest tests/unit/ -v
 
 # Specific test file
-uv run pytest tests/unit/test_training_checkpointing.py -v
+uv run pytest tests/unit/iro/test_text.py -v
 
 # With short traceback
 uv run pytest tests/unit/ -v --tb=short
-
-# WSL + Windows filesystem fallback (bounded run)
-timeout 180 ./.venv-wsl/bin/python -m pytest tests/unit/ -v --tb=short
 ```
+
+`uv run` uses `.venv-wsl` (set through `UV_PROJECT_ENVIRONMENT`). Today's
+trainer does not run in this environment; it runs only from the pinned Windows
+checkout (see `docs_design/models-strategy-trainer/baseline/README.md`).
 
 **Test markers:** `unit`, `integration`, `training`, `config`, `slow`, `requires_gpu`
 
@@ -55,11 +60,17 @@ uv run python tools/fix_imports.py <file_path>
 uv run ty check
 
 # Check specific directory
-uv run ty check library/
+uv run ty check library/iro/
 
 # Check single file
-uv run ty check library/training/checkpointing.py
+uv run ty check library/iro/text.py
 ```
+
+## Documentation
+
+- Every commit adds its entry to `CHANGELOG.md` under that day.
+- `ROADMAP.md` is the larger-horizon board, not a progress log; never record completed work there.
+- `DEVELOPMENT_GUIDE.md` holds coding standards and the workflow. The [rework design](openspec/changes/rework-model-strategy-trainer/design.md) governs new code; guide sections marked *Today's system* describe code being replaced.
 
 <!-- codebase-memory-mcp:start -->
 ## Codebase Memory

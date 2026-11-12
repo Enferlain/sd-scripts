@@ -1,5 +1,14 @@
 # Development Guide & Architectural Vision
 
+> **The rework replaces today's trainer, config and launcher.** The
+> [rework design](openspec/changes/rework-model-strategy-trainer/design.md)
+> (D15–D21) governs placement, dependency direction and settings for new code,
+> and [tasks.md](openspec/changes/rework-model-strategy-trainer/tasks.md) tracks
+> its progress. Sections marked *Today's system* describe code being replaced;
+> they stay as a reference until the new launch is built (section 17) and are
+> rewritten then. The coding standards and the narrow-typed-config principle
+> apply to new code too.
+
 ## 1. Project Vision
 
 **Goal:** Evolve `sd-scripts` into a robust, modular, and maintainable framework for training diffusion models.
@@ -7,7 +16,7 @@
 **Philosophy:**
 
 - **No backwards compatibility:** The focus is on refactoring, not to keep legacy working. Only keep for as long as references are needed for the active work.
-- **Centralized Configuration:** The active training path uses a shared, type-safe config system built on **Hydra** and **Dataclasses**.
+- **Typed Configuration:** Every setting belongs to a strictly typed settings type. Today this is the shared Hydra + dataclass `RunConfig`; in the rework each owner defines its own settings type and the launch-only config composes them (D18).
 - **Separation of Concerns:** Break down multi-thousand line scripts into focused, reusable library modules.
 - **Explicit over Implicit:** Functions should declare exactly what configuration they need. Orchestration-level code may use `cfg`; otherwise descriptive typed config parameter names are required.
 - **Production Quality:** Adopt best practices from high-end repositories (typing, structured configs, potential shipping as a package).
@@ -15,6 +24,8 @@
 ## 2. Architectural Principles
 
 ### A. Configuration (The Source of Truth)
+
+*Today's system.* New code: each owner defines its settings type; only launch imports config (D18, D21).
 
 - **Location:** `library/config/dataclasses/`
 - **Format:** Python `dataclasses` are the schema. YAML files in `configs/` are the user interface.
@@ -45,6 +56,8 @@ This is the core of the project. It should contain the "building blocks" of trai
 - **Modularity:** Modules should be loosely coupled. An optimizer module shouldn't need to know about dataset details.
 
 ### C. Launchers (`train.py`, `scripts/`)
+
+*Today's system.* New code: `train.py` becomes a thin entry over `library/launch`, which resolves presets to a maintained strategy before fulfillment; there are no modes, and the Trainer receives an accepted run (D18, D20).
 
 The active launcher surface should stay thin and orchestration-focused.
 
@@ -85,13 +98,14 @@ The active launcher surface should stay thin and orchestration-focused.
   - No lazy imports as a cycle workaround; fix module boundaries instead.
 - **Docstrings:** Document the _config_ expected by functions.
 - **Linting:** Use `ruff check .` and `ruff format .` before committing. Configuration is in `pyproject.toml`.
-- **Type Checking:** Use `uv run ty check`. In WSL use `uv run ty check --python ./.venv-wsl/bin/python`. Configuration is in `pyproject.toml` under `[tool.ty]`.
+- **Type Checking:** Use `uv run ty check`. Configuration is in `pyproject.toml` under `[tool.ty]`.
 - **Searching:** Use `rg` (ripgrep) for fast, gitignore-aware searching throughout the codebase.
 - **Import Order:** isort is disabled; use `tools/fix_imports.py` for custom ordering if needed.
 - **Naming Convention:** Folders use **plural** names (`adapters/`, `strategies/`, `models/`) where it makes sense. Files are usually named for the concern they own (`tokenization.py`, `checkpointing.py`, `trainer.py`) rather than by one universal singular/plural rule.
-- **WSL + Windows filesystem note:** When this repo is accessed from WSL but stored on the Windows filesystem, Python and `pytest` can become noticeably slow and sometimes appear to hang silently. Prefer bounded commands such as `timeout 180 ./.venv-wsl/bin/python -m pytest ...` when testing from WSL, and if a command stays silent for too long, run it directly on the user side and report the result back rather than waiting indefinitely.
 
 ## 4. Config Design Principles
+
+*Today's system.* The `RunConfig` layout, config grouping table and `cfg` passing patterns below describe the code being replaced. The rule to pass the narrowest typed settings a function needs carries over to new code.
 
 ### A. Schema Enforces Validity
 
@@ -199,7 +213,7 @@ def train(cfg: RunConfig):
     init_trackers(accelerator, cfg.output.logging, "my_project")
 ```
 
-## 6. Workflow for Contributors
+## 5. Workflow for Contributors
 
 ### Python and uv environment
 
@@ -233,20 +247,22 @@ concurrent access to shared training state.
 
 ### Feature and refactoring workflow
 
-1.  **Adding a Feature:**
+1.  **Adding a Feature** (*today's system*; in the rework a feature is a reusable piece a strategy picks up, placed with its kind, see D15 and D21):
     - Add key/value to the relevant Dataclass (or create a new one).
     - Update the logic in `library/`.
     - Expose it in the main script.
 2.  **Refactoring:**
     - If you see legacy broad-config passing, refactor it toward explicit typed config objects with ownership that matches the layer.
 3.  **OpenSpec Milestones:**
-    - Scope implementation to one numbered `tasks.md` section at a time by default. Only group adjacent sections when they are genuinely small or too tightly coupled to review separately, and identify that grouped scope before starting.
-    - Finish the section's implementation and relevant quality gates before moving to its handoff.
-    - Treat `review-mcp` as part of the milestone handoff, not as an asynchronous afterthought. Reviews may take 5–15 minutes; wait for the returned result up to the 900-second tool limit.
-    - Address actionable review findings and rerun affected checks before reporting the milestone complete. A substantial review-driven revision should be reviewed again; small follow-up corrections do not require another review automatically.
+    - Work in a review → commit → next cadence. The unit is whatever is logical, not a fixed size: a whole `tasks.md` section may be one unit, or a large task may be split into coherent chunks that each pass their tests.
+    - Finish the unit's implementation and relevant quality gates, then review the uncommitted changes with a reviewer subagent.
+    - Verify the review's findings, address the actionable ones and rerun affected checks, then commit and continue. A substantial review-driven revision may be reviewed again; small follow-up corrections do not require another review automatically.
     - Hand off between sections unless the user has explicitly requested continuous execution. The handoff should state the completed scope, verification, review result, remaining risks, and the next section.
+4.  **Changelog and roadmap:**
+    - Every commit that changes the repository adds its entry to `CHANGELOG.md` under that day, following the rules at the top of the file.
+    - `ROADMAP.md` is the larger-horizon board: directions, future ideas and open topics. It is not a progress log. Do not record completed work or milestone progress there; that belongs in the changelog, `tasks.md` and beads. Edit the roadmap only when a direction or horizon item itself changes.
 
-## 7. Testing Strategy
+## 6. Testing Strategy
 
 **Goal:** Ensure reliability by testing components in isolation.
 
@@ -261,7 +277,4 @@ concurrent access to shared training state.
   ```bash
   uv run pytest tests/unit/ -v
   uv run pytest tests/integration/ -v
-
-  # WSL + Windows filesystem fallback
-  timeout 180 ./.venv-wsl/bin/python -m pytest tests/unit/ -v --tb=short
   ```

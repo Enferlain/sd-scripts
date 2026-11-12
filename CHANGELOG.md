@@ -10,6 +10,55 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-13]
+
+### Changed
+
+- **ROADMAP.md opens with the rework as its current direction** — the research progress log is replaced by a short description of the rework, links to its design, tasks, history and baseline, and the open topics it does not settle. The remaining items are unchanged, pending a detailed review.
+
+## [2026-11-12]
+
+### Added
+
+- **`library/iro` begins with Kuroiro's core words and written form** — operation contracts, diagnostics, the core words with their shape checks, the composed contract, and the written form's reader and printer; D16's data-only example prints back exactly. xdsl 0.75 is now a dependency.
+
+### Changed
+
+- **Task 13.5's names and spellings are settled in the rework design** — `library/iro` and its modules are confirmed; `choice` yields values and can choose on an `optional`; one access takes several resources' leases; `transfer` is a hand-over, not an operation; `invoke` and `once` are dropped; value types use Python's names.
+- **The baseline README explains how to read the historical timing range** — slow runs may reflect their conditions; the fast end is reachable, never an outlier.
+- **Working instructions follow the rework** — CLAUDE.md and DEVELOPMENT_GUIDE.md drop the Windows-filesystem fallbacks, use current examples and describe the review → commit → next cadence; the guide marks the sections that describe today's config and launcher, and states the changelog rule and the roadmap's role as a horizon board.
+
+### Removed
+
+- **Stale root documents move to `docs_design/archive/`** — `TODO_PRIORITIZED.md`, `TODO_RESOLUTIONS.md`, `BENCHMARKING.md`, `INTEGRATION_TESTING.md` and `cpython-314t-blockers-report.md`.
+
+## [2026-11-11]
+
+### Added
+
+- **The trainer baseline is pinned and recorded (section 12)** — `d880bd2e` is tagged `rmst-baseline`; three SDXL fine-tune and three SDXL PEFT timing runs, three recorded steps per mode with their tensors, the G3.7 cost probe, both environments, the multi-GPU error log and rerun instructions live under `docs_design/models-strategy-trainer/baseline/`.
+
+### Changed
+
+- **Baseline tasks cover the two configurations the trainer has been run with** — later comparisons without a recording are reworded, and throughput is read against the logged runs instead of a fixed allowance.
+
+## [2026-11-10]
+
+### Added
+
+- **SDXL written-form reading probe** — `docs_design/models-strategy-trainer/sdxl_written_form_probe.md`, with its findings settled in the design.
+
+### Changed
+
+- **G5 is closed and the rework's production shapes are signed off** — requested work can select its version at request; state selection, device admission and placement are independent decisions; reads and updates come from lease types; every amendment a run can make is declared in the accepted strategy; an access covers what its route depends on, and a leased result stays protected until its last use. Review fixes, the rejection-rule audit and vocabulary alignment (implementation, lease, disposed claims, association) apply across both changes; design tasks 5.1–5.4, 5.6 and 5.7 are closed.
+- **The IR system's package is renamed from `library/workflow` to `library/iro`.**
+
+## [2026-11-09]
+
+### Changed
+
+- **The rework design gains its production shapes and G5 placements** — the design, proposal, delta specs and tasks describe the production system; `library/conditioning`, `library/artifacts` and `library/evaluation` are placed, along with data's boundary, strategy-stated input sources, the generated feature listing and launch of strategies the repository did not make; "recipe" becomes "derived word". Task 5.5 is closed, with matching updates to the metadata change.
+
 ## [2026-11-06]
 
 ### Changed

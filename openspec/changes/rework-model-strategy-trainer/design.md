@@ -3221,7 +3221,7 @@ and launch device work. Owners hold state.
   serializes such uses. Imports that would re-enable the GIL stay off the
   default path and load only when a selected implementation needs them; a
   run reports its actual GIL state. The
-  [blockers report](../../../cpython-314t-blockers-report.md) records the
+  [blockers report](../../../docs_design/archive/cpython-314t-blockers-report.md) records the
   current Triton, OpenCV and gRPC limits.
 - **Input production.** Producers run as activities in the same process, in
   parallel with training when the GIL is off. A source may still use private

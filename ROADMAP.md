@@ -1,174 +1,34 @@
 # Project Roadmap & Future Ideas
 
-## Training Architecture Research
+The larger-horizon board: directions, future ideas and open topics. It is not a
+progress log. Completed work goes in `CHANGELOG.md`; the rework's progress is
+tracked in its `tasks.md` and in beads.
 
-The [rework history](docs_design/models-strategy-trainer/history/README.md)
-traces decisions through the current language frontier. Earlier source documents
-and package snapshots are preserved in the
-[historical archive](docs_design/archive/models-strategy-trainer/README.md),
-with explicit relocation mappings; the active change remains in OpenSpec.
+---
 
-The [matched comparison](docs_design/models-strategy-trainer/machinery_comparison.md)
-records six-case xDSL/Pliron representation, transformation, diagnostic and cost
-evidence. xDSL is the selected working substrate for machinery under
-[D14](openspec/changes/rework-model-strategy-trainer/design.md), with explicit
-reconsideration conditions. Python authoring remains fixed; production APIs,
-runtime integration and numerical targets remain open.
+## Current Direction: The Training System Rework
 
-The [shared language slice](docs_design/models-strategy-trainer/xdsl_language/README.md)
-now supplies typed IR, normalization, a Torch-free lifecycle reference and
-shared contract verification for model/data-only work and an alternative scope
-(`sd-scripts-syv.31.26`, milestones 6–9). Pending obligations, stop coverage,
-affine claims, scoped access, version admission and decision declarations have
-focused controls. Prepared live/cold execution now reuses existing owners with
-explicit snapshot/current access and version admission. Integrated qualification
-adds seeded reference comparisons, history erasure and detached normal/optimized
-owner execution with independent negative controls. These stages
-provide bounded evidence toward G5's production design.
+The [rework-model-strategy-trainer](openspec/changes/rework-model-strategy-trainer/design.md)
+change replaces today's trainer, config, launcher and strategy layer with a
+system built on Kuroiro, an xDSL-based IR (`library/iro`): strategies are
+written in Python, fulfilled into an accepted run, and executed by a Trainer
+that receives that run. Its [tasks](openspec/changes/rework-model-strategy-trainer/tasks.md)
+run from the IR core through SDXL fine-tuning, adapters, multi-GPU, SD and SD3,
+caching, validation/sampling/persistence, restoration, observability, backend
+qualification, and final cleanup. The [rework history](docs_design/models-strategy-trainer/history/README.md)
+traces how the decisions were reached, and the
+[historical archive](docs_design/archive/models-strategy-trainer/README.md)
+keeps the earlier sources. The [baseline](docs_design/models-strategy-trainer/baseline/README.md)
+pins today's trainer for comparison.
 
-[Scoped retained products](docs_design/models-strategy-trainer/xdsl_language/products.md)
-(`sd-scripts-syv.31.29`, milestone 11) add explicit storage/state dependencies,
-read-only borrowing and release after physical use. Buffer views and real CPU
-autograd products supply further evidence for G5's ownership shapes. General
-ownership transfer, production integration and continuous-run bookkeeping
-reclamation remain separate decisions.
+Open topics the rework names but does not settle:
 
-The bounded extension (`sd-scripts-syv.31.28`, milestone 10) adds ordered
-SSA/selected-authority rejection, shared binding effects, actual zero-or-one
-filtering and a contract-driven local fusion rewrite. Independent expected
-products and surviving flow receipts check requested demand, provenance and
-settlement through interruption and diagnostic erasure. The [filtering case](docs_design/models-strategy-trainer/xdsl_language/filtering.md)
-records its contracts, separate physical calls and explicit host/production limits.
+- [ ] **Extending the system from outside the repository** — strategies and features the repository did not make (ledger or GitHub); task 5.6 assigns it.
+- [ ] **Numerical backends** — Triton, cuTile, TileLang, CubeCL or others as targets for selected regions; none is a required foundation. CubeCL is a deferred investigation.
+- [ ] **Validation's wider scope** — beyond measurement meaning in `library/evaluation`.
+- [ ] **Data pipeline, reworked again** — data is expected to change once more after the rework's caching section.
 
-The first matched slice now freezes the descriptive fixtures and executes paired
-B live/cold, failure/progress/drain and valid opaque-offset controls. The
-[xDSL lifetime port](docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md)
-independently verifies pending work, admission, protected use and completion,
-then reuses the existing composition adapter/owner engine (`sd-scripts-syv.31.25.1`,
-`.31.25.2`). The subsequent
-[Pliron C port](docs_design/models-strategy-trainer/pliron_candidate/grant_case.md)
-independently verifies typed delegated phases, handback claims and retained
-advancement, then reuses the same existing owner target (`.31.25.3`). Both C
-frontends validate saved prepared documents before model factories. This supplies
-reciprocal lifetime and authority representation evidence. The subsequent
-[grouping alignment](docs_design/models-strategy-trainer/grouping_comparison.md)
-matches typed unary/frozen-read legality, an executable opaque barrier and
-resource-summary preservation/invalidation (`.31.25.4`). The subsequent
-[Pliron A port](docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md)
-independently represents correlated samples, retained two-contribution windows
-and requested current-state evaluation (`.31.25.5`), reusing the existing owner
-target after native verification. The [Pliron mixed port](docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md)
-connects independent producer/repeat lifetimes, actual production epochs and
-producer-owned feedback (`.31.25.6`) through the shared owner target. The six
-case meanings now have reciprocal representations. The [matched machinery record](docs_design/models-strategy-trainer/machinery_comparison.md)
-collects source-linked boundaries, diagnostics and bounded phase/process costs
-(`.31.25.7`); the selected substrate and reversal conditions are now recorded in
-D14.
-
-The isolated [Pliron 0.20.0 B experiment](docs_design/models-strategy-trainer/pliron_candidate/README.md)
-tests that comparison through real graph/SSA regions, semantic/prepared round-trip
-and correspondence, guarded local fusion and cached-analysis invalidation
-(`sd-scripts-syv.31.19`). It reuses B's Python runtime/bindings/oracle. A process
-bridge and the backend's separate 0.19.0 pin leave native sharing unproven.
-The independent payload/resource extension now tests shared typed contracts and
-resource-aware grouping (`sd-scripts-syv.31.20`), including a valid opaque-effect
-case where grouping is declined and diagnostic checks across preparation/cold
-loading. It reuses the same scalar target and pair oracle. The subsequent
-[different-lifetime composition](docs_design/models-strategy-trainer/pliron_candidate/composition_case.md)
-uses one existing owner engine for independent production, bounded accumulation,
-pending evaluation and separate group/producer/run settlement (`sd-scripts-syv.31.22`).
-Native lifetime/access recipes and cold correspondence govern that handoff;
-physical draining and independent expectations remain runtime/qualification work.
-Broader composition/parity, native numerical sharing and matched costs remain
-open; xDSL stays the provisional working baseline.
-External-review corrections under `sd-scripts-syv.31.21` require complete native
-document consumption and restore normal Git inclusion of the dependency file.
-
-The isolated [xDSL experiment](docs_design/models-strategy-trainer/xdsl_candidate/README.md)
-now implements data-only B (`sd-scripts-syv.31.9`), correlated data/model A
-(`sd-scripts-syv.31.10`) and granted two-pass C (`sd-scripts-syv.31.11`): semantic/prepared xDSL, fresh-process reconstruction,
-bounded feedback and explicit stop/drain, plus existing owner integration for
-atomic admission, accumulation and independent current-at-start evaluation.
-Explicit delegated/retained authority and a typed handback reuse the same
-existing grant/optimization owners; failed handback cannot authorize advancement,
-and partial optimizer/reset outcomes remain owned. The local fusion comparison
-is now reviewed research; no production framework or representation has been selected.
-The external review's A/B prepared-plan correspondence gap is addressed in the
-isolated candidate (`sd-scripts-syv.31.14`), with explicit field authority and
-corruption checks before owner construction. Fusion, continuous feedback with
-model ownership, and an independent operation/schema extension form the bounded
-research sequence (`sd-scripts-syv.31.12`, `.31.15`, `.31.16`). The local fusion
-comparison now has a real prepared-IR rewrite and direct grouped execution with
-preserved stage observations; current gates and review status are recorded in
-its evidence. The mixed workflow now combines an open producer, learning-driven policy, dynamic exclusion and shared trainable-model reads/updates under one engine, including blocked-handoff stop and physical-drain evidence. The independent extension now runs through the existing scalar session using common local interfaces, typed payloads and checked immutable configuration snapshots; its evidence records qualification and review. These complete the bounded external-review followups without selecting a framework.
-
-The follow-up review of `504dcf8` identified exclusion-loop starvation,
-incomplete local outcome declarations and assertion-dependent ticket retirement.
-The isolated fixes and expanded fused/archive-free interruption checks are tracked
-in `sd-scripts-syv.31.17`, with before/after evidence under `evidence_progress`.
-
-The `rework-model-strategy-trainer` OpenSpec governs the target architecture;
-the active production stack described below has not yet been migrated. The
-isolated [execution candidate](docs_design/models-strategy-trainer/execution_candidate/README.md)
-now exercises repeated multi-block accumulation and shared pending-work
-ownership across ordinary/granted execution and state-lifecycle consumers
-(`sd-scripts-syv.14`, `sd-scripts-syv.15`). Current-use borrowing, provider access
-and region cleanup now share state ownership, with preparation checks derived
-from the selected target's actual access boundaries (`sd-scripts-syv.16`).
-Physical mode protection now also covers declared source participants of
-provider-owned native workers, with bounded overlap/stop/failure qualification
-(`sd-scripts-syv.17`). An eager functional SGD binding now keeps the candidate
-examples and bounded coordination/thread qualification GIL-disabled without
-the incidental optimizer-base Triton import (`sd-scripts-syv.20`).
-Shared runtime wait evidence now connects protected access and bounded
-publication, rejecting the reproduced cycle while preserving compatible
-progress (`sd-scripts-syv.19`).
-The matched text-processing probe demonstrates useful two-worker Python
-parallelism under the disabled GIL with identical input/numerical outcomes;
-source-stamped samples and workload limits are retained (`sd-scripts-syv.21`).
-A free-threaded boundary audit now qualifies explicit state/RNG ownership and
-changes this CPU worker target to uncached autocast: inherited thread-local
-settings alone did not prevent Torch's shared weight cache from confusing
-overlapping bf16/fp16 reads (`sd-scripts-syv.22`). Cross-loop control access and
-arbitrary native/module state remain outside the qualified target.
-Matched CPU cache-cost evidence now distinguishes one-use/ineligible weights
-from repeated trainable-fp32 use, and tests precision-specific local cast reuse
-without changing the conservative worker policy (`sd-scripts-syv.23`).
-An isolated module-view experiment now distinguishes private structure from
-tensor/state isolation and preserves unchanged forward behavior in a qualified
-subset, with explicit AMP/alias/buffer limitations (`sd-scripts-syv.24`).
-An access-cost experiment now omits unused region-borrowing and empty-demand
-bookkeeping from ordinary blocks while preserving shared protection. Matched
-CPU evidence shows a repeatable cheap-work benefit; numerical timings remain
-noisy, and this does not choose a live-versus-snapshot producer default
-(`sd-scripts-syv.26`).
-The refreshed [connected assessment](docs_design/models-strategy-trainer/execution_candidate/system_assessment.md)
-integrates these findings and recommends retaining the graph-derived foundation
-(`sd-scripts-syv.25`). Immutable input-handoff references now follow accepted
-execution lifetimes through pending unit outcomes, capability requests and
-failure reporting, with prepared region bounds and bounded completed history
-(`sd-scripts-syv.27`). The four correlation counterexamples now pass alongside
-release, cancellation and cross-owner cases. Controlled RNG probes now show
-repeatable training results under worker order/count changes when randomness
-follows jobs and handoff follows defined keys. Separate global/shared-stream
-and changing-source cases expose the policy limits; existing exclusion and
-source boundaries can satisfy the tested cases (`sd-scripts-syv.28`).
-Independent conformance checks now extract input/source associations, adaptive
-feedback order, numerical results and partial outcomes through test-only
-adapters. Deliberate corruption controls make this evidence reusable across
-candidate implementations without requiring identical internal traces
-(`sd-scripts-syv.31.1`). Continue learning concrete execution techniques from
-Togeari, then explore our own alternative IR-based candidate; adopting or
-porting Togeari is not the selected destination (`sd-scripts-syv.31`). Retain
-explicit backend and restoration limits and distinguish recorded provenance
-from whole-run reproducibility.
-A reproduced executor enqueue-then-error race now has owned dispatch entry
-and completion before handoff. Failed submissions cannot orphan selected work
-outside its protection; entered work drains with its actual return/failure
-evidence (`sd-scripts-syv.31.3`). Reservation/capacity ordering and placement of
-expensive numerical mechanics remain whole-candidate assessment concerns.
-These are candidate findings, not completion
-of G5 production implementation, GPU/distributed preparation or durable continuation.
+---
 
 ## Architecture Overview
 
