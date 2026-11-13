@@ -3188,23 +3188,104 @@ and launch device work. Owners hold state.
   states only meaning: whether work of different activities may overlap. It
   cannot command that the work fits. Work is presumed not to overlap unless
   the strategy permits it. `parallel` is not that permission: it only makes
-  activities live at the same time, and how the permission is written is
-  settled with the extent of one admission. Preparation and the coordinator
-  decide whether
-  permitted overlap is realized on the selected target, from the facts the
-  device adapter supplies and the measured peaks in resource observation;
-  otherwise the runtime runs the work in turn. A strategy whose meaning
-  requires work to be live together on a device that cannot hold it is
-  rejected as a target limit (D18). Implementations declare that they use a
-  device (D18). Work that holds no device memory needs no admission: a save
-  holds the device only while it captures state, not while it serializes and
-  writes. Preparation and the coordinator also decide the extent that one
-  admission covers, such as a call, a window or a handler's traversal. The
-  adapter only supplies device facts and realizes acquisition and
-  completion. The extent is settled in `tasks.md` section 14, under D14's
-  rule on waiting. A participant resident on a device counts toward its
-  capacity, and a strategy may declare that a participant leaves the device
-  between uses; how that is realized is settled in the same section.
+  activities live at the same time. How the permission is written is
+  settled when a strategy first needs overlap (`tasks.md` section 23); until
+  then every target runs such work in turn. Preparation and the coordinator
+  decide whether permitted overlap is realized on the selected target, from
+  the facts the device adapter supplies and the measured peaks in resource
+  observation; otherwise the runtime runs the work in turn. A strategy whose
+  meaning requires work to be live together on a device that cannot hold it
+  is rejected as a target limit (D18). Implementations declare that they use
+  a device (D18). Work that holds no device memory needs no admission: a
+  save holds the device only while it captures state, not while it
+  serializes and writes. The adapter only supplies device facts and
+  realizes acquisition and completion. Preparation and the coordinator
+  decide what one admission covers, as the next points say.
+- **One admission.** One admission covers the device work of one access
+  body. It begins once the body's inputs are taken and its leases granted,
+  which is D14's rule on waiting, and ends when the last result holding
+  device memory from that work is released, where normalization places the
+  release (D16). A window member is therefore take, forward and
+  `contribute`: it is admitted after the take, and its admission ends with
+  backward. The window's advancement is admitted on its own. A whole window
+  or a handler's whole traversal is never one admission, because it would
+  hold the device across takes. A result that holds device memory across a
+  take from a producer on the same device needs that producer's work to
+  overlap, and without that permission preparation rejects it as a target
+  limit. What a participant's realization keeps on a device counts toward
+  the device's capacity for as long as it is there, apart from any
+  admission. Items in a stream count against the flow's bound (D14), not
+  against the admission of the work that produced them.
+- **Turns.** Work that runs in turn on a device shares one stream that the
+  runtime assigns. PyTorch's caching allocator reuses freed memory only for
+  the stream that freed it, so work taking turns on separate streams either
+  keeps a cache for each stream or, when memory is short, frees and
+  reallocates with a device-wide synchronization at every turn. Measured on
+  2026-11-13 on the RTX 3080, twenty alternating 4 GiB allocations under a
+  6 GiB cap caused 19 device-wide synchronizations and took 3.3 s, against
+  0.24 s on one stream. Separate streams are used only where permitted
+  overlap is realized; an implementation may still use streams of its own
+  inside a call, under its own completion. Turns are granted in the order
+  they are requested, so no requested work waits without bound behind work
+  that is always ready, such as a handler holding a snapshot behind training
+  members. Where that order decides when collectives are issued, it follows
+  the rank-consistent order under Collectives.
+- **Completion orders later work.** Ending an admission or releasing
+  protection does not make the coordinator wait for the device. Later work
+  on the same stream follows in stream order, and work on another stream
+  waits on an event on the device. Only host work, such as serializing a
+  save or reading a metric's value, waits for that event on the CPU, and
+  not on the coordinator. The CPU can therefore queue a window's next member
+  while the device finishes the previous one.
+- **Overlap, once realized.** Overlapped work needs random state of its
+  own: an implementation that draws from a device's default generator, as
+  dropout does, runs only in turn. On several ranks, whether work overlaps
+  or runs in turn decides when its collectives are issued, and capacity
+  differs between ranks. The decision is therefore made once, from facts
+  every rank agrees on, and the points where collective-issuing work gets a
+  turn are fixed by the program rather than by local timing. Measured peaks
+  are only guidance: an out-of-memory failure in overlapped work without
+  owner effects, such as validation or sampling, is retried in turn, and one
+  in work with effects is a failure with its uncertainty reported (D14).
+  Exact step comparisons run in turn, because a library may choose different
+  kernels when less memory is free.
+- **Leaving the device.** Offload is several mechanisms with different
+  owners. Moving parts of a participant within one use, such as swapping
+  blocks, prefetching layers, or offloading or recomputing activations,
+  belongs to the route's or the implementation's realization, and the
+  runtime sees only the call's measured peak. Optimizer state, optimizer
+  computation and gradients belong to Trainer optimization's unit
+  realization and to backend coordination. Trainable state kept on the host
+  is placement, chosen in preparation. A quantized base, or replaced modules
+  that stream their weights to the device as RamTorch's do, is a realization
+  of a route. The runtime itself moves only a participant's device storage
+  off the device between uses:
+  - A strategy may permit a participant to leave the device between uses.
+    Like overlap, it is a permission: moving changes no result, so
+    preparation and the coordinator decide whether the participant leaves.
+    The first realization moves a permitted participant out after every
+    use. Keeping it when measured peaks show it fits, and copying it in
+    ahead of its use, are later target choices that need no strategy
+    change.
+  - Leaving and returning are neither a version change nor a publication.
+    The values are identical. The route's prepared realization states that
+    its device storage may be absent, the runtime fills and empties that
+    storage, and the binding never changes. Publishing each move would wait
+    on protected uses and on rank agreement (D19).
+  - Only device storage that nothing else refers to can leave. Trainer
+    optimization's optimizer state and gradient window, a backend wrapper
+    and a captured CUDA graph all refer to a trained participant's storage,
+    so preparation rejects a permission it cannot realize as a target
+    limit. In practice frozen participants leave, and so does a derived
+    route's own copy between its refreshes (D19).
+  - Preparation keeps the realization's host copy in pinned memory, so
+    leaving frees the device storage and returning is one exact copy to the
+    device. The copy is the first work of the admission that uses the
+    participant, on that work's stream. The storage leaves when the last
+    admission using it on that device ends.
+  - After a participant's last possible use, its device storage is released
+    whether or not leaving was permitted. Normalization knows that use,
+    because every later use is declared (D17).
 - **Collectives.** On multi-rank targets, every rank must issue collective work
   in the same order, or the ranks hang. The runtime orders collective-issuing
   work identically on every rank, for example through one ordered lane per
@@ -3474,8 +3555,8 @@ a longer body.
   That matters once the GIL is off.
 - **Obligations.** D7's run-specific obligation set is what verification
   derives from the accepted strategy under the pinned definition and
-  implementation versions. The accepted strategy and those versions never
-  change during a run. The set's revision advances when a declared transition
+  implementation versions (below). The accepted strategy and those versions
+  never change during a run. The set's revision advances when a declared transition
   brings further obligations into force or ends some (D17). A saved
   obligation summary is a projection and never authorizes execution on its
   own.
@@ -3483,6 +3564,54 @@ a longer body.
   and snapshots reference it. The normalized and prepared forms are derived
   from it and saved for inspection. Cold loading and restoration parse them
   and re-derive them, checking correspondence before any effect (D14).
+
+#### Implementation and definition versions
+
+An accepted run pins the implementations and definitions it uses (D17). An
+implementation or definition version is a promise about behavior, so these
+rules say what one covers and what requires a new one.
+
+- **What one covers.** An implementation version covers the declaration
+  (signature and lease types, effects, results kept beyond the call,
+  concurrency safety and completion) and the results and effects for the
+  same inputs under the accepted numerical policy. A definition version
+  covers the operation contracts, the written form and, for a derived word,
+  its expansion. A refactor, a speed-up or logging that changes neither
+  needs no new version.
+- **What requires a new one.** Any change to the declaration or to the
+  results. A pin records the version with a digest of the declaration,
+  including the structure of the types it names. A repository test keeps the
+  digest of every version, so a declaration that changes without a new
+  version fails it. A change in results cannot be caught from the
+  declaration. For light pieces, such as losses, timestep sampling and
+  objectives, recorded outputs on small deterministic inputs catch it,
+  including a change that comes through shared code they call. For whole
+  models it remains a review rule.
+- **What a run pins.** The definitions its normalized strategy uses and its
+  ownership profiles, each with its definition version and digest, and the
+  implementations it selects with theirs. That set is the contract version
+  that governs the run (`training-contract`). A definition added elsewhere
+  leaves it unchanged, so new vocabulary does not stop saved runs from
+  loading.
+- **Not an identity for code.** Prepared forms, compiled code and
+  implementation manifests are keyed on the code itself, so a refactor
+  under an unchanged version never reuses a stale compiled form. Provenance
+  records the repository revision and the environment, such as the Torch,
+  CUDA and library versions, which can change results under one
+  implementation version. They are reported, not pinned.
+- **Caches.** Reusing a cached value needs evidence that what computed it
+  still gives the same results (`training-capability-coordination`), and
+  the implementation version is that evidence. A missed new version reuses
+  stale values; a needless one rebuilds the cache.
+- **When pins are gone.** Launch refuses a saved run whose pinned versions
+  the repository no longer has, and names what is missing. The run can be
+  resumed from a revision that still has them, or a new run can start from
+  its products with lineage (D11, D17). Whether a new run can also start
+  from its runtime snapshot, owner by owner, is settled with restoration
+  (`tasks.md` section 24).
+- **From outside the repository.** A pin also names who provides the
+  implementation or definition, because names from different sources can
+  collide (`tasks.md` section 17).
 
 #### Written form and vocabulary
 
@@ -3816,7 +3945,7 @@ distinct runs (D6).
 | Part | What it is |
 | --- | --- |
 | Strategy | The accepted strategy, in Kuroiro: participants and how each one materializes, relationships, units with their optimizer policy, streams, activities, transitions, triggers and capability handlers. Configuration values are attributes in the strategy. |
-| Pinned versions | The contract and ownership profile, and every implementation with its version |
+| Pinned versions | The definitions the strategy uses with its ownership profile, and every implementation it selects, each with its version and declaration digest (D16) |
 | Obligations | The revisioned set that verification derives from the strategy under those versions (D16), including the readiness checkpoints that fulfillment derives |
 | Authority seed | The declared participants and relationships, still unbound, under the strategy and obligation revisions. It is derived from the strategy, and the Trainer creates the run authority from it at the start of realization (D6, D19) |
 
@@ -4157,7 +4286,8 @@ Pieces connect only to what the author hands them. Activities and strategies
 can be reused, and a strategy can build on another without forking it.
 
 Implementations are declared with a decorator that records their contract:
-signature, version, effects, concurrency safety and completion. Which
+signature, version, effects, concurrency safety and completion. D16 says
+what an implementation version covers and when it changes. Which
 participants a call reads or updates is not written a second time. The lease
 types in the signature say it, and verification checks each call site's
 access mode against them (D14). The decorator states only what the signature
@@ -4275,8 +4405,9 @@ Fulfillment is the system's step, not the author's. The launcher runs it,
 and the doctor runs the same checks earlier. Fulfillment never fills a gap.
 It never selects a missing implementation, adds a dependency, or calls the
 strategy back. Config can set only the choices the strategy declared, and
-only within their bounds (`training-contract`). One contract version and
-profile govern the run for its lifetime.
+only within their bounds (`training-contract`). One contract version, which
+is the set of definitions the run pins (D16), and one profile govern the run
+for its lifetime.
 
 #### Diagnostics
 
@@ -4303,7 +4434,8 @@ resume or a cold load, goes back through the same checks at the launcher,
 under the versions it pins, before the Trainer sees it (D16). The Trainer
 re-derives nothing, because it has neither the contract nor that job. It
 checks only what it can know: that the installed implementations it receives
-match the versions the accepted run pins. Otherwise it refuses to start.
+match the implementation versions and declaration digests the accepted run
+pins (D16). Otherwise it refuses to start.
 Tests may build accepted runs with a test-only builder, which the normal
 launcher never uses (D1). The builder lives under `tests/`, beside the IR
 system's conformance suite, and no production module imports it. Selected Python is trusted (D14), so this is a

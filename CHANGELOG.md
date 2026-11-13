@@ -21,6 +21,8 @@ Rules:
 
 - **The written form marks normalized strategies** — `iro.strategy @name normalized`, with `from(...)` naming the words an expanded statement came from; printing goes through the contract's forms, and long choice headers wrap like other bodies.
 
+- **Section 14's open decisions are settled in the rework design** — D15 now says what one device admission covers (one access body, from its taken inputs to the release of its last device-holding result), that work in turn shares one runtime-assigned stream per device (measured: separate streams force a device-wide synchronization per turn when memory is short), that completion orders later work instead of making the coordinator wait, the rules for overlap once realized, and how a participant's device storage leaves between uses, with the other offload mechanisms placed with their owners. D16 adds implementation and definition versions: what one covers, declaration digests, pins of only the definitions a run uses, and what happens when pins are gone. The GPU run on the research code (bead `sd-scripts-syv.35.4`) is dropped; its measurements move to task 16.2. Overlap's realization moves to section 23, and new-run-from-snapshot and provider identity in pins are recorded for sections 24 and 17.
+
 - **ROADMAP.md opens with the rework as its current direction** — the research progress log is replaced by a short description of the rework, links to its design, tasks, history and baseline, and the open topics it does not settle. The remaining items are unchanged, pending a detailed review.
 
 ### Fixed
