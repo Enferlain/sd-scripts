@@ -259,7 +259,7 @@ concurrent access to shared training state.
     - Verify the review's findings, address the actionable ones and rerun affected checks, then commit and continue. A substantial review-driven revision may be reviewed again; small follow-up corrections do not require another review automatically.
     - Hand off between sections unless the user has explicitly requested continuous execution. The handoff should state the completed scope, verification, review result, remaining risks, and the next section.
 4.  **Changelog and roadmap:**
-    - Every commit that changes the repository adds its entry to `CHANGELOG.md` under that day, following the rules at the top of the file.
+    - `CHANGELOG.md` should be updated at handoffs, following the rules at the top of the file.
     - `ROADMAP.md` is the larger-horizon board: directions, future ideas and open topics. It is not a progress log. Do not record completed work or milestone progress there; that belongs in the changelog, `tasks.md` and beads. Edit the roadmap only when a direction or horizon item itself changes.
 
 ## 6. Testing Strategy

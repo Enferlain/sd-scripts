@@ -68,7 +68,7 @@ uv run ty check library/iro/text.py
 
 ## Documentation
 
-- Every commit adds its entry to `CHANGELOG.md` under that day.
+- `CHANGELOG.md` should be updated with landed progress whenever it's handed off.
 - `ROADMAP.md` is the larger-horizon board, not a progress log; never record completed work there.
 - `DEVELOPMENT_GUIDE.md` holds coding standards and the workflow. The [rework design](openspec/changes/rework-model-strategy-trainer/design.md) governs new code; guide sections marked *Today's system* describe code being replaced.
 
