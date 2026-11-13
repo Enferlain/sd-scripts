@@ -293,13 +293,32 @@ def test_a_take_inside_an_activity_of_its_own_is_not_the_accesss_take() -> None:
         lambda: Target((HOST,), device="host"),
         lambda: Target(CUDA.devices, placement=(("a", "cuda:0"), ("a", "cuda:1"))),
         lambda: Target(workers=0),
-        lambda: Target((HOST, DeviceFacts("tpu:0", "tpu"))),
+        lambda: Target((HOST, DeviceFacts("cuda:0", "xpu"))),
+        lambda: Target((HOST, DeviceFacts("host", "cuda"))),
+        lambda: Target((HOST, DeviceFacts("Cuda:0", "Cuda"))),
+        lambda: Target((HOST, DeviceFacts("cuda:01", "cuda"))),
     ],
-    ids=["no host", "duplicate device", "device work on the host", "placed twice", "no worker", "unknown kind"],
+    ids=[
+        "no host",
+        "duplicate device",
+        "device work on the host",
+        "placed twice",
+        "no worker",
+        "name of another kind",
+        "host of a kind",
+        "not a device type",
+        "a second name for one device",
+    ],
 )
 def test_a_target_describes_itself_consistently(bad) -> None:
     with pytest.raises(ValueError):
         bad()
+
+
+def test_a_device_of_any_pytorch_backend_is_named_by_its_device_type_and_shows_what_it_offers() -> None:
+    target = Target((HOST, DeviceFacts("xpu:0", "xpu", frozenset({"ordering", "memory"}))))
+    assert target.device_work == "xpu:0"
+    assert "xpu:0 (xpu; memory; ordering)" in target.describe()
 
 
 class Callable:

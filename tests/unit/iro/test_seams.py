@@ -54,6 +54,8 @@ class Done:
 @dataclass
 class Host:
     name: str = "host"
+    kind: str = "host"
+    offers: frozenset[str] = frozenset()
     work: list = field(default_factory=list)
 
     def context(self, call, after, reaches):

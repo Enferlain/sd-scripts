@@ -183,6 +183,20 @@ class Coordinator:
         self.owners, self.installed, self.devices = dict(owners), dict(installed), dict(devices)
         if HOST.name not in self.devices:
             raise ValueError("the coordinator needs the host device")
+        unknown = set(self.devices) - {facts.name for facts in prepared.target.devices}
+        if unknown:
+            raise ValueError(f"adapters for devices the run was not prepared for: {', '.join(sorted(unknown))}")
+        for facts in prepared.target.devices:
+            adapter = self.devices.get(facts.name)
+            if adapter is None:
+                raise ValueError(f"the run was prepared for {facts.name}, and no device adapter realizes it")
+            if adapter.name != facts.name:
+                raise ValueError(f"the adapter given for {facts.name} is {adapter.name}")
+            if adapter.kind != facts.kind or not facts.offers <= adapter.offers:
+                raise ValueError(
+                    f"{facts.name}: the adapter is a {adapter.kind} device offering {sorted(adapter.offers)}, "
+                    f"and the run was prepared for a {facts.kind} device offering {sorted(facts.offers)}"
+                )
         self.observe = observe or (lambda fact: None)
         # Live runtime state.
         self.protection: dict[str, Protection] = defaultdict(Protection)

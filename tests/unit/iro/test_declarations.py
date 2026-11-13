@@ -25,6 +25,8 @@ class Done:
 @dataclass
 class Host:
     name: str = "host"
+    kind: str = "host"
+    offers: frozenset[str] = frozenset()
     entered: int = 0
     inside: bool = False
     completed_inside: list = field(default_factory=list)

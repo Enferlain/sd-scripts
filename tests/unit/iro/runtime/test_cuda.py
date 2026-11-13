@@ -211,3 +211,38 @@ def test_device_work_after_device_work_is_ordered_on_the_device_without_a_wait_o
     assert seen["stream_busy"], "the second call was queued behind the first on the device, not after a host wait"
     read = next(f.values[1] for f in facts if f.kind == "call_completed" and f.owner.endswith("/2/0"))
     assert read == (2.0,), "the host read followed both updates' completion"
+
+
+def test_the_cuda_adapter_reports_its_kind_what_it_offers_and_its_memory() -> None:
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    facts = DeviceFacts.of(device)
+    assert (facts.name, facts.kind, facts.offers) == (f"cuda:{gpu_index()}", "cuda", frozenset({"ordering", "memory"}))
+    memory = device.capacity()
+    assert 0 < memory["free_bytes"] <= memory["total_bytes"]
+
+
+def test_threads_entering_one_adapter_at_once_each_get_its_stream_and_restore_their_own() -> None:
+    import threading
+
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    wrong: list[str] = []
+
+    def enter_many() -> None:
+        own = torch.cuda.current_stream(device.device).stream_id
+        for _ in range(300):
+            with device.context(CallContext(), (), ()):
+                if torch.cuda.current_stream(device.device).stream_id != device.stream.stream_id:
+                    wrong.append("not the adapter's stream inside")
+            if torch.cuda.current_stream(device.device).stream_id != own:
+                wrong.append("the thread's stream was not restored")
+
+    threads = [threading.Thread(target=enter_many) for _ in range(8)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    assert not wrong, wrong[:3]

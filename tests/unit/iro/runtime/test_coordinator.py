@@ -23,6 +23,8 @@ class FakeDevice:
     """A device that records how many admissions' work overlaps on it."""
 
     name: str = "cuda:0"
+    kind: str = "cuda"
+    offers: frozenset[str] = frozenset()
     active: int = 0
     most: int = 0
     lock: threading.Lock = field(default_factory=threading.Lock)
@@ -448,3 +450,23 @@ def test_a_host_call_that_loads_torch_itself_fails_instead_of_running_under_the_
         sys.modules["torch"] = torch  # what importing it inside the call does
     with host.context(CallContext(grad=False), (), ()):
         assert not torch.is_grad_enabled(), "once Torch is loaded, the host establishes the call's settings"
+
+
+def test_the_coordinator_refuses_adapters_that_differ_from_what_the_run_was_prepared_for() -> None:
+    import pytest
+
+    installed = {"a": implementation(version=1, outputs=("int",), name="a")(lambda: 1)}
+    text = "iro.strategy @s uses(@a v1) {\n  iro.sequence @once {\n    %x = iro.call @a() -> int\n  }\n}\n"
+    run = accepted_run(text, installed=installed)
+    target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"ordering"}))))
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    with pytest.raises(ValueError, match="no device adapter realizes it"):
+        Coordinator(prepared, {}, installed, {"host": Host()})
+    with pytest.raises(ValueError, match="prepared for a cuda device offering"):
+        Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": FakeDevice()})
+    with pytest.raises(ValueError, match="the adapter given for cuda:0 is cuda:1"):
+        Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": FakeDevice(name="cuda:1", offers=frozenset({"ordering"}))})
+    with pytest.raises(ValueError, match="not prepared for: cuda:1"):
+        Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": FakeDevice(offers=frozenset({"ordering"})), "cuda:1": FakeDevice()})
+    offering = FakeDevice(offers=frozenset({"ordering"}))
+    assert Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": offering}).devices["cuda:0"] is offering

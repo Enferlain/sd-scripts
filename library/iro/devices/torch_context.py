@@ -33,13 +33,15 @@ class RandomStates:
         self.lock = threading.Lock()
 
     def _get(self) -> torch.Tensor:
-        return torch.cuda.get_rng_state(self.device) if self.device.type == "cuda" else torch.get_rng_state()
+        if self.device.type == "cpu":
+            return torch.get_rng_state()
+        return torch.get_device_module(self.device.type).get_rng_state(self.device)
 
     def _set(self, state: torch.Tensor) -> None:
-        if self.device.type == "cuda":
-            torch.cuda.set_rng_state(state, self.device)
-        else:
+        if self.device.type == "cpu":
             torch.set_rng_state(state)
+        else:
+            torch.get_device_module(self.device.type).set_rng_state(state, self.device)
 
     @contextmanager
     def drawing(self, owner: str) -> Generator[None]:

@@ -234,6 +234,16 @@ class Device(Protocol):
     @property
     def name(self) -> str: ...
 
+    @property
+    def kind(self) -> str:
+        """``host``, or the PyTorch device type of the backend, such as ``cuda`` (D15)."""
+        ...
+
+    @property
+    def offers(self) -> frozenset[str]:
+        """What the adapter realizes (D15); the target records it, and a run's needs will be checked against it."""
+        ...
+
     def context(self, call: CallContext, after: Sequence[Completion], reaches: Sequence[object]) -> AbstractContextManager[object]:
         """The context a call runs in: its settings, the device's stream, and the work it must follow.
 

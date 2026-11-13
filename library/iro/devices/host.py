@@ -22,6 +22,8 @@ class Host:
     """The host as a device: work runs on the worker thread and nothing is known of its capacity."""
 
     name = "host"
+    kind = "host"
+    offers: frozenset[str] = frozenset()
 
     def __init__(self, seed: int = 0):
         self.seed = seed

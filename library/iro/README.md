@@ -65,7 +65,7 @@ a fix. Codes by area:
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
 | `runtime/` | The coordinator and its control state: every lifecycle protocol, leases and protection, retained results, claims and stream admission, requests and handlers, device turns, calls on worker threads |
-| `devices/` | Device adapters: the host, and CUDA through PyTorch |
+| `devices/` | Device adapters: the host, and one per PyTorch backend on the shared base in `pytorch.py` (per-call settings, one stream per device, completion as events); so far `cuda.py`. Each reports what it offers, the target records it, and the coordinator refuses adapters that differ from what the run was prepared for. Other backends are untested until someone runs them |
 | `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form; lowering to the form the coordinator executes |
 
 ## Pins
