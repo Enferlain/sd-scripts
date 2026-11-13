@@ -22,6 +22,8 @@ later sections.
      |  accepted.accept       -> AcceptedRun: written forms, pins, obligations,
      |                        authority seed
      |  accepted.cold_load    re-derive everything under the pins
+     |  prepare.prepare       match implementations and a target: placement,
+     |                        fused groups, device admissions, manifest
   reference.Reference         run a normalized strategy's lifecycles with stand-ins
 ```
 
@@ -40,6 +42,7 @@ a fix. Codes by area:
 | `iro-life-` | A request outside its source, a stop of something that is not a producer, a producer nothing stops, a stop that does not cover a consumer, points that wait for each other |
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
+| `iro-prep-` | A call that disagrees with its implementation's declaration; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body (target limits); a saved prepared form that does not derive again |
 | `iro-run-` | A pinned definition missing, at another definition version or with another declaration; parts of a saved run that do not follow from its strategy; a pinned implementation not installed at its version and declaration |
 
 ## Modules
@@ -57,6 +60,7 @@ a fix. Codes by area:
 | `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
+| `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form |
 
 ## Pins
 
@@ -71,6 +75,19 @@ accepted without installed implementations never passes it.
 version and implementation version in `recorded_versions.json`: a
 declaration that changes under a recorded version fails it, and
 `IRO_RECORD_VERSIONS=1` records only new versions.
+
+## Preparation
+
+`prepare.prepare(loaded, installed, target)` derives the prepared run. A
+call that declares device use goes to its activity's placed device or the
+target's device for device work; other calls run on the host. Consecutive
+calls in one body on one device, whose completion the device covers and that
+have no external effects or collectives, form one group, submitted as one
+piece of work. Each access body with device work is one device admission,
+from after its takes to the release of the last retained result it produced
+(D15). The printout is saved for inspection only: `load_prepared` prepares
+again and refuses a saved form that differs, so a forged fusion or admission
+never runs.
 
 ## Written forms
 
