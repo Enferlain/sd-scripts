@@ -24,6 +24,8 @@ later sections.
      |  accepted.cold_load    re-derive everything under the pins
      |  prepare.prepare       match implementations and a target: placement,
      |                        fused groups, device admissions, manifest
+  runtime.Coordinator         execute the prepared run against owners,
+                              implementations and devices
   reference.Reference         run a normalized strategy's lifecycles with stand-ins
 ```
 
@@ -42,7 +44,7 @@ a fix. Codes by area:
 | `iro-life-` | A request outside its source, a stop of something that is not a producer, a producer nothing stops, a stop that does not cover a consumer, points that wait for each other |
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
-| `iro-prep-` | A call that disagrees with its implementation's declaration; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body (target limits); a saved prepared form that does not derive again |
+| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again |
 | `iro-run-` | A pinned definition missing, at another definition version or with another declaration; parts of a saved run that do not follow from its strategy; a pinned implementation not installed at its version and declaration |
 
 ## Modules
@@ -60,6 +62,8 @@ a fix. Codes by area:
 | `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
+| `runtime/` | The coordinator and its control state: every lifecycle protocol, leases and protection, retained results, claims and stream admission, requests and handlers, device turns, calls on worker threads |
+| `devices/` | Device adapters; so far the host |
 | `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form |
 
 ## Pins
@@ -88,6 +92,31 @@ from after its takes to the release of the last retained result it produced
 (D15). The printout is saved for inspection only: `load_prepared` prepares
 again and refuses a saved form that differs, so a forged fusion or admission
 never runs.
+
+## The runtime
+
+`runtime.Coordinator(prepared, owners, installed, devices, observe=...)`
+executes a prepared run on one event loop and reports the same owner-visible
+facts as the reference semantics, to the observer as they happen. Selected
+calls run on worker threads through the implementation and device seams; a
+fused group is one submission, and the coordinator waits for completion
+without blocking. Each body is lowered once into steps.
+
+Device work takes turns: one admission at a time per device, granted in
+request order. An access takes its leases and its turn together, so it never
+waits for one while holding the other. An admission covers its access's body and, until its retained
+results are released, the device work of the body enclosing the access, so a
+window member's forward and backward are one admission.
+
+Bookkeeping is bounded: an invocation's records live while it or its scope
+is live. When every live activity waits and no selected work runs, the run
+fails with a stall instead of hanging. A call that updates owner state is
+never fused, so each update is observed after the call that made it; the
+`updated` fact carries the version, and the value stays with its owner. The
+runtime also reports `settled` when an item's claim settles, which the
+reference semantics does not. `tests/unit/iro/runtime/` runs the conformance fixtures through both
+the reference and the runtime: schedule-independent fixtures report exactly
+the reference's facts, and every run settles and empties its bookkeeping.
 
 ## Written forms
 

@@ -46,6 +46,7 @@ from library.iro.seams import Effect, Implementation
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import TakeOp
+from library.iro.words.lifetimes import RequestOp
 from library.iro.words.structure import StrategyOp
 from library.iro.words.types import RetainedType, written
 
@@ -246,9 +247,19 @@ class _Preparation:
             )
 
     def _fusable(self, call: CallOp) -> bool:
-        """Whether a call may share a submission: on the host its return is its completion."""
+        """Whether a call may share a submission.
+
+        On the host a call's return is its completion. A call that updates
+        owner state stands alone, so each update is observed after the call
+        that made it.
+        """
         declared = self.installed[symbol(call.implementation)].declaration
-        return self.target.fuse and declared.completion == "device" and not declared.effects & {Effect.EXTERNAL, Effect.COLLECTIVES}
+        return (
+            self.target.fuse
+            and declared.completion == "device"
+            and not declared.updates
+            and not declared.effects & {Effect.EXTERNAL, Effect.COLLECTIVES}
+        )
 
     # Fusion.
 
@@ -324,6 +335,9 @@ class _Preparation:
                 in_group = [calls[c] for c in groups[covered[0] - 1].calls]
                 results = [r for c in in_group for r in c.results if isinstance(r.type, RetainedType)]
             ends = _releases(results)
+            if results:
+                self._takes_while_retained(scope, ends)
+            self._no_requests_in_admission(scope, ends)
             if results and not ends:
                 self.problems.add(
                     "iro-prep-008",
@@ -333,6 +347,50 @@ class _Preparation:
                 )
             admissions.append(Admission(device, path(scope), tuple(covered), ends or ("at the end of its work",)))
         return tuple(admissions)
+
+    def _held_after(self, scope: Operation, ends: tuple[str, ...]) -> list[Operation]:
+        """The statements after the admission's own work during which its retained results stay live."""
+        block = scope.parent_block()
+        if block is None:
+            return []
+        ops = list(block.ops)
+        start = ops.index(scope)
+        positions = [start]
+        for op in self.strategy.walk():
+            if path(op) in ends:
+                current: Operation | None = op
+                while current is not None and current.parent_block() is not block:
+                    current = current.parent_op()
+                if current is not None:
+                    positions.append(ops.index(current))
+        return ops[start + 1 : max(positions) + 1]
+
+    def _no_requests_in_admission(self, scope: Operation, ends: tuple[str, ...]) -> None:
+        """A request may wait for handler capacity, so it is never made while an admission holds the device (D14)."""
+        inside = [op for op in scope.walk() if op is not scope] if isinstance(scope, AccessOp) else []
+        for statement in [*inside, *self._held_after(scope, ends)]:
+            for inner in statement.walk():
+                if isinstance(inner, RequestOp):
+                    self.problems.add(
+                        "iro-prep-010",
+                        "this request is made while a device admission is held, and it may wait for its handler's capacity",
+                        kind=Kind.TARGET_LIMIT,
+                        path=path(inner),
+                        fix="request after the device work and the release of its retained results",
+                    )
+
+    def _takes_while_retained(self, scope: Operation, ends: tuple[str, ...]) -> None:
+        """An admission lasts until its retained results are released, so no take may come before that (D15)."""
+        for statement in self._held_after(scope, ends):
+            for inner in statement.walk():
+                if isinstance(inner, TakeOp):
+                    self.problems.add(
+                        "iro-prep-009",
+                        "this take waits while a device-holding result of an earlier access is still live",
+                        kind=Kind.TARGET_LIMIT,
+                        path=path(inner),
+                        fix="take the input before the access, or end the retained result's use first",
+                    )
 
     def _takes_after_device_work(self, access: AccessOp) -> None:
         """Inputs come before the device (D14): no take after device work in one admission."""

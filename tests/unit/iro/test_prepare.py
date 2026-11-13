@@ -319,3 +319,61 @@ def test_code_identity_follows_the_code_and_never_merges_unknown_code() -> None:
     assert code_identity(Callable()) == code_identity(local), "a callable object is identified by its class's module"
     assert code_identity(len) != code_identity(abs), "builtins have no source and never share an identity"
     assert code_identity(len) == code_identity(len)
+
+
+RETAINED_ACROSS_TAKE = """iro.strategy @s uses(@make v1, @keep v1, @look v1) {
+  %m = iro.resource @m : participant
+  %items = iro.stream @items : item bounds(outstanding 1, ready 1)
+  iro.parallel @all capture(%items, %m) {
+    iro.producer @source into %items {
+    ^(%index: int):
+      %item = iro.call @make(%index) -> item
+      iro.yield %item
+    }
+    iro.sequence @consume capture(%items, %m) {
+      %r = iro.access %m protected_current {
+      ^(%lease):
+        iro.call @keep(%lease) -> retained int
+      }
+      %claim = iro.take %items
+      %value = iro.borrow %claim
+      %v = iro.call @look(%r, %value) -> int
+      iro.dispose %claim consumed
+    }
+    iro.stop @source after @consume
+  }
+}
+"""
+
+
+def test_a_take_while_a_device_holding_result_is_live_is_a_target_limit() -> None:
+    with pytest.raises(Rejection) as raised:
+        prepared(RETAINED_ACROSS_TAKE, effects={"keep": ["device"], "look": ["device"]})
+    assert raised.value.codes == ("iro-prep-009",) and raised.value.target_limits_only
+    assert prepared(RETAINED_ACROSS_TAKE, effects={"look": ["device"]})[0], "host work holds no device"
+
+
+REQUEST_IN_ADMISSION = """iro.strategy @s uses(@work v1, @see v1) {
+  %m = iro.resource @m : participant
+  iro.parallel @all capture(%m) {
+    iro.sequence @driver capture(%m) {
+      iro.access %m protected_current {
+      ^(%lease):
+        %x = iro.call @work(%lease) -> int
+        iro.request @check(%x) from @driver at settled_success
+      }
+    }
+    iro.handler @check sources [@driver] max 1 {
+    ^(%value: int):
+      %y = iro.call @see(%value) -> int
+    }
+  }
+}
+"""
+
+
+def test_a_request_made_while_an_admission_holds_the_device_is_a_target_limit() -> None:
+    with pytest.raises(Rejection) as raised:
+        prepared(REQUEST_IN_ADMISSION, effects={"work": ["device"]})
+    assert raised.value.codes == ("iro-prep-010",) and raised.value.target_limits_only
+    assert prepared(REQUEST_IN_ADMISSION)[0], "without device work there is no admission to hold"
