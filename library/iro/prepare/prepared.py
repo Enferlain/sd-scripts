@@ -32,7 +32,7 @@ import functools
 import hashlib
 import inspect
 import marshal
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -367,7 +367,7 @@ def _activity(op: Operation) -> str:
     return ""
 
 
-def _releases(results: list[SSAValue]) -> tuple[str, ...]:
+def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:
     """Where retained results are released, following results a body yields out to its operation.
 
     Normalization releases dependents first, so a result's own release is its
