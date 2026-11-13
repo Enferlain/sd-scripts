@@ -20,6 +20,7 @@ from library.iro.operation_contracts import (
     ItemContract,
     ItemSemantics,
     LifecycleProtocol,
+    ReferenceSemantics,
     RegionSemantics,
     path,
 )
@@ -50,7 +51,7 @@ class StreamOp(Word):
     boundary = prop_def(StringAttr)
     max_lag = prop_def(IntegerAttr)
     endpoint = result_def(StreamType)
-    traits = traits_def(FlowSemantics(), DeclaredFields())
+    traits = traits_def(FlowSemantics(), ReferenceSemantics((("owners", "resource"),)), DeclaredFields())
 
     def verify_(self) -> None:
         outstanding, ready = self.outstanding.value.data, self.ready.value.data

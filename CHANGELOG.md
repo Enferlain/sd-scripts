@@ -12,9 +12,20 @@ Rules:
 
 ## [2026-11-13]
 
+### Added
+
+- **`library/iro` completes its language half (section 13)** — normalization (derived words expanded with their ancestry, releases placed after a retained result's last use, relationships resolved), verification (claims, leases, accesses, calls, lifecycles, streams and rank agreement) with obligations at their readiness checkpoints and a reproducibility report, the accepted run with its authority seed and cold loading, the owner, implementation and device seams, and the reference semantics, a deterministic lifecycle interpreter with stand-ins.
+- **A conformance suite and a dependency test for the new system** — the research fixtures rebuilt as written forms and run against independently computed expectations, the test-only accepted-run builder, and `tests/unit/test_dependency_rules.py` checking D21's rules. AGENTS.md and CLAUDE.md describe the build-new approach and the rules.
+
 ### Changed
 
+- **The written form marks normalized strategies** — `iro.strategy @name normalized`, with `from(...)` naming the words an expanded statement came from; printing goes through the contract's forms, and long choice headers wrap like other bodies.
+
 - **ROADMAP.md opens with the rework as its current direction** — the research progress log is replaced by a short description of the rework, links to its design, tasks, history and baseline, and the open topics it does not settle. The remaining items are unchanged, pending a detailed review.
+
+### Fixed
+
+- **A call inside an access found its pinned version** — the lookup stopped at the access's resource uses instead of the strategy's `uses` header.
 
 ## [2026-11-12]
 

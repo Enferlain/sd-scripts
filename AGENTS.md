@@ -207,6 +207,24 @@ When completing refactoring work:
 2. Update `ROADMAP.md` to mark completed items
 3. Run relevant tests to verify changes
 
+## Building the New System
+
+The rework ([design](openspec/changes/rework-model-strategy-trainer/design.md), D21) builds the new system new, in place. Today's code is read, and may be run for comparison, only to check D21's coverage rows; it never decides how new code is shaped.
+
+- D21's module map is the boundary. Code it does not list is not part of the new system, and nothing in the new system depends on it.
+- New code never imports the code it replaces, research code under `docs_design/`, or a `_deprecated/` folder. Once an area's coverage rows are checked, its replaced code moves to its package's `_deprecated/` folder.
+- Today's code is never edited to follow the new rules. When new work breaks one of today's tests, that test moves to `tests/_deprecated/` instead of being fixed.
+- Dependencies point down:
+  - Launch may import everything below it. `library/config` belongs to launch, and nothing below launch imports it.
+  - Strategies may import training's words, the run state, the IR system, the libraries and base.
+  - Training may import the run state, the IR system, the libraries, observability and base, never strategies or config.
+  - Libraries may import the run state, the IR system, observability fact types, base and lower libraries, never training, strategies, launch or config. From the bottom: artifacts, performance, models, conditioning, losses, timesteps, objectives, data, optimization, adapters, pipelines, evaluation.
+  - The run state (`library/runstate`) may import only the IR system, observability fact types and base, never the libraries or Torch.
+  - The IR system (`library/iro`) may import only xDSL, observability fact types and base. Torch loads only in its device adapters.
+  - Observability imports only base, and base imports nothing in `library`.
+- `tests/unit/test_dependency_rules.py` checks these rules over the new system's modules. A section that adds a package adds it to `NEW_SYSTEM` there.
+- Tests build accepted runs with the test-only builder in `tests/unit/iro/accepted_runs.py`. No production module imports it.
+
 ## Known Quirks
 
 - `tools/` contains standalone utilities that still use `argparse` (external compatibility)

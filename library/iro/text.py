@@ -24,7 +24,7 @@ import re
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 
-from xdsl.dialects.builtin import ArrayAttr, FloatAttr, IntegerAttr, IntegerType, StringAttr, SymbolRefAttr, f64, i1, i64
+from xdsl.dialects.builtin import ArrayAttr, FloatAttr, IntegerAttr, IntegerType, StringAttr, SymbolRefAttr, UnitAttr, f64, i1, i64
 from xdsl.ir import Attribute, Block, Operation, OpResult, Region, SSAValue
 from xdsl.utils.exceptions import VerifyException
 
@@ -51,7 +51,7 @@ from library.iro.words.structure import ChoiceOp, DerivedOp, ParallelOp, RepeatO
 WIDTH = 80
 INDENT = "  "
 MODES = {mode.value for mode in AccessMode}
-DECLARATIONS = ("reproducibility", "rank_rule", "assumes", "quiescence")
+DECLARATIONS = ("reproducibility", "rank_rule", "assumes", "quiescence", "from")
 LOCAL_BODIES = (AccessOp, ChoiceOp, DerivedOp)
 _PLACEHOLDER = t.value("?")
 
@@ -238,7 +238,7 @@ class Reader:
 
     # Values and types.
 
-    def value(self, scope: Scope, block: Block, expected: Attribute | None = None) -> SSAValue:
+    def value(self, scope: Scope, block: Block) -> SSAValue:
         """A value: a name in scope, or an inline literal, which becomes a constant."""
         token = self.peek()
         if token.kind == "value":
@@ -327,6 +327,9 @@ class Reader:
         while self.peek().kind == "word" and self.peek().text in DECLARATIONS:
             keyword = self.next().text
             self.expect("(")
+            if keyword == "from":
+                statement.declarations["ancestry"] = ArrayAttr([StringAttr(x) for x in self.ancestry()])
+                continue
             items: list[str] = []
             while not self.at(")"):
                 token = self.next()
@@ -346,6 +349,19 @@ class Reader:
             else:
                 key = "assumptions" if keyword == "assumes" else keyword
                 statement.declarations[key] = ArrayAttr([StringAttr(x) for x in items])
+
+    def ancestry(self) -> list[str]:
+        """The words a normalized statement was expanded from, outermost first: ``iro.derived @score``."""
+        entries: list[str] = []
+        while not self.at(")"):
+            entry = self.word("the word a statement was expanded from")
+            if self.peek().kind == "symbol":
+                entry += " @" + self.symbol()
+            entries.append(entry)
+            if not self.accept(","):
+                break
+        self.expect(")")
+        return entries
 
     def location(self) -> str | None:
         if not self.at("loc") or not self.at("(", 1):
@@ -719,7 +735,10 @@ def _read_sequence(r: Reader, scope: Scope, block: Block, s: Statement) -> Opera
     r.expect("{")
     inner = Block(arg_types=[v.type for _, v in captured])
     r.body(r.isolated(scope, captured, inner, 0), inner, local=False)
-    return SequenceOp.create(operands=[v for _, v in captured], properties={"sym_name": StringAttr(name)}, regions=[Region(inner)])
+    yields = [v.type for v in _yield(inner).operands]
+    return SequenceOp.create(
+        operands=[v for _, v in captured], result_types=yields, properties={"sym_name": StringAttr(name)}, regions=[Region(inner)]
+    )
 
 
 def _read_parallel(r: Reader, scope: Scope, block: Block, s: Statement) -> Operation:
@@ -894,6 +913,7 @@ def parse(text: str, composition: Composition | None = None, *, source: str = "<
     reader = Reader(text, composition or core(), source)
     reader.expect("iro.strategy")
     name = reader.symbol()
+    normalized = reader.accept("normalized")
     names: list[SymbolRefAttr] = []
     versions: list[StringAttr] = []
     if reader.accept("uses"):
@@ -921,6 +941,8 @@ def parse(text: str, composition: Composition | None = None, *, source: str = "<
     if reader.peek().kind != "end":
         raise reader.error("a written form holds one strategy")
     properties: dict[str, Attribute] = {"sym_name": StringAttr(name), **statement.declarations}
+    if normalized:
+        properties["normalized"] = UnitAttr()
     if names:
         properties |= {"uses": ArrayAttr(names), "use_versions": ArrayAttr(versions)}
     if origin is not None:
@@ -959,6 +981,14 @@ def _check(reader: Reader, strategy: StrategyOp) -> None:
             op.verify(verify_nested_ops=False)
         except VerifyException as failed:
             problems.add("iro-text-009", _explain(failed), source=line(op), path=path(op))
+        if strategy.normalized is None and "ancestry" in op.properties:
+            problems.add(
+                "iro-text-012",
+                "from(...) names what normalization expanded, so it appears only in a normalized strategy",
+                source=line(op),
+                path=path(op),
+                fix="remove from(...), or mark the strategy normalized",
+            )
     problems.reject_if_any()
 
 
@@ -1056,6 +1086,9 @@ class Names:
 
     def bind(self, value: SSAValue, preferred: str | None = None) -> str:
         base = preferred or (f"%{value.name_hint}" if value.name_hint else None)
+        carried = t.payload_of(value.type) or (value.type if isinstance(value.type, t.ValueType) else None)
+        if base is None and carried is not None and carried.text not in t.PYTHON_TYPES and carried.text.isidentifier():
+            base = f"%{carried.text}"
         if base is None:
             base = f"%v{self.counter[0]}"
             self.counter[0] += 1
@@ -1081,7 +1114,8 @@ class Rendered:
 
 
 class Writer:
-    def __init__(self, strategy: StrategyOp, *, locations: bool):
+    def __init__(self, strategy: StrategyOp, composition: Composition, *, locations: bool):
+        self.composition = composition
         self.locations = locations
         self.requested: dict[str, set[Attribute]] = {}
         for op in strategy.walk():
@@ -1112,6 +1146,9 @@ class Writer:
             if isinstance(declared, ArrayAttr) and declared.data:
                 items = [json.dumps(x.data) if key == "assumptions" else x.data for x in declared.data if isinstance(x, StringAttr)]
                 parts.append(f"{keyword}({', '.join(items)})")
+        ancestry = op.properties.get("ancestry")
+        if isinstance(ancestry, ArrayAttr) and ancestry.data:
+            parts.append(f"from({', '.join(x.data for x in ancestry.data if isinstance(x, StringAttr))})")
         return "".join(f" {p}" for p in parts)
 
     def location(self, op: Operation) -> str:
@@ -1174,7 +1211,11 @@ class Writer:
         return [*first, *(column + line for line in item.continuation), *item.rest]
 
     def statement(self, op: Operation, names: Names, indent: str) -> Rendered:
-        write = WRITE_FORMS.get(op.name)
+        if op.name not in self.composition:
+            raise ValueError(f"{op.name} is not in the {self.composition.name} contract")
+        write = getattr(self.composition[op.name].form, "write", None)
+        if not callable(write):
+            write = WRITE_FORMS.get(op.name)
         if write is None:
             raise ValueError(f"{op.name} has no written form")
         rendered = write(self, op, names, indent)
@@ -1382,12 +1423,12 @@ def _w_choice(w: Writer, op: Operation, names: Names, indent: str) -> Rendered:
     lines = w.body(op, first, first_names, indent, [(0, True)] if present else [], local=True)
     second_names = _local_inner(w, op, names, second.block, 1)
     alternative = w.body(op, second, second_names, indent, [], local=True)
-    head = f"iro.choice {w.operand(names, op.operands[0])}" + w.tail(op) + " {"
+    head = f"iro.choice {w.operand(names, op.operands[0])}"
     if len(alternative) > 0:
         rest = [*lines, f"{indent}}} else {{", *alternative, f"{indent}}}{w.location(op)}"]
     else:
         rest = [*lines, f"{indent}}}{w.location(op)}"]
-    return Rendered("", head, rest, True)
+    return Rendered("", head, rest, True, suffix=w.tail(op) + " {")
 
 
 def _w_derived(w: Writer, op: Operation, names: Names, indent: str) -> Rendered:
@@ -1515,11 +1556,11 @@ WRITE_FORMS: dict[str, WriteForm] = {
 }
 
 
-def print_strategy(strategy: StrategyOp, *, locations: bool = False) -> str:
-    """The strategy's written form. ``locations`` adds where each statement was authored."""
-    writer = Writer(strategy, locations=locations)
+def print_strategy(strategy: StrategyOp, composition: Composition | None = None, *, locations: bool = False) -> str:
+    """The strategy's written form in a contract's words. ``locations`` adds where each statement was authored."""
+    writer = Writer(strategy, composition or core(), locations=locations)
     names = Names()
-    head = f"iro.strategy @{strategy.sym_name.data}"
+    head = f"iro.strategy @{strategy.sym_name.data}" + (" normalized" if strategy.normalized is not None else "")
     uses = [
         f"@{ref.root_reference.data} v{version.data}" for ref, version in zip(strategy.uses or (), strategy.use_versions or (), strict=True)
     ]
@@ -1551,7 +1592,7 @@ def _wrap_list(opening: str, items: list[str], closing: str) -> list[str]:
 
 def round_trips(text: str, composition: Composition | None = None) -> bool:
     """Whether printing what was read gives the same text."""
-    return print_strategy(parse(text, composition)) == text
+    return print_strategy(parse(text, composition), composition) == text
 
 
 __all__ = ["Reader", "Token", "Writer", "parse", "print_strategy", "round_trips", "tokenize"]

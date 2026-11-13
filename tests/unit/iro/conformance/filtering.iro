@@ -1,0 +1,70 @@
+iro.strategy @run
+    uses(@produce v1, @even v1, @extract v1, @offset v1, @double v1,
+         @publish v1) {
+  %config   = iro.resource @config
+  %products = iro.resource @products
+  %raw      = iro.stream @raw : record
+                bounds(outstanding 3, ready 2)
+  %kept     = iro.stream @kept : record
+                bounds(outstanding 3, ready 2)
+
+  iro.parallel @activities capture(%raw, %kept, %config, %products) {
+    iro.producer @source into %raw capture(%config) {
+    ^(%index: int):
+      %record = iro.access %config snapshot {
+      ^(%lease):
+        iro.call @produce(%lease, %index) -> record
+      }
+      iro.yield %record
+    }
+
+    iro.producer @filtering into %kept capture(%raw) {
+      %claim = iro.take %raw
+      %selected = iro.filter %claim {
+      ^(%value: record):
+        %keep = iro.call @even(%value) -> bool
+        iro.yield %keep
+      }
+      iro.yield %selected
+    }
+
+    iro.parallel @consumers capture(%kept, %products) {
+      iro.sequence @initial capture(%kept, %products) {
+        %claim  = iro.take %kept
+        %record = iro.borrow %claim
+        %value = iro.derived @first_local {
+          %x = iro.call @extract(%record) -> scalar
+          %y = iro.call @offset(%x) -> scalar
+          iro.call @double(%y) -> scalar
+        }
+        iro.access %products owner_update {
+        ^(%lease):
+          iro.call @publish(%lease, %record, %value)
+        }
+        iro.dispose %claim consumed
+        iro.request @more((2.0 : scalar)) from @initial at settled_success
+      }
+
+      iro.handler @more sources [@initial] max 1 capture(%kept, %products) {
+        iro.repeat @requested 2 times capture(%kept, %products) {
+          %claim  = iro.take %kept
+          %record = iro.borrow %claim
+          %value = iro.derived @next_local {
+            %x = iro.call @extract(%record) -> scalar
+            %y = iro.call @offset(%x) -> scalar
+            iro.call @double(%y) -> scalar
+          }
+          iro.access %products owner_update {
+          ^(%lease):
+            iro.call @publish(%lease, %record, %value)
+          }
+          iro.dispose %claim consumed
+        }
+      }
+    }
+
+    iro.stop @filtering after @consumers
+
+    iro.stop @source after @filtering
+  }
+}

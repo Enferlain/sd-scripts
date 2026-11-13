@@ -237,7 +237,7 @@ def test_malformed_names_and_strings_are_reading_problems(text: str) -> None:
 
 
 def test_a_shape_problem_names_the_line_of_its_statement() -> None:
-    text = "iro.strategy @s {\n  %x = iro.resource @x\n  iro.release %x\n}\n"
+    text = "iro.strategy @s normalized {\n  %x = iro.resource @x\n  iro.release %x\n}\n"
     found = rejected(text).diagnostics[0]
     assert found.source == "s.iro:3"
     assert "should be of base attribute iro.retained" in found.message and "!iro" not in found.message
@@ -287,3 +287,47 @@ def test_parallel_branches_print_with_the_clauses_names() -> None:
     for argument in parallel.regions[1].block.args:
         argument.name_hint = "renamed"
     assert round_trips(print_strategy(strategy))
+
+
+def test_a_long_choice_header_moves_its_declarations_like_other_bodies() -> None:
+    text = (
+        "iro.strategy @s {\n"
+        "  %found = iro.call @cached_latents() -> optional latents\n"
+        '  %latents = iro.choice %found assumes("the cache was written by the same encoder version") {\n'
+        "  ^(%hit: latents):\n"
+        "    iro.yield %hit\n"
+        "  } else {\n"
+        "    iro.call @encode_from_scratch() -> latents\n"
+        "  }\n"
+        "  iro.call @consume(%latents)\n"
+        "}\n"
+    )
+    printed = print_strategy(parse(text))
+    assert max(len(line) for line in printed.splitlines()) <= 80
+    assert '\n      assumes("the cache was written by the same encoder version") {\n' in printed
+    assert round_trips(printed)
+
+
+def test_printing_uses_the_contracts_forms_and_refuses_words_outside_it() -> None:
+    from library.iro.composition import Composition, Definition, core
+    from library.iro.text import WRITE_FORMS
+
+    text = "iro.strategy @s {\n  %r = iro.stream @r : item\n         bounds(outstanding 1, ready 1)\n  iro.sequence @q capture(%r) {\n    %c = iro.take %r\n    %a, %b = iro.fork %c\n  }\n}\n"
+    strategy = parse(text)
+
+    class Form:
+        @staticmethod
+        def write(w, op, names, indent):
+            rendered = WRITE_FORMS["iro.fork"](w, op, names, indent)
+            rendered.head += "  // domain form"
+            return rendered
+
+    fork = core()["iro.fork"]
+    overriding = Composition(
+        [*(d for d in core().definitions.values() if d.name != "iro.fork"), Definition(fork.definition, fork.area, form=Form())]
+    )
+    assert "iro.fork %c  // domain form" in print_strategy(strategy, overriding)
+
+    without_fork = Composition([d for d in core().definitions.values() if d.name != "iro.fork"])
+    with pytest.raises(ValueError, match=r"iro\.fork is not in the kuroiro contract"):
+        print_strategy(strategy, without_fork)

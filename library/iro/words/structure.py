@@ -1,6 +1,7 @@
 """Structure words: strategy, sequence, parallel, repeat, choice and derived (D16)."""
 
-from xdsl.dialects.builtin import ArrayAttr, IntegerAttr, StringAttr, SymbolRefAttr
+from xdsl.dialects.builtin import ArrayAttr, IntegerAttr, StringAttr, SymbolRefAttr, UnitAttr
+from xdsl.ir import Operation, Region, SSAValue
 from xdsl.irdl import irdl_op_definition, opt_prop_def, prop_def, region_def, traits_def, var_region_def
 from xdsl.traits import IsolatedFromAbove, NoTerminator
 from xdsl.utils.exceptions import VerifyException
@@ -18,12 +19,14 @@ class StrategyOp(Word):
     """The accepted strategy: the root operation, which one run executes.
 
     Its ``uses`` header pins each implementation's version, once for the
-    whole strategy (D16).
+    whole strategy (D16). A ``normalized`` strategy has its derived words
+    expanded and its releases placed; an accepted one has neither.
     """
 
     name = "iro.strategy"
 
     sym_name = prop_def(StringAttr)
+    normalized = opt_prop_def(UnitAttr)
     uses = opt_prop_def(ArrayAttr[SymbolRefAttr])
     use_versions = opt_prop_def(ArrayAttr[StringAttr])
     body = region_def("single_block")
@@ -92,6 +95,17 @@ class ChoiceOp(Activity):
     traits = _activity(LifecycleProtocol.CHOICE)
 
 
+def _as_sequence(op: Operation) -> tuple[list[Operation], list[SSAValue]]:
+    """A derived body becomes the named sequence it stands for, with the same captures and results."""
+    body = Region()
+    op.regions[0].move_blocks(body)
+    properties = {key: value for key, value in op.properties.items() if key != "ancestry"}
+    sequence = SequenceOp.create(
+        operands=list(op.operands), result_types=[r.type for r in op.results], properties=properties, regions=[body]
+    )
+    return [sequence], list(sequence.results)
+
+
 @irdl_op_definition
 class DerivedOp(Activity):
     """A derived word: one defined by expanding into other words during normalization."""
@@ -99,7 +113,7 @@ class DerivedOp(Activity):
     name = "iro.derived"
 
     body = region_def("single_block")
-    traits = _activity(LifecycleProtocol.SEQUENCE, Named(), DerivedWord())
+    traits = _activity(LifecycleProtocol.SEQUENCE, Named(), DerivedWord(_as_sequence))
 
 
 OPERATIONS = (StrategyOp, SequenceOp, ParallelOp, RepeatOp, ChoiceOp, DerivedOp)

@@ -156,12 +156,12 @@ says.
 
 ## 13. Build The IR Core
 
-- [ ] 13.1 Build the language half of `library/iro` (D21): `words/` with Kuroiro's core operations and types, including model use and the `fork` claim word; `operation_contracts.py`; `composition.py` (registration, version, queries and the readable printout); `normalize.py`; `verify.py` (obligations and readiness checkpoints); `diagnostics.py`; `accepted.py` (the accepted run and its authority seed); `text.py` (the written form, with exact round trip and cold loading of accepted and normalized written forms); `reference/` (the reference semantics); `seams.py` (the owner, implementation and device seams as interfaces); and, under `tests/`, the D1 test-only accepted-run builder. Nothing here imports Torch.
-- [ ] 13.2 Rebuild the research conformance suite (fixtures, stand-ins and qualification cases from `xdsl_language`) under `tests/` against these modules. Add written-form round-trip, cold-loading and source-attributed diagnostic tests. Turn D21's dependency rules into a repository test over the module map's modules that also fails on any import of replaced code or a `_deprecated/` folder. Record the build-new approach and D21's rules in AGENTS.md and CLAUDE.md, mirrored.
-- [ ] 13.3 Governing requirements: `accepted-training-execution`: Accepted execution has explicit structure and effects. `workflow-composition`: Maintained region contracts govern nested composition; Execution contracts govern SSA availability; One implementation contract bounds resource effects; Filtering declares output cardinality and claim settlement; Requested work participates in enclosing settlement; Completion-triggered producer stop covers consumer lifetimes; Item claims and leases follow an ownership discipline; Retained products declare dependencies and release; Lifecycle semantics have an executable reference; Resource uses select a defined access mode; Flow admission declares its version policy; Compositions report their reproducibility class; Regions declare quiescence boundaries; Replicated decisions remain rank-consistent.
-- [ ] 13.4 Check these D21 coverage rows against today's code or the baseline: research xdsl_language. It is checked again in 14.4 and moves to `_deprecated/` after that last check.
-- [ ] 13.5 Also covers: D21: confirm or change each working name, package or word spelling, before it is first written; probe findings: whether `choice` yields a value, and an access over several resources; D1: test-only accepted-run builder; D14/D16: cold loading: accepted and normalized written forms; D16 word: fork; D16: a claim captured into a `parallel` branch, which the research reference lacks; D16 word: written form for each milestone's new words; D16 work: 1 core rebuilt as iro, four seams, written forms; D16 work: 2 domain vocabularies, training first; D15 qualification: remaining vocabulary; D21 rule: dependency check as a repository test; D14/D16: the version-at-request selection, verified and in the reference semantics; D16: a result that depends on a lease keeps it protected until its last use, with the release placed by normalization.
-- [ ] 13.6 Close the section: run focused and regression tests (on GPU for training paths), the dependency test, Ruff, format and ty; update module READMEs and guide examples; record D15's feature cost and generality; confirm the rollback boundary is the previous section's revision; complete the required review and address its findings; update the bead.
+- [x] 13.1 Build the language half of `library/iro` (D21): `words/` with Kuroiro's core operations and types, including model use and the `fork` claim word; `operation_contracts.py`; `composition.py` (registration, version, queries and the readable printout); `normalize.py`; `verify.py` (obligations and readiness checkpoints); `diagnostics.py`; `accepted.py` (the accepted run and its authority seed); `text.py` (the written form, with exact round trip and cold loading of accepted and normalized written forms); `reference/` (the reference semantics); `seams.py` (the owner, implementation and device seams as interfaces); and, under `tests/`, the D1 test-only accepted-run builder. Nothing here imports Torch.
+- [x] 13.2 Rebuild the research conformance suite (fixtures, stand-ins and qualification cases from `xdsl_language`) under `tests/` against these modules. Add written-form round-trip, cold-loading and source-attributed diagnostic tests. Turn D21's dependency rules into a repository test over the module map's modules that also fails on any import of replaced code or a `_deprecated/` folder. Record the build-new approach and D21's rules in AGENTS.md and CLAUDE.md, mirrored.
+- [x] 13.3 Governing requirements: `accepted-training-execution`: Accepted execution has explicit structure and effects. `workflow-composition`: Maintained region contracts govern nested composition; Execution contracts govern SSA availability; One implementation contract bounds resource effects; Filtering declares output cardinality and claim settlement; Requested work participates in enclosing settlement; Completion-triggered producer stop covers consumer lifetimes; Item claims and leases follow an ownership discipline; Retained products declare dependencies and release; Lifecycle semantics have an executable reference; Resource uses select a defined access mode; Flow admission declares its version policy; Compositions report their reproducibility class; Regions declare quiescence boundaries; Replicated decisions remain rank-consistent.
+- [x] 13.4 Check these D21 coverage rows against today's code or the baseline: research xdsl_language. It is checked again in 14.4 and moves to `_deprecated/` after that last check.
+- [x] 13.5 Also covers: D21: confirm or change each working name, package or word spelling, before it is first written; probe findings: whether `choice` yields a value, and an access over several resources; D1: test-only accepted-run builder; D14/D16: cold loading: accepted and normalized written forms; D16 word: fork; D16: a claim captured into a `parallel` branch, which the research reference lacks; D16 word: written form for each milestone's new words; D16 work: 1 core rebuilt as iro, four seams, written forms; D16 work: 2 domain vocabularies, training first; D15 qualification: remaining vocabulary; D21 rule: dependency check as a repository test; D14/D16: the version-at-request selection, verified and in the reference semantics; D16: a result that depends on a lease keeps it protected until its last use, with the release placed by normalization.
+- [x] 13.6 Close the section: run focused and regression tests (on GPU for training paths), the dependency test, Ruff, format and ty; update module READMEs and guide examples; record D15's feature cost and generality; confirm the rollback boundary is the previous section's revision; complete the required review and address its findings; update the bead.
 
 For task 13.5, the names, spellings and the two probe findings were settled
 with the user on 2026-11-12 and written into D16, D18 and D21: `library/iro`
@@ -176,6 +176,52 @@ production positions are `int`; entry lists show only what the protocol
 supplies, with carried values named in a `carry(...)` clause; and filter,
 admission arguments, declaration clauses and `loc(...)` take the forms D16
 lists.
+On 2026-11-13 the normalized form's spellings followed, also in D16: a
+normalized strategy prints `normalized` after its name, and a statement an
+expansion created prints `from(...)` naming the words it came from.
+
+Section 13's checks, 2026-11-13:
+
+- 13.3: the language half's scenarios are tested in `tests/unit/iro` and its
+  conformance suite: region contracts and a handler body invoked more than
+  once, SSA availability and initialized carries, filtering cardinality and
+  settlement, requested work in enclosing settlement (late input,
+  cancellation of a pending request), stop coverage including feedback
+  without a wait cycle, claim and lease ownership, retained results and
+  their release, the reference semantics under explored interleavings,
+  access modes and the version at the request, exact-current and bounded-lag
+  admission, the reproducibility report and rank agreement. Scenarios that
+  need a runtime, a target, installed implementations' effects or a cut stay
+  with their sections: the runtime checked against the reference and a
+  target's limits (14), implementation effect checks in preparation (14),
+  and cuts at quiescence boundaries (24).
+- 13.4: the research `xdsl_language` row is covered for the language half.
+  `dialects.py` and the contract modules became `words/` and
+  `operation_contracts.py`; `normalize.py`, `verify.py`, `reference.py`,
+  `product_reference.py` and `standins.py` became `normalize.py`,
+  `verify.py` and `reference/`; the fixtures, stand-ins and qualification
+  cases became the conformance suite. Its preparation, targets, bindings,
+  local rewrite and runtimes are section 14's, and 14.4 checks the row again.
+- 13.5: domain vocabularies enter through `Composition.extend`, each
+  definition bringing its own written form; the training words are section
+  16's.
+- Feature cost and generality (D15): a new core word needs its operation
+  with contract traits, a read and a write form, and its rules in
+  verification and the reference semantics; a strategy author writes only
+  the written form. Analyses query traits and add no case-specific branch.
+- Rollback boundary: 27e4535f, the last revision before this section.
+- Review (Sonnet, medium): fixed a release placed before the release of a
+  result that keeps it (normalization now releases dependents first, and
+  verification checks the order); cleanup that released a kept result first
+  and leaked its leases; a producer whose only stop may not run; the missing
+  admission race in the reproducibility report; a request reserving a
+  version while an update was in flight; a handler waiting for a source that
+  can no longer start; cold loading of a run accepted for several ranks;
+  `from(...)` accepted in an accepted strategy; and gaps in the dependency
+  test. Kept as decided: `any_with_provenance` admits an item even when it
+  did not observe a named owner, while two versions of one owner are
+  refused. Left for 19.5: a nested access conflicting through a route's
+  dependencies.
 
 ## 14. Build The IR Runtime And Device Adapters
 

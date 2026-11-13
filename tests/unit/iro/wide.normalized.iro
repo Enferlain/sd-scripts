@@ -1,0 +1,81 @@
+iro.strategy @wide normalized
+    uses(@load_sdxl v1, @build_lora v1, @read_latent_cache v1,
+         @encode_latent v1, @pack v1, @encode_text v1, @denoise v1, @keep v1,
+         @measure v1) {
+  %vae  = iro.resource @vae : participant materialize(@load_sdxl)
+  %te1  = iro.resource @te1 : participant materialize(@load_sdxl)
+  %te2  = iro.resource @te2 : participant materialize(@load_sdxl)
+  %unet = iro.resource @unet : participant materialize(@load_sdxl)
+  %lora = iro.resource @lora : participant materialize(@build_lora, %unet view inspection)
+  iro.relationship @lora_on_unet : attachment from %lora to %unet
+  %items = iro.stream @items : item
+             bounds(outstanding 4, ready 2)
+             admit bounded_lag(@vae, max 2)
+
+  iro.parallel @activities capture(%items, %vae, %te1, %te2, %unet) {
+    iro.producer @data into %items capture(%vae) {
+    ^(%index: int):
+      %cached = iro.call @read_latent_cache(%index, "train", 0.5, true) -> optional latents
+      %latents = iro.choice %cached {
+      ^(%hit: latents):
+        iro.yield %hit
+      } else {
+        iro.access %vae snapshot published initial {
+        ^(%lease):
+          iro.call @encode_latent(%lease, %index) -> latents
+        }
+      }
+      %item = iro.call @pack(%latents, (3 : count)) -> item
+      iro.yield %item
+    }
+
+    iro.parallel @consumers capture(%items, %te1, %te2, %unet) {
+      iro.repeat @training 4 times capture(%items, %te1, %te2, %unet) {
+      ^(%step: int):
+        %claim = iro.take %items
+        %a, %b = iro.fork %claim
+        iro.filter %a {
+        ^(%value: item):
+          %keep = iro.call @keep(%value) -> bool
+          iro.yield %keep
+        }
+        %value = iro.borrow %b
+        %weight = iro.sequence @weigh capture(%value) from(iro.derived @weigh) {
+          %v1 = iro.call @keep(%value) -> bool
+          iro.yield %v1
+        }
+        %cond = iro.access %te1 protected_current, %te2 protected_current {
+        ^(%l1, %l2):
+          iro.call @encode_text(%l1, %l2, %value) -> retained conditioning
+        }
+        %prediction = iro.access %unet route @evaluation_point protected_current {
+        ^(%lu):
+          iro.call @denoise(%lu, %value, %cond, %weight) -> retained prediction
+        }
+        iro.release %prediction
+        iro.release %cond
+        iro.dispose %b consumed
+        iro.request @evaluation(%step) from @training at settled_success
+      }
+
+      iro.sequence @turns capture(%items) {
+        %first = iro.take %items
+        %last = iro.repeat @carrying 3 times
+            carry(%c = %first) quiescence(between_settled_iterations) {
+          iro.yield %c
+        }
+        iro.dispose %last cancelled
+      }
+    }
+
+    iro.handler @evaluation sources [@training] max 1
+        capture(%unet) reproducibility(schedule_independent) {
+      iro.access %unet protected_current at_request {
+      ^(%lease):
+        iro.call @measure(%lease)
+      }
+    }
+
+    iro.stop @data after @consumers
+  }
+}

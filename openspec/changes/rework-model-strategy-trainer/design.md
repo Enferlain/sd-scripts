@@ -3614,6 +3614,14 @@ Conventions for the written form:
 - Source locations, printed only on request, end the statement:
   `loc("strategies/sdxl/finetune.py":88)`. The saved accepted form requests
   them, so a resumed run still points at authored lines (D18).
+- A normalized strategy says so after its name, `iro.strategy @learn
+  normalized`, and its derived words are expanded and its releases placed;
+  an accepted strategy has neither. A statement that an expansion created
+  names the words it came from, outermost first, before any location:
+  `iro.sequence @weigh capture(%value) from(iro.derived @weigh) { ... }`.
+  A body an author wrote keeps no `from`, even when an expansion moved it.
+  A result with no authored name prints with its type's name, as in
+  `iro.release %prediction`.
 - A version selection that is its mode's default is omitted, as
   `current_at_start` is for `protected_current`.
 - A choice's second alternative follows `else`, which is omitted when that

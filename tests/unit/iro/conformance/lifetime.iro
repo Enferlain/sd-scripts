@@ -1,0 +1,57 @@
+iro.strategy @run
+    uses(@encode v1, @gradient v1, @advance v1, @equal v1, @measure v1) {
+  %encoder = iro.resource @encoder : participant
+  %model   = iro.resource @model : participant
+  %records = iro.stream @records : record
+               bounds(outstanding 3, ready 2)
+               admit any_with_provenance(@encoder)
+
+  iro.parallel @activities capture(%records, %encoder, %model) {
+    iro.producer @producer into %records capture(%encoder) {
+    ^(%index: int):
+      %record = iro.access %encoder snapshot {
+      ^(%lease):
+        iro.call @encode(%lease, %index) -> record
+      }
+      iro.yield %record
+    }
+
+    iro.parallel @consumers capture(%records, %model) {
+      iro.repeat @training 2 times capture(%records, %model) {
+      ^(%window: int):
+        %total = iro.repeat @members 2 times
+            capture(%records, %model) carry(%sum = (0.0 : scalar)) {
+          %claim  = iro.take %records
+          %record = iro.borrow %claim
+          %next = iro.access %model protected_current {
+          ^(%lease):
+            iro.call @gradient(%lease, %record, %sum) -> scalar
+          }
+          iro.dispose %claim consumed
+          iro.yield %next
+        }
+        iro.access %model owner_update {
+        ^(%lease):
+          iro.call @advance(%lease, %total) -> scalar
+        }
+        %due = iro.call @equal(%window, 1) -> bool
+        iro.choice %due {
+          iro.request @evaluation(%window) from @training at settled_success
+        }
+      }
+
+      iro.handler @evaluation sources [@training] max 1
+          capture(%records, %model) {
+        %claim  = iro.take %records
+        %record = iro.borrow %claim
+        iro.access %model protected_current {
+        ^(%lease):
+          iro.call @measure(%lease, %record) -> measurement
+        }
+        iro.dispose %claim consumed
+      }
+    }
+
+    iro.stop @producer after @consumers
+  }
+}

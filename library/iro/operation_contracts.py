@@ -11,6 +11,7 @@ This module knows no word. Words declare these traits and their own shape
 checks in ``library.iro.words``.
 """
 
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -326,6 +327,14 @@ def sym_name(op: Operation) -> str | None:
     return value.data if isinstance(value, StringAttr) else None
 
 
+def in_normalized_strategy(op: Operation) -> bool:
+    """Whether the operation sits in a strategy marked normalized."""
+    root = op
+    while (parent := root.parent_op()) is not None:
+        root = parent
+    return root.name == "iro.strategy" and "normalized" in root.properties
+
+
 def origin(op: Operation) -> str | None:
     """Where the operation was authored, such as ``strategies/sdxl/finetune.py:88``, when known."""
     return optional_text(op, "origin")
@@ -580,7 +589,7 @@ class RealizationSemantics(OpTrait):
 def pinned_version(op: Operation, implementation: str) -> str:
     """The version the enclosing strategy's ``uses`` header pins for an implementation."""
     root: Operation | None = op
-    while root is not None and "uses" not in root.properties:
+    while root is not None and root.name != "iro.strategy":
         root = root.parent_op()
     if root is None:
         raise VerifyException(f"{path(op)}: a call must be inside a strategy")
@@ -659,8 +668,48 @@ class ProductSemantics(OpTrait):
         return self.consumes
 
 
+def provider(value: SSAValue) -> SSAValue:
+    """The value a body's entry stands for, following captures outward.
+
+    A protocol-supplied entry, such as a lease or an iteration, is its own
+    provider.
+    """
+    while isinstance(value, BlockArgument):
+        parent, region = value.owner.parent_op(), value.owner.parent
+        semantics = parent.get_trait(RegionSemantics) if parent is not None else None
+        if parent is None or region is None or semantics is None:
+            return value
+        role = semantics.describe(parent).roles[parent.regions.index(region)]
+        capture = next((c for c in role.captures if c.argument == value.index), None)
+        if capture is None:
+            return value
+        value = parent.operands[capture.operand]
+    return value
+
+
+Expansion = Callable[[Operation], tuple[Sequence[Operation], Sequence[SSAValue]]]
+
+
+@dataclass(frozen=True)
 class DerivedWord(OpTrait):
-    """A word defined by expanding into other words during normalization (D16)."""
+    """A word defined by expanding into other words during normalization (D16).
+
+    ``expansion`` builds the replacement from the word: the new operations, in
+    order, and the values that replace its results. The word's authored
+    bodies move into the replacement unchanged; normalization records the word
+    in the ancestry of every operation the expansion creates.
+    """
+
+    expansion: Expansion | None = None
+
+    def verify(self, op: Operation) -> None:
+        if in_normalized_strategy(op):
+            raise VerifyException(f"{path(op)}: a normalized strategy has its derived words expanded")
+
+    def expand(self, op: Operation) -> tuple[Sequence[Operation], Sequence[SSAValue]]:
+        if self.expansion is None:
+            raise VerifyException(f"{path(op)}: {op.name} defines no expansion")
+        return self.expansion(op)
 
 
 __all__ = [
@@ -681,6 +730,7 @@ __all__ = [
     "Disposition",
     "EndpointSemantics",
     "EndpointUse",
+    "Expansion",
     "FlowContract",
     "FlowSemantics",
     "ItemContract",
@@ -704,11 +754,13 @@ __all__ = [
     "VersionPolicy",
     "VersionSelection",
     "decision",
+    "in_normalized_strategy",
     "number",
     "optional_text",
     "origin",
     "path",
     "pinned_version",
+    "provider",
     "resource_uses",
     "strings",
     "sym_name",

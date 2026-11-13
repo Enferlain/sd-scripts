@@ -10,7 +10,7 @@ iro.strategy @wide
   iro.relationship @lora_on_unet : attachment from %lora to %unet
   %items = iro.stream @items : item
              bounds(outstanding 4, ready 2)
-             admit bounded_lag(@unet, max 2)
+             admit bounded_lag(@vae, max 2)
 
   iro.parallel @activities capture(%items, %vae, %te1, %te2, %unet) {
     iro.producer @data into %items capture(%vae) {
@@ -29,28 +29,40 @@ iro.strategy @wide
       iro.yield %item
     }
 
-    iro.repeat @training 4 times capture(%items, %te1, %te2, %unet) {
-    ^(%step: int):
-      %claim = iro.take %items
-      %a, %b = iro.fork %claim
-      iro.filter %a {
-      ^(%value: item):
-        %keep = iro.call @keep(%value) -> bool
-        iro.yield %keep
+    iro.parallel @consumers capture(%items, %te1, %te2, %unet) {
+      iro.repeat @training 4 times capture(%items, %te1, %te2, %unet) {
+      ^(%step: int):
+        %claim = iro.take %items
+        %a, %b = iro.fork %claim
+        iro.filter %a {
+        ^(%value: item):
+          %keep = iro.call @keep(%value) -> bool
+          iro.yield %keep
+        }
+        %value = iro.borrow %b
+        %weight = iro.derived @weigh {
+          iro.call @keep(%value) -> bool
+        }
+        %cond = iro.access %te1 protected_current, %te2 protected_current {
+        ^(%l1, %l2):
+          iro.call @encode_text(%l1, %l2, %value) -> retained conditioning
+        }
+        iro.access %unet route @evaluation_point protected_current {
+        ^(%lu):
+          iro.call @denoise(%lu, %value, %cond, %weight) -> retained prediction
+        }
+        iro.dispose %b consumed
+        iro.request @evaluation(%step) from @training at settled_success
       }
-      %value = iro.borrow %b
-      %cond = iro.access %te1 protected_current, %te2 protected_current {
-      ^(%l1, %l2):
-        iro.call @encode_text(%l1, %l2, %value) -> retained conditioning
+
+      iro.sequence @turns capture(%items) {
+        %first = iro.take %items
+        %last = iro.repeat @carrying 3 times
+            carry(%c = %first) quiescence(between_settled_iterations) {
+          iro.yield %c
+        }
+        iro.dispose %last cancelled
       }
-      %pred = iro.access %unet route @evaluation_point protected_current {
-      ^(%lu):
-        iro.call @denoise(%lu, %value, %cond) -> retained prediction
-      }
-      iro.release %pred
-      iro.release %cond
-      iro.dispose %b consumed
-      iro.request @evaluation(%step) from @training at settled_success
     }
 
     iro.handler @evaluation sources [@training] max 1
@@ -61,15 +73,6 @@ iro.strategy @wide
       }
     }
 
-    iro.sequence @turns capture(%items) {
-      %first = iro.take %items
-      %last = iro.repeat @carrying 3 times
-          carry(%c = %first) quiescence(between_settled_iterations) {
-        iro.yield %c
-      }
-      iro.dispose %last cancelled
-    }
-
-    iro.stop @data after @training
+    iro.stop @data after @consumers
   }
 }

@@ -20,6 +20,7 @@ from library.iro.operation_contracts import (
     ResourceSemantics,
     ResourceUseAttr,
     VersionSelection,
+    in_normalized_strategy,
     path,
 )
 from library.iro.words.base import Activity, BodyShape, DeclaredFields, Word
@@ -70,6 +71,10 @@ class ReleaseOp(Word):
 
     product = operand_def(RetainedType)
     traits = traits_def(ProductSemantics(), DeclaredFields())
+
+    def verify_(self) -> None:
+        if not in_normalized_strategy(self):
+            raise VerifyException(f"{path(self)}: normalization places releases; an accepted strategy has none")
 
 
 OPERATIONS = (AccessOp, ReleaseOp)
