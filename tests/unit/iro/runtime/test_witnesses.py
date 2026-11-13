@@ -111,7 +111,7 @@ def run_long(times: int) -> tuple[dict[str, int], int]:
 # Containers of live state, which must be empty after a run; the others are keyed by the program.
 LIVE = frozenset(
     {"leases", "products", "outcomes", "request_of", "stops", "admissions", "_admission_of", "_productions"}
-    | {"_started", "_live_in", "_failures", "outstanding", "ready", "pending", "_tasks"}
+    | {"_records", "_all_records", "_failures", "outstanding", "ready", "pending", "_tasks"}
 )
 
 
@@ -122,6 +122,8 @@ def sizes(coordinator: Coordinator) -> dict[str, int]:
         if isinstance(value, dict | list | set | frozenset) and key not in ("owners", "installed", "devices", "named", "groups"):
             found[key] = len(value)
     found["_ordinals"] = sum(len(v) for v in coordinator._ordinals.values())
+    found["_records"] = coordinator._records.size()
+    found["_all_records"] = coordinator._all_records.size()
     found["emissions"] = sum(len(v) for v in coordinator.emissions.values())
     found["outstanding"] = sum(len(s.outstanding) for s in coordinator.streams.values())
     found["ready"] = sum(len(s.ready) for s in coordinator.streams.values())

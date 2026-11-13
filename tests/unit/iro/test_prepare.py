@@ -377,3 +377,30 @@ def test_a_request_made_while_an_admission_holds_the_device_is_a_target_limit() 
         prepared(REQUEST_IN_ADMISSION, effects={"work": ["device"]})
     assert raised.value.codes == ("iro-prep-010",) and raised.value.target_limits_only
     assert prepared(REQUEST_IN_ADMISSION)[0], "without device work there is no admission to hold"
+
+
+CARRY = """iro.strategy @s uses(@first v1, @peek v1, @step v1) {
+  iro.sequence @once {
+    %f = iro.call @first() -> int
+    %last = iro.repeat @loop 3 times carry(%c = %f) {
+    ^(%i: int):
+      %p = iro.call @peek(%c) -> int
+      %n = iro.call @step(%p) -> int
+      iro.yield %n
+    }
+  }
+}
+"""
+
+
+def test_a_device_result_a_repeat_carries_to_host_work_in_its_next_iteration_is_waited_for() -> None:
+    result, _ = prepared(CARRY, effects={"step": ["device"]})
+    step = next(g for g in result.groups if g.implementations == ("step",))
+    assert step.device == "cuda:0"
+    assert step.sync, "the next iteration's host @peek reads the carried device result"
+
+
+def test_a_device_result_a_repeat_carries_only_to_device_work_on_its_device_is_not_waited_for() -> None:
+    result, _ = prepared(CARRY, effects={"step": ["device"], "peek": ["device"], "first": ["device"]})
+    group = next(g for g in result.groups if "step" in g.implementations)
+    assert not group.sync, "the carried value only feeds device work on the same device"

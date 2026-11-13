@@ -7,43 +7,60 @@ loop and never blocks on selected work: calls run on worker threads through
 the implementation and device seams, a fused group as one submission, and
 the coordinator waits for their completion without blocking.
 
-Each body is lowered once into steps, so executing it dispatches on nothing
-but the step's own kind. The coordinator keeps runtime control state only:
-leases and their protection, retained results, claims, requests, stops and
-device turns. Owners hold the state leases reach.
+It executes the run's lowered form (:mod:`library.iro.prepare.lowered`): a
+body's values sit in numbered slots and each step is bound to its fixed data,
+so a round dispatches on step kinds and never reads the strategy again. The
+coordinator keeps runtime control state only: leases and their protection,
+retained results, claims, requests, stops and device turns. Owners hold the
+state leases reach.
 
 Bookkeeping is bounded: an invocation's records live while it or its scope
-is live, productions' observed versions while they produce, and facts go to
-the observer as they happen.
+is live, productions' observed versions while they produce, a participant's
+pending device completions until later device work on it finds them done,
+and facts go to the observer as they happen.
+
+In checked mode, for conformance tests, every check that lowering narrows
+also runs in full, and the run fails if the full check finds what lowering
+excluded.
 """
 
 import asyncio
 import random
 from collections import defaultdict
-from collections.abc import Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import cast
+from typing import Any
 
-from xdsl.dialects.builtin import FloatAttr, IntegerAttr, IntegerType, StringAttr
-from xdsl.ir import Block, BlockArgument, Operation, SSAValue
-
-from library.iro.operation_contracts import (
-    AccessMode,
-    Admission,
-    Boundary,
-    FlowSemantics,
-    LifecycleProtocol,
-    RegionSemantics,
-    ResourceSemantics,
-    VersionSelection,
-    path,
-    sym_name,
-    symbol,
-    symbols,
+from library.iro.operation_contracts import AccessMode, Admission, Boundary, LifecycleProtocol, ResourceUse, VersionSelection
+from library.iro.prepare import HOST, Prepared
+from library.iro.prepare.lowered import (
+    BORROW,
+    DISPOSE,
+    FORK,
+    INVOKE,
+    RELATIONSHIP,
+    RELEASE,
+    REQUEST,
+    RESOURCE,
+    STOP,
+    STREAM,
+    TAKE,
+    UNREALIZED,
+    Body,
+    Call,
+    Calls,
+    HandlerInfo,
+    Invoke,
+    Named,
+    RequestStep,
+    Settling,
+    Step,
+    StopStep,
+    StreamStep,
+    lower,
 )
-from library.iro.prepare import HOST, Group, Prepared
 from library.iro.runtime.state import (
     TRANSITIONS,
     Cancelled,
@@ -60,16 +77,12 @@ from library.iro.runtime.state import (
     Stream,
     Ticket,
 )
-from library.iro.seams import Device, Implementation, Owner, Use, Version
-from library.iro.words.access import AccessOp, ReleaseOp
-from library.iro.words.calls import CallOp, ConstantOp, YieldOp
-from library.iro.words.data import BorrowOp, DisposeOp, ForkOp, StreamOp, TakeOp
-from library.iro.words.lifetimes import HandlerOp, RequestOp, StopOp
-from library.iro.words.model import RelationshipOp, ResourceOp
-from library.iro.words.structure import StrategyOp
-from library.iro.words.types import OptionalType
+from library.iro.seams import CallContext, Completion, Device, Implementation, Owner, Use, Version
 
 Observer = Callable[[Fact], None]
+
+# Every waiter also waits under this key, so failure and cancellation wake everyone.
+_EVERYONE = ("everyone",)
 
 
 @dataclass
@@ -92,6 +105,55 @@ class _Admission:
     work_ended: bool = False
 
 
+class _Records:
+    """Which statements started, and which are still live, in each scope: what a wait for a source to settle reads."""
+
+    def __init__(self) -> None:
+        self.started: dict[tuple[str, Identity], int] = {}
+        self.live: dict[tuple[str, Identity], int] = defaultdict(int)
+        self.by_scope: dict[Identity, set[tuple[str, Identity]]] = defaultdict(set)
+
+    def begin(self, owner: str, scopes: list[Identity]) -> None:
+        for scope in scopes:
+            key = (owner, scope)
+            self.started[key] = 1
+            self.by_scope[scope].add(key)
+            self.live[key] += 1
+
+    def retire(self, owner: str, identity: Identity, scopes: list[Identity]) -> bool:
+        """Drops a finished invocation; true when a scope enclosing it has nothing of its statement left live."""
+        settled = False
+        for scope in scopes:
+            key = (owner, scope)
+            self.live[key] -= 1
+            if not self.live[key]:
+                del self.live[key]
+                # A waiter shares a scope that encloses the invocation; its own scope ending (every
+                # iteration of a repeat) settles nothing anyone waits for.
+                settled = settled or scope != identity
+        return settled
+
+    def close(self, scope: Identity) -> None:
+        """The scope's invocation ended: the records kept in it go."""
+        if self.by_scope:
+            for key in self.by_scope.pop(scope, ()):
+                self.started.pop(key, None)
+
+    def empty(self) -> bool:
+        return not (self.started or self.live or self.by_scope)
+
+    def size(self) -> int:
+        return len(self.started) + len(self.live) + len(self.by_scope)
+
+    def settled(self, chain: tuple[str, ...], scope: Identity) -> bool:
+        started = False
+        for owner in chain:
+            if self.live.get((owner, scope)):
+                return False
+            started = started or (owner, scope) in self.started
+        return started
+
+
 class Coordinator:
     """Executes one prepared run against its owners, implementations and devices."""
 
@@ -104,22 +166,24 @@ class Coordinator:
         *,
         observe: Observer | None = None,
         explore: random.Random | None = None,
+        checked: bool = False,
     ):
         """``explore`` perturbs the schedule for conformance testing: at every
         wait and submission the coordinator yields to other activities a
         random number of times. It changes when things happen, never what may happen.
+
+        ``checked`` runs every check lowering narrows in full beside the
+        lowered one, and fails the run if the full check finds anything the
+        lowered one excluded.
         """
         self.prepared = prepared
         self.explore = explore
-        self.strategy: StrategyOp = prepared.loaded.normalized.strategy
+        self.checked = checked
+        self.lowered = lower(prepared, installed)
         self.owners, self.installed, self.devices = dict(owners), dict(installed), dict(devices)
         if HOST.name not in self.devices:
             raise ValueError("the coordinator needs the host device")
         self.observe = observe or (lambda fact: None)
-        self.named = {name: op for op in self.strategy.walk() if (name := sym_name(op)) is not None and op is not self.strategy}
-        self.groups = {call: group for group in prepared.groups for call in group.calls}
-        self.admission_begins = {a.begins: a for a in prepared.admissions}
-        self._plans: dict[Block, list[tuple[str, object]]] = {}
         # Live runtime state.
         self.protection: dict[str, Protection] = defaultdict(Protection)
         self.leases: dict[int, Held] = {}
@@ -128,16 +192,18 @@ class Coordinator:
         self.handlers: dict[str, HandlerState] = defaultdict(HandlerState)
         self.outcomes: dict[Identity, Outcome] = {}
         self.request_of: dict[Identity, Request] = {}
-        self.emissions: dict[Identity, list[tuple[RequestOp, Identity, tuple[object, ...]]]] = defaultdict(list)
+        self.emissions: dict[Identity, list[tuple[RequestStep, Identity, tuple[object, ...]]]] = defaultdict(list)
         self.stops: set[tuple[Identity, str]] = set()
         self.call_counts: dict[str, int] = defaultdict(int)
         self.turns: dict[str, _Turn] = defaultdict(_Turn)
         self.admissions: dict[int, _Admission] = {}
         self._admission_of: dict[Identity, _Admission] = {}
         self._productions: dict[Identity, list[Version]] = {}
+        self._busy: set[str] = set()
         self._ordinals: dict[Identity, dict[str, int]] = defaultdict(dict)
-        self._started: dict[tuple[str, Identity], int] = {}
-        self._live_in: dict[tuple[str, Identity], int] = defaultdict(int)
+        self._waited = self.lowered.waited
+        self._records = _Records()
+        self._all_records = _Records()  # checked mode: every invocation's records, to compare with the lowered ones
         self._next_token = 0
         self.cancelled = False
         self._failed = False
@@ -145,11 +211,38 @@ class Coordinator:
         self._failures: list[BaseException] = []
         self._stall: RunFailure | None = None
         self._waiting = 0
-        self._joining = 0
+        self._joins: set[asyncio.Future] = set()
         self._working = 0
-        self._tick = asyncio.Event()
+        self._live = 1
+        self._waiters: dict[tuple, set[asyncio.Future]] = defaultdict(set)
+        self._watched: dict[asyncio.Future, Callable[[], bool]] = {}  # checked mode: each wait's condition
+        self._wake_check_due = False
         self._executor: ThreadPoolExecutor | None = None
         self._tasks: set[asyncio.Task] = set()
+        self._statements: dict[str, Callable[[Any, tuple[object, ...], Identity], Awaitable[tuple[object, ...]]]] = {
+            INVOKE: self._invoke,
+            RESOURCE: self._resource,
+            RELATIONSHIP: self._relationship,
+            STREAM: self._stream,
+            RELEASE: self._release,
+            TAKE: self._take_step,
+            BORROW: self._borrow,
+            DISPOSE: self._dispose,
+            FORK: self._fork,
+            REQUEST: self._request,
+            STOP: self._stop,
+            UNREALIZED: self._unrealized,
+        }
+        self._protocols: dict[LifecycleProtocol, Callable[[Invoke, tuple[object, ...], Identity], Awaitable[tuple[object, ...]]]] = {
+            LifecycleProtocol.SEQUENCE: self._sequence,
+            LifecycleProtocol.CHOICE: self._choice,
+            LifecycleProtocol.PARALLEL: self._parallel,
+            LifecycleProtocol.REPEAT: self._repeat,
+            LifecycleProtocol.ACCESS: self._access,
+            LifecycleProtocol.FILTER: self._filter,
+            LifecycleProtocol.PRODUCER: self._producer,
+            LifecycleProtocol.HANDLER: self._handler,
+        }
 
     # Facts, lifecycle and waiting.
 
@@ -160,36 +253,98 @@ class Coordinator:
     def closing(self) -> bool:
         return self.cancelled or self._failed
 
-    def _changed(self) -> None:
-        tick, self._tick = self._tick, asyncio.Event()
-        self._waiting = 0  # every waiter wakes and checks again
-        tick.set()
+    def _changed(self, *keys: tuple) -> None:
+        """Wakes the waiters on these keys; no keys wakes nobody."""
+        woken: set[asyncio.Future] = set()
+        for key in keys:
+            woken |= self._waiters.pop(key, set())
+        self._wake(woken)
+        if self.checked and not self._wake_check_due:
+            self._wake_check_due = True
+            asyncio.get_running_loop().call_soon(self._check_wakes)
 
-    async def _until(self, ready: Callable[[], bool]) -> None:
-        """Waits until ``ready``; when every live activity waits and no selected work runs, the run has stalled."""
+    def _check_wakes(self) -> bool:
+        """Checked mode, once the coordinator yields: a wait whose condition holds must have been woken."""
+        self._wake_check_due = False
+        if self.closing:
+            return False
+        for future, ready in list(self._watched.items()):
+            if not future.done() and ready():
+                self._missed("a wait's condition came to hold without a change on the keys it waits on")
+                return True
+        return False
+
+    def _wake_all(self) -> None:
+        """Wakes every waiter: for failure, cancellation and a stall, which every activity must see."""
+        woken = set().union(*self._waiters.values()) if self._waiters else set()
+        self._waiters.clear()
+        self._wake(woken)
+
+    def _wake(self, woken: set[asyncio.Future]) -> None:
+        for future in woken:
+            if not future.done():
+                future.set_result(None)
+                self._waiting -= 1
+
+    async def _until(self, ready: Callable[[], bool], *keys: tuple) -> None:
+        """Waits until ``ready``, woken by a change on one of ``keys``, so waking scales with what changed.
+
+        When every live activity waits and no selected work runs, the run has stalled.
+        """
+        keys = (*keys, _EVERYONE)
         while True:
             if self.explore is not None:
                 for _ in range(self.explore.randrange(3)):
                     await asyncio.sleep(0)
-            tick = self._tick
             if ready():
                 return
             if self._stall is not None:
                 raise self._stall
+            future = asyncio.get_running_loop().create_future()
+            for key in keys:
+                self._waiters[key].add(future)
+            if self.checked:
+                self._watched[future] = ready
             self._waiting += 1
-            live = 1 + sum(1 for task in self._tasks if not task.done())
-            if self._waiting + self._joining >= live and self._working == 0:
-                self._stall = RunFailure("no progress: every activity waits for another and no selected work runs")
-                self._note_failure(self._stall)
-                raise self._stall
-            await tick.wait()
+            self._check_stall()
+            try:
+                if self._stall is not None:
+                    raise self._stall
+                await future
+            finally:
+                if not future.done():
+                    future.cancel()
+                    self._waiting -= 1
+                self._watched.pop(future, None)
+                for key in keys:
+                    waiting = self._waiters.get(key)
+                    if waiting is not None:
+                        waiting.discard(future)
+                        if not waiting:
+                            del self._waiters[key]
+
+    def _check_stall(self) -> None:
+        joining = sum(1 for join in self._joins if not join.done())
+        if self._stall is None and self._waiting + joining >= self._live and self._working == 0:
+            if self.checked and self._check_wakes():
+                return  # not a stall: a lost wake, which fails the run with its own reason
+            waited = sorted({str(key) for key in self._waiters if key != _EVERYONE})
+            self._stall = RunFailure(
+                f"no progress: every activity waits for another and no selected work runs; waiting on {', '.join(waited) or 'nothing'}"
+            )
+            self._note_failure(self._stall)
+            self._wake_all()
 
     def _note_failure(self, failed: BaseException) -> None:
         if not isinstance(failed, Cancelled) and not any(f is failed for f in self._failures):
             self._failures.append(failed)
             self.errors.append(str(failed))
             self._failed = True
-            self._changed()
+            self._wake_all()
+
+    def _missed(self, what: str) -> None:
+        """Checked mode found what lowering excluded: the run fails, and goes on settling with the full result."""
+        self._note_failure(RunFailure(f"lowering excluded what the full check found: {what}"))
 
     def _admission_point(self) -> None:
         if self.closing:
@@ -203,10 +358,11 @@ class Coordinator:
 
     def _begin(self, identity: Identity, owner: str) -> None:
         self.outcomes[identity] = Outcome(owner, identity)
-        for scope in _scopes(identity):
-            key = (owner, scope)
-            self._started[key] = 1
-            self._live_in[key] += 1
+        commons = self._waited.get(owner)
+        if commons is not None:
+            self._records.begin(owner, _scopes(identity, commons))
+        if self.checked:
+            self._all_records.begin(owner, _scopes(identity))
 
     def _state(self, identity: Identity, state: State) -> None:
         outcome = self.outcomes[identity]
@@ -217,20 +373,22 @@ class Coordinator:
         if state == State.TERMINAL:
             self._fact(outcome.owner, identity, "outcome", outcome.status, outcome.error)
             self._retire(identity, outcome.owner)
-        self._changed()
 
     def _retire(self, identity: Identity, owner: str) -> None:
         """Bookkeeping for a finished invocation, and for the scope it closed, is dropped (bounded bookkeeping)."""
         del self.outcomes[identity]
-        for scope in _scopes(identity):
-            key = (owner, scope)
-            self._live_in[key] -= 1
-            if not self._live_in[key]:
-                del self._live_in[key]
-        self._ordinals.pop(identity, None)
-        for key in [k for k in self._started if k[1] == identity]:
-            del self._started[key]
-        self.stops = {(scope, target) for scope, target in self.stops if scope != identity}
+        commons = self._waited.get(owner)
+        settled = commons is not None and self._records.retire(owner, identity, _scopes(identity, commons))
+        if self._ordinals:
+            self._ordinals.pop(identity, None)
+        self._records.close(identity)
+        if self.checked:
+            self._all_records.retire(owner, identity, _scopes(identity))
+            self._all_records.close(identity)
+        if self.stops:
+            self.stops = {(scope, target) for scope, target in self.stops if scope != identity}
+        if settled:
+            self._changed(("settled", owner))
 
     # Running.
 
@@ -238,18 +396,19 @@ class Coordinator:
         """Runs the strategy to settlement and returns the root's outcome."""
         with ThreadPoolExecutor(max_workers=self.prepared.target.workers, thread_name_prefix="iro-work") as executor:
             self._executor = executor
-            root = self._identity((), path(self.strategy))
-            self._begin(root, path(self.strategy))
+            name = self.lowered.path
+            root = self._identity((), name)
+            self._begin(root, name)
             outcome = self.outcomes[root]
             for state in (State.PENDING, State.ADMITTED, State.RUNNING):
                 self._state(root, state)
             try:
                 try:
-                    await self._body(self.strategy.body.block, (), root)
+                    await self._body(self.lowered.root, (), root)
                 except RunFailure:
                     raise
                 except Exception as error:
-                    raise RunFailure(f"{path(self.strategy)}: {error!r}") from error
+                    raise RunFailure(f"{name}: {error!r}") from error
                 outcome.status = "succeeded"
             except RunFailure as failed:
                 self._note_failure(failed)
@@ -258,184 +417,202 @@ class Coordinator:
             finally:
                 self._state(root, State.CLOSING)
                 self._state(root, State.SETTLING)
-                await self._until(lambda: self.closing or not self._pending_under(root))
+                await self._until(lambda: self.closing or not self._pending_under(root), ("requests",))
                 self._settle_requests(root)
+                if self.checked and self._failed and not self.cancelled and outcome.status != "failed":
+                    # A miss closes admission without raising where it was found, so the root saw only that.
+                    outcome.status, outcome.error = "failed", "; ".join(self.errors)
                 self._state(root, State.TERMINAL)
         return outcome
 
     def cancel(self) -> None:
         """Run cancellation: admission closes while entered work settles."""
         self.cancelled = True
-        self._changed()
+        self._wake_all()
 
     def _spawn(self, coroutine) -> asyncio.Task:
         task = asyncio.get_running_loop().create_task(coroutine)
         self._tasks.add(task)
-        task.add_done_callback(lambda t: (self._tasks.discard(t), self._changed()))
+        self._live += 1
+        task.add_done_callback(self._task_done)
         return task
 
-    # Lowering: each body's steps, resolved once.
+    def _task_done(self, task: asyncio.Task) -> None:
+        self._tasks.discard(task)
+        self._live -= 1
+        # After the callbacks already queued, so a parent's join has seen its last branch finish.
+        asyncio.get_running_loop().call_soon(self._check_stall)
 
-    def _plan(self, block: Block) -> list[tuple[str, object]]:
-        plan = self._plans.get(block)
-        if plan is not None:
-            return plan
-        plan = []
-        grouped: dict[int, list[CallOp]] = {}
-        for op in block.ops:
-            if isinstance(op, YieldOp):
-                plan.append(("yield", op))
-            elif isinstance(op, CallOp):
-                group = self.groups[path(op)]
-                if group.index not in grouped:
-                    grouped[group.index] = []
-                    plan.append(("group", (group, grouped[group.index])))
-                grouped[group.index].append(op)
-            elif isinstance(op, ConstantOp):
-                plan.append(("constant", op))
-            else:
-                plan.append(("op", op))
-        self._plans[block] = plan
-        return plan
+    # Bodies.
 
-    async def _body(self, block: Block, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        if len(block.args) != len(args):
-            raise RunFailure(f"{path(block.parent_op() or self.strategy)}: a body receives {len(block.args)} entries, given {len(args)}")
-        env: dict[SSAValue, object] = dict(zip(block.args, args, strict=True))
+    async def _body(self, body: Body, args: tuple[object, ...] | list[object], identity: Identity) -> tuple[object, ...]:
+        if len(args) != body.entries:
+            raise RunFailure(f"{body.path}: a body receives {body.entries} entries, given {len(args)}")
+        frame = [*args, *body.template]
         returned: tuple[object, ...] = ()
         failed: BaseException | None = None
         try:
-            for kind, step in self._plan(block):
-                if kind == "yield":
-                    assert isinstance(step, YieldOp)
-                    returned = tuple(env[v] for v in step.operands)
-                    return returned
-                if kind == "constant":
-                    assert isinstance(step, ConstantOp)
-                    env[step.result] = _literal(step)
-                elif kind == "group":
-                    group, calls = step  # ty: ignore[not-iterable]
-                    await self._group(group, calls, env, identity)
-                else:
-                    assert isinstance(step, Operation)
-                    result = await self._execute(step, tuple(env[v] for v in step.operands), identity)
-                    if len(result) != len(step.results):
-                        raise RunFailure(f"{path(step)}: gave {len(result)} results for {len(step.results)}")
-                    env.update(zip(step.results, result, strict=True))
+            for step in body.steps:
+                if isinstance(step, Calls):
+                    await self._calls(step, frame, identity)
+                    continue
+                result = await self._statements[step.kind](step, tuple(map(frame.__getitem__, step.operands)), identity)
+                if len(result) != len(step.results):
+                    raise RunFailure(f"{step.path}: gave {len(result)} results for {len(step.results)}")
+                for slot, value in zip(step.results, result, strict=True):
+                    frame[slot] = value
+            returned = tuple(map(frame.__getitem__, body.returns))
             return returned
         except BaseException as error:
             failed = error
             raise
         finally:
-            given = {id(v) for v in returned}
-            leaked: RunFailure | None = None
-            made = [env[r] for op in block.ops for r in op.results if r in env]
-            for value in reversed(made):
-                if isinstance(value, Product) and value.active and id(value) not in given:
-                    if failed is None and leaked is None:
-                        leaked = RunFailure(f"{value.key[0]}: a retained result was never released")
-                    self._release_product(value, "cancelled" if self.cancelled else "failed")
-            for value in env.values():
-                if (
-                    isinstance(value, Ticket)
-                    and value.owner == identity
-                    and value.disposition is None
-                    and not value.forks
-                    and id(value) not in given
-                ):
-                    if failed is None and leaked is None:
-                        leaked = RunFailure(f"{value.stream}/{value.key}: a claim was never settled")
-                    self._settle(value, "cancelled" if self.cancelled or isinstance(failed, Cancelled) else "failed", identity)
-            if leaked is not None:
-                raise leaked
+            if body.retained or body.claims or self.checked:
+                self._end_checks(body, frame, returned, identity, failed)
 
-    async def _execute(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        if op.get_trait(RegionSemantics) is not None:
-            return await self._invoke(op, args, identity)
-        if isinstance(op, ResourceOp):
-            if op.sym_name.data not in self.owners:
-                raise RunFailure(f"{path(op)}: no owner holds @{op.sym_name.data}")
-            return (op.sym_name.data,)
-        if isinstance(op, RelationshipOp):
-            return ((args[0], args[1]),)
-        if isinstance(op, StreamOp):
-            self.streams[op.sym_name.data] = Stream(op)
-            return (op.sym_name.data,)
+    def _end_checks(
+        self, body: Body, frame: list[object], returned: tuple[object, ...], identity: Identity, failed: BaseException | None
+    ) -> None:
+        """What a body leaves when it ends: retained results are released and claims settled, and leaving them fails it (D16)."""
+        given = {id(v) for v in returned}
+        leaked: RunFailure | None = None
+        for slot in reversed(body.retained):
+            value = frame[slot]
+            if isinstance(value, Product) and value.active and id(value) not in given:
+                if failed is None and leaked is None:
+                    leaked = RunFailure(f"{value.key[0]}: a retained result was never released")
+                self._release_product(value, "cancelled" if self.cancelled else "failed")
+        for slot in body.claims:
+            value = frame[slot]
+            if (
+                isinstance(value, Ticket)
+                and value.owner == identity
+                and value.disposition is None
+                and not value.forks
+                and id(value) not in given
+            ):
+                if failed is None and leaked is None:
+                    leaked = RunFailure(f"{value.stream}/{value.key}: a claim was never settled")
+                self._settle(value, "cancelled" if self.cancelled or isinstance(failed, Cancelled) else "failed", identity)
+        if self.checked:
+            for slot, value in enumerate(frame):
+                if isinstance(value, Product) and slot in body.results and slot not in body.retained:
+                    self._missed(f"{body.path}: a retained result in a slot the end check skips")
+                if isinstance(value, Ticket) and slot not in body.claims:
+                    self._missed(f"{body.path}: a claim in a slot the end check skips")
+        if leaked is not None:
+            raise leaked
+
+    # Statements.
+
+    async def _resource(self, step: Named, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        if step.word not in self.owners:
+            raise RunFailure(f"{step.path}: no owner holds @{step.word}")
+        return (step.word,)
+
+    async def _relationship(self, step: Step, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        return ((args[0], args[1]),)
+
+    async def _stream(self, step: StreamStep, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self.streams[step.name] = Stream(step.name, step.flow)
+        return (step.name,)
+
+    async def _release(self, step: Step, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
         self._admission_point()
-        if isinstance(op, ReleaseOp):
-            product = args[0]
-            if not isinstance(product, Product):
-                raise RunFailure(f"{path(op)}: releases something that is not a retained result")
-            self._release_product(product, "released")
-            return ()
-        if isinstance(op, TakeOp):
-            stream = self.streams[str(args[0])]
-            while True:
-                await self._until(lambda: self.closing or bool(stream.ready) or stream.closed)
-                self._admission_point()
-                ticket = self._take(op, stream, identity)
-                if ticket is not None:
-                    return (ticket,)
-        if isinstance(op, BorrowOp):
-            return (deepcopy(self._owned(op, args[0], identity).payload),)
-        if isinstance(op, DisposeOp):
-            self._settle(self._owned(op, args[0], identity), op.disposition.data, identity)
-            return ()
-        if isinstance(op, ForkOp):
-            ticket = self._owned(op, args[0], identity)
-            ticket.forks = [Ticket(ticket.stream, ticket.key, identity, ticket.payload, ticket.versions, ticket) for _ in op.forks]
-            ticket.owner = None
-            self._fact(ticket.stream, identity, "forked", ticket.key, len(ticket.forks))
-            return tuple(ticket.forks)
-        if isinstance(op, RequestOp):
-            self._arm_request(op, identity, args)
-            return ()
-        if isinstance(op, StopOp):
-            source, target = self.named[symbol(op.source)], self.named[symbol(op.target)]
-            await self._until(lambda: self.closing or self._source_settled(source, op, identity))
-            self._admission_point()
-            self.stops.add((self._scope(op, target, identity), path(target)))
-            self._fact(path(target), identity, "stop_requested", symbol(op.source))
-            self._changed()
-            return ()
-        raise RunFailure(f"{path(op)}: the runtime does not realize {op.name}")
+        product = args[0]
+        if not isinstance(product, Product):
+            raise RunFailure(f"{step.path}: releases something that is not a retained result")
+        self._release_product(product, "released")
+        return ()
 
-    def _owned(self, op: Operation, value: object, identity: Identity) -> Ticket:
+    async def _take_step(self, step: Step, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        stream = self.streams[str(args[0])]
+        while True:
+            await self._until(lambda: self.closing or bool(stream.ready) or stream.closed, ("stream", stream.name))
+            self._admission_point()
+            ticket = self._take(step, stream, identity)
+            if ticket is not None:
+                return (ticket,)
+
+    async def _borrow(self, step: Step, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        return (deepcopy(self._owned(step, args[0], identity).payload),)
+
+    async def _dispose(self, step: Named, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        self._settle(self._owned(step, args[0], identity), step.word, identity)
+        return ()
+
+    async def _fork(self, step: Step, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        ticket = self._owned(step, args[0], identity)
+        ticket.forks = [Ticket(ticket.stream, ticket.key, identity, ticket.payload, ticket.versions, ticket) for _ in step.results]
+        ticket.owner = None
+        self._fact(ticket.stream, identity, "forked", ticket.key, len(ticket.forks))
+        return tuple(ticket.forks)
+
+    async def _request(self, step: RequestStep, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        self._arm_request(step, identity, args)
+        return ()
+
+    async def _stop(self, step: StopStep, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        settling = step.settling
+        await self._until(lambda: self.closing or self._source_settled(settling, identity), *settling.keys)
+        self._admission_point()
+        self.stops.add((_scope(step.scope, identity), step.target))
+        self._fact(step.target, identity, "stop_requested", step.source)
+        self._changed(("stop", step.target))
+        return ()
+
+    async def _unrealized(self, step: Step, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        self._admission_point()
+        raise RunFailure(step.problem or f"{step.path}: the runtime does not realize it")
+
+    def _owned(self, step: Step, value: object, identity: Identity) -> Ticket:
         if not isinstance(value, Ticket) or value.owner != identity or value.disposition is not None or value.forks:
-            raise RunFailure(f"{path(op)}: the claim is not held here")
+            raise RunFailure(f"{step.path}: the claim is not held here")
         return value
 
     # Invocations.
 
     async def _invoke(
-        self, op: Operation, args: tuple[object, ...], parent: Identity, *, body: tuple[object, ...] | None = None
+        self, step: Invoke, args: tuple[object, ...], parent: Identity, *, body: list[object] | None = None
     ) -> tuple[object, ...]:
-        identity = self._identity(parent, path(op))
-        self._begin(identity, path(op))
+        identity = self._identity(parent, step.path)
+        self._begin(identity, step.path)
         outcome = self.outcomes[identity]
         self._state(identity, State.PENDING)
-        if parent in self.request_of:
+        if self.request_of and parent in self.request_of:
             self.request_of[identity] = self.request_of[parent]
         try:
             self._admission_point()
             self._state(identity, State.ADMITTED)
             self._state(identity, State.RUNNING)
-            for ticket in (v for v in (body if body is not None else args) if isinstance(v, Ticket)):
-                if ticket.owner != parent or ticket.disposition is not None:
-                    raise RunFailure(f"{path(op)}: a captured claim is not held by the capturing body")
-                ticket.owner = identity
+            if step.captures_claims or self.checked:
+                for ticket in (v for v in (body if body is not None else args) if isinstance(v, Ticket)):
+                    if not step.captures_claims:
+                        self._missed(f"{step.path}: a captured claim")
+                    if ticket.owner != parent or ticket.disposition is not None:
+                        raise RunFailure(f"{step.path}: a captured claim is not held by the capturing body")
+                    ticket.owner = identity
             try:
                 if body is not None:
-                    result = await self._body(op.regions[0].block, body, identity)
+                    result = await self._body(step.bodies[0], body, identity)
                 else:
-                    result = await self._protocol(op, args, identity)
+                    result = await self._protocol(step, args, identity)
             except RunFailure:
                 raise
             except Exception as error:
-                raise RunFailure(f"{path(op)}: {error!r}") from error
-            for value in result:
-                if isinstance(value, Ticket):
-                    value.owner = parent
+                raise RunFailure(f"{step.path}: {error!r}") from error
+            if step.owns_claims or self.checked:
+                for value in result:
+                    if isinstance(value, Ticket):
+                        if not step.owns_claims:
+                            self._missed(f"{step.path}: a claim among its results")
+                        value.owner = parent
             outcome.status = "succeeded"
             return result
         except RunFailure as failed:
@@ -446,75 +623,68 @@ class Coordinator:
         finally:
             self._state(identity, State.CLOSING)
             self._state(identity, State.SETTLING)
-            for stream in self.streams.values():
-                for ticket in tuple(stream.outstanding.values()):
-                    for held in _leaves(ticket):
-                        if held.owner == identity and held.disposition is None:
-                            self._settle(held, "cancelled" if self.cancelled else "failed", identity)
-            for request_op, source, request_args in self.emissions.pop(identity, ()):
-                await self._emit(request_op, source, request_args, outcome.status)
-            self.request_of.pop(identity, None)
+            if step.owns_claims or self.checked:
+                for stream in self.streams.values():
+                    for ticket in tuple(stream.outstanding.values()):
+                        for held in _leaves(ticket):
+                            if held.owner == identity and held.disposition is None:
+                                if not step.owns_claims:
+                                    self._missed(f"{step.path}: a claim it still owned when it settled")
+                                self._settle(held, "cancelled" if self.cancelled else "failed", identity)
+            if self.emissions:
+                for request_step, source, request_args in self.emissions.pop(identity, ()):
+                    await self._emit(request_step, source, request_args, outcome.status)
+            if self.request_of:
+                self.request_of.pop(identity, None)
             self._state(identity, State.TERMINAL)
 
-    def _entry(self, op: Operation, args: tuple[object, ...], supplied: tuple[object, ...] = (), *, role: int = 0) -> tuple[object, ...]:
-        contract = _region(op).describe(op).roles[role]
-        missing = object()
-        values: list[object] = [missing] * len(contract.entries)
-        for capture in contract.captures:
-            values[capture.argument] = args[capture.operand]
-        open_positions = [i for i, v in enumerate(values) if v is missing]
-        if len(open_positions) != len(supplied):
-            raise RunFailure(f"{path(op)}: the protocol supplies {len(supplied)} entries, the body takes {len(open_positions)}")
-        for position, value in zip(open_positions, supplied, strict=True):
+    def _entry(self, step: Invoke, args: tuple[object, ...], supplied: tuple[object, ...] = (), *, role: int = 0) -> list[object]:
+        entry = step.entries[role]
+        values: list[object] = [None] * entry.size
+        for argument, operand in entry.captures:
+            values[argument] = args[operand]
+        if len(entry.supplied) != len(supplied):
+            raise RunFailure(f"{step.path}: the protocol supplies {len(supplied)} entries, the body takes {len(entry.supplied)}")
+        for position, value in zip(entry.supplied, supplied, strict=True):
             values[position] = value
-        return tuple(values)
+        return values
 
-    async def _protocol(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        protocol = _region(op).protocol
-        if protocol == LifecycleProtocol.SEQUENCE:
-            return await self._body(op.regions[0].block, self._entry(op, args), identity)
-        if protocol == LifecycleProtocol.CHOICE:
-            return await self._choice(op, args, identity)
-        if protocol == LifecycleProtocol.PARALLEL:
-            return await self._parallel(op, args, identity)
-        if protocol == LifecycleProtocol.REPEAT:
-            return await self._repeat(op, args, identity)
-        if protocol == LifecycleProtocol.ACCESS:
-            return await self._access(op, args, identity)
-        if protocol == LifecycleProtocol.FILTER:
-            return await self._filter(op, args, identity)
-        if protocol == LifecycleProtocol.PRODUCER:
-            return await self._producer(op, args, identity)
-        if protocol == LifecycleProtocol.HANDLER:
-            return await self._handler(op, args, identity)
-        raise RunFailure(f"{path(op)}: the runtime does not realize {protocol}")
+    async def _protocol(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        if step.problem is not None:
+            raise RunFailure(step.problem)
+        return await self._protocols[step.protocol](step, args, identity)
 
-    async def _choice(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+    async def _sequence(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        return await self._body(step.bodies[0], self._entry(step, args), identity)
+
+    async def _choice(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
         chosen = args[0]
-        if isinstance(op.operands[0].type, OptionalType):
+        if step.optional:
             if chosen is not None:
-                return await self._body(op.regions[0].block, self._entry(op, args, (chosen,)), identity)
-            return await self._body(op.regions[1].block, self._entry(op, args, role=1), identity)
+                return await self._body(step.bodies[0], self._entry(step, args, (chosen,)), identity)
+            return await self._body(step.bodies[1], self._entry(step, args, role=1), identity)
         if type(chosen) is not bool:
-            raise RunFailure(f"{path(op)}: a choice chooses on a bool")
+            raise RunFailure(f"{step.path}: a choice chooses on a bool")
         role = 0 if chosen else 1
-        return await self._body(op.regions[role].block, self._entry(op, args, role=role), identity)
+        return await self._body(step.bodies[role], self._entry(step, args, role=role), identity)
 
-    async def _parallel(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+    async def _parallel(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
         branches = []
-        for index, region in enumerate(op.regions):
-            branch = (*identity, (f"{path(op)}#{index}", 0))
+        for index, body in enumerate(step.bodies):
+            branch = (*identity, (step.branches[index], 0))
             if identity in self.request_of:
                 self.request_of[branch] = self.request_of[identity]
+            used = step.branch_claims[index]
             for position, value in enumerate(args):
-                if isinstance(value, Ticket) and region.block.args[position].uses:
+                if isinstance(value, Ticket) and position in used:
                     value.owner = branch
-            branches.append(self._spawn(self._branch(region.block, self._entry(op, args, role=index), branch)))
-        self._joining += 1
+            branches.append(self._spawn(self._branch(body, self._entry(step, args, role=index), branch)))
+        join = asyncio.gather(*branches, return_exceptions=True)
+        self._joins.add(join)
         try:
-            results = await asyncio.gather(*branches, return_exceptions=True)
+            results = await join
         finally:
-            self._joining -= 1
+            self._joins.discard(join)
         errors = [r for r in results if isinstance(r, BaseException)]
         if self.cancelled:
             raise Cancelled("the run was cancelled")
@@ -522,10 +692,10 @@ class Coordinator:
             raise next((e for e in errors if not isinstance(e, Cancelled)), errors[0])
         return ()
 
-    async def _branch(self, block: Block, args: tuple[object, ...], branch: Identity) -> tuple[object, ...]:
+    async def _branch(self, body: Body, args: list[object], branch: Identity) -> tuple[object, ...]:
         try:
             try:
-                return await self._body(block, args, branch)
+                return await self._body(body, args, branch)
             except RunFailure:
                 raise
             except Exception as error:
@@ -537,30 +707,24 @@ class Coordinator:
             self.request_of.pop(branch, None)
             self._ordinals.pop(branch, None)
 
-    async def _repeat(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        limit = op.properties.get("limit")
-        if not isinstance(limit, IntegerAttr):
-            raise RunFailure(f"{path(op)}: a repeat by policy is realized with training's words, not by the core runtime")
-        carried = op.properties["carry_count"]
-        assert isinstance(carried, IntegerAttr)
-        split = len(args) - carried.value.data
+    async def _repeat(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        assert step.limit is not None  # lowering gave a repeat by policy its problem
+        split = len(args) - step.carried
         captures, carries = args[:split], args[split:]
-        for iteration in range(limit.value.data):
-            carries = await self._invoke(op, (), identity, body=self._entry(op, (*captures, *carries), (iteration, *carries)))
+        for iteration in range(step.limit):
+            carries = await self._invoke(step, (), identity, body=self._entry(step, (*captures, *carries), (iteration, *carries)))
         return carries
 
-    async def _access(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        assert isinstance(op, AccessOp)
-        uses = ResourceSemantics().describe(op).uses
-        admission = self.admission_begins.get(path(op))
-        device = admission.device if admission is not None else None
+    async def _access(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        uses = step.uses
+        device = step.device
         # Leases and the device turn are taken together: nothing waits for one while holding the other (D14).
-        await self._turn_queue(device, identity, lambda: all(self._can_lease(op, use) for use in uses))
-        leases = self._acquire(op, identity)
+        await self._turn_queue(device, identity, lambda: all(self._can_lease(name, use) for name, use in uses), step.keys)
+        leases = self._acquire(step, identity)
         if device is not None:
             self._grant_turn(device, identity, identity[:-1])
         try:
-            return await self._body(op.regions[0].block, self._entry(op, args, leases), identity)
+            return await self._body(step.bodies[0], self._entry(step, args, leases), identity)
         finally:
             for lease in leases:
                 lease.body_ended = True
@@ -569,13 +733,13 @@ class Coordinator:
             if device is not None:
                 self._work_ended(identity)
 
-    async def _filter(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        ticket = self._owned(op, args[0], identity)
+    async def _filter(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        ticket = self._owned(step, args[0], identity)
         disposition = "failed"
         try:
-            kept = await self._body(op.regions[0].block, self._entry(op, args, (deepcopy(ticket.payload),)), identity)
+            kept = await self._body(step.bodies[0], self._entry(step, args, (deepcopy(ticket.payload),)), identity)
             if len(kept) != 1 or type(kept[0]) is not bool:
-                raise RunFailure(f"{path(op)}: a filter's body yields one bool")
+                raise RunFailure(f"{step.path}: a filter's body yields one bool")
             disposition = "forwarded" if kept[0] else "filtered_out"
             return (deepcopy(ticket.payload) if kept[0] else None,)
         except Cancelled:
@@ -584,29 +748,28 @@ class Coordinator:
         finally:
             self._settle(ticket, disposition, identity)
 
-    async def _producer(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+    async def _producer(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
         name = str(args[0])
         stream = self.streams[name]
-        last = op.regions[0].block.last_op
-        optional = last is not None and bool(last.operands) and isinstance(last.operands[0].type, OptionalType)
+        keys = (("stream", name), ("stop", step.path))
+        outstanding, ready = stream.flow.max_outstanding, stream.flow.ready_bound
         try:
             index = 0
-            while not self._stopped(op, identity) and not self.closing:
+            while not self._stopped(step.path, identity) and not self.closing:
                 await self._until(
-                    lambda: (
-                        self.closing or self._stopped(op, identity) or len(stream.outstanding) < stream.declaration.outstanding.value.data
-                    )
+                    lambda: self.closing or self._stopped(step.path, identity) or len(stream.outstanding) < outstanding,
+                    *keys,
                 )
                 self._admission_point()
-                if self._stopped(op, identity):
+                if self._stopped(step.path, identity):
                     break
                 ticket = Ticket(name, stream.next_key, identity)
                 stream.next_key += 1
                 stream.outstanding[ticket.key] = ticket
-                production = (*identity, (path(op), index))
+                production = (*identity, (step.path, index))
                 self._productions[identity] = []
                 try:
-                    (value,) = await self._invoke(op, (), identity, body=self._entry(op, args, (index,)))
+                    (value,) = await self._invoke(step, (), identity, body=self._entry(step, args, (index,)))
                 except RunFailure as failed:
                     if ticket.disposition is None:
                         self._settle(ticket, "cancelled" if isinstance(failed, Cancelled) else "failed", production)
@@ -615,14 +778,15 @@ class Coordinator:
                     observed = self._productions.pop(identity, [])
                 index += 1
                 ticket.versions = tuple(dict.fromkeys(observed))
-                if optional and value is None:
+                if step.optional and value is None:
                     stream.outstanding.pop(ticket.key)
                     self._fact(name, identity, "nothing_produced", ticket.key)
-                    self._changed()
+                    self._changed(("stream", name))
                     continue
                 try:
                     await self._until(
-                        lambda: self.closing or self._stopped(op, identity) or len(stream.ready) < stream.declaration.ready.value.data
+                        lambda: self.closing or self._stopped(step.path, identity) or len(stream.ready) < ready,
+                        *keys,
                     )
                     self._admission_point()
                 except RunFailure as failed:
@@ -630,15 +794,15 @@ class Coordinator:
                         self._settle(ticket, "cancelled" if isinstance(failed, Cancelled) else "failed", identity)
                     raise
                 ticket.payload, ticket.owner = deepcopy(value), None
-                if self._stopped(op, identity):
+                if self._stopped(step.path, identity):
                     self._settle(ticket, "cancelled", identity)
                 else:
                     stream.ready.append(ticket)
                     self._fact(name, identity, "published", ticket.key, ticket.versions)
-                self._changed()
+                self._changed(("stream", name))
         finally:
             stream.closed = True
-            self._changed()
+            self._changed(("stream", name))
             # Wait for consumers to settle what they took; what the producer still holds settles at the drain.
             await self._until(
                 lambda: all(
@@ -646,25 +810,28 @@ class Coordinator:
                     for t in stream.outstanding.values()
                     if t not in stream.ready
                     for leaf in _leaves(t)
-                )
+                ),
+                ("stream", name),
             )
             for ticket in tuple(stream.outstanding.values()):
                 if ticket in stream.ready or ticket.owner == identity:
                     self._settle(ticket, "cancelled", identity)
         return ()
 
-    async def _handler(self, op: Operation, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
-        assert isinstance(op, HandlerOp)
-        handler = self.handlers[path(op)]
-        sources = [self.named[name] for name in symbols(op, "sources")]
+    async def _handler(self, step: Invoke, args: tuple[object, ...], identity: Identity) -> tuple[object, ...]:
+        handler = self.handlers[step.path]
+        sources = step.sources
+        key = ("handler", step.path)
         while True:
-            await self._until(lambda: self.closing or bool(handler.pending) or all(self._source_settled(s, op, identity) for s in sources))
+            await self._until(
+                lambda: self.closing or bool(handler.pending) or all(self._source_settled(s, identity) for s in sources), *step.keys
+            )
             if self.closing:
                 while handler.pending:
                     request = handler.pending.popleft()
                     self._end_reservations(request)
-                    self._fact(path(op), identity, "request_disposed", request.ordinal, "cancelled")
-                self._changed()
+                    self._fact(step.path, identity, "request_disposed", request.ordinal, "cancelled")
+                self._changed(key, ("requests",))
                 return ()
             if not handler.pending:
                 return ()
@@ -673,7 +840,7 @@ class Coordinator:
             self.request_of[identity] = request
             disposition = "failed"
             try:
-                await self._invoke(op, (), identity, body=self._entry(op, args, (deepcopy(request.payload),)))
+                await self._invoke(step, (), identity, body=self._entry(step, args, (deepcopy(request.payload),)))
                 disposition = "completed"
             except RunFailure as failed:
                 disposition = "cancelled" if isinstance(failed, Cancelled) else "failed"
@@ -681,82 +848,131 @@ class Coordinator:
             finally:
                 handler.active -= 1
                 self._end_reservations(request)
-                self._fact(path(op), identity, "request_settled", request.ordinal, disposition)
+                self._fact(step.path, identity, "request_settled", request.ordinal, disposition)
                 del self.request_of[identity]
-                self._changed()
+                self._changed(key, ("requests",))
 
     # Calls: a fused group is one submission to a worker thread on its device.
 
-    async def _group(self, group: Group, calls: list[CallOp], env: dict[SSAValue, object], identity: Identity) -> None:
+    async def _calls(self, step: Calls, frame: list[object], identity: Identity) -> None:
         self._admission_point()
-        device = self.devices.get(group.device)
+        if step.problem is not None:
+            raise RunFailure(step.problem)
+        device = self.devices.get(step.group.device)
         if device is None:
-            raise RunFailure(f"{group.calls[0]}: the coordinator has no device {group.device}")
-        own_admission = group.device != HOST.name and self._admission_for(identity, group.device) is None
+            raise RunFailure(f"{step.path}: the coordinator has no device {step.group.device}")
+        own_admission = not step.host and self._admission_for(identity, step.group.device) is None
         if own_admission:
-            await self._turn_queue(group.device, identity)
-            self._grant_turn(group.device, identity, identity)
+            await self._turn_queue(step.group.device, identity)
+            self._grant_turn(step.group.device, identity, identity)
         borrowed: list[Product] = []
+        leased: list[Held] = []
         try:
-            produced = {r for c in calls for r in c.results}
-            entries = []
-            for call in calls:
-                implementation = self.installed[symbol(call.implementation)]
-                values = []
-                for operand in call.operands:
-                    if operand in produced:
-                        values.append(operand)
-                        continue
-                    value = env[operand]
-                    if isinstance(value, Held) and not value.active:
-                        raise RunFailure(f"{path(call)}: a lease is used after its release")
-                    if isinstance(value, Product):
-                        if not value.active:
-                            raise RunFailure(f"{path(call)}: a retained result is used after its release")
-                        value.borrowers += 1
-                        borrowed.append(value)
-                    values.append(value)
-                entries.append((call, implementation, tuple(values)))
-            assert self._executor is not None
+            arguments: list[list[object]] = []
+            program = []
+            for call in step.calls:
+                values = [frame[s] for s in call.slots] if not call.locals else [frame[s] if s >= 0 else None for s in call.slots]
+                given = values
+                if call.leases or call.retained:
+                    given = list(values)
+                    for position in call.leases:
+                        held = values[position]
+                        assert isinstance(held, Held)
+                        if not held.active:
+                            raise RunFailure(f"{call.path}: a lease is used after its release")
+                        given[position] = held.handle
+                        leased.append(held)
+                    for position in call.retained:
+                        product = values[position]
+                        assert isinstance(product, Product)
+                        if not product.active:
+                            raise RunFailure(f"{call.path}: a retained result is used after its release")
+                        product.borrowers += 1
+                        borrowed.append(product)
+                        given[position] = product.value
+                if self.checked:
+                    self._check_arguments(call, values)
+                arguments.append(values)
+                program.append((call.implementation, given, call.locals, len(call.results)))
+            if len(leased) > 1:
+                leased = list(dict.fromkeys(leased))
             if self.explore is not None:
                 for _ in range(self.explore.randrange(3)):
                     await asyncio.sleep(0)
+            # Calls not declared safe for concurrent use run one at a time per participant (D15).
+            busy: set[str] = set()
+            if not step.safe and leased:
+                busy = {lease.resource for lease in leased}
+                await self._until(lambda: self.closing or not busy & self._busy, *(("resource", r) for r in busy))
+                self._admission_point()
+            after = [c for lease in leased for c in self.protection[lease.resource].pending]
+            after += [p.completion for p in borrowed if p.completion is not None]
+            reaches = tuple(lease.handle for lease in leased)
+            assert self._executor is not None
+            self._busy |= busy
             self._working += 1
             try:
-                reports = await asyncio.get_running_loop().run_in_executor(self._executor, _run_group, device, entries)
+                reports, completions = await asyncio.get_running_loop().run_in_executor(
+                    self._executor, _run_group, device, step.group.context, after, reaches, program, step.wait
+                )
             finally:
                 self._working -= 1
-            for call, implementation, values in entries:
-                report = reports.get(call)
-                if report is None:
+                self._busy -= busy
+            if not step.wait:
+                # Later work on these participants follows each call's completion (D15).
+                queued = [c for c in completions if c is not None]
+                for lease in leased:
+                    pending = self.protection[lease.resource].pending
+                    pending[:] = [c for c in pending if not c.done()]
+                    pending.extend(queued)
+            made: list[tuple[object, ...]] = []
+            for index, call in enumerate(step.calls):
+                if index >= len(reports):
                     break
-                ordinal = self.call_counts[path(call)]
-                self.call_counts[path(call)] += 1
-                self._fact(path(call), identity, "call_entered", ordinal)
+                report = reports[index]
+                ordinal = self.call_counts[call.path]
+                self.call_counts[call.path] = ordinal + 1
+                self._fact(call.path, identity, "call_entered", ordinal)
                 if isinstance(report, BaseException):
-                    self._fact(path(call), identity, "call_failed", ordinal, str(report))
-                    raise RunFailure(f"{path(call)}: {report}") from report
-                results = cast(tuple[object, ...], report)
+                    self._fact(call.path, identity, "call_failed", ordinal, str(report))
+                    raise RunFailure(f"{call.path}: {report}") from report
+                results: tuple[object, ...] = report
                 if len(results) != len(call.results):
-                    self._fact(path(call), identity, "call_invalid", ordinal)
-                    raise RunFailure(f"{path(call)}: returned {len(results)} results for {len(call.results)}")
-                resolved = tuple(env[v] if isinstance(v, SSAValue) and v in env else v for v in values)
-                for position in implementation.declaration.updates:
-                    self._updated(call, resolved[position], identity)
-                shown = ("retained",) if implementation.declaration.retains else results
-                request = self.request_of.get(identity)
-                self._fact(path(call), identity, "call_completed", ordinal, shown, request.payload if request else None)
-                if implementation.declaration.retains:
-                    results = (self._retain(call, ordinal, results[0], resolved, implementation, identity),)
-                env.update(zip(call.results, results, strict=True))
+                    self._fact(call.path, identity, "call_invalid", ordinal)
+                    raise RunFailure(f"{call.path}: returned {len(results)} results for {len(call.results)}")
+                resolved = arguments[index]
+                if call.updates or call.retains:
+                    resolved = list(resolved)
+                    for position, earlier, result in call.locals:
+                        resolved[position] = made[earlier][result]
+                    for position in call.updates:
+                        self._updated(call.path, resolved[position], identity)
+                request = self.request_of.get(identity) if self.request_of else None
+                shown = ("retained",) if call.retains else results
+                self._fact(call.path, identity, "call_completed", ordinal, shown, request.payload if request else None)
+                if call.retains:
+                    product = self._retain(call, ordinal, results[0], resolved, identity, step.group.device)
+                    product.completion = None if step.wait else completions[index]
+                    results = (product,)
+                made.append(results)
+                for slot, value in zip(call.results, results, strict=True):
+                    frame[slot] = value
         finally:
             for product in borrowed:
                 product.borrowers -= 1
             if own_admission:
                 self._work_ended(identity)
-            self._changed()
+            if leased:
+                self._changed(*(("resource", lease.resource) for lease in leased))
 
-    def _updated(self, call: CallOp, held: object, identity: Identity) -> None:
+    def _check_arguments(self, call: Call, values: list[object]) -> None:
+        for position, value in enumerate(values):
+            if isinstance(value, Held) and position not in call.leases:
+                self._missed(f"{call.path}: a lease passed where its type says none can be")
+            if isinstance(value, Product) and position not in call.retained:
+                self._missed(f"{call.path}: a retained result passed where its type says none can be")
+
+    def _updated(self, call: str, held: object, identity: Identity) -> None:
         """Records an owner update, which only the current writer's lease can make.
 
         A call that updates owner state is never fused with another, so each
@@ -764,32 +980,29 @@ class Coordinator:
         the version; the value stays with its owner.
         """
         if not isinstance(held, Held) or held.mode not in (AccessMode.OWNER_UPDATE, AccessMode.GRANT):
-            raise RunFailure(f"{path(call)}: updates state it holds no owner_update lease for")
+            raise RunFailure(f"{call}: updates state it holds no owner_update lease for")
         if self.protection[held.resource].writer != held.token:
-            raise RunFailure(f"{path(call)}: a stale owner update of @{held.resource}")
+            raise RunFailure(f"{call}: a stale owner update of @{held.resource}")
         now = self.owners[held.resource].current(held.resource)
         if now == held.version:
             return
         if (now.incarnation, now.lineage) != (held.version.incarnation, held.version.lineage) or now.ordinal <= held.version.ordinal:
-            raise RunFailure(f"{path(call)}: @{held.resource} moved to an incomparable or older version")
+            raise RunFailure(f"{call}: @{held.resource} moved to an incomparable or older version")
         held.version = now
         self._fact(held.resource, identity, "updated", now)
 
-    def _retain(
-        self, call: CallOp, ordinal: int, value: object, args: tuple[object, ...], implementation: Implementation, identity: Identity
-    ) -> Product:
-        retained = [args[i] for i in implementation.declaration.retains]
+    def _retain(self, call: Call, ordinal: int, value: object, args: list[object], identity: Identity, device: str) -> Product:
+        retained = [args[i] for i in call.retains]
         parents = tuple(v for v in retained if isinstance(v, Product))
         leases = {id(v): v for v in retained if isinstance(v, Held)}
         for parent in parents:
             leases.update((id(lease), lease) for lease in parent.leases)
-        product = Product((path(call), ordinal), value, tuple(leases.values()), parents)
+        product = Product((call.path, ordinal), value, tuple(leases.values()), parents)
         self.products[product.key] = product
-        device = self.groups[path(call)].device
         admission = self._admission_for(identity, device) if device != HOST.name else self._admission_for(identity)
         if admission is not None:
             admission.products.add(id(product))
-        self._fact(path(call), identity, "product_retained", ordinal, tuple(lease.version for lease in product.leases))
+        self._fact(call.path, identity, "product_retained", ordinal, tuple(lease.version for lease in product.leases))
         return product
 
     # Device turns (D15): one admission at a time per device, in request order.
@@ -817,19 +1030,21 @@ class Coordinator:
             return self._admission_for(identity, device) is not None
         return bool(turn.waiting) and turn.waiting[0] == identity
 
-    async def _turn_queue(self, device: str | None, identity: Identity, also: Callable[[], bool] = lambda: True) -> None:
-        """Waits, in request order, until the device turn and ``also`` are both available."""
+    async def _turn_queue(
+        self, device: str | None, identity: Identity, also: Callable[[], bool] = lambda: True, keys: tuple[tuple, ...] = ()
+    ) -> None:
+        """Waits, in request order, until the device turn and ``also`` are both available; ``keys`` wake ``also``."""
         if device is None:
-            await self._until(lambda: self.closing or also())
+            await self._until(lambda: self.closing or also(), *keys)
             self._admission_point()
             return
         turn = self.turns[device]
         turn.waiting.append(identity)
         try:
-            await self._until(lambda: self.closing or (self._turn_ready(device, identity) and also()))
+            await self._until(lambda: self.closing or (self._turn_ready(device, identity) and also()), ("turn", device), *keys)
         finally:
             turn.waiting.remove(identity)
-            self._changed()
+            self._changed(("turn", device))
         self._admission_point()
 
     def _grant_turn(self, device: str, identity: Identity, body: Identity) -> None:
@@ -859,7 +1074,7 @@ class Coordinator:
         turn.depth -= 1
         if turn.depth == 0:
             turn.holder = None
-        self._changed()
+        self._changed(("turn", admission.device))
 
     # Claims.
 
@@ -871,7 +1086,7 @@ class Coordinator:
         while ticket.parent is not None:
             parent = ticket.parent
             if any(fork.disposition is None for fork in parent.forks):
-                self._changed()
+                self._changed(("stream", ticket.stream))
                 return
             parent.disposition = tuple(d for fork in parent.forks for d in fork.disposition or ())
             ticket = parent
@@ -882,23 +1097,23 @@ class Coordinator:
         if ticket in stream.ready:
             stream.ready.remove(ticket)
         self._fact(ticket.stream, (), "settled", ticket.key, ticket.disposition)
-        self._changed()
+        self._changed(("stream", ticket.stream))
 
-    def _take(self, op: Operation, stream: Stream, identity: Identity) -> Ticket | None:
+    def _take(self, step: Step, stream: Stream, identity: Identity) -> Ticket | None:
         if not stream.ready:
-            raise RunFailure(f"{path(op)}: @{stream.declaration.sym_name.data} closed before this take")
+            raise RunFailure(f"{step.path}: @{stream.name} closed before this take")
         ticket = stream.ready.popleft()
-        admitted = self._admit(stream.declaration, ticket)
-        self._fact(path(op), identity, "admission", ticket.key, ticket.versions, admitted)
+        admitted = self._admit(stream, ticket)
+        self._fact(step.path, identity, "admission", ticket.key, ticket.versions, admitted)
         ticket.owner = identity
-        self._changed()
+        self._changed(("stream", ticket.stream))
         if not admitted:
             self._settle(ticket, "rejected", identity)
             return None
         return ticket
 
-    def _admit(self, stream: StreamOp, ticket: Ticket) -> bool:
-        policy = FlowSemantics().describe(stream).versions
+    def _admit(self, stream: Stream, ticket: Ticket) -> bool:
+        policy = stream.flow.versions
         observed: dict[str, Version] = {}
         for version in ticket.versions:
             if observed.setdefault(version.owner, version) != version:
@@ -916,32 +1131,31 @@ class Coordinator:
 
     # Leases and retained results.
 
-    def _can_lease(self, op: Operation, use) -> bool:
-        protection = self.protection[self._resource_name(op, use.subject)]
+    def _can_lease(self, name: str, use: ResourceUse) -> bool:
+        protection = self.protection[name]
         if use.mode == AccessMode.SNAPSHOT and use.selection in (VersionSelection.PUBLISHED_INITIAL, VersionSelection.AT_REQUEST):
             return True
         if use.mode in (AccessMode.SNAPSHOT, AccessMode.PROTECTED_CURRENT):
             return protection.writer is None
         return protection.writer is None and not protection.readers and not protection.reservations
 
-    def _acquire(self, op: Operation, identity: Identity) -> tuple[Held, ...]:
+    def _acquire(self, step: Invoke, identity: Identity) -> tuple[Held, ...]:
         held: list[Held] = []
         try:
-            return self._acquire_each(op, identity, held)
+            return self._acquire_each(step, identity, held)
         except BaseException:
             for lease in held:
                 lease.body_ended = True
                 self._release_lease_if_done(lease)
             raise
 
-    def _acquire_each(self, op: Operation, identity: Identity, held: list[Held]) -> tuple[Held, ...]:
-        request = self.request_of.get(identity)
-        for use in ResourceSemantics().describe(op).uses:
-            name = self._resource_name(op, use.subject)
+    def _acquire_each(self, step: Invoke, identity: Identity, held: list[Held]) -> tuple[Held, ...]:
+        request = self.request_of.get(identity) if self.request_of else None
+        for name, use in step.uses:
             if use.mode == AccessMode.GRANT:
-                raise RunFailure(f"{path(op)}: grants come with training's words")
+                raise RunFailure(f"{step.path}: grants come with training's words")
             if use.selection == VersionSelection.AT_REQUEST and request is None:
-                raise RunFailure(f"{path(op)}: at_request outside requested work")
+                raise RunFailure(f"{step.path}: at_request outside requested work")
             if use.mode == AccessMode.SNAPSHOT and use.selection == VersionSelection.AT_REQUEST:
                 assert request is not None
                 lease = request.snapshots.pop(name)
@@ -951,7 +1165,7 @@ class Coordinator:
                 (granted,) = self.owners[name].lease([Use(name, use.mode, use.selection, use.route, use.view)], reserved)
                 if reserved is not None and granted.version != reserved[name]:
                     granted.release()
-                    raise RunFailure(f"{path(op)}: @{name} moved past the version its request reserved")
+                    raise RunFailure(f"{step.path}: @{name} moved past the version its request reserved")
                 lease = self._hold(name, use.mode, granted)
             protection = self.protection[name]
             if use.mode == AccessMode.PROTECTED_CURRENT:
@@ -961,7 +1175,7 @@ class Coordinator:
             for production, observed in self._productions.items():
                 if identity[: len(production)] == production:
                     observed.append(lease.version)
-            self._fact(path(op), identity, "leased", name, str(use.mode), lease.version)
+            self._fact(step.path, identity, "leased", name, str(use.mode), lease.version)
             held.append(lease)
         return tuple(held)
 
@@ -985,7 +1199,6 @@ class Coordinator:
             if id(product) in admission.products:
                 admission.products.discard(id(product))
                 self._end_admission_if_done(admission)
-        self._changed()
 
     def _release_lease_if_done(self, lease: Held) -> None:
         if not lease.active or not lease.body_ended:
@@ -1000,88 +1213,77 @@ class Coordinator:
         lease.lease.release()
         del self.leases[lease.token]
         self._fact(lease.resource, (), "lease_released", lease.version)
-        self._changed()
+        self._changed(("resource", lease.resource))
 
     # Requests.
 
-    def _arm_request(self, op: RequestOp, identity: Identity, args: tuple[object, ...]) -> None:
-        source = path(self.named[symbol(op.source)])
+    def _arm_request(self, step: RequestStep, identity: Identity, args: tuple[object, ...]) -> None:
         running = [
             identity[:length]
             for length in range(1, len(identity) + 1)
-            if identity[length - 1][0] == source
+            if identity[length - 1][0] == step.source
             and (outcome := self.outcomes.get(identity[:length])) is not None
             and outcome.state == State.RUNNING
         ]
         if not running:
-            raise RunFailure(f"{path(op)}: a request is made inside its source")
-        self.emissions[running[-1]].append((op, running[-1], args))
+            raise RunFailure(f"{step.path}: a request is made inside its source")
+        self.emissions[running[-1]].append((step, running[-1], args))
 
-    async def _emit(self, op: RequestOp, source: Identity, args: tuple[object, ...], status: str) -> None:
-        boundary = Boundary(op.boundary.data)
-        if boundary == Boundary.COMPLETED:
-            raise RunFailure(f"{path(op)}: requests at completion are not realized yet")
-        if (boundary == Boundary.SETTLED_SUCCESS and status != "succeeded") or self.closing:
-            self._fact(symbol(op.handler), source, "request_disposed", "unfulfilled")
+    async def _emit(self, step: RequestStep, source: Identity, args: tuple[object, ...], status: str) -> None:
+        if step.boundary == Boundary.COMPLETED:
+            raise RunFailure(f"{step.path}: requests at completion are not realized yet")
+        if (step.boundary == Boundary.SETTLED_SUCCESS and status != "succeeded") or self.closing:
+            self._fact(step.handler_name, source, "request_disposed", "unfulfilled")
             return
-        target = self.named[symbol(op.handler)]
-        assert isinstance(target, HandlerOp)
-        handler = self.handlers[path(target)]
-        bound = target.max_outstanding.value.data
-        reads = self._at_request(target)
+        target = step.handler
+        handler = self.handlers[target.path]
+        reads = [name for name, _ in target.at_request]
         await self._until(
             lambda: (
                 self.closing
-                or (not any(self.protection[name].writer is not None for name in reads) and len(handler.pending) + handler.active < bound)
-            )
+                or (
+                    not any(self.protection[name].writer is not None for name in reads)
+                    and len(handler.pending) + handler.active < target.bound
+                )
+            ),
+            ("handler", target.path),
+            *(("resource", name) for name in reads),
         )
         if self.closing:
-            self._fact(symbol(op.handler), source, "request_disposed", "cancelled")
+            self._fact(step.handler_name, source, "request_disposed", "cancelled")
             return
-        request = Request(path(target), handler.next_ordinal, source, deepcopy(args[0]))
+        request = Request(target.path, handler.next_ordinal, source, deepcopy(args[0]))
         handler.next_ordinal += 1
         self._reserve(request, target)
         handler.pending.append(request)
-        self._fact(path(target), source, "request_pending", request.ordinal, request.payload)
-        self._changed()
+        self._fact(target.path, source, "request_pending", request.ordinal, request.payload)
+        self._changed(("handler", target.path), ("requests",))
 
-    def _at_request(self, handler: Operation) -> list[str]:
-        return [
-            self._resource_name(access, use.subject)
-            for access in handler.walk()
-            if isinstance(access, AccessOp)
-            for use in ResourceSemantics().describe(access).uses
-            if use.selection == VersionSelection.AT_REQUEST
-        ]
-
-    def _reserve(self, request: Request, handler: Operation) -> None:
+    def _reserve(self, request: Request, handler: HandlerInfo) -> None:
         """Holds the version at the request for each at_request use: a snapshot is taken now, a live read reserved."""
-        for access in (op for op in handler.walk() if isinstance(op, AccessOp)):
-            for use in ResourceSemantics().describe(access).uses:
-                if use.selection != VersionSelection.AT_REQUEST:
-                    continue
-                name = self._resource_name(access, use.subject)
-                owner = self.owners[name]
-                if use.mode == AccessMode.SNAPSHOT:
-                    (granted,) = owner.lease([Use(name, use.mode, VersionSelection.CURRENT_AT_START, use.route, use.view)])
-                    lease = self._hold(name, use.mode, granted)
-                    request.snapshots[name] = lease
-                    version = lease.version
-                else:
-                    version = owner.current(name)
-                    request.reserved[name] = version
-                    self.protection[name].reservations.add(id(request))
-                self._fact(name, request.cause, "reserved", version, str(use.mode))
+        for name, use in handler.at_request:
+            owner = self.owners[name]
+            if use.mode == AccessMode.SNAPSHOT:
+                (granted,) = owner.lease([Use(name, use.mode, VersionSelection.CURRENT_AT_START, use.route, use.view)])
+                lease = self._hold(name, use.mode, granted)
+                request.snapshots[name] = lease
+                version = lease.version
+            else:
+                version = owner.current(name)
+                request.reserved[name] = version
+                self.protection[name].reservations.add(id(request))
+            self._fact(name, request.cause, "reserved", version, str(use.mode))
 
     def _end_reservations(self, request: Request) -> None:
         for name in request.reserved:
             self.protection[name].reservations.discard(id(request))
+        names = list(request.reserved)
         request.reserved.clear()
         for lease in request.snapshots.values():
             lease.body_ended = True
             self._release_lease_if_done(lease)
         request.snapshots.clear()
-        self._changed()
+        self._changed(*(("resource", name) for name in names))
 
     def _pending_under(self, identity: Identity) -> list[Request]:
         return [r for h in self.handlers.values() for r in h.pending if r.cause[: len(identity)] == identity]
@@ -1091,114 +1293,104 @@ class Coordinator:
             self.handlers[request.handler].pending.remove(request)
             self._end_reservations(request)
             self._fact(request.handler, identity, "request_disposed", request.ordinal, "cancelled")
-
-    def _resource_name(self, access: Operation, subject: SSAValue) -> str:
-        value: SSAValue = subject
-        while isinstance(value, BlockArgument):
-            parent, region = value.owner.parent_op(), value.owner.parent
-            if parent is None or region is None:
-                break
-            role = _region(parent).describe(parent).roles[parent.regions.index(region)]
-            capture = next(c for c in role.captures if c.argument == value.index)
-            value = parent.operands[capture.operand]
-        owner = value.owner
-        if not isinstance(owner, ResourceOp):
-            raise RunFailure(f"{path(access)}: an access names something that is not a resource")
-        return owner.sym_name.data
+            self._changed(("handler", request.handler), ("requests",))
 
     # Scopes.
 
-    def _stopped(self, op: Operation, identity: Identity) -> bool:
-        return any(target == path(op) and identity[: len(scope)] == scope for scope, target in self.stops)
+    def _stopped(self, target: str, identity: Identity) -> bool:
+        return bool(self.stops) and any(t == target and identity[: len(scope)] == scope for scope, t in self.stops)
 
-    @staticmethod
-    def _common(waiting: Operation, source: Operation) -> Operation:
-        ancestors = set()
-        current: Operation | None = source
-        while current is not None:
-            ancestors.add(current)
-            current = current.parent_op()
-        common: Operation | None = waiting
-        while common is not None and common not in ancestors:
-            common = common.parent_op()
-        if common is None:
-            raise RunFailure(f"{path(waiting)}: refers outside its strategy")
-        return common
-
-    def _scope(self, waiting: Operation, source: Operation, identity: Identity) -> Identity:
-        common = self._common(waiting, source)
-        positions = [i for i, (owner, _) in enumerate(identity) if owner == path(common)]
-        return identity[: max(positions) + 1] if positions else identity[:1]
-
-    def _source_settled(self, source: Operation, waiting: Operation, identity: Identity) -> bool:
+    def _source_settled(self, settling: Settling, identity: Identity) -> bool:
         """Whether the source, and every statement between it and the shared scope, has run and ended there."""
-        common = self._common(waiting, source)
-        scope = self._scope(waiting, source, identity)
-        started = False
-        current: Operation | None = source
-        while current is not None and current is not common:
-            if self._live_in.get((path(current), scope)):
-                return False
-            started = started or (path(current), scope) in self._started
-            current = current.parent_op()
-        return started
+        scope = _scope(settling.common, identity)
+        settled = self._records.settled(settling.chain, scope)
+        if self.checked and self._all_records.settled(settling.chain, scope) != settled:
+            self._missed(f"{settling.source}: the scope records lowering kept disagree with the full records")
+        return settled
 
 
-def _run_group(device: Device, entries: list[tuple[CallOp, Implementation, tuple[object, ...]]]) -> dict[CallOp, object]:
-    """Runs a group's calls in order on a worker thread and waits for their device completion."""
-    reports: dict[CallOp, object] = {}
-    values: dict[SSAValue, object] = {}
-    completions = []
-    for call, implementation, args in entries:
-        given = tuple(values[a] if isinstance(a, SSAValue) else a for a in args)
-        unwrapped = tuple(a.handle if isinstance(a, Held) else a.value if isinstance(a, Product) else a for a in given)
-        try:
-            results, completion = implementation(device, *unwrapped)
-            completions.append((call, completion))
-        except Exception as failed:
-            reports[call] = failed
-            break
-        values.update(zip(call.results, results, strict=False))
-        reports[call] = tuple(results)
-    for call, completion in completions:
-        try:
-            completion.wait()
-        except Exception as failed:
-            reports[call] = failed  # physical completion failed: the call failed
-    return reports
+def _run_group(
+    device: Device,
+    context: CallContext,
+    after: list[Completion],
+    reaches: tuple[object, ...],
+    program: list[tuple[Implementation, list[object], tuple[tuple[int, int, int], ...], int]],
+    wait: bool,
+) -> tuple[list[Any], list[Completion | None]]:
+    """Runs a group's calls in order inside the device's context for them, on a worker thread.
+
+    Each call's report is its results or what it raised, beside its
+    completion; the group stops at the first call that fails or gives the
+    wrong number of results, so no later call reads a result that is not
+    there. Entering the context, which follows earlier work, or leaving it
+    failing fails the call it was entered for. With ``wait`` the worker waits
+    for the work's completion, as for host work or results that leave device
+    work; otherwise later device work follows each completion in the device's
+    own order.
+    """
+    reports: list[Any] = []
+    completions: list[Completion | None] = []
+    try:
+        with device.context(context, after, reaches):
+            for implementation, given, passed, count in program:
+                if passed:
+                    given = list(given)
+                    for position, earlier, result in passed:
+                        given[position] = reports[earlier][result]
+                try:
+                    results, completion = implementation(device, *given)
+                except Exception as failed:
+                    reports.append(failed)
+                    completions.append(None)
+                    break
+                results = tuple(results)
+                reports.append(results)
+                completions.append(completion)
+                if len(results) != count:
+                    break
+    except Exception as failed:
+        if not reports:
+            reports.append(failed)
+            completions.append(None)
+        elif not isinstance(reports[-1], BaseException):
+            reports[-1] = failed
+    if wait:
+        for index, completion in enumerate(completions):
+            if completion is None:
+                continue
+            try:
+                completion.wait()
+            except Exception as failed:
+                reports[index] = failed  # physical completion failed: the call failed
+    return reports, completions
 
 
-def _scopes(identity: Identity) -> list[Identity]:
+def _scopes(identity: Identity, commons: frozenset[str] | None = None) -> list[Identity]:
     """The invocations enclosing an identity, itself included: the scopes a source can settle in.
 
-    A parallel branch is not an invocation, so it is never a scope.
+    A parallel branch is not an invocation, so it is never a scope. With
+    ``commons``, only the scopes a wait can ask about: the outermost, and
+    those of the statements a waiter shares with this one.
     """
-    return [identity[:length] for length in range(1, len(identity) + 1) if "#" not in identity[length - 1][0]]
+    return [
+        identity[:length]
+        for length in range(1, len(identity) + 1)
+        if "#" not in identity[length - 1][0] and (commons is None or length == 1 or identity[length - 1][0] in commons)
+    ]
+
+
+def _scope(common: str, identity: Identity) -> Identity:
+    """The invocation of ``common`` that encloses ``identity``: the innermost, else the outermost scope."""
+    for length in range(len(identity), 0, -1):
+        if identity[length - 1][0] == common:
+            return identity[:length]
+    return identity[:1]
 
 
 def _leaves(ticket: Ticket) -> list[Ticket]:
     if not ticket.forks:
         return [ticket]
     return [leaf for fork in ticket.forks for leaf in _leaves(fork)]
-
-
-def _region(op: Operation) -> RegionSemantics:
-    semantics = op.get_trait(RegionSemantics)
-    if semantics is None:
-        raise RunFailure(f"{path(op)}: has no lifecycle protocol")
-    return semantics
-
-
-def _literal(op: ConstantOp) -> object:
-    value = op.value
-    if isinstance(value, IntegerAttr):
-        number = value.value.data
-        return bool(number) if isinstance(value.type, IntegerType) and value.type.width.data == 1 else number
-    if isinstance(value, FloatAttr):
-        return value.value.data
-    if isinstance(value, StringAttr):
-        return value.data
-    raise RunFailure(f"{path(op)}: an unknown literal")
 
 
 __all__ = ["Coordinator", "Observer"]

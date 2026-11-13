@@ -30,18 +30,21 @@ class Declared:
     function: Callable[..., object]
 
     def __call__(self, device: Device, *arguments: object) -> tuple[tuple[object, ...], Completion]:
-        """Runs the function in the device's context and returns its results with their completion."""
+        """Runs the function and returns its results with their completion.
+
+        The runtime calls it inside the device's context for the call, so
+        the completion covers the work the function submitted there.
+        """
         declared = self.declaration
         if len(arguments) != len(declared.inputs):
             raise TypeError(f"@{declared.name} declares {len(declared.inputs)} inputs and received {len(arguments)}")
-        with device.context():
-            returned = self.function(*arguments)
-            if declared.completion == "own":
-                if not (isinstance(returned, tuple) and len(returned) == 2 and isinstance(returned[1], Completion)):
-                    raise TypeError(f"@{declared.name} declares its own completion and returns (results, completion)")
-                returned, completion = returned
-            else:
-                completion = device.completion()
+        returned = self.function(*arguments)
+        if declared.completion == "own":
+            if not (isinstance(returned, tuple) and len(returned) == 2 and isinstance(returned[1], Completion)):
+                raise TypeError(f"@{declared.name} declares its own completion and returns (results, completion)")
+            returned, completion = returned
+        else:
+            completion = device.completion()
         return _results(declared, returned), completion
 
 

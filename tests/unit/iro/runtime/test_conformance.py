@@ -18,23 +18,28 @@ from tests.unit.iro.runtime.harness import run_both
 
 SCHEDULE_INDEPENDENT = ("lifetime", "lifetime_scoped")
 
+# Checked mode runs every check lowering narrows in full; the default runs only the lowered ones.
+MODES = pytest.mark.parametrize("checked", [True, False], ids=["checked", "unchecked"])
 
-def both(name: str):
+
+def both(name: str, checked: bool = True):
     resources, made = CASES[name]
-    return run_both(fixture(name), resources, made(), validators=standins.validators())
+    return run_both(fixture(name), resources, made(), validators=standins.validators(), checked=checked)
 
 
+@MODES
 @pytest.mark.parametrize("name", SCHEDULE_INDEPENDENT)
-def test_the_runtime_reports_exactly_the_reference_facts(name: str) -> None:
-    result = both(name)
+def test_the_runtime_reports_exactly_the_reference_facts(name: str, checked: bool) -> None:
+    result = both(name, checked)
     assert result.coordinator.errors == [] and result.reference.errors == []
     reference, runtime = result.reference_facts(), result.runtime_facts()
     assert runtime - reference == Counter() and reference - runtime == Counter()
 
 
+@MODES
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_every_run_settles_completely_and_its_bookkeeping_empties(name: str) -> None:
-    result = both(name)
+def test_every_run_settles_completely_and_its_bookkeeping_empties(name: str, checked: bool) -> None:
+    result = both(name, checked)
     coordinator = result.coordinator
     assert coordinator.errors == []
     outcomes = [f for f in result.facts if f.kind == "outcome"]
@@ -52,7 +57,7 @@ def test_every_run_settles_completely_and_its_bookkeeping_empties(name: str) -> 
     assert all(not s.outstanding and not s.ready for s in coordinator.streams.values())
     assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protection.values())
     assert all(not h.pending and h.active == 0 for h in coordinator.handlers.values())
-    assert not coordinator._started and not coordinator._live_in and not coordinator.admissions
+    assert coordinator._records.empty() and coordinator._all_records.empty() and not coordinator.admissions
     assert all(t.holder is None and not t.waiting for t in coordinator.turns.values())
 
 
@@ -76,4 +81,4 @@ def test_a_failing_implementation_fails_the_run_and_still_empties_its_bookkeepin
     assert all(not s.outstanding and not s.ready for s in coordinator.streams.values())
     assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protection.values())
     assert all(not h.pending and h.active == 0 for h in coordinator.handlers.values())
-    assert not coordinator.admissions and not coordinator._started and not coordinator._live_in
+    assert not coordinator.admissions and coordinator._records.empty() and coordinator._all_records.empty()

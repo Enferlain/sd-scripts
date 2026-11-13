@@ -30,7 +30,7 @@ class Host:
     completed_inside: list = field(default_factory=list)
 
     @contextmanager
-    def context(self):
+    def context(self, call=None, after=(), reaches=()):
         self.entered += 1
         self.inside = True
         try:
@@ -97,7 +97,8 @@ def test_the_decorator_records_the_declaration_without_registering_anything() ->
 
     assert add.declaration == Declaration("add", "2", ("int", "int"), ("int",), frozenset({Effect.DEVICE}))
     host = Host()
-    results, completion = add(host, 2, 3)
+    with host.context():
+        results, completion = add(host, 2, 3)
     assert results == (5,) and completion.done() and host.entered == 1
     assert host.completed_inside == [True], "the completion covers the work submitted in the device's context"
     with pytest.raises(TypeError, match="declares 2 inputs and received 1"):

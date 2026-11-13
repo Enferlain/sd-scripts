@@ -199,11 +199,32 @@ class Implementation(Protocol):
     def declaration(self) -> Declaration: ...
 
     def __call__(self, device: Device, *arguments: object) -> tuple[tuple[object, ...], Completion]:
-        """Submits the work; its results are usable once the completion is done."""
+        """Submits the work inside the device's context; its results are usable once the completion is done."""
         ...
 
 
 # Devices.
+
+
+@dataclass(frozen=True)
+class CallContext:
+    """What a prepared call establishes on entry, so it never inherits a thread's ambient state (D15).
+
+    ``grad`` and ``module_mode`` are derived by preparation from what the
+    strategy does with the call's results; training's words set them for
+    differentiated work. ``precision`` names a reduced-precision dtype, such
+    as ``bfloat16``, or is None for full precision. ``random`` names whose
+    random state the call draws from, or is None for a call that draws none.
+    """
+
+    grad: bool = False
+    module_mode: str | None = None
+    precision: str | None = None
+    random: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.module_mode not in (None, "train", "eval"):
+            raise ValueError(f"a module mode is train or eval, not {self.module_mode!r}")
 
 
 @runtime_checkable
@@ -213,8 +234,14 @@ class Device(Protocol):
     @property
     def name(self) -> str: ...
 
-    def context(self) -> AbstractContextManager[object]:
-        """The context work runs in, such as a CUDA stream."""
+    def context(self, call: CallContext, after: Sequence[Completion], reaches: Sequence[object]) -> AbstractContextManager[object]:
+        """The context a call runs in: its settings, the device's stream, and the work it must follow.
+
+        ``after`` is work that must complete before the call's work runs: the
+        device orders it on the device where it can, and waits on the CPU
+        where it cannot. ``reaches`` are the objects the call's leases reach,
+        whose module mode the context sets and restores.
+        """
         ...
 
     def completion(self) -> Completion:
@@ -226,4 +253,4 @@ class Device(Protocol):
         ...
 
 
-__all__ = ["Completion", "Declaration", "Device", "Effect", "Implementation", "Lease", "Owner", "Use", "Version"]
+__all__ = ["CallContext", "Completion", "Declaration", "Device", "Effect", "Implementation", "Lease", "Owner", "Use", "Version"]

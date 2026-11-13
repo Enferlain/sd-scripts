@@ -56,7 +56,7 @@ class Host:
     name: str = "host"
     work: list = field(default_factory=list)
 
-    def context(self):
+    def context(self, call, after, reaches):
         return nullcontext()
 
     def completion(self):
@@ -74,8 +74,7 @@ class Double:
     declaration: Declaration = DOUBLE
 
     def __call__(self, device, *arguments):
-        with device.context():
-            return (arguments[0] * 2,), device.completion()
+        return (arguments[0] * 2,), device.completion()
 
 
 def test_host_stand_ins_satisfy_the_seams() -> None:

@@ -9,10 +9,10 @@ they happen and are not kept here, so a long run's bookkeeping stays bounded.
 from collections import deque
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import NamedTuple
 
-from library.iro.operation_contracts import AccessMode
+from library.iro.operation_contracts import AccessMode, FlowContract
 from library.iro.seams import Lease, Version
-from library.iro.words.data import StreamOp
 
 Identity = tuple[tuple[str, int], ...]
 
@@ -48,9 +48,12 @@ class Cancelled(RunFailure):
     """Admission closed: the run was cancelled, or a sibling failed."""
 
 
-@dataclass(frozen=True)
-class Fact:
-    """One owner-visible lifecycle fact, in the reference semantics' vocabulary."""
+class Fact(NamedTuple):
+    """One owner-visible lifecycle fact, in the reference semantics' vocabulary.
+
+    A run reports several facts per round; a named tuple is immutable and
+    builds in about half the time of a frozen dataclass.
+    """
 
     owner: str
     invocation: Identity
@@ -94,6 +97,7 @@ class Product:
     parents: tuple[Product, ...]
     borrowers: int = 0
     active: bool = True
+    completion: object | None = None  # the device work that produced it, which later users follow
 
 
 @dataclass(eq=False)
@@ -112,7 +116,8 @@ class Ticket:
 
 @dataclass
 class Stream:
-    declaration: StreamOp
+    name: str
+    flow: FlowContract
     outstanding: dict[int, Ticket] = field(default_factory=dict)
     ready: deque[Ticket] = field(default_factory=deque)
     next_key: int = 0
@@ -143,6 +148,7 @@ class Protection:
     readers: set[int] = field(default_factory=set)
     writer: int | None = None
     reservations: set[int] = field(default_factory=set)
+    pending: list = field(default_factory=list)  # device work on it not yet known complete, which later users follow
 
 
 __all__ = [

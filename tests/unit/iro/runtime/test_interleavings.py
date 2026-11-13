@@ -46,7 +46,7 @@ def summary(facts) -> frozenset:
     return frozenset(kept.items())
 
 
-def runtime_facts(name: str, seed: int) -> list[Fact]:
+def runtime_facts(name: str, seed: int, checked: bool = True) -> list[Fact]:
     resources, made = CASES[name]
     rng = random.Random(seed)
     installed = {}
@@ -63,7 +63,13 @@ def runtime_facts(name: str, seed: int) -> list[Fact]:
     owner = Memory(dict(resources))
     facts: list[Fact] = []
     coordinator = Coordinator(
-        prepared, dict.fromkeys(resources, owner), installed, {"host": Host()}, observe=facts.append, explore=random.Random(seed)
+        prepared,
+        dict.fromkeys(resources, owner),
+        installed,
+        {"host": Host()},
+        observe=facts.append,
+        explore=random.Random(seed),
+        checked=checked,
     )
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "succeeded", outcome.error
@@ -76,10 +82,10 @@ def make_reference(name: str):
     return lambda: Reference(normalized, resources, made(), validators=standins.validators())
 
 
-def check(name: str, seeds: range, keep: Path) -> None:
+def check(name: str, seeds: range, keep: Path, checked: bool = True) -> None:
     make = make_reference(name)
     for seed in seeds:
-        facts = runtime_facts(name, seed)
+        facts = runtime_facts(name, seed, checked)
         verdict = explains(facts, make)
         if not verdict.explained:
             saved = keep / f"{name}-{seed}.facts"
@@ -87,15 +93,18 @@ def check(name: str, seeds: range, keep: Path) -> None:
             raise AssertionError(f"{name}, seed {seed}: {verdict.detail} after {verdict.replays} replays; trace saved to {saved}")
 
 
+@pytest.mark.parametrize("checked", [True, False], ids=["checked", "unchecked"])
 @pytest.mark.parametrize("name", sorted(CASES))
-def test_every_runtime_trace_is_a_trace_of_the_reference(name: str, tmp_path: Path) -> None:
-    check(name, range(12), tmp_path)
+def test_every_runtime_trace_is_a_trace_of_the_reference(name: str, checked: bool, tmp_path: Path) -> None:
+    check(name, range(12), tmp_path, checked)
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("name", sorted(CASES))
 def test_every_runtime_trace_under_many_schedules_is_a_trace_of_the_reference(name: str, tmp_path: Path) -> None:
-    check(name, range(12, 212), tmp_path)
+    # Half the schedules with every narrowed check in full, half as a run executes by default.
+    check(name, range(12, 112), tmp_path, checked=True)
+    check(name, range(112, 212), tmp_path, checked=False)
 
 
 def _tampered(facts, how: str):

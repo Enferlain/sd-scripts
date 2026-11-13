@@ -42,7 +42,7 @@ from library.iro.accepted import Loaded, check_implementations
 from library.iro.diagnostics import Kind, Problems, Stage
 from library.iro.operation_contracts import LifecycleProtocol, RegionSemantics, path, sym_name, symbol
 from library.iro.prepare.target import HOST, Target
-from library.iro.seams import Effect, Implementation
+from library.iro.seams import CallContext, Effect, Implementation
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import TakeOp
@@ -73,13 +73,21 @@ class ManifestEntry:
 
 @dataclass(frozen=True)
 class Group:
-    """Consecutive calls submitted as one piece of work on one device."""
+    """Consecutive calls submitted as one piece of work on one device.
+
+    ``context`` is what the calls establish on entry (D15). ``sync`` says a
+    result of device work is used by something other than device work on
+    the same device, so the work is waited for once before the result is
+    handed on; otherwise later work follows it in the device's own order.
+    """
 
     index: int
     device: str
     activity: str
     calls: tuple[str, ...]
     implementations: tuple[str, ...]
+    context: CallContext = field(default_factory=CallContext)
+    sync: bool = False
 
 
 @dataclass(frozen=True)
@@ -114,7 +122,12 @@ class Prepared:
         lines.append("groups")
         for g in self.groups:
             names = ", ".join(f"@{name}" for name in g.implementations)
-            lines.append(f"  {g.index} on {g.device} in {g.activity}: {names}")
+            settings = [f"grad {g.context.grad}"]
+            settings += [f"mode {g.context.module_mode}"] if g.context.module_mode else []
+            settings += [f"precision {g.context.precision}"] if g.context.precision else []
+            settings += [f"random {g.context.random}"] if g.context.random else []
+            settings += ["sync"] if g.sync else []
+            lines.append(f"  {g.index} on {g.device} in {g.activity}: {names} ({', '.join(settings)})")
             lines += [f"      {call}" for call in g.calls]
         lines.append("admissions")
         for a in self.admissions:
@@ -290,6 +303,9 @@ class _Preparation:
     def _close(self, groups: list[Group], calls: list[CallOp], device: str) -> None:
         if not calls:
             return
+        effects = set().union(*(self.installed[symbol(c.implementation)].declaration.effects for c in calls))
+        context = CallContext(random=_activity(calls[0]) if Effect.RANDOMNESS in effects else None)
+        sync = device != HOST.name and not all(self._stays(r, device) for c in calls for r in c.results)
         groups.append(
             Group(
                 len(groups) + 1,
@@ -297,8 +313,39 @@ class _Preparation:
                 _activity(calls[0]),
                 tuple(path(c) for c in calls),
                 tuple(symbol(c.implementation) for c in calls),
+                context,
+                sync,
             )
         )
+
+    def _stays(self, value: SSAValue, device: str, seen: set[SSAValue] | None = None) -> bool:
+        """Whether a result is only used by device work on the same device, or released.
+
+        A value a body yields goes on as its operation's result and, from a
+        repeat's body, also as the carried entry of the next iteration.
+        """
+        seen = set() if seen is None else seen
+        if value in seen:
+            return True
+        seen.add(value)
+        for use in value.uses:
+            user = use.operation
+            if isinstance(user, ReleaseOp):
+                continue
+            if isinstance(user, CallOp):
+                if self._device(user) != device:
+                    return False
+                continue
+            if isinstance(user, YieldOp):
+                parent = user.parent_op()
+                if parent is None or use.index >= len(parent.results) or not self._stays(parent.results[use.index], device, seen):
+                    return False
+                carried = _carried_entry(parent, user, use.index)
+                if carried is not None and not self._stays(carried, device, seen):
+                    return False
+                continue
+            return False
+        return True
 
     # Device admissions.
 
@@ -423,6 +470,20 @@ def _activity(op: Operation) -> str:
             return path(current)
         current = current.parent_op()
     return ""
+
+
+def _carried_entry(parent: Operation, yielded: YieldOp, index: int) -> SSAValue | None:
+    """The entry of a repeat's next iteration that a yielded value becomes, if the body is a repeat's."""
+    semantics = parent.get_trait(RegionSemantics)
+    block = yielded.parent_block()
+    if semantics is None or semantics.protocol != LifecycleProtocol.REPEAT or block is None:
+        return None
+    role = semantics.describe(parent).roles[0]
+    captured = {capture.argument for capture in role.captures}
+    supplied = [i for i in range(len(role.entries)) if i not in captured]
+    # The protocol supplies the iteration index, then the carried values in yield order.
+    position = 1 + index
+    return block.args[supplied[position]] if position < len(supplied) else None
 
 
 def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:

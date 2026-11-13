@@ -28,7 +28,7 @@ class FakeDevice:
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     @contextmanager
-    def context(self):
+    def context(self, call, after, reaches):
         with self.lock:
             self.active += 1
             self.most = max(self.most, self.active)
@@ -51,7 +51,12 @@ def execute(text: str, installed: dict, *, resources=None, target: Target = Targ
     owner = Memory(resources or {})
     facts: list[Fact] = []
     coordinator = Coordinator(
-        prepared, dict.fromkeys(resources or {}, owner), installed, {"host": Host(), **(devices or {})}, observe=facts.append
+        prepared,
+        dict.fromkeys(resources or {}, owner),
+        installed,
+        {"host": Host(), **(devices or {})},
+        observe=facts.append,
+        checked=True,
     )
     if before is not None:
         before(coordinator)
@@ -330,3 +335,116 @@ def test_a_run_where_every_activity_waits_reports_a_stall_instead_of_hanging() -
 
     with pytest.raises(RunFailure, match="no progress"):
         asyncio.run(wait_forever())
+
+
+SHARED = """iro.strategy @s uses(@slow v1, @fast v1, @late v1, @pause v1) {
+  %m = iro.resource @m : participant
+  iro.parallel @all capture(%m) {
+    iro.sequence @one capture(%m) {
+      iro.access %m protected_current {
+      ^(%lease):
+        %a = iro.call @slow(%lease) -> int
+      }
+    }
+    iro.sequence @two capture(%m) {
+      iro.access %m protected_current {
+      ^(%lease):
+        %b = iro.call @fast(%lease) -> int
+      }
+    }
+    iro.sequence @three capture(%m) {
+      %p = iro.call @pause() -> int
+      iro.access %m protected_current {
+      ^(%lease):
+        %c = iro.call @late(%lease) -> int
+      }
+    }
+  }
+}
+"""
+
+
+def test_calls_not_safe_for_concurrent_use_run_one_at_a_time_on_a_participant_even_beside_safe_ones() -> None:
+    lock, unsafe = threading.Lock(), {"now": 0, "most": 0}
+
+    def tracked(seconds):
+        def run(lease):
+            with lock:
+                unsafe["now"] += 1
+                unsafe["most"] = max(unsafe["most"], unsafe["now"])
+            time.sleep(seconds)
+            with lock:
+                unsafe["now"] -= 1
+            return 0
+
+        return run
+
+    lease = ("protected_current lease",)
+    installed = {
+        "slow": implementation(version=1, inputs=lease, outputs=("int",), name="slow")(tracked(0.3)),
+        # A call declared safe for concurrent use finishing must not let another unsafe call in.
+        "fast": implementation(version=1, inputs=lease, outputs=("int",), concurrency_safe=True, name="fast")(lambda lease: 0),
+        "late": implementation(version=1, inputs=lease, outputs=("int",), name="late")(tracked(0.05)),
+        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.1) or 0),
+    }
+    outcome, _, coordinator = execute(SHARED, installed, resources={"m": 0}, target=Target(workers=4))
+    assert outcome.status == "succeeded", outcome.error
+    assert unsafe["most"] == 1, "two calls not safe for concurrent use ran at once on @m"
+    assert not coordinator._busy
+
+
+TWO_WRITERS = """iro.strategy @s uses(@write v1) {
+  %m = iro.resource @m : participant
+  iro.parallel @both capture(%m) {
+    iro.sequence @left capture(%m) {
+      iro.access %m owner_update {
+      ^(%lease):
+        %a = iro.call @write(%lease) -> int
+      }
+    }
+    iro.sequence @right capture(%m) {
+      iro.access %m owner_update {
+      ^(%lease):
+        %b = iro.call @write(%lease) -> int
+      }
+    }
+  }
+}
+"""
+
+
+def test_checked_mode_fails_a_run_that_loses_a_wake() -> None:
+    def write(cell):
+        time.sleep(0.02)
+        cell.update(cell.value + 1)
+        return 0
+
+    installed = {"write": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="write")(write)}
+    original = Coordinator._changed
+
+    def losing(self, *keys):
+        return original(self, *(key for key in keys if key != ("resource", "m")))
+
+    Coordinator._changed = losing  # ty: ignore[invalid-assignment]
+    try:
+        outcome, _, coordinator = execute(TWO_WRITERS, installed, resources={"m": 0})
+    finally:
+        Coordinator._changed = original  # ty: ignore[invalid-assignment]
+    assert outcome.status == "failed"
+    assert any("without a change on the keys it waits on" in error for error in coordinator.errors), coordinator.errors
+
+
+def test_a_host_call_that_loads_torch_itself_fails_instead_of_running_under_the_threads_defaults(monkeypatch) -> None:
+    import sys
+
+    import pytest
+
+    from library.iro.seams import CallContext
+
+    torch = pytest.importorskip("torch")
+    host = Host()
+    monkeypatch.delitem(sys.modules, "torch")
+    with pytest.raises(RuntimeError, match="loaded Torch itself"), host.context(CallContext(), (), ()):
+        sys.modules["torch"] = torch  # what importing it inside the call does
+    with host.context(CallContext(grad=False), (), ()):
+        assert not torch.is_grad_enabled(), "once Torch is loaded, the host establishes the call's settings"

@@ -147,18 +147,20 @@ class Both:
         return Counter(comparable(f) for f in self.facts if f.kind not in RUNTIME_ONLY)
 
 
-def run_runtime(text: str, resources: Mapping[str, object], installed: dict, *, target=None):
+def run_runtime(text: str, resources: Mapping[str, object], installed: dict, *, target=None, checked: bool = True):
     """Only the runtime, with the given implementations: its outcome, facts and coordinator."""
     run = accepted_run(text, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, target or Target())
     owner = Memory(dict(resources))
     facts: list[Fact] = []
-    coordinator = Coordinator(prepared, dict.fromkeys(resources, owner), installed, {"host": Host()}, observe=facts.append)
+    coordinator = Coordinator(prepared, dict.fromkeys(resources, owner), installed, {"host": Host()}, observe=facts.append, checked=checked)
     outcome = asyncio.run(coordinator.run())
     return outcome, facts, coordinator
 
 
-def run_both(text: str, resources: Mapping[str, object], standins: Mapping[str, StandIn], *, validators=None, target=None) -> Both:
+def run_both(
+    text: str, resources: Mapping[str, object], standins: Mapping[str, StandIn], *, validators=None, target=None, checked: bool = True
+) -> Both:
     reference = Reference(normalize(parse(text)), resources, standins, validators=validators)
     reference.run()
     installed = {name: implementation(name, s) for name, s in standins.items()}
@@ -166,7 +168,7 @@ def run_both(text: str, resources: Mapping[str, object], standins: Mapping[str, 
     prepared = prepare(cold_load(run, installed=installed), installed, target or Target())
     owner = Memory(dict(resources))
     facts: list[Fact] = []
-    coordinator = Coordinator(prepared, dict.fromkeys(resources, owner), installed, {"host": Host()}, observe=facts.append)
+    coordinator = Coordinator(prepared, dict.fromkeys(resources, owner), installed, {"host": Host()}, observe=facts.append, checked=checked)
     asyncio.run(coordinator.run())
     return Both(reference, facts, coordinator, owner)
 

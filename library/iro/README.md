@@ -24,7 +24,9 @@ later sections.
      |  accepted.cold_load    re-derive everything under the pins
      |  prepare.prepare       match implementations and a target: placement,
      |                        fused groups, device admissions, manifest
-  runtime.Coordinator         execute the prepared run against owners,
+     |  prepare.lower         slots, steps bound to their fixed data, end
+     |                        checks and scope records only where needed
+  runtime.Coordinator         execute the lowered run against owners,
                               implementations and devices
   reference.Reference         run a normalized strategy's lifecycles with stand-ins
 ```
@@ -63,8 +65,8 @@ a fix. Codes by area:
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
 | `runtime/` | The coordinator and its control state: every lifecycle protocol, leases and protection, retained results, claims and stream admission, requests and handlers, device turns, calls on worker threads |
-| `devices/` | Device adapters; so far the host |
-| `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form |
+| `devices/` | Device adapters: the host, and CUDA through PyTorch |
+| `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form; lowering to the form the coordinator executes |
 
 ## Pins
 
@@ -100,7 +102,19 @@ executes a prepared run on one event loop and reports the same owner-visible
 facts as the reference semantics, to the observer as they happen. Selected
 calls run on worker threads through the implementation and device seams; a
 fused group is one submission, and the coordinator waits for completion
-without blocking. Each body is lowered once into steps.
+without blocking.
+
+The coordinator executes the run's lowered form (`prepare.lower`), so a
+round never reads the strategy again: a body's values sit in numbered slots,
+constants are filled in, and each step carries its fixed data (a group's
+implementations and argument slots, an activity's protocol, bodies and entry
+layout, an access's resource names). Two checks are narrowed by what the
+strategy fixes. When a body ends, it looks for claims and retained results
+it still holds only where the types allow one; and only the statements a
+handler or a stop waits on keep the records of which invocations started
+and ended in a scope. `Coordinator(checked=True)`, which the runtime tests
+use, also runs both checks in full and fails the run if the full check finds
+what lowering excluded.
 
 Device work takes turns: one admission at a time per device, granted in
 request order. An access takes its leases and its turn together, so it never
