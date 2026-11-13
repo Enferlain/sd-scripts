@@ -3179,10 +3179,25 @@ and launch device work. Owners hold state.
   synchronization after every call. Protection, snapshots and retained
   products release on that completion fact. This is the device-ordering
   evidence that `workflow-composition` requires for protected live reads.
-  Adapters cover host execution, where return is completion, PyTorch CUDA
-  streams and events, and the project's own backend through its completion
-  contract. Flow bounds and retained-product release also bound the device
-  memory held by produced items.
+  Adapters cover host execution, where return is completion, PyTorch's
+  device backends through their streams and events, and the project's own
+  backend through its completion contract. Flow bounds and retained-product
+  release also bound the device memory held by produced items.
+- **Device adapters.** There is one adapter per PyTorch backend, named by
+  PyTorch's device type (`cuda`, `xpu`, `mps` and others), beside the host
+  adapter. What does not depend on the vendor lives in one base that every
+  PyTorch adapter uses: each call's grad mode, module mode, precision and
+  random state, completion and ordering through PyTorch's `torch.Stream` and
+  `torch.Event`, and the copies of owners' device storage that the runtime
+  queues. An adapter may use its vendor's own features, such as CUDA graphs,
+  stream priorities, memory pools or direct copies between devices, and
+  nothing in the structure assumes one vendor. Each adapter reports what it
+  offers. Preparation checks what the run's implementations and permissions
+  need against it, and a missing feature is a target limit (D18), never
+  dropped. A target names its devices by PyTorch device type. The CUDA
+  adapter comes first because it is the one this project can run; PyTorch's
+  ROCm builds also present AMD devices as `cuda`. A backend no one has run
+  is recorded as untested, which is a limit, not a blocker.
 - **Device capacity.** What fits on a device is not a question about state,
   so it is decided apart from which version a use observes (D14). A strategy
   states only meaning: whether work of different activities may overlap. It
@@ -3237,6 +3252,20 @@ and launch device work. Owners hold state.
   save or reading a metric's value, waits for that event on the CPU, and
   not on the coordinator. The CPU can therefore queue a window's next member
   while the device finishes the previous one.
+- **Owners' device storage.** Every read or copy of a participant's device
+  storage outside a call is device work that the runtime queues on that
+  device's stream: a snapshot's capture, a save's capture, and leaving and
+  returning (below). The owner says what to capture and the adapter copies.
+  Stream order then puts the capture after the work that produced its
+  version and later updates after the capture, with no wait on the host;
+  work on another device waits on the capture's event. An owner never reads
+  or copies device storage itself. Run-state owners hold no Torch code
+  (D19), and an owner's own copy is not ordered after work still queued:
+  measured on 2026-11-13 on the RTX 3080, a copy on the thread's default
+  stream saw the value from before a queued update in 3 of 3 trials, and the
+  same copy on the runtime's stream saw the update. A snapshot of device
+  state is therefore a real copy, on the device or in pinned host memory,
+  and preparation chooses which as it does for leaving the device.
 - **Overlap, once realized.** Overlapped work needs random state of its
   own: an implementation that draws from a device's default generator, as
   dropout does, runs only in turn. On several ranks, whether work overlaps
@@ -3482,7 +3511,7 @@ through them and never select behavior by operation name, fixture or case.
 | Definitions | Operations and types, each with region, flow, resource, realization and decision contracts (D14) | Training units, windows and advancement; data production and filtering; model invocation and views |
 | Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence | The run authority for participants; Trainer optimization for weight updates; producers for their cursors and policies |
 | Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion | Family conditioning and denoiser calls, objectives, codecs, serializers |
-| Devices | Execution context and physical completion for one backend, and what it knows of the device's capacity | Host execution; PyTorch CUDA streams and events; the project's own backend |
+| Devices | Execution context and physical completion for one backend, what it offers and knows of the device's capacity, and the copies of owners' device storage | Host execution; one adapter per PyTorch backend on a shared base, CUDA first; the project's own backend |
 
 Registration through every seam is explicit composition (D2).
 
@@ -3908,7 +3937,7 @@ loading. Production work:
    - a consistent cut for checkpoint and resume, realizing the quiescence
      declarations;
    - rank-consistent collective ordering (D15).
-4. Add the device adapters, starting with PyTorch CUDA (D15).
+4. Add the device adapters, one per PyTorch backend, starting with CUDA (D15).
 5. Bound runtime bookkeeping for long runs (`sd-scripts-syv.31.30`). The
    research keeps every finished invocation's facts for inspection, which a
    long run cannot afford.
@@ -4572,7 +4601,8 @@ observers (D8).
   change in place, and the swap is a single store. Correctness therefore does
   not depend on the GIL. The types hold live objects without importing Torch;
   Torch-specific evidence and evaluators live with the definitions that need
-  them (D15).
+  them (D15). An owner never reads or copies device storage itself; the
+  runtime queues those copies on the device's stream (D15).
 
 #### The run authority's records
 
@@ -5047,7 +5077,7 @@ edited to follow them.
 | `prepare/` | Implementation matching, effect checks, fusion and lowering | `prepare.py`, `local_rewrite.py`, `target.py`, `target_bindings.py` |
 | `runtime/` | The coordinator, invocations, streams and admission, claims, leases and protection, requests and handlers, the cut protocol and bounded bookkeeping | The research `*_runtime.py` modules; `access.py`, `progress.py` and `workers.py` from `execution_candidate` |
 | `seams.py` | The owner, implementation and device seams | New (D16) |
-| `devices/` | Device adapters for the host, PyTorch CUDA and the project's backend | New (D15) |
+| `devices/` | Device adapters: the host, one per PyTorch backend on a shared base (CUDA first), and the project's backend | New (D15) |
 
 The research fixtures, stand-ins and qualification cases become the IR
 system's conformance suite under `tests/`. Research names, fixture vocabulary
