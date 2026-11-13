@@ -114,7 +114,17 @@ fails with a stall instead of hanging. A call that updates owner state is
 never fused, so each update is observed after the call that made it; the
 `updated` fact carries the version, and the value stays with its owner. The
 runtime also reports `settled` when an item's claim settles, which the
-reference semantics does not. `tests/unit/iro/runtime/` runs the conformance fixtures through both
+reference semantics does not.
+
+`tests/unit/iro/runtime/test_interleavings.py` runs each fixture through the
+reference under random schedules and through the runtime under perturbed
+ones (`Coordinator(explore=random.Random(seed))` yields at random at every
+wait and submission); every outcome the runtime reaches must be one the
+reference reaches. The slow-marked variant explores more schedules.
+`test_witnesses.py` shows the bookkeeping and peak memory staying flat as a
+run grows tenfold, the GIL staying off on the free-threaded interpreter in a
+fresh process, and the coordinator completing other calls while a worker
+spins in Python, under either GIL state. `tests/unit/iro/runtime/` runs the conformance fixtures through both
 the reference and the runtime: schedule-independent fixtures report exactly
 the reference's facts, and every run settles and empties its bookkeeping.
 

@@ -18,6 +18,7 @@ the observer as they happen.
 """
 
 import asyncio
+import random
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
@@ -102,8 +103,14 @@ class Coordinator:
         devices: Mapping[str, Device],
         *,
         observe: Observer | None = None,
+        explore: random.Random | None = None,
     ):
+        """``explore`` perturbs the schedule for conformance testing: at every
+        wait and submission the coordinator yields to other activities a
+        random number of times. It changes when things happen, never what may happen.
+        """
         self.prepared = prepared
+        self.explore = explore
         self.strategy: StrategyOp = prepared.loaded.normalized.strategy
         self.owners, self.installed, self.devices = dict(owners), dict(installed), dict(devices)
         if HOST.name not in self.devices:
@@ -161,6 +168,9 @@ class Coordinator:
     async def _until(self, ready: Callable[[], bool]) -> None:
         """Waits until ``ready``; when every live activity waits and no selected work runs, the run has stalled."""
         while True:
+            if self.explore is not None:
+                for _ in range(self.explore.randrange(3)):
+                    await asyncio.sleep(0)
             tick = self._tick
             if ready():
                 return
@@ -708,6 +718,9 @@ class Coordinator:
                     values.append(value)
                 entries.append((call, implementation, tuple(values)))
             assert self._executor is not None
+            if self.explore is not None:
+                for _ in range(self.explore.randrange(3)):
+                    await asyncio.sleep(0)
             self._working += 1
             try:
                 reports = await asyncio.get_running_loop().run_in_executor(self._executor, _run_group, device, entries)

@@ -16,6 +16,7 @@ It imports neither Torch nor any model, optimizer or runtime code, and holds
 its own state for one calling thread.
 """
 
+import contextlib
 from collections import defaultdict, deque
 from collections.abc import Callable, Generator, Mapping
 from copy import deepcopy
@@ -281,7 +282,9 @@ class Reference:
         self._discarding = True
         for task in getattr(self, "tasks", ()):
             if not task.done:
-                task.generator.close()
+                # An abandoned run reports nothing: its bodies' leak checks have no outcome to fail.
+                with contextlib.suppress(ReferenceFailure):
+                    task.generator.close()
 
     # Facts and lifecycle.
 
