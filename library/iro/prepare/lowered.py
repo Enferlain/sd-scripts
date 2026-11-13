@@ -261,6 +261,9 @@ class _Lowering:
             if isinstance(op, ConstantOp):
                 literal = _literal(op)
                 if literal is _UNKNOWN:
+                    if pending:  # the calls before it run first, as they are written
+                        steps.append(self._calls(pending, slots))
+                        pending = []
                     steps.append(Step(UNREALIZED, op, path(op), (), (), f"{path(op)}: an unknown literal"))
                 else:
                     template[slots[op.result] - entries] = literal
