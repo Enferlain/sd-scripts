@@ -3582,7 +3582,9 @@ rules say what one covers and what requires a new one.
   results. A pin records the version with a digest of the declaration,
   including the structure of the types it names. A repository test keeps the
   digest of every version, so a declaration that changes without a new
-  version fails it. A change in results cannot be caught from the
+  version fails it. A change in a definition's written form or expansion
+  shows when cold loading derives a saved run again (D14) and in the
+  conformance fixtures. A change in results cannot be caught from the
   declaration. For light pieces, such as losses, timestep sampling and
   objectives, recorded outputs on small deterministic inputs catch it,
   including a change that comes through shared code they call. For whole

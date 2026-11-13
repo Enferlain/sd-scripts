@@ -2,9 +2,10 @@
 
 An accepted run says that a run is meaningful and permitted, and what must be
 shown before each use. It holds the accepted strategy in its written form,
-the contract and implementation versions it pins, the obligations
-verification derived under them, and the authority seed: the declared
-participants and relationships, still unbound. The strategy is the source;
+what it pins, the obligations verification derived under those pins, and the
+authority seed: the declared participants and relationships, still unbound.
+It pins the definitions its strategy uses and the implementations it
+selects, each with its version and a digest of its declaration (D16). The strategy is the source;
 the other parts are derived from it and kept for convenience, never as
 independent authority. An accepted run is immutable and holds no live
 objects.
@@ -17,12 +18,17 @@ not correspond, before any effect.
 """
 
 import hashlib
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
+
+from xdsl.dialects.builtin import ArrayAttr
+from xdsl.ir import Attribute, Operation
 
 from library.iro.composition import Composition, core
 from library.iro.diagnostics import Problems, Stage
 from library.iro.normalize import Normalized, normalize
 from library.iro.operation_contracts import Reproducibility, origin, sym_name, symbol, symbols
+from library.iro.seams import Implementation
 from library.iro.text import parse, print_strategy
 from library.iro.verify import Obligations, Verification, verify
 from library.iro.words.model import RelationshipOp, ResourceOp
@@ -72,15 +78,20 @@ class AcceptedRun:
 
     ``written`` is the accepted strategy's written form with source
     locations; ``normalized`` its normalized form, saved for inspection.
-    ``replicated`` says it was accepted to run on several ranks, which adds
-    rank agreement to its obligations.
+    ``definitions`` pins each definition the strategy uses as name,
+    definition version and digest; ``implementations`` pins each selected
+    implementation as name, implementation version and declaration digest,
+    with an empty digest when none was installed at acceptance, which the
+    Trainer refuses. ``contract`` names the composition it was accepted
+    under, for reading only. ``replicated`` says it was accepted to run on
+    several ranks, which adds rank agreement to its obligations.
     """
 
     written: str
     normalized: str
     contract: str
-    contract_version: str
-    implementations: tuple[tuple[str, str], ...]
+    definitions: tuple[tuple[str, int, str], ...]
+    implementations: tuple[tuple[str, str, str], ...]
     obligations: Obligations
     reproducibility: Reproducibility
     seed: AuthoritySeed
@@ -93,33 +104,48 @@ class AcceptedRun:
         Two runs of the same strategy share it; the run's own identity comes
         from the run authority it seeds (D6).
         """
-        pinned = "\n".join(f"{name} v{version}" for name, version in self.implementations)
-        listing = f"{self.contract} {self.contract_version} replicated={self.replicated}\n{pinned}\n{self.written}"
+        pinned = "\n".join(f"{name} v{version} {digest}" for name, version, digest in (*self.definitions, *self.implementations))
+        listing = f"replicated={self.replicated}\n{pinned}\n{self.written}"
         return hashlib.blake2s(listing.encode(), digest_size=16).hexdigest()
 
 
-def accept(strategy: StrategyOp, composition: Composition | None = None, *, replicated: bool = False) -> AcceptedRun:
+def accept(
+    strategy: StrategyOp,
+    composition: Composition | None = None,
+    *,
+    installed: Mapping[str, Implementation] | None = None,
+    replicated: bool = False,
+) -> AcceptedRun:
     """Normalizes and verifies an accepted strategy and derives its accepted run.
 
-    Fulfillment calls this once it has read the strategy; problems are
-    reported as a rejection.
+    Fulfillment calls this once it has read the strategy, with the installed
+    implementations; problems are reported as a rejection. Every
+    implementation the strategy pins must then be installed at its pinned
+    version, and the pins record the installed declarations' digests.
     """
     contract = composition or core()
+    if installed is not None:
+        problems = Problems(Stage.FULFILL)
+        for name, version in pinned(strategy):
+            _check_installed(problems, name, version, None, installed)
+        problems.reject_if_any()
     verification = verify(normalize(strategy), replicated=replicated)
-    return _derive(verification, contract, replicated)
+    digests = {name: implementation.declaration.digest for name, implementation in (installed or {}).items()}
+    return _derive(verification, contract, replicated, digests)
 
 
-def _derive(verification: Verification, contract: Composition, replicated: bool) -> AcceptedRun:
+def _derive(verification: Verification, contract: Composition, replicated: bool, digests: Mapping[str, str]) -> AcceptedRun:
     accepted = verification.normalized.accepted
     written = print_strategy(accepted, contract, locations=True)
     obligations = verification.obligations
     revision = hashlib.blake2s(written.encode(), digest_size=16).hexdigest()
+    used = {*used_definitions(accepted, contract), *used_definitions(verification.normalized.strategy, contract)}
     return AcceptedRun(
         written=written,
         normalized=verification.normalized.text(contract, locations=True),
         contract=contract.name,
-        contract_version=contract.version,
-        implementations=pinned(accepted),
+        definitions=contract.pins(used),
+        implementations=tuple((name, version, digests.get(name, "")) for name, version in pinned(accepted)),
         obligations=obligations,
         reproducibility=verification.reproducibility,
         seed=seed(accepted, revision, obligations.revision),
@@ -128,9 +154,37 @@ def _derive(verification: Verification, contract: Composition, replicated: bool)
 
 
 def pinned(strategy: StrategyOp) -> tuple[tuple[str, str], ...]:
-    """The implementations the strategy's uses header pins, with their versions."""
+    """The implementations the strategy's uses header pins, with their implementation versions."""
     versions = [v.data for v in strategy.use_versions or ()]
     return tuple(zip(symbols(strategy, "uses"), versions, strict=True))
+
+
+def used_definitions(strategy: StrategyOp, contract: Composition) -> set[str]:
+    """The names of the contract's definitions a strategy uses: its words and the types and attributes they carry."""
+    used: set[str] = set()
+    for op in strategy.walk():
+        used.add(op.name)
+        for attribute in _attributes(op):
+            if attribute.name in contract:
+                used.add(attribute.name)
+    return used & set(contract.definitions)
+
+
+def _attributes(op: Operation) -> Iterator[Attribute]:
+    pending: list[Attribute] = [
+        *(v.type for v in op.operands),
+        *(r.type for r in op.results),
+        *(a.type for region in op.regions for block in region.blocks for a in block.args),
+        *op.properties.values(),
+        *op.attributes.values(),
+    ]
+    while pending:
+        attribute = pending.pop()
+        yield attribute
+        if isinstance(attribute, ArrayAttr):
+            pending.extend(attribute.data)
+        else:
+            pending.extend(p for p in getattr(attribute, "parameters", ()) if isinstance(p, Attribute))
 
 
 def seed(strategy: StrategyOp, strategy_revision: str, obligation_revision: str) -> AuthoritySeed:
@@ -176,26 +230,37 @@ class Loaded:
     verification: Verification
 
 
-def cold_load(run: AcceptedRun, composition: Composition | None = None) -> Loaded:
+def cold_load(run: AcceptedRun, composition: Composition | None = None, *, installed: Mapping[str, Implementation] | None = None) -> Loaded:
     """Re-derives every part of a saved run and refuses one whose parts do not correspond.
 
-    The installed contract must be the one the run pins. Reading, normalizing
+    Every definition the run pins must be installed at its definition version
+    with the same declaration; definitions it does not use may differ. With
+    ``installed``, so must every implementation it pins. Reading, normalizing
     and verifying the written form must give the run's normalized form,
     obligations and authority seed exactly.
     """
     contract = composition or core()
     problems = Problems(Stage.FULFILL)
-    if (run.contract, run.contract_version) != (contract.name, contract.version):
-        problems.add(
-            "iro-run-001",
-            f"the run pins contract {run.contract} {run.contract_version}, and {contract.name} {contract.version} is installed",
-            fix="install the contract version the run pins, or fulfill the strategy again",
-        )
-        problems.reject_if_any()
+    for name, version, digest in run.definitions:
+        if name not in contract:
+            problems.add("iro-run-001", f"the run uses {name}, which the installed contract does not define", fix=_PINS_GONE)
+        elif contract[name].version != version:
+            problems.add("iro-run-001", f"the run pins {name} v{version}, and v{contract[name].version} is installed", fix=_PINS_GONE)
+        elif contract[name].digest != digest:
+            problems.add(
+                "iro-run-001",
+                f"{name} v{version} is installed with a declaration that differs from the one the run pinned",
+                fix="a definition whose declaration changes needs a new definition version (D16)",
+            )
+    problems.reject_if_any()
+    if installed is not None:
+        check_implementations(run, installed)
     strategy = parse(run.written, contract, source="<accepted run>")
     verification = verify(normalize(strategy), replicated=run.replicated)
-    derived = _derive(verification, contract, run.replicated)
+    derived = _derive(verification, contract, run.replicated, {name: digest for name, _, digest in run.implementations})
+    # Implementation digests come from the saved run here; check_implementations compares them with installed code.
     for part, saved, found in (
+        ("pinned definitions", run.definitions, derived.definitions),
         ("pinned implementations", run.implementations, derived.implementations),
         ("normalized form", run.normalized, derived.normalized),
         ("obligations", run.obligations.revision, derived.obligations.revision),
@@ -214,9 +279,38 @@ def cold_load(run: AcceptedRun, composition: Composition | None = None) -> Loade
     return Loaded(run, strategy, verification.normalized, verification)
 
 
+_PINS_GONE = "resume from a revision that has what the run pins, or start a new run from its products (D16)"
+
+
+def _check_installed(problems: Problems, name: str, version: str, digest: str | None, installed: Mapping[str, Implementation]) -> None:
+    found = installed.get(name)
+    if found is None:
+        problems.add("iro-run-003", f"@{name} v{version} is pinned and not installed", fix=_PINS_GONE)
+    elif found.declaration.version != version:
+        problems.add("iro-run-003", f"@{name} v{version} is pinned, and v{found.declaration.version} is installed", fix=_PINS_GONE)
+    elif digest is not None and found.declaration.digest != digest:
+        problems.add(
+            "iro-run-003",
+            f"@{name} v{version} is installed with a declaration that differs from the one the run pinned",
+            fix="an implementation whose declaration changes needs a new implementation version (D16)",
+        )
+
+
+def check_implementations(run: AcceptedRun, installed: Mapping[str, Implementation]) -> None:
+    """The Trainer's check: every pinned implementation is installed at its version and declaration (D17).
+
+    A pin without a digest, from a run accepted without installed
+    implementations, never passes.
+    """
+    problems = Problems(Stage.FULFILL)
+    for name, version, digest in run.implementations:
+        _check_installed(problems, name, version, digest, installed)
+    problems.reject_if_any()
+
+
 def implementation_versions(run: AcceptedRun) -> dict[str, str]:
-    """What the Trainer checks its installed implementations against."""
-    return dict(run.implementations)
+    """Each pinned implementation's implementation version."""
+    return {name: version for name, version, _ in run.implementations}
 
 
 __all__ = [
@@ -226,8 +320,10 @@ __all__ = [
     "DeclaredRelationship",
     "Loaded",
     "accept",
+    "check_implementations",
     "cold_load",
     "implementation_versions",
     "pinned",
     "seed",
+    "used_definitions",
 ]

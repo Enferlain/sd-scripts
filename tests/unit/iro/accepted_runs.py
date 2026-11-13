@@ -6,14 +6,28 @@ accepted inputs. It is not a production acceptance bypass: no production
 module imports it, which the repository's dependency test checks.
 """
 
+from collections.abc import Mapping
+
 from library.iro.accepted import AcceptedRun, accept
 from library.iro.composition import Composition
+from library.iro.seams import Implementation
 from library.iro.text import parse
 
 
-def accepted_run(text: str, composition: Composition | None = None, *, source: str = "<test>", replicated: bool = False) -> AcceptedRun:
-    """The accepted run of a written strategy, or a rejection naming every problem."""
-    return accept(parse(text, composition, source=source), composition, replicated=replicated)
+def accepted_run(
+    text: str,
+    composition: Composition | None = None,
+    *,
+    source: str = "<test>",
+    installed: Mapping[str, Implementation] | None = None,
+    replicated: bool = False,
+) -> AcceptedRun:
+    """The accepted run of a written strategy, or a rejection naming every problem.
+
+    With ``installed``, every implementation the strategy pins must be
+    installed, and the run's pins carry their declaration digests.
+    """
+    return accept(parse(text, composition, source=source), composition, installed=installed, replicated=replicated)
 
 
 __all__ = ["accepted_run"]

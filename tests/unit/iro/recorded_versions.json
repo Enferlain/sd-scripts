@@ -1,0 +1,104 @@
+{
+ "definitions": {
+  "iro.access": {
+   "1": "682bc9cb2ff98aae"
+  },
+  "iro.borrow": {
+   "1": "aebaa7be550be018"
+  },
+  "iro.call": {
+   "1": "f7da8773b076105d"
+  },
+  "iro.choice": {
+   "1": "699d22c0d4aa7b6d"
+  },
+  "iro.claim": {
+   "1": "dc279890c2f8f0c8"
+  },
+  "iro.constant": {
+   "1": "a8baa99ce6a3a5de"
+  },
+  "iro.derived": {
+   "1": "cba46249eb7aa41b"
+  },
+  "iro.dispose": {
+   "1": "fb6a76cbcf60d008"
+  },
+  "iro.filter": {
+   "1": "0dd60668c7d54c23"
+  },
+  "iro.fork": {
+   "1": "7bda77e18a4891d0"
+  },
+  "iro.handler": {
+   "1": "885aba87bf7e900f"
+  },
+  "iro.lease": {
+   "1": "167bedce0cfce586"
+  },
+  "iro.optional": {
+   "1": "29b248d931821646"
+  },
+  "iro.parallel": {
+   "1": "b318411f861bb8db"
+  },
+  "iro.producer": {
+   "1": "941e4cdb8f93d59f"
+  },
+  "iro.relationship": {
+   "1": "43ca86882e904ce1"
+  },
+  "iro.relationship_type": {
+   "1": "7a38e17c644c45d3"
+  },
+  "iro.release": {
+   "1": "99d629b0a78928cf"
+  },
+  "iro.repeat": {
+   "1": "b5e7a56c856eff39"
+  },
+  "iro.request": {
+   "1": "ac734c1ede9318e9"
+  },
+  "iro.request_type": {
+   "1": "c0dad894dda380d6"
+  },
+  "iro.resource": {
+   "1": "3f5a3a04ccfd33bf"
+  },
+  "iro.resource_type": {
+   "1": "a99233e9c64587ed"
+  },
+  "iro.resource_use": {
+   "1": "fdd2bada9564163c"
+  },
+  "iro.retained": {
+   "1": "6c0f82f77eca8cfd"
+  },
+  "iro.sequence": {
+   "1": "92b6cb54204088af"
+  },
+  "iro.stop": {
+   "1": "42af98569944a5e2"
+  },
+  "iro.strategy": {
+   "1": "0fda16049db115fa"
+  },
+  "iro.stream": {
+   "1": "8cb53c23686c4db5"
+  },
+  "iro.stream_type": {
+   "1": "5991ef30d5fe9d39"
+  },
+  "iro.take": {
+   "1": "f3293c34263d8b14"
+  },
+  "iro.value": {
+   "1": "b49ca77142f530d1"
+  },
+  "iro.yield": {
+   "1": "1e322e68debe364f"
+  }
+ },
+ "implementations": {}
+}

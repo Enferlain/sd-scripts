@@ -6,18 +6,23 @@ explicit composition (D2). The core vocabulary is one composition; a domain
 vocabulary, training first, extends it with its own definitions. Nothing
 registers itself on import.
 
-The contract's version identifies exactly which definitions at which versions
-it holds, so an accepted run can pin it.
+An accepted run pins only the definitions its strategy uses, each with its
+definition version and a digest of its declaration (D16), so a definition
+added elsewhere does not stop a saved run from loading. The composition's own
+version identifies the whole vocabulary, for the printout.
 """
 
+import dataclasses
 import hashlib
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
+from typing import cast
 
 from xdsl.context import Context
 from xdsl.dialects.builtin import Builtin
-from xdsl.ir import Attribute, Dialect, Operation
+from xdsl.ir import Attribute, Dialect, Operation, ParametrizedAttribute
+from xdsl.irdl import IRDLOperation
 
 AREAS = ("structure", "lifetimes", "data", "access", "calls", "model")
 
@@ -47,6 +52,49 @@ class Definition:
     @property
     def is_operation(self) -> bool:
         return issubclass(self.definition, Operation)
+
+    @property
+    def digest(self) -> str:
+        """A digest of the declaration, which a pin records beside the definition version (D16).
+
+        For an operation it covers the operands, results, properties, regions
+        and traits; for a type its parameters; and the written form's code,
+        by name, for a word outside the core vocabulary. A change in how a
+        word prints or parses, or in a derived word's expansion, is not in
+        the digest: cold loading derives a saved run again and refuses one
+        whose forms differ, and the conformance fixtures show it in tests.
+        The printout comes from xDSL's definition objects, so an xDSL
+        upgrade that prints them differently changes every digest; the
+        repository test then fails for every definition at once.
+        """
+        if self.is_operation:
+            irdl = cast(type[IRDLOperation], self.definition).get_irdl_definition()
+            parts = [
+                f"operands {[(n, repr(d)) for n, d in irdl.operands]}",
+                f"results {[(n, repr(d)) for n, d in irdl.results]}",
+                f"properties {sorted((n, repr(d)) for n, d in irdl.properties.items())}",
+                f"attributes {sorted((n, repr(d)) for n, d in irdl.attributes.items())}",
+                f"regions {[(n, repr(d)) for n, d in irdl.regions]}",
+                f"successors {[(n, repr(d)) for n, d in irdl.successors]}",
+                f"traits {sorted(_stable(t) for t in irdl.traits)}",
+            ]
+        else:
+            parameters = cast(type[ParametrizedAttribute], self.definition).get_irdl_definition().parameters
+            parts = [f"parameters {[(n, repr(d)) for n, d in parameters]}"]
+        if self.form is not None:
+            parts.append(f"form {_stable(self.form)}")
+        listing = f"{self.name}\n" + "\n".join(parts)
+        return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
+
+
+def _stable(value: object) -> str:
+    """A printout that is the same in every process: code by module and name, never by address."""
+    if isinstance(value, type) or (callable(value) and hasattr(value, "__qualname__")):
+        return f"{getattr(value, '__module__', '')}.{getattr(value, '__qualname__', '')}"
+    if dataclasses.is_dataclass(value):
+        fields = ", ".join(f"{f.name}={_stable(getattr(value, f.name))}" for f in dataclasses.fields(value))
+        return f"{type(value).__qualname__}({fields})"
+    return repr(value)
 
 
 class Composition:
@@ -78,6 +126,10 @@ class Composition:
 
     def __getitem__(self, name: str) -> Definition:
         return self._entries[name]
+
+    def pins(self, names: Iterable[str]) -> tuple[tuple[str, int, str], ...]:
+        """The named definitions as an accepted run pins them: name, definition version and digest, by name."""
+        return tuple((e.name, e.version, e.digest) for e in sorted((self._entries[n] for n in set(names)), key=lambda e: e.name))
 
     def operation(self, name: str) -> type[Operation] | None:
         entry = self._entries.get(name)

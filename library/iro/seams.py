@@ -7,8 +7,9 @@ the interfaces here, which a domain fills in and the IR runtime calls:
 - an **owner** holds one kind of state and realizes the access modes for it,
   with versions and evidence: the run authority for participants, Trainer
   optimization for weight updates, a producer for its cursor;
-- an **implementation** is selected code that declares its inputs, outputs,
-  effects, concurrency safety and completion;
+- an **implementation** is selected code with a declaration: its inputs,
+  outputs, effects, concurrency safety and completion at one implementation
+  version;
 - a **device** supplies the execution context and physical completion for
   one backend, and what it knows of the device's capacity.
 
@@ -19,9 +20,11 @@ interfaces structurally. Registration through every seam is explicit
 composition (D2).
 """
 
+import hashlib
 from collections.abc import Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
+from enum import StrEnum
 from typing import Protocol, runtime_checkable
 
 from library.iro.operation_contracts import AccessMode, VersionSelection
@@ -101,17 +104,83 @@ class Owner(Protocol):
 # Implementations.
 
 
-@dataclass(frozen=True)
-class Effects:
-    """What an implementation does to state beyond its results, by input position.
+class Effect(StrEnum):
+    """What an implementation does beyond its results that its signature cannot show (D18)."""
 
-    ``reads`` and ``updates`` name lease inputs; ``unknown`` says there may be
-    effects it does not declare, which blocks local transformations.
+    DEVICE = "device"  # submits work to a device, so it needs a device admission (D15)
+    RANDOMNESS = "randomness"  # draws random numbers; its call sets the random state it draws from
+    EXTERNAL = "external"  # reads or writes outside the run, such as files or the network
+    COLLECTIVES = "collectives"  # issues collectives, which every rank orders the same way (D15)
+    PRIVATE_STATE = "private_state"  # keeps state of its own beyond the call
+
+
+UPDATING_LEASES = (f"{AccessMode.OWNER_UPDATE} lease", f"{AccessMode.GRANT} lease")
+
+
+@dataclass(frozen=True)
+class Declaration:
+    """What an implementation declares about itself at one implementation version (D16, D18).
+
+    ``inputs`` and ``outputs`` are types as the written form prints them, such
+    as ``latents``, ``protected_current lease`` or ``retained loss``. Which
+    leased state it reads or updates follows from its lease types, and a
+    retained output keeps every lease and retained input, as a call's does,
+    so neither is stated a second time. ``completion`` says whether the
+    device's completion of the call's work covers it (``device``) or the
+    implementation returns a completion of its own (``own``), as one that
+    uses streams of its own does.
     """
 
-    reads: tuple[int, ...] = ()
-    updates: tuple[int, ...] = ()
-    unknown: bool = True
+    name: str
+    version: str
+    inputs: tuple[str, ...] = ()
+    outputs: tuple[str, ...] = ()
+    effects: frozenset[Effect] = frozenset()
+    concurrency_safe: bool = False
+    completion: str = "device"
+
+    def __post_init__(self) -> None:
+        if not self.name or not self.version:
+            raise ValueError("an implementation declares its name and its implementation version")
+        if self.completion not in ("device", "own"):
+            raise ValueError(f"{self.name}: completion is 'device' or 'own', not {self.completion!r}")
+        object.__setattr__(self, "effects", frozenset(Effect(effect) for effect in self.effects))
+
+    @property
+    def reads(self) -> tuple[int, ...]:
+        """Input positions whose leased state it only reads."""
+        return tuple(i for i, t in enumerate(self.inputs) if t.endswith(" lease") and t not in UPDATING_LEASES)
+
+    @property
+    def updates(self) -> tuple[int, ...]:
+        """Input positions whose leased state it updates."""
+        return tuple(i for i, t in enumerate(self.inputs) if t in UPDATING_LEASES)
+
+    @property
+    def retains(self) -> tuple[int, ...]:
+        """Input positions a retained output keeps protected until its last use (D16)."""
+        if not any(t.startswith("retained ") for t in self.outputs):
+            return ()
+        return tuple(i for i, t in enumerate(self.inputs) if t.endswith(" lease") or t.startswith("retained "))
+
+    @property
+    def digest(self) -> str:
+        """A digest of the declaration, which a pin records beside the implementation version (D16).
+
+        It covers everything declared except the version. Value types are
+        covered by name: they carry no declared structure yet.
+        """
+        listing = "\n".join(
+            (
+                f"name {self.name}",
+                f"inputs {', '.join(self.inputs)}",
+                f"outputs {', '.join(self.outputs)}",
+                f"effects {', '.join(sorted(self.effects))}",
+                f"concurrency_safe {self.concurrency_safe}",
+                f"completion {self.completion}",
+            )
+        )
+        return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
 
 
 @runtime_checkable
@@ -124,27 +193,10 @@ class Completion(Protocol):
 
 @runtime_checkable
 class Implementation(Protocol):
-    """Selected code that a call names, with what it declares about itself.
-
-    ``retains`` are the input positions whose leased state its result keeps
-    protected until the result's last use (D16). ``concurrency_safe`` says it
-    may run in several invocations at once.
-    """
+    """Selected code that a call names, with its declaration."""
 
     @property
-    def name(self) -> str: ...
-    @property
-    def version(self) -> str: ...
-    @property
-    def inputs(self) -> tuple[str, ...]: ...
-    @property
-    def outputs(self) -> tuple[str, ...]: ...
-    @property
-    def effects(self) -> Effects: ...
-    @property
-    def retains(self) -> tuple[int, ...]: ...
-    @property
-    def concurrency_safe(self) -> bool: ...
+    def declaration(self) -> Declaration: ...
 
     def __call__(self, device: Device, *arguments: object) -> tuple[tuple[object, ...], Completion]:
         """Submits the work; its results are usable once the completion is done."""
@@ -174,4 +226,4 @@ class Device(Protocol):
         ...
 
 
-__all__ = ["Completion", "Device", "Effects", "Implementation", "Lease", "Owner", "Use", "Version"]
+__all__ = ["Completion", "Declaration", "Device", "Effect", "Implementation", "Lease", "Owner", "Use", "Version"]

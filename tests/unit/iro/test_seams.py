@@ -4,7 +4,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass, field
 
 from library.iro.operation_contracts import AccessMode, VersionSelection
-from library.iro.seams import Completion, Device, Effects, Implementation, Lease, Owner, Use, Version
+from library.iro.seams import Completion, Declaration, Device, Implementation, Lease, Owner, Use, Version
 
 
 @dataclass(frozen=True)
@@ -66,15 +66,12 @@ class Host:
         return {}
 
 
+DOUBLE = Declaration("double", "1", ("int",), ("int",), concurrency_safe=True)
+
+
 @dataclass(frozen=True)
 class Double:
-    name: str = "double"
-    version: str = "1"
-    inputs: tuple[str, ...] = ("int",)
-    outputs: tuple[str, ...] = ("int",)
-    effects: Effects = field(default_factory=lambda: Effects(unknown=False))
-    retains: tuple[int, ...] = ()
-    concurrency_safe: bool = True
+    declaration: Declaration = DOUBLE
 
     def __call__(self, device, *arguments):
         with device.context():

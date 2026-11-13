@@ -19,9 +19,9 @@ later sections.
      |                        resolve what requests, stops and streams name
      |  verify.verify         claims, leases, accesses, calls, lifecycles,
      |                        streams, decisions -> obligations, or a rejection
-     |  accepted.accept       -> AcceptedRun: written forms, pinned versions,
-     |                        obligations, authority seed
-     |  accepted.cold_load    re-derive everything under the pinned versions
+     |  accepted.accept       -> AcceptedRun: written forms, pins, obligations,
+     |                        authority seed
+     |  accepted.cold_load    re-derive everything under the pins
   reference.Reference         run a normalized strategy's lifecycles with stand-ins
 ```
 
@@ -40,7 +40,7 @@ a fix. Codes by area:
 | `iro-life-` | A request outside its source, a stop of something that is not a producer, a producer nothing stops, a stop that does not cover a consumer, points that wait for each other |
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
-| `iro-run-` | A saved run pinned to another contract, or whose parts do not follow from its strategy |
+| `iro-run-` | A pinned definition missing, at another definition version or with another declaration; parts of a saved run that do not follow from its strategy; a pinned implementation not installed at its version and declaration |
 
 ## Modules
 
@@ -48,14 +48,29 @@ a fix. Codes by area:
 | --- | --- |
 | `words/` | Kuroiro's core operations and types by area: structure, lifetimes, data, access, calls and model use |
 | `operation_contracts.py` | Region, flow, resource, realization and decision contracts, read by every stage through traits |
-| `composition.py` | The contract: definitions with area and version, its digest, `extend` for domain vocabularies, the readable printout |
+| `composition.py` | The contract: definitions with area, definition version and declaration digest, pins for a run, `extend` for domain vocabularies, the readable printout |
 | `text.py` | The written form: printer and parser with exact round trip; a domain word brings its own form through its definition |
 | `normalize.py` | Normalization and the relationships it resolves |
 | `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report |
 | `diagnostics.py` | The shared diagnostic |
 | `accepted.py` | The accepted run, its authority seed and cold loading |
-| `seams.py` | The owner, implementation and device interfaces the runtime will call |
+| `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
+| `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
+
+## Pins
+
+An accepted run pins the definitions its strategy uses and the
+implementations it selects, each with its version and a digest of its
+declaration (D16). Cold loading refuses a run whose pinned definitions are
+missing or changed, and ignores definitions it does not use, so new
+vocabulary never stops a saved run from loading. `check_implementations` is
+the Trainer's check of installed implementations against the pins; a run
+accepted without installed implementations never passes it.
+`tests/unit/iro/test_versions.py` keeps the digest of every definition
+version and implementation version in `recorded_versions.json`: a
+declaration that changes under a recorded version fails it, and
+`IRO_RECORD_VERSIONS=1` records only new versions.
 
 ## Written forms
 
