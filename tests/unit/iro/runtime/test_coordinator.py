@@ -470,3 +470,39 @@ def test_the_coordinator_refuses_adapters_that_differ_from_what_the_run_was_prep
         Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": FakeDevice(offers=frozenset({"ordering"})), "cuda:1": FakeDevice()})
     offering = FakeDevice(offers=frozenset({"ordering"}))
     assert Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": offering}).devices["cuda:0"] is offering
+
+
+LEAVING = """iro.strategy @s uses(@encode v1) {
+  %vae = iro.resource @vae : participant may_leave_device
+  iro.sequence @once capture(%vae) {
+    iro.access %vae protected_current {
+    ^(%lease):
+      %x = iro.call @encode(%lease) -> int
+    }
+  }
+}
+"""
+
+
+def test_a_participant_that_may_leave_needs_an_owner_that_names_its_storage_and_an_adapter_that_copies_it() -> None:
+    import pytest
+
+    installed = {
+        "encode": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="encode")(
+            lambda lease: 1
+        )
+    }
+    run = accepted_run(LEAVING, installed=installed)
+    target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))))
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    assert prepared.leaving == (("vae", "cuda:0"),)
+    device = FakeDevice(offers=frozenset({"copies"}))
+    with pytest.raises(ValueError, match="its owner does not say what its device storage is"):
+        Coordinator(prepared, {"vae": Memory({"vae": 0})}, installed, {"host": Host(), "cuda:0": device})
+
+    class Named(Memory):
+        def storage(self, resource):
+            return ()
+
+    with pytest.raises(ValueError, match="its adapter does not copy storage"):
+        Coordinator(prepared, {"vae": Named({"vae": 0})}, installed, {"host": Host(), "cuda:0": device})

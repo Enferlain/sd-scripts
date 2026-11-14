@@ -116,6 +116,16 @@ and ended in a scope. `Coordinator(checked=True)`, which the runtime tests
 use, also runs both checks in full and fails the run if the full check finds
 what lowering excluded.
 
+A participant declared `may_leave_device` leaves its device between uses
+(D15): preparation checks that it is frozen, used from one device, and that
+the device's adapter offers storage copies, and lists it in the prepared
+form. Its owner names its device storage (`seams.HoldsDeviceStorage`) and
+the adapter empties it, keeping an exact copy in pinned host memory, once its
+last lease is released, and fills it again as the first work of the next
+access that leases it, on the device's stream. A retained result keeps its
+lease, so it delays leaving until its release. A participant leased again
+before its move begins stays. After its last use the storage stays released.
+
 Device work takes turns: one admission at a time per device, granted in
 request order. An access takes its leases and its turn together, so it never
 waits for one while holding the other. An admission covers its access's body and, until its retained

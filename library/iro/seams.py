@@ -101,6 +101,23 @@ class Owner(Protocol):
         ...
 
 
+@runtime_checkable
+class HoldsDeviceStorage(Protocol):
+    """An owner whose participant may leave the device: it says what its device storage is (D15).
+
+    The storage is opaque to the runtime and known to the device adapter
+    (tensors, for a PyTorch backend). It is complete before the run, as
+    materialization publishes it. The owner never copies or frees it itself;
+    the runtime queues those copies on the device's stream. After the
+    participant's last use the storage stays released (D15): its exact copy
+    belongs to the adapter of that run.
+    """
+
+    def storage(self, resource: str) -> Sequence[object]:
+        """The participant's own device storage."""
+        ...
+
+
 # Implementations.
 
 
@@ -263,4 +280,30 @@ class Device(Protocol):
         ...
 
 
-__all__ = ["CallContext", "Completion", "Declaration", "Device", "Effect", "Implementation", "Lease", "Owner", "Use", "Version"]
+@runtime_checkable
+class CopiesStorage(Protocol):
+    """A device adapter that offers ``copies``: it moves an owner's device storage off the device and back (D15)."""
+
+    def empty(self, storage: Sequence[object]) -> None:
+        """Frees the storage's device memory after the work already queued, keeping an exact host copy."""
+        ...
+
+    def fill(self, storage: Sequence[object]) -> Completion:
+        """Brings the storage back from its host copy, queued before any later work; the completion says when it is there."""
+        ...
+
+
+__all__ = [
+    "CallContext",
+    "Completion",
+    "CopiesStorage",
+    "Declaration",
+    "Device",
+    "Effect",
+    "HoldsDeviceStorage",
+    "Implementation",
+    "Lease",
+    "Owner",
+    "Use",
+    "Version",
+]

@@ -31,7 +31,7 @@ from collections.abc import Awaitable, Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, cast
 
 from library.iro.operation_contracts import AccessMode, Admission, Boundary, LifecycleProtocol, ResourceUse, VersionSelection
 from library.iro.prepare import HOST, Prepared
@@ -77,7 +77,7 @@ from library.iro.runtime.state import (
     Stream,
     Ticket,
 )
-from library.iro.seams import CallContext, Completion, Device, Implementation, Owner, Use, Version
+from library.iro.seams import CallContext, Completion, CopiesStorage, Device, HoldsDeviceStorage, Implementation, Owner, Use, Version
 
 Observer = Callable[[Fact], None]
 
@@ -183,6 +183,16 @@ class Coordinator:
         self.owners, self.installed, self.devices = dict(owners), dict(installed), dict(devices)
         if HOST.name not in self.devices:
             raise ValueError("the coordinator needs the host device")
+        # Participants that may leave the device between uses, by the device their storage leaves from (D15).
+        self._leaving = dict(prepared.leaving)
+        for name, device in self._leaving.items():
+            if not isinstance(self.owners.get(name), HoldsDeviceStorage):
+                raise ValueError(f"@{name} may leave the device, and its owner does not say what its device storage is")
+            if not isinstance(self.devices.get(device), CopiesStorage):
+                raise ValueError(f"@{name} may leave {device}, and its adapter does not copy storage")
+        self._away: set[str] = set()
+        self._holding: dict[str, int] = defaultdict(int)
+        self._moves: dict[str, asyncio.Task] = {}
         unknown = set(self.devices) - {facts.name for facts in prepared.target.devices}
         if unknown:
             raise ValueError(f"adapters for devices the run was not prepared for: {', '.join(sorted(unknown))}")
@@ -433,6 +443,7 @@ class Coordinator:
                 self._state(root, State.SETTLING)
                 await self._until(lambda: self.closing or not self._pending_under(root), ("requests",))
                 self._settle_requests(root)
+                await asyncio.gather(*self._moves.values(), return_exceptions=True)
                 if self.checked and self._failed and not self.cancelled and outcome.status != "failed":
                     # A miss closes admission without raising where it was found, so the root saw only that.
                     outcome.status, outcome.error = "failed", "; ".join(self.errors)
@@ -738,6 +749,9 @@ class Coordinator:
         if device is not None:
             self._grant_turn(device, identity, identity[:-1])
         try:
+            for lease in leases:
+                if lease.resource in self._leaving:
+                    await self._present(lease.resource)  # the first work of the admission that uses it (D15)
             return await self._body(step.bodies[0], self._entry(step, args, leases), identity)
         finally:
             for lease in leases:
@@ -1197,6 +1211,8 @@ class Coordinator:
         lease = Held(self._next_token, name, mode, granted, granted.version)
         self._next_token += 1
         self.leases[lease.token] = lease
+        if name in self._leaving:
+            self._holding[name] += 1
         return lease
 
     def _release_product(self, product: Product, how: str) -> None:
@@ -1228,6 +1244,58 @@ class Coordinator:
         del self.leases[lease.token]
         self._fact(lease.resource, (), "lease_released", lease.version)
         self._changed(("resource", lease.resource))
+        if lease.resource in self._leaving:
+            self._holding[lease.resource] -= 1
+            if not self._holding[lease.resource]:
+                self._moves[lease.resource] = self._spawn(self._leave(lease.resource, self._moves.get(lease.resource)))
+
+    # Leaving the device (D15): a permitted participant's storage leaves when its last lease is
+    # released, unless it is leased again before that move begins, and comes back as the first work
+    # of the next access that leases it. Its moves run one after another; leaving and returning
+    # change no version and report no fact.
+
+    async def _present(self, name: str) -> None:
+        """Waits until the participant's storage is on its device, bringing it back if it left."""
+        while True:
+            move = self._moves.get(name)
+            if move is not None and not move.done():
+                await asyncio.shield(move)
+                continue
+            if name not in self._away:
+                return
+            self._moves[name] = self._spawn(self._return(name))
+
+    async def _return(self, name: str) -> None:
+        device = self._leaving[name]
+        adapter = cast(CopiesStorage, self.devices[device])
+        storage = cast(HoldsDeviceStorage, self.owners[name]).storage(name)
+        assert self._executor is not None
+        self._working += 1
+        try:
+            completion = await asyncio.get_running_loop().run_in_executor(self._executor, adapter.fill, storage)
+        finally:
+            self._working -= 1
+        self._away.discard(name)
+        # Host work on it waits for the copy on the CPU; device work on its stream follows it (D15).
+        self.protection[name].pending.append(completion)
+
+    async def _leave(self, name: str, before: asyncio.Task | None) -> None:
+        if before is not None and not before.done():
+            await asyncio.shield(before)
+        if self._holding[name] or name in self._away:
+            return  # leased again meanwhile, or already gone
+        device = self._leaving[name]
+        adapter = cast(CopiesStorage, self.devices[device])
+        storage = cast(HoldsDeviceStorage, self.owners[name]).storage(name)
+        assert self._executor is not None
+        self._working += 1
+        try:
+            await asyncio.get_running_loop().run_in_executor(self._executor, adapter.empty, storage)
+            self._away.add(name)
+        except Exception as error:
+            self._note_failure(RunFailure(f"@{name}: leaving {device} failed: {error!r}"))
+        finally:
+            self._working -= 1
 
     # Requests.
 

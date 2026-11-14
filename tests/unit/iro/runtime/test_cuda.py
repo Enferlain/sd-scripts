@@ -5,6 +5,7 @@ left alone. Each needs a CUDA device and is marked ``requires_gpu``.
 """
 
 import asyncio
+import time
 
 import pytest
 import torch
@@ -218,7 +219,7 @@ def test_the_cuda_adapter_reports_its_kind_what_it_offers_and_its_memory() -> No
 
     device = Cuda(gpu_index())
     facts = DeviceFacts.of(device)
-    assert (facts.name, facts.kind, facts.offers) == (f"cuda:{gpu_index()}", "cuda", frozenset({"ordering", "memory"}))
+    assert (facts.name, facts.kind, facts.offers) == (f"cuda:{gpu_index()}", "cuda", frozenset({"ordering", "copies", "memory"}))
     memory = device.capacity()
     assert 0 < memory["free_bytes"] <= memory["total_bytes"]
 
@@ -246,3 +247,121 @@ def test_threads_entering_one_adapter_at_once_each_get_its_stream_and_restore_th
     for thread in threads:
         thread.join()
     assert not wrong, wrong[:3]
+
+
+TWO_USES = """iro.strategy @s uses(@encode v1, @pause v1) {
+  %vae = iro.resource @vae : participant may_leave_device
+  iro.sequence @once capture(%vae) {
+    iro.access %vae protected_current {
+    ^(%lease):
+      %a = iro.call @encode(%lease) -> float
+    }
+    %p = iro.call @pause() -> int
+    iro.access %vae protected_current {
+    ^(%lease):
+      %b = iro.call @encode(%lease) -> float
+    }
+  }
+}
+"""
+
+
+class Frozen:
+    """An owner holding a frozen participant's weights on the device; it names that storage for the runtime."""
+
+    def __init__(self, tensor: torch.Tensor):
+        self.tensor = tensor
+
+    def resources(self):
+        return ("vae",)
+
+    def current(self, resource):
+        from tests.unit.iro.runtime.harness import Seen
+
+        return Seen("vae", 1, "initial", 0)
+
+    def lease(self, uses, reserved=None):
+        from tests.unit.iro.runtime.harness import Granted
+
+        return [Granted(use, self.current("vae"), self.tensor) for use in uses]
+
+    def storage(self, resource):
+        return (self.tensor,)
+
+
+def test_a_frozen_participant_leaves_the_device_between_uses_and_comes_back_exact() -> None:
+    from library.iro.devices.cuda import Cuda
+
+    moves: list[str] = []
+
+    class Counting(Cuda):
+        def empty(self, storage):
+            moves.append("leave")
+            super().empty(storage)
+
+        def fill(self, storage):
+            moves.append("return")
+            return super().fill(storage)
+
+    def run(text: str, tensor: torch.Tensor, device) -> tuple[list[object], object]:
+        installed = {
+            "encode": implementation(version=1, inputs=("protected_current lease",), outputs=("float",), effects=["device"], name="encode")(
+                lambda weights: float(weights.sum().item())
+            ),
+            "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.05) or 0),
+        }
+        accepted = accepted_run(text, installed=installed)
+        target = Target((HOST, DeviceFacts.of(device)), device=device.name)
+        prepared = prepare(cold_load(accepted, installed=installed), installed, target)
+        facts: list[Fact] = []
+        coordinator = Coordinator(
+            prepared, {"vae": Frozen(tensor)}, installed, {"host": Host(), device.name: device}, observe=facts.append, checked=True
+        )
+        outcome = asyncio.run(coordinator.run())
+        assert outcome.status == "succeeded", outcome.error
+        encoded = [f.values[1] for f in facts if f.kind == "call_completed" and isinstance(f.values[1][0], float)]
+        return encoded, prepared
+
+    device = Counting(gpu_index())
+    size = 64 << 20  # 64 Mi floats, 256 MiB
+    weights = torch.rand(size, device=device.device)
+    expected = float(weights.sum().item())
+    same = weights.clone()  # for the run that keeps it on the device: after its last use, it has left
+    torch.cuda.synchronize(device.device)
+    before = torch.cuda.memory_allocated(device.device)
+    values, prepared = run(TWO_USES, weights, device)
+    torch.cuda.synchronize(device.device)
+    freed = before - torch.cuda.memory_allocated(device.device)
+    assert prepared.leaving == (("vae", device.name),)
+    assert moves == ["leave", "return", "leave"], "it left after each use's last lease and came back for the second use"
+    assert values == [(expected,), (expected,)], "it came back exact"
+    assert freed >= size * 4, f"its device memory was freed after its last use ({freed} bytes)"
+    staying, _ = run(TWO_USES.replace(" may_leave_device", ""), same, Cuda(gpu_index()))
+    assert staying == values, "leaving changes no result"
+    moves.clear()
+    back_to_back = TWO_USES.replace("    %p = iro.call @pause() -> int\n", "")
+    run(back_to_back, torch.rand(size, device=device.device), Counting(gpu_index()))
+    assert moves == ["leave"], "leased again before its move off began, it stays; it leaves after its last use"
+
+
+def test_storage_that_leaves_comes_back_whole_for_views_offsets_and_shared_storage() -> None:
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    base = torch.rand(1 << 20, device=device.device)
+    expected = base.clone()
+    first, second = base[: 1 << 19], base[(1 << 19) + 7 :]  # two views of one storage, one with an offset
+    alone = torch.rand(1000, device=device.device)[10:20]  # a slice of a storage nothing else names
+    alone_expected = alone.untyped_storage().nbytes(), alone.clone()
+    torch.cuda.synchronize(device.device)
+    device.empty((first, second, alone))
+    torch.cuda.synchronize(device.device)
+    assert base.untyped_storage().nbytes() == 0 and alone.untyped_storage().nbytes() == 0
+    device.fill((first, second, alone)).wait()
+    assert torch.equal(base, expected), "the whole shared storage came back, not only the views"
+    assert alone.untyped_storage().nbytes() == alone_expected[0] and torch.equal(alone, alone_expected[1])
+    device.empty((first,))
+    import pytest
+
+    with pytest.raises(RuntimeError, match="already empty"):
+        Cuda(gpu_index()).empty((first,))

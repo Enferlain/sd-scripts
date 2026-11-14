@@ -14,6 +14,7 @@ from library.iro.words.access import AccessOp
 from library.iro.words.calls import CallOp, ConstantOp
 from library.iro.words.data import ForkOp
 from library.iro.words.lifetimes import HandlerOp
+from library.iro.words.model import ResourceOp
 from library.iro.words.structure import ChoiceOp, RepeatOp
 
 ROOT = Path(__file__).resolve().parents[3]
@@ -331,3 +332,18 @@ def test_printing_uses_the_contracts_forms_and_refuses_words_outside_it() -> Non
     without_fork = Composition([d for d in core().definitions.values() if d.name != "iro.fork"])
     with pytest.raises(ValueError, match=r"iro\.fork is not in the kuroiro contract"):
         print_strategy(strategy, without_fork)
+
+
+def test_a_participant_may_be_permitted_to_leave_the_device_and_nothing_else_may() -> None:
+    text = (
+        "iro.strategy @s {\n"
+        "  %vae = iro.resource @vae : participant materialize(@load_vae) may_leave_device\n"
+        "  %m = iro.resource @m : participant\n"
+        "}\n"
+    )
+    strategy = parse(text)
+    assert op_named(strategy, ResourceOp, "vae").may_leave_device is not None
+    assert op_named(strategy, ResourceOp, "m").may_leave_device is None
+    assert "materialize(@load_vae) may_leave_device" in print_strategy(strategy) and round_trips(print_strategy(strategy))
+    with pytest.raises(Rejection):
+        parse("iro.strategy @s {\n  %p = iro.resource @policy may_leave_device\n}\n")

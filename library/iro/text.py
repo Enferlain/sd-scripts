@@ -480,6 +480,8 @@ def _read_resource(r: Reader, scope: Scope, block: Block, s: Statement) -> Opera
         r.expect(")")
     if views:
         properties["read_views"] = ArrayAttr(views)
+    if r.accept("may_leave_device"):
+        properties["may_leave_device"] = UnitAttr()
     return ResourceOp.create(operands=reads, result_types=[t.resource(kind)], properties=properties)
 
 
@@ -1300,6 +1302,8 @@ def _w_resource(w: Writer, op: Operation, names: Names, indent: str) -> Rendered
         reads = op.read_views.data if op.read_views is not None else ()
         extra = "".join(f", {w.operand(names, v)} view {view.data}" for v, view in zip(op.reads, reads, strict=True))
         head += f" materialize(@{op.materialize.root_reference.data}{extra})"
+    if op.may_leave_device is not None:
+        head += " may_leave_device"
     return _write_leaf(head + w.tail(op) + w.location(op))
 
 

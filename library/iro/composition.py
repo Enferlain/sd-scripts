@@ -181,7 +181,8 @@ def core() -> Composition:
         "calls": calls.OPERATIONS,
         "model": model.OPERATIONS,
     }
-    entries = [Definition(op, area) for area, ops in areas.items() for op in ops]
+    # A word whose declaration changed carries its new definition version beside its definition (D16).
+    entries = [Definition(op, area, getattr(op, "DEFINITION_VERSION", 1)) for area, ops in areas.items() for op in ops]
     entries += [Definition(t, "types") for t in (*TYPES, ResourceUseAttr)]
     return Composition(entries)
 

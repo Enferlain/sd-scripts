@@ -423,3 +423,59 @@ def test_a_device_result_a_repeat_carries_only_to_device_work_on_its_device_is_n
     result, _ = prepared(CARRY, effects={"step": ["device"], "peek": ["device"], "first": ["device"]})
     group = next(g for g in result.groups if "step" in g.implementations)
     assert not group.sync, "the carried value only feeds device work on the same device"
+
+
+LEAVING = """iro.strategy @s uses(@encode v1) {
+  %vae = iro.resource @vae : participant may_leave_device
+  iro.sequence @first capture(%vae) {
+    iro.access %vae protected_current {
+    ^(%lease):
+      %x = iro.call @encode(%lease) -> int
+    }
+  }
+  iro.sequence @second capture(%vae) {
+    iro.access %vae protected_current {
+    ^(%lease):
+      %y = iro.call @encode(%lease) -> int
+    }
+  }
+}
+"""
+COPIES = frozenset({"ordering", "copies"})
+
+
+def leaving_target(*devices: str, offers=COPIES, placement=()) -> Target:
+    return Target((HOST, *(DeviceFacts(d, "cuda", offers) for d in devices)), placement=placement)
+
+
+def test_a_frozen_participant_used_on_one_device_that_copies_storage_may_leave_it() -> None:
+    result, _ = prepared(LEAVING, leaving_target("cuda:0"), effects={"encode": ["device"]})
+    assert result.leaving == (("vae", "cuda:0"),)
+    assert "leaving the device\n  @vae from cuda:0\n" in result.text()
+
+
+def test_a_participant_no_device_work_uses_has_nothing_to_leave() -> None:
+    result, _ = prepared(LEAVING, leaving_target("cuda:0"))
+    assert result.leaving == ()
+
+
+@pytest.mark.parametrize(
+    ("text", "target", "code"),
+    [
+        (
+            LEAVING.replace("uses(@encode v1)", "uses(@encode v1, @tune v1)").replace(
+                "  iro.sequence @second",
+                "  iro.access %vae owner_update {\n  ^(%lease):\n    %u = iro.call @tune(%lease) -> int\n  }\n  iro.sequence @second",
+            ),
+            leaving_target("cuda:0"),
+            "iro-prep-011",
+        ),
+        (LEAVING, leaving_target("cuda:0", "cuda:1", placement=(("first", "cuda:0"), ("second", "cuda:1"))), "iro-prep-012"),
+        (LEAVING, leaving_target("cuda:0", offers=frozenset({"ordering"})), "iro-prep-013"),
+    ],
+    ids=["the strategy updates it", "used on two devices", "the adapter does not copy storage"],
+)
+def test_a_permission_to_leave_the_device_that_cannot_be_realized_is_a_target_limit(text: str, target: Target, code: str) -> None:
+    with pytest.raises(Rejection) as rejected:
+        prepared(text, target, effects={"encode": ["device"], "tune": ["device"]})
+    assert rejected.value.codes == (code,) and rejected.value.target_limits_only

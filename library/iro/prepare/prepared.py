@@ -19,6 +19,9 @@ implementations and a target, and derives the prepared run:
   per group of device work outside an access. It begins after the body's
   inputs are taken and ends when the last retained result it produced is
   released, where normalization placed the release;
+- **leaving the device** (D15): each participant permitted to leave the
+  device between uses, with the device its storage leaves from. Only frozen
+  storage leaves, from one device, whose adapter offers storage copies;
 - the **implementation manifest**: each pinned implementation with its
   implementation version, declaration digest and code identity.
 
@@ -36,19 +39,29 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import BlockArgument, Operation, SSAValue
 
 from library.iro.accepted import Loaded, check_implementations
 from library.iro.diagnostics import Kind, Problems, Stage
-from library.iro.operation_contracts import LifecycleProtocol, RegionSemantics, path, sym_name, symbol
+from library.iro.operation_contracts import (
+    AccessMode,
+    LifecycleProtocol,
+    RegionSemantics,
+    ResourceSemantics,
+    path,
+    provider,
+    sym_name,
+    symbol,
+)
 from library.iro.prepare.target import HOST, Target
 from library.iro.seams import CallContext, Effect, Implementation
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import TakeOp
 from library.iro.words.lifetimes import RequestOp
+from library.iro.words.model import ResourceOp
 from library.iro.words.structure import StrategyOp
-from library.iro.words.types import RetainedType, written
+from library.iro.words.types import LeaseType, RetainedType, written
 
 # Activities with lifetimes of their own: an access body's admission never reaches past them.
 _OWN_LIFETIME = frozenset(
@@ -110,6 +123,7 @@ class Prepared:
     manifest: tuple[ManifestEntry, ...]
     groups: tuple[Group, ...]
     admissions: tuple[Admission, ...]
+    leaving: tuple[tuple[str, str], ...]  # (participant, the device its storage leaves from)
     loaded: Loaded = field(compare=False, repr=False)
 
     def group_of(self, call: str) -> Group:
@@ -133,6 +147,9 @@ class Prepared:
         for a in self.admissions:
             covered = ", ".join(str(g) for g in a.groups)
             lines.append(f"  {a.device} from {a.begins}: groups {covered}; ends {', '.join(a.ends)}")
+        if self.leaving:
+            lines.append("leaving the device")
+            lines += [f"  @{participant} from {device}" for participant, device in self.leaving]
         return "\n".join(lines) + "\n"
 
 
@@ -206,12 +223,13 @@ class _Preparation:
     def derive(self) -> Prepared:
         groups = self._groups()
         admissions = self._admissions(groups)
+        leaving = self._leaving()
         self.problems.reject_if_any()
         run = self.loaded.run
         manifest = tuple(
             ManifestEntry(name, version, digest, code_identity(self.installed[name])) for name, version, digest in run.implementations
         )
-        return Prepared(self.strategy.sym_name.data, run.identity, self.target, manifest, groups, admissions, self.loaded)
+        return Prepared(self.strategy.sym_name.data, run.identity, self.target, manifest, groups, admissions, leaving, self.loaded)
 
     # Matching and placement.
 
@@ -346,6 +364,69 @@ class _Preparation:
                 continue
             return False
         return True
+
+    # Leaving the device (D15).
+
+    def _leaving(self) -> tuple[tuple[str, str], ...]:
+        """Each participant permitted to leave the device, with the device its storage leaves from.
+
+        The first realization keeps one exact host copy, so the storage must
+        never change: a participant the strategy updates cannot leave. Its
+        storage lives on one device, and that device's adapter must offer
+        storage copies.
+        """
+        permitted = [op for op in self.strategy.walk() if isinstance(op, ResourceOp) and op.may_leave_device is not None]
+        if not permitted:
+            return ()
+        updated: set[str] = set()
+        for access in (op for op in self.strategy.walk() if isinstance(op, AccessOp)):
+            for use in ResourceSemantics().describe(access).uses:
+                if use.mode in (AccessMode.OWNER_UPDATE, AccessMode.GRANT) and (name := _resource_of(use.subject)) is not None:
+                    updated.add(name)
+        devices: dict[str, set[str]] = {}
+        for call in (op for op in self.strategy.walk() if isinstance(op, CallOp)):
+            device = self._device(call)
+            if device == HOST.name:
+                continue
+            for operand in call.operands:
+                if isinstance(operand.type, LeaseType) and (name := _leased(operand)) is not None:
+                    devices.setdefault(name, set()).add(device)
+        facts = {d.name: d for d in self.target.devices}
+        leaving = []
+        for op in permitted:
+            name = op.sym_name.data
+            if name in updated:
+                self.problems.add(
+                    "iro-prep-011",
+                    f"@{name} may leave the device, and the strategy updates it, so the exact copy it leaves would go stale",
+                    kind=Kind.TARGET_LIMIT,
+                    path=path(op),
+                    fix="permit only frozen participants to leave the device",
+                )
+                continue
+            used = sorted(devices.get(name, ()))
+            if not used:
+                continue  # no device work uses it, so it never occupies a device
+            if len(used) > 1:
+                self.problems.add(
+                    "iro-prep-012",
+                    f"@{name} may leave the device, and device work on {' and '.join(used)} uses it; leaving is realized from one device",
+                    kind=Kind.TARGET_LIMIT,
+                    path=path(op),
+                    fix="place the device work that uses it on one device",
+                )
+                continue
+            if "copies" not in facts[used[0]].offers:
+                self.problems.add(
+                    "iro-prep-013",
+                    f"@{name} may leave the device, and {used[0]}'s adapter does not offer storage copies",
+                    kind=Kind.TARGET_LIMIT,
+                    path=path(op),
+                    fix="prepare for a device whose adapter copies storage, or keep the participant on the device",
+                )
+                continue
+            leaving.append((name, used[0]))
+        return tuple(sorted(leaving))
 
     # Device admissions.
 
@@ -503,6 +584,24 @@ def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:
             elif isinstance(user, YieldOp) and (parent := user.parent_op()) is not None and use.index < len(parent.results):
                 pending.append(parent.results[use.index])
     return tuple(sorted(found))
+
+
+def _resource_of(subject: SSAValue) -> str | None:
+    """The resource an access names, following captures outward."""
+    owner = provider(subject).owner
+    return owner.sym_name.data if isinstance(owner, ResourceOp) else None
+
+
+def _leased(value: SSAValue) -> str | None:
+    """The resource a lease reaches: its access's use at the lease's position."""
+    value = provider(value)
+    if not isinstance(value, BlockArgument):
+        return None
+    access = value.owner.parent_op()
+    if not isinstance(access, AccessOp):
+        return None
+    uses = ResourceSemantics().describe(access).uses
+    return _resource_of(uses[value.index].subject) if value.index < len(uses) else None
 
 
 def _enclosing_access(op: Operation) -> AccessOp | None:
