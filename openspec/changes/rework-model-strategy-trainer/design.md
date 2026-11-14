@@ -3239,12 +3239,16 @@ and launch device work. Owners hold state.
   2026-11-13 on the RTX 3080, twenty alternating 4 GiB allocations under a
   6 GiB cap caused 19 device-wide synchronizations and took 3.3 s, against
   0.24 s on one stream. Separate streams are used only where permitted
-  overlap is realized; an implementation may still use streams of its own
-  inside a call, under its own completion. Turns are granted in the order
-  they are requested, so no requested work waits without bound behind work
-  that is always ready, such as a handler holding a snapshot behind training
-  members. Where that order decides when collectives are issued, it follows
-  the rank-consistent order under Collectives.
+  overlap is realized. An implementation may still use streams of its own
+  inside a call, and before it returns it makes the call's stream wait on
+  them, so the call's completion covers that work too. That is part of its
+  contract, like its declared effects: qualification may detect a stream
+  left unjoined, but the guarantee rests on the contract (D18). Turns are
+  granted in the order they are requested, so no requested work waits
+  without bound behind work that is always ready, such as a handler holding
+  a snapshot behind training members. Where that order decides when
+  collectives are issued, it follows the rank-consistent order under
+  Collectives.
 - **Completion orders later work.** Ending an admission or releasing
   protection does not make the coordinator wait for the device. Later work
   on the same stream follows in stream order, and work on another stream
@@ -3252,36 +3256,50 @@ and launch device work. Owners hold state.
   save or reading a metric's value, waits for that event on the CPU, and
   not on the coordinator. The CPU can therefore queue a window's next member
   while the device finishes the previous one.
-- **Owners' device storage.** Every read or copy of a participant's device
-  storage outside a call is device work that the runtime queues on that
-  device's stream: a snapshot's capture, a save's capture, and leaving and
-  returning (below). The owner says what to capture and the adapter copies.
-  Stream order then puts the capture after the work that produced its
-  version and later updates after the capture, with no wait on the host;
-  work on another device waits on the capture's event. An owner never reads
-  or copies device storage itself. Run-state owners hold no Torch code
-  (D19), and an owner's own copy is not ordered after work still queued:
-  measured on 2026-11-13 on the RTX 3080, a copy on the thread's default
-  stream saw the value from before a queued update in 3 of 3 trials, and the
-  same copy on the runtime's stream saw the update. A snapshot of device
-  state is therefore a real copy. Its owner's snapshot lease names the
-  storage its version lives in and how its ordinary handle is built over
-  copies, and the access's calls receive that handle. The device is the one
-  preparation finds the participant's device work on. An update of the
-  participant, which goes through its owner's update protocol, waits until
-  every capture already asked for is queued, so a
+- **Owners' device storage.** Every read, copy or change of a participant's
+  device storage outside a call is device work that the runtime queues on
+  that device's stream: a snapshot's capture, a save's capture, an in-place
+  route's swap and its undo (D20), and leaving and returning (below). The
+  owner says what to copy, or names the implementation that changes the
+  storage, and the runtime queues it. Stream order then puts that work after
+  the work queued before it and before the work queued after it, with no
+  wait on the host; work on another device waits on its event. An owner
+  never reads, copies or changes device storage itself. Run-state owners
+  hold no Torch code (D19), and an owner's own copy is not ordered after
+  work still queued: measured on 2026-11-13 on the RTX 3080, a copy on the
+  thread's default stream saw the value from before a queued update in 3 of
+  3 trials, and the same copy on the runtime's stream saw the update. A
+  snapshot of device state is therefore a real copy, unless the run never
+  updates the participant: its live storage then already is that version.
+  Its owner's snapshot lease names the storage its version lives in and how
+  its ordinary handle is built over copies, and the access's calls receive
+  that handle. The device is the one preparation finds the participant's
+  device work on. A capture is queued between the participant's calls: it
+  follows the calls already being queued that reach its storage, through a
+  lease or a retained result that keeps one, and later ones wait until it is
+  queued. The copy therefore holds what the work before it left, including
+  storage that a route or an implementation moves within a use, and a
   requested snapshot holds the version at the request, however late its
-  handler runs. A capture copies live storage, so it realizes only the
+  handler runs. A write that no call declares, such as an in-place write
+  through a read lease, is outside this order, as it is outside every
+  guarantee (D18). A capture copies live storage, so it realizes only the
   current version; a published initial snapshot of device state the strategy
   updates is refused with the reason until the initial version is kept. The
-  first realization copies on the device; a copy in pinned host memory, for
-  when device memory is short, is a target choice like the place storage
-  waits when it leaves the device, and comes with capacity decisions.
+  first realization copies on the device, even for a participant the run
+  never updates, and refuses with the reason storage that a route keeps on
+  the host between uses. Copies in pinned host memory, for when device
+  memory is short, and of storage kept on the host, copied there after the
+  device work that moved it, come with device capacity admission; where a
+  copy goes is a target choice like the place storage waits when it leaves
+  the device.
 - **Overlap, once realized.** Overlapped work needs random state of its
   own: an implementation that draws from a device's default generator, as
-  dropout does, runs only in turn. On several ranks, whether work overlaps
-  or runs in turn decides when its collectives are issued, and capacity
-  differs between ranks. The decision is therefore made once, from facts
+  dropout does, runs only in turn. A copy made on one stream and read by
+  overlapped work on another, such as a snapshot's, is marked as used by
+  that stream, so the caching allocator does not reuse its memory before
+  that work ends. On several ranks, whether work overlaps or runs in turn
+  decides when its collectives are issued, and capacity differs between
+  ranks. The decision is therefore made once, from facts
   every rank agrees on, and the points where collective-issuing work gets a
   turn are fixed by the program rather than by local timing. Measured peaks
   are only guidance: an out-of-memory failure in overlapped work without
@@ -4838,9 +4856,24 @@ weights are unit state, sampling and validation read them as the unit's
 evaluation point, and a product may save them (G4.3). The evaluation point
 is a route on the participant whose dependencies are that unit state (D16).
 Trainer optimization realizes it with separate averaged weights where they
-exist. Where an optimizer can only swap in place, the swap is made when the
-lease is taken and undone when it ends, so it is the route's realization and
-never a competing update.
+exist. Where an optimizer can only swap in place, the swap is the route's
+realization and never a competing update: it changes no version. Like any
+change of device storage outside a call, it is device work the runtime
+queues on the device's stream (D15). Trainer optimization supplies the swap
+and its undo as implementations and never runs them itself; the runtime
+runs the swap before the first use through the route and the undo after the
+route's last lease ends, each in order with the participant's other work.
+The undo runs however that lease ends, failure and cancellation included,
+and a swap or undo that fails fails the run with the participant's state
+reported uncertain (D14). While the swap is in place the participant's
+storage holds the evaluation point, so its other routes are excluded until
+the undo: updates, other uses and the captures of their snapshots wait. A
+snapshot through the evaluation point itself is captured while the swap is
+in place, so the exclusion is kept per route. Whether the route is realized
+in place follows from the optimizer policy in the unit's definition, which
+is part of the accepted strategy, and the route's definition carries it, so
+preparation knows it before the run and counts the exclusion when it rules
+out wait cycles (D14).
 
 #### What covers today's flags and mode queries
 

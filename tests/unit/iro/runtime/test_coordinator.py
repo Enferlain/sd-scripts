@@ -7,6 +7,8 @@ from collections.abc import Callable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 
+import pytest
+
 from library.iro.accepted import cold_load
 from library.iro.devices import Host, Returned
 from library.iro.frontend import implementation
@@ -666,7 +668,20 @@ REQUESTED_SNAPSHOTS = """iro.strategy @s uses(@step v1, @look v1) {
 """
 
 
-def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is_copied() -> None:
+TWO_LEASES = (
+    REQUESTED_SNAPSHOTS.replace("@step v1", "@step2 v1")
+    .replace("%m = iro.resource @m : participant", "%m = iro.resource @m : participant\n  %n = iro.resource @n : participant")
+    .replace("iro.repeat @train 3 times capture(%m)", "iro.repeat @train 3 times capture(%m, %n)")
+    .replace("iro.parallel @all capture(%m)", "iro.parallel @all capture(%m, %n)")
+    .replace(
+        "iro.access %m owner_update {\n      ^(%lease):\n        %w = iro.call @step(%lease, %k) -> int",
+        "iro.access %n protected_current, %m owner_update {\n      ^(%read, %lease):\n        %w = iro.call @step2(%read, %lease, %k) -> int",
+    )
+)
+
+
+@pytest.mark.parametrize("shape", ["unsafe update", "safe update", "update beside another lease"])
+def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is_copied(shape: str) -> None:
     seen = []
 
     class Late(Coordinator):
@@ -679,19 +694,26 @@ def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is
         seen.append((x, handle))
         return 0
 
+    update = ("owner_update lease", "int")
     installed = {
-        "step": implementation(version=1, inputs=("owner_update lease", "int"), outputs=("int",), effects=["device"], name="step")(
-            lambda owner, k: owner.update(k + 1) or 0
+        "step": implementation(
+            version=1, inputs=update, outputs=("int",), effects=["device"], concurrency_safe=shape == "safe update", name="step"
+        )(lambda owner, k: owner.update(k + 1) or 0),
+        "step2": implementation(version=1, inputs=("protected_current lease", *update), outputs=("int",), effects=["device"], name="step2")(
+            lambda other, owner, k: owner.update(k + 1) or 0
         ),
         # On the host, so the handler holds no device turn the loop's update would wait behind instead.
         "look": implementation(version=1, inputs=("snapshot lease", "int"), outputs=("int",), name="look")(look),
     }
+    text = TWO_LEASES if shape == "update beside another lease" else REQUESTED_SNAPSHOTS
+    installed = {k: v for k, v in installed.items() if f"@{k} v1" in text}
     log: list = []
     owner = OnDevice(log)
-    run = accepted_run(REQUESTED_SNAPSHOTS, installed=installed)
+    run = accepted_run(text, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
     prepared = prepare(cold_load(run, installed=installed), installed, target)
-    coordinator = Late(prepared, {"m": owner}, installed, {"host": Host(), "cuda:0": Copier(log=log)}, checked=True)
+    owners = {"m": owner, "n": OnDevice([], "n")} if "%n" in text else {"m": owner}
+    coordinator = Late(prepared, owners, installed, {"host": Host(), "cuda:0": Copier(log=log)}, checked=True)
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "succeeded", outcome.error
     assert sorted(seen) == [(0, ("snapshot", [1])), (1, ("snapshot", [2])), (2, ("snapshot", [3]))], "each request saw its own version"
@@ -716,7 +738,7 @@ def _requested(text: str, owners: dict, device) -> Coordinator:
 
 def _clean(coordinator: Coordinator) -> None:
     assert not coordinator.leases, "no lease is left behind"
-    assert not coordinator._capturing and not any(coordinator._writing.values()) and not any(coordinator._holding.values())
+    assert not coordinator._capturing and not any(coordinator._using.values()) and not any(coordinator._holding.values())
 
 
 def test_a_request_whose_second_snapshot_cannot_be_captured_releases_the_first() -> None:
@@ -749,3 +771,216 @@ def test_a_capture_that_fails_on_the_device_fails_the_run_and_leaves_nothing_beh
         outcome.status == "failed" and "capturing its snapshot failed" in (outcome.error or "") and "out of memory" in (outcome.error or "")
     )
     _clean(coordinator)
+
+
+MOVED_WITHIN_A_USE = """iro.strategy @s uses(@swap v1, @pause v1, @look v1) {
+  %m = iro.resource @m : participant
+  iro.parallel @both capture(%m) {
+    iro.sequence @reading capture(%m) {
+      iro.access %m protected_current {
+      ^(%lease):
+        %r = iro.call @swap(%lease) -> int
+      }
+    }
+    iro.sequence @snapshotting capture(%m) {
+      %p = iro.call @pause() -> int
+      iro.access %m snapshot {
+      ^(%lease):
+        %v = iro.call @look(%lease) -> int
+      }
+    }
+  }
+}
+"""
+
+
+def test_a_capture_copies_storage_where_a_use_that_moves_it_leaves_it() -> None:
+    """A read whose realization moves the storage within its use, as block swapping does, is never copied mid-move."""
+    seen = []
+
+    def swap(owner):
+        owner.box[0] = "elsewhere"  # moved within the use...
+        time.sleep(0.1)
+        owner.box[0] = 0  # ...and back where it was by the end of it
+        return 0
+
+    installed = {
+        "swap": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="swap")(swap),
+        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
+        # On the host, so the snapshot's access needs no device turn and is taken while the read runs.
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(
+            lambda handle: seen.append(handle) or 0
+        ),
+    }
+    log: list = []
+    run = accepted_run(MOVED_WITHIN_A_USE, installed=installed)
+    target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    coordinator = Coordinator(prepared, {"m": OnDevice(log)}, installed, {"host": Host(), "cuda:0": Copier(log=log)}, checked=True)
+    outcome = asyncio.run(coordinator.run())
+    assert outcome.status == "succeeded", outcome.error
+    assert seen == [("snapshot", [0])], "the copy waited for the read already being queued, so it holds what the read left"
+
+
+def test_a_capture_is_refused_for_an_adapter_without_copies_and_for_a_lease_that_is_not_a_snapshot() -> None:
+    from library.iro.operation_contracts import AccessMode
+    from library.iro.seams import Capture
+    from tests.unit.iro.runtime.harness import Granted
+
+    installed = {
+        "first": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(
+            lambda owner: 0
+        ),
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
+        "second": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(
+            lambda owner: 0
+        ),
+    }
+    run = accepted_run(SNAPSHOT_BETWEEN_UPDATES.replace("SELECTION", "snapshot"), installed=installed)
+    bare = Target((HOST, DeviceFacts("cuda:0", "cuda")), workers=4)
+    prepared = prepare(cold_load(run, installed=installed), installed, bare)
+    coordinator = Coordinator(prepared, {"m": OnDevice([])}, installed, {"host": Host(), "cuda:0": FakeDevice()}, checked=True)
+    outcome = asyncio.run(coordinator.run())
+    assert outcome.status == "failed" and "needs storage copies, and cuda:0's adapter does not offer them" in (outcome.error or "")
+    _clean(coordinator)
+
+    class CapturesEverything(OnDevice):
+        def lease(self, uses, reserved=None):
+            return [Granted(use, self.current("m"), Capture((self.box,), lambda copies: copies)) for use in uses]
+
+    copying = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
+    prepared = prepare(cold_load(run, installed=installed), installed, copying)
+    coordinator = Coordinator(prepared, {"m": CapturesEverything([])}, installed, {"host": Host(), "cuda:0": Copier()}, checked=True)
+    outcome = asyncio.run(coordinator.run())
+    assert (
+        outcome.status == "failed"
+        and f"only a snapshot lease is captured, and the owner asked to capture a {AccessMode.OWNER_UPDATE} lease" in (outcome.error or "")
+    )
+    _clean(coordinator)
+
+
+SNAPSHOTS_OF_A_LEAVING_PARTICIPANT = """iro.strategy @s uses(@look v1, @pause v1) {
+  %m = iro.resource @m : participant may_leave_device
+  iro.sequence @once capture(%m) {
+    iro.access %m snapshot {
+    ^(%lease):
+      %a = iro.call @look(%lease) -> int
+    }
+    %p = iro.call @pause() -> int
+    iro.access %m snapshot {
+    ^(%lease):
+      %b = iro.call @look(%lease) -> int
+    }
+  }
+}
+"""
+
+
+@dataclass
+class Moving(Copier):
+    """A copying device whose storage also leaves and comes back, logging each move."""
+
+    def empty(self, storage):
+        self.log.append("leave")
+
+    def fill(self, storage):
+        self.log.append("return")
+        return Returned()
+
+
+class LeavingOnDevice(OnDevice):
+    def storage(self, resource):
+        return (self.box,)
+
+
+def _leaving_snapshots() -> tuple[Coordinator, list]:
+    installed = {
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
+        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.05) or 0),
+    }
+    log: list = []
+    run = accepted_run(SNAPSHOTS_OF_A_LEAVING_PARTICIPANT, installed=installed)
+    target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    assert prepared.leaving == (("m", "cuda:0"),)
+    owner = LeavingOnDevice(log)
+    return Coordinator(prepared, {"m": owner}, installed, {"host": Host(), "cuda:0": Moving(log=log)}, checked=True), log
+
+
+def test_a_participant_that_may_leave_is_on_the_device_for_its_capture_and_leaves_after() -> None:
+    coordinator, log = _leaving_snapshots()
+    outcome = asyncio.run(coordinator.run())
+    assert outcome.status == "succeeded", outcome.error
+    assert log == ["capture", "leave", "return", "capture", "leave"], "each capture found it present, and it left after each use"
+    _clean(coordinator)
+
+
+def test_a_capture_cancelled_before_it_begins_leaves_nothing_behind() -> None:
+    from library.iro.operation_contracts import AccessMode, VersionSelection
+    from library.iro.seams import Use
+
+    coordinator, log = _leaving_snapshots()
+
+    async def cancel_at_once() -> None:
+        (granted,) = coordinator.owners["m"].lease([Use("m", AccessMode.SNAPSHOT, VersionSelection.CURRENT_AT_START)])
+        lease = coordinator._hold("m", AccessMode.SNAPSHOT, granted)
+        assert coordinator._capturing and coordinator._holding["m"] == 2, "the lease and its capture each hold it on the device"
+        lease.capture.cancel()
+        for _ in range(3):
+            await asyncio.sleep(0)
+        assert lease.capture.cancelled() and log == [], "it never began"
+        assert not coordinator._capturing and coordinator._holding["m"] == 1, "the capture's entries went with it; the lease's stay"
+
+    asyncio.run(cancel_at_once())
+
+
+MOVED_THROUGH_A_RETAINED_RESULT = """iro.strategy @s uses(@hold v1, @move v1, @pause v1, @look v1) {
+  %m = iro.resource @m : participant
+  iro.parallel @both capture(%m) {
+    iro.sequence @reading capture(%m) {
+      %r = iro.access %m protected_current {
+      ^(%lease):
+        iro.call @hold(%lease) -> retained int
+      }
+      %x = iro.call @move(%r) -> int
+    }
+    iro.sequence @snapshotting capture(%m) {
+      %p = iro.call @pause() -> int
+      iro.access %m snapshot {
+      ^(%lease):
+        %v = iro.call @look(%lease) -> int
+      }
+    }
+  }
+}
+"""
+
+
+def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_result() -> None:
+    """As a backward pass reaches the weights through the prediction it is given, and may move them as it goes."""
+    seen = []
+    owner = OnDevice([])
+
+    def move(retained):
+        owner.box[0] = "elsewhere"
+        time.sleep(0.1)
+        owner.box[0] = 0
+        return 0
+
+    installed = {
+        "hold": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="hold")(
+            lambda lease: 0
+        ),
+        "move": implementation(version=1, inputs=("retained int",), outputs=("int",), effects=["device"], name="move")(move),
+        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(
+            lambda handle: seen.append(handle) or 0
+        ),
+    }
+    run = accepted_run(MOVED_THROUGH_A_RETAINED_RESULT, installed=installed)
+    target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    coordinator = Coordinator(prepared, {"m": owner}, installed, {"host": Host(), "cuda:0": Copier()}, checked=True)
+    outcome = asyncio.run(coordinator.run())
+    assert outcome.status == "succeeded", outcome.error
+    assert seen == [("snapshot", [0])], "the copy waited for the call the retained result's lease reaches the storage through"

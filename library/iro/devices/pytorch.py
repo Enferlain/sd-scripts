@@ -113,8 +113,7 @@ class PyTorchDevice:
             self.stream.wait_stream(outer)
             # Addresses are read before anything is freed: an emptied storage's address reads as 0.
             pieces = []
-            for tensor in storage:
-                assert isinstance(tensor, torch.Tensor) and tensor.device == self.device
+            for tensor in map(self._named, storage):
                 memory = tensor.untyped_storage()
                 pieces.append((tensor, memory, memory.data_ptr()))
             emptied: dict[int, _HostCopy] = {}  # by storage address, for tensors sharing one storage
@@ -136,6 +135,8 @@ class PyTorchDevice:
     def fill(self, storage: Sequence[object]) -> Recorded:
         """Brings each tensor's storage back from its host copy, on this stream, before any later work on it.
 
+        The tensors are the ones emptied: still this device's, with no storage.
+
         The storage comes back at a new address; the tensors keep their
         identity, but anything holding the old address, such as a captured
         graph, would be stale, which is why only storage nothing else refers
@@ -143,8 +144,7 @@ class PyTorchDevice:
         """
         with self._current():
             filled: set[int] = set()
-            for tensor in storage:
-                assert isinstance(tensor, torch.Tensor)
+            for tensor in map(self._named, storage):
                 copy = self._host[id(tensor)]
                 if id(copy) in filled:
                     continue
@@ -164,10 +164,11 @@ class PyTorchDevice:
         copy has its tensor's shape, strides and offset into a copy of its
         storage, so tensors sharing a storage share one copy, as they did.
         The copies hold no autograd history. Their memory is the caching
-        allocator's for this stream, freed once nothing refers to them; work
-        on another stream that reads them must record that stream on them
-        first (``record_stream``). The runtime's calls on this device run on
-        this stream, so they need not.
+        allocator's for this stream, freed once nothing refers to them. The
+        runtime's calls in turn run on this stream, so they need no more;
+        overlapped work on another stream marks the copies as used by that
+        stream first (``record_stream``), so their memory is not reused
+        before it ends (D15).
         """
         outer = torch.accelerator.current_stream(self.device.index)
         with self._current():
@@ -175,8 +176,7 @@ class PyTorchDevice:
             self._follow(after)
             copied: dict[int, torch.UntypedStorage] = {}  # by storage address, for tensors sharing one storage
             copies = []
-            for tensor in storage:
-                assert isinstance(tensor, torch.Tensor) and tensor.device == self.device
+            for tensor in map(self._named, storage):
                 memory = tensor.untyped_storage()
                 if memory.nbytes() == 0 and tensor.numel():
                     raise RuntimeError("the storage is not on the device: a snapshot copies storage that is present")
@@ -187,6 +187,15 @@ class PyTorchDevice:
                 view = torch.empty(0, dtype=tensor.dtype, device=self.device)
                 copies.append(view.set_(copy, tensor.storage_offset(), tensor.size(), tensor.stride()))
             return copies, self.completion()
+
+    def _named(self, tensor: object) -> torch.Tensor:
+        """A tensor an owner named as device storage, checked: storage crosses a seam, so a wrong one raises."""
+        if not isinstance(tensor, torch.Tensor):
+            raise TypeError(f"{self.name}: device storage is named by tensors, and the owner named a {type(tensor).__name__}")
+        if tensor.device != self.device:
+            where = "kept on the host between uses" if tensor.device.type == "cpu" else f"on {tensor.device}"
+            raise ValueError(f"{self.name}: the owner named storage {where}; this adapter copies only storage on {self.device}")
+        return tensor
 
     def completion(self) -> Recorded:
         return Recorded(self.stream.record_event(), self.stream)

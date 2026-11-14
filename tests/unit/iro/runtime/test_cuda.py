@@ -461,3 +461,20 @@ def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_
     assert seen["stream_busy"], "the copy and the call reading it were queued behind the first update, not after a host wait"
     assert torch.all(seen["snapshot"] == 1.0), "the snapshot holds the version it leased"
     assert torch.all(owner.tensor == 5.0), "the later update went to the live state, not the snapshot"
+
+
+def test_a_capture_keeps_strides_copies_empty_tensors_and_refuses_storage_it_does_not_hold() -> None:
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    matrix = torch.rand(64, 32, device=device.device)
+    transposed = matrix.t()  # not contiguous
+    empty = torch.empty(0, device=device.device)
+    copies, done = device.capture((transposed, empty), ())
+    done.wait()
+    assert not copies[0].is_contiguous() and copies[0].stride() == transposed.stride() and torch.equal(copies[0], transposed)
+    assert copies[1].numel() == 0 and copies[1].device == device.device
+    with pytest.raises(ValueError, match="kept on the host between uses"):
+        device.capture((torch.zeros(3),), ())
+    with pytest.raises(TypeError, match="named by tensors"):
+        device.capture(([1.0, 2.0],), ())

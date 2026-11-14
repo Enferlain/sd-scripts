@@ -205,10 +205,11 @@ class Coordinator:
         self._holding: dict[str, int] = defaultdict(int)
         self._moves: dict[str, asyncio.Task] = {}
         # Snapshots of device storage (D15): where each participant's storage lives, the captures still
-        # being queued, by participant, and the updates still being queued, which a capture must follow.
+        # being queued, by participant, and the calls reaching its storage still being queued, which a
+        # capture follows; by participant on a device, so bounded by those participants.
         self._placed = dict(prepared.placed)
         self._capturing: dict[str, set[asyncio.Task]] = {}
-        self._writing: dict[str, int] = defaultdict(int)  # by participant, so bounded by the participants updated
+        self._using: dict[str, int] = defaultdict(int)
         unknown = set(self.devices) - {facts.name for facts in prepared.target.devices}
         if unknown:
             raise ValueError(f"adapters for devices the run was not prepared for: {', '.join(sorted(unknown))}")
@@ -946,17 +947,23 @@ class Coordinator:
             if self.explore is not None:
                 for _ in range(self.explore.randrange(3)):
                     await asyncio.sleep(0)
-            # Calls not declared safe for concurrent use run one at a time per participant (D15), and an
-            # update waits until the captures of its participant's snapshots are queued before it.
+            # Calls not declared safe for concurrent use run one at a time per participant (D15). A call that
+            # reaches a participant's device storage, through a lease or a retained result that keeps one,
+            # waits until the captures already asked for of it are queued; a capture waits for such calls
+            # already being queued (D15).
             busy: set[str] = set()
-            writes = [lease.resource for lease in leased if lease.mode == AccessMode.OWNER_UPDATE] if leased else []
+            touching: list[str] = []
+            if self._placed:
+                placed = self._placed
+                reached = [*leased, *(lease for product in borrowed for lease in product.leases)]
+                touching = [lease.resource for lease in reached if lease.capture is None and lease.resource in placed]
             if not step.safe and leased:
                 busy = {lease.resource for lease in leased}
-            if busy or (writes and self._capturing):
+            if busy or (touching and self._capturing):
                 capturing = self._capturing
                 await self._until(
-                    lambda: self.closing or not (busy & self._busy or any(r in capturing for r in writes)),
-                    *(("resource", r) for r in busy.union(writes)),
+                    lambda: self.closing or not (busy & self._busy or any(r in capturing for r in touching)),
+                    *(("resource", r) for r in busy.union(touching)),
                 )
                 self._admission_point()
             after = [c for lease in leased for c in self.protection[lease.resource].pending]
@@ -964,8 +971,8 @@ class Coordinator:
             reaches = tuple(lease.handle for lease in leased)
             assert self._executor is not None
             self._busy |= busy
-            for name in writes:
-                self._writing[name] += 1
+            for name in touching:
+                self._using[name] += 1
             self._working += 1
             try:
                 reports, completions = await asyncio.get_running_loop().run_in_executor(
@@ -974,9 +981,9 @@ class Coordinator:
             finally:
                 self._working -= 1
                 self._busy -= busy
-                for name in writes:
-                    self._writing[name] -= 1
-                    if not self._writing[name] and name in self._capturing:
+                for name in touching:
+                    self._using[name] -= 1
+                    if not self._using[name] and name in self._capturing:
                         self._changed(("resource", name))
             if not step.wait:
                 # Later work on these participants follows each call's completion (D15).
@@ -1259,6 +1266,7 @@ class Coordinator:
                 self._holding[name] += 1  # the capture keeps the storage on the device until its copy is queued
             lease.capture = task = self._spawn(self._capture(lease, capture, adapter))
             self._capturing.setdefault(name, set()).add(task)
+            task.add_done_callback(lambda ended: self._captured(name, ended))
         return lease
 
     def _release_product(self, product: Product, how: str) -> None:
@@ -1299,9 +1307,11 @@ class Coordinator:
             self._moves[name] = self._spawn(self._leave(name, self._moves.get(name)))
 
     # Snapshots of device storage (D15): an owner's snapshot lease names the storage its version lives
-    # in, and the runtime queues the copy on the device's stream: after the work that produced the
-    # version, and before any later update of it, which waits until the copy is queued. The access's
-    # calls receive the handle the owner builds over the copies, and follow the copy's completion.
+    # in, and the runtime queues the copy on the device's stream between the participant's calls: after
+    # the calls on it already being queued, and before later ones, which wait until the copy is queued.
+    # So the copy holds what the work before it left, including storage a route or an implementation
+    # moves within a use. The access's calls receive the handle the owner builds over the copies, and
+    # follow the copy's completion.
 
     def _capturer(self, name: str, mode: AccessMode, version: Version) -> CopiesStorage:
         if mode != AccessMode.SNAPSHOT:
@@ -1322,13 +1332,14 @@ class Coordinator:
     async def _capture(self, lease: Held, capture: Capture, adapter: CopiesStorage) -> None:
         name = lease.resource
         try:
-            if self._writing[name]:
-                # An update still being queued: it may not have moved the version yet, so the check below
-                # waits for it; the update moves the version inside its call, so the check then fails.
-                await self._until(lambda: self.closing or not self._writing[name], ("resource", name))
+            if self._using[name]:
+                await self._until(lambda: self.closing or not self._using[name], ("resource", name))
                 self._admission_point()
+            if not lease.active:
+                return  # released before its copy was queued, as when its request was cancelled: nothing reads it
             if name in self._leaving:
                 await self._present(name)
+            # A guard: no writer was leased when the snapshot was, and updates leased since wait for this copy.
             if lease.version != self.owners[name].current(name):
                 raise RunFailure(f"@{name}: an update moved it past its snapshot's version before the capture was queued")
             after = list(self.protection[name].pending)
@@ -1350,14 +1361,18 @@ class Coordinator:
             failed = RunFailure(f"@{name}: capturing its snapshot failed: {error!r}")
             self._note_failure(failed)
             raise failed from error
-        finally:
-            tasks = self._capturing[name]
-            tasks.discard(asyncio.current_task())
-            if not tasks:
-                del self._capturing[name]
-            self._changed(("resource", name))
-            if name in self._leaving:
-                self._unhold(name)
+
+    def _captured(self, name: str, task: asyncio.Task) -> None:
+        """A capture ended, however it ended, cancelled before it began included: later calls on it may go."""
+        if not task.cancelled():
+            task.exception()  # a failure is already noted; this marks it seen
+        tasks = self._capturing[name]
+        tasks.discard(task)
+        if not tasks:
+            del self._capturing[name]
+        self._changed(("resource", name))
+        if name in self._leaving:
+            self._unhold(name)
 
     # Leaving the device (D15): a permitted participant's storage leaves when its last lease is
     # released, unless it is leased again before that move begins, and comes back as the first work

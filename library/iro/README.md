@@ -129,12 +129,16 @@ before its move begins stays. After its last use the storage stays released.
 A snapshot of device state is a copy the runtime makes (D15). The owner's
 snapshot lease hands over a `seams.Capture`: the storage its version lives in
 and how its handle is built over copies. The adapter copies that storage on
-the device preparation placed the participant on, after the work that
-produced the version, and the access's calls receive the handle the owner
-builds. An update of the participant through an `owner_update` lease waits
-until every capture already asked for is queued, so an `at_request` snapshot holds the version at the request
-however late its handler runs. A capture copies live storage, so it realizes
-only the current version, and copies on the device for now.
+the device preparation placed the participant on, and the access's calls
+receive the handle the owner builds. The copy is queued between the
+participant's calls: it follows the calls already being queued that reach
+its storage, through a lease or a retained result that keeps one, and later
+ones wait until it is queued. So it holds
+what the work before it left, storage a route moves within a use included,
+and an `at_request` snapshot holds the version at the request however late
+its handler runs. A capture copies live storage, so it realizes only the
+current version. It copies on the device, and the adapter refuses, with the
+reason, storage kept on the host between uses.
 
 Device work takes turns: one admission at a time per device, granted in
 request order. An access takes its leases and its turn together, so it never
