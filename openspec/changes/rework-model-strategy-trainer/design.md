@@ -2912,7 +2912,8 @@ permitted under D8; the old experiments' pre-factory rejection checks are not
 a universal construction order.
 
 Use an isolated research package at
-`docs_design/models-strategy-trainer/xdsl_language/`. Its recurring stage is
+`docs_design/models-strategy-trainer/xdsl_language/` (since rewritten as
+`library/iro` and moved to that folder's `_deprecated/`). Its recurring stage is
 shared language construction/verification/lowering for multiple compositions;
 the existing `xdsl_candidate` and Pliron packages retain the bounded experiment
 evidence. Anticipated internal seams are `contracts.py`, `dialects.py`,

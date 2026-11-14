@@ -1,0 +1,1894 @@
+{
+ "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+ "gil_enabled": [
+  false,
+  false,
+  false
+ ],
+ "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+ "runs": 3,
+ "gates": {
+  "cheap_1": {
+   "runtime_excess_us": 181.25,
+   "reference_excess_us": 1.11,
+   "allowed_us": 2.11,
+   "passes": false
+  },
+  "cheap_4": {
+   "runtime_excess_us": 198.64,
+   "reference_excess_us": 2.11,
+   "allowed_us": 3.11,
+   "passes": false
+  },
+  "cheap_16": {
+   "runtime_excess_us": 244.02,
+   "reference_excess_us": 6.11,
+   "allowed_us": 7.33,
+   "passes": false
+  },
+  "dormant_256": {
+   "per_round_us": 213.65,
+   "zero_dormant_us": 200.61,
+   "allowed_increase_us": 20.06,
+   "passes": true
+  },
+  "dormant_1024": {
+   "per_round_us": 208.19,
+   "zero_dormant_us": 200.61,
+   "allowed_increase_us": 20.06,
+   "passes": true
+  }
+ },
+ "runtime_reports": [
+  {
+   "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+   "gil_enabled": false,
+   "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+   "iterations": 2000,
+   "repeats": 7,
+   "median_us_per_iteration": {
+    "cheap_1": {
+     "runtime_us": 176.88,
+     "direct_us": 0.07
+    },
+    "cheap_4": {
+     "runtime_us": 196.36,
+     "direct_us": 0.19
+    },
+    "cheap_16": {
+     "runtime_us": 244.67,
+     "direct_us": 0.65
+    },
+    "dormant_0": {
+     "runtime_us": 205.17,
+     "per_round_us": 200.61,
+     "fixed_ms": -5.76
+    },
+    "dormant_256": {
+     "runtime_us": 215.54,
+     "per_round_us": 213.65,
+     "fixed_ms": 1.08
+    },
+    "dormant_1024": {
+     "runtime_us": 217.07,
+     "per_round_us": 214.58,
+     "fixed_ms": 3.88
+    },
+    "leases_1": {
+     "runtime_us": 229.47
+    },
+    "leases_4": {
+     "runtime_us": 247.33
+    },
+    "leases_16": {
+     "runtime_us": 332.09
+    }
+   },
+   "samples_us": {
+    "cheap_1": {
+     "runtime_us": [
+      172.7145754994126,
+      180.3772229995957,
+      170.87563799941563,
+      195.15097700059414,
+      176.87582100006694,
+      183.47016400002758,
+      172.6861844999803
+     ],
+     "direct_us": [
+      0.08841450107865967,
+      0.07485350033675786,
+      0.07522849955421407,
+      0.07617899973411113,
+      0.074219000453013,
+      0.0736285001039505,
+      0.07338850082305726
+     ]
+    },
+    "cheap_4": {
+     "runtime_us": [
+      209.68825099953392,
+      192.29685850041278,
+      221.89233850076562,
+      196.63901300009456,
+      193.11505950099672,
+      196.3627045006433,
+      190.35447299938824
+     ],
+     "direct_us": [
+      0.18314849876333028,
+      0.1825640010792995,
+      0.18666400137590244,
+      0.21335000019462314,
+      0.18196400014858227,
+      0.2172304994019214,
+      0.1858590003394056
+     ]
+    },
+    "cheap_16": {
+     "runtime_us": [
+      249.95823399876826,
+      236.52218750066822,
+      249.38976049998018,
+      252.9343659989536,
+      242.690004499309,
+      244.67020049996793,
+      242.44862149862456
+     ],
+     "direct_us": [
+      0.9265195003536064,
+      0.9586804990249219,
+      0.6456659994000802,
+      0.6399605008482467,
+      0.6486010006483411,
+      0.6382749998010695,
+      0.6696519994875416
+     ]
+    },
+    "dormant_0": {
+     "runtime_us": [
+      189.9736129998928,
+      205.16606800083537,
+      205.69890399929136,
+      184.25672150078753,
+      207.89307199993345,
+      197.72919199931493,
+      211.1656175002281
+     ],
+     "per_round_us": [
+      212.18919125021785,
+      198.66909374923125,
+      198.08044399997016,
+      205.65535874993657,
+      217.32016750047478,
+      200.6100217504354,
+      197.14538350035582
+     ],
+     "fixed_ms": [
+      -44.431156500650104,
+      12.99394850320823,
+      15.236919998642406,
+      -42.797274498298066,
+      -18.854191001082654,
+      -5.761659502240946,
+      28.04046799974458
+     ]
+    },
+    "dormant_256": {
+     "runtime_us": [
+      220.9666564995132,
+      208.74890249979217,
+      225.00898900034372,
+      215.53560649954306,
+      242.7123979996395,
+      210.8356829994591,
+      199.4198315005633
+     ],
+     "per_round_us": [
+      213.64848800021718,
+      221.95958324937237,
+      218.5772872499001,
+      214.99454500008142,
+      197.04929675026506,
+      210.89033700081927,
+      206.28317474984215
+     ],
+     "fixed_ms": [
+      14.636336998592014,
+      -26.42136149916041,
+      12.863403500887216,
+      1.082122998923296,
+      91.3262024987489,
+      -0.10930800272035412,
+      -13.726686498557683
+     ]
+    },
+    "dormant_1024": {
+     "runtime_us": [
+      217.79332450023503,
+      216.5199589999247,
+      212.59120650029217,
+      224.786935499651,
+      223.83378550148336,
+      217.06613100104732,
+      210.79746249961318
+     ],
+     "per_round_us": [
+      226.44239399960497,
+      214.5821624999371,
+      206.8668952497319,
+      204.8448557507072,
+      243.54541774937388,
+      202.92966474971763,
+      216.58670025044557
+     ],
+     "fixed_ms": [
+      -17.298138998739887,
+      3.875592999975197,
+      11.448622501120553,
+      39.884159497887595,
+      -39.42326449578104,
+      28.272932502659387,
+      -11.578475501664798
+     ]
+    },
+    "leases_1": {
+     "runtime_us": [
+      243.7433234990749,
+      229.4673625001451,
+      206.20456949836807,
+      234.19022150119417,
+      208.77268649928737,
+      224.40163149985892,
+      232.7198729999509
+     ]
+    },
+    "leases_4": {
+     "runtime_us": [
+      255.5447535014537,
+      247.33109199951286,
+      237.13871899963124,
+      247.24538249938632,
+      237.598452000384,
+      254.75310899855685,
+      249.68733050081937
+     ]
+    },
+    "leases_16": {
+     "runtime_us": [
+      331.84992849965056,
+      326.48138199874666,
+      337.2300665014336,
+      341.722770499473,
+      339.72892699966906,
+      332.09393549987,
+      318.00809699961974
+     ]
+    }
+   }
+  },
+  {
+   "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+   "gil_enabled": false,
+   "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+   "iterations": 2000,
+   "repeats": 7,
+   "median_us_per_iteration": {
+    "cheap_1": {
+     "runtime_us": 186.87,
+     "direct_us": 0.08
+    },
+    "cheap_4": {
+     "runtime_us": 198.82,
+     "direct_us": 0.18
+    },
+    "cheap_16": {
+     "runtime_us": 248.6,
+     "direct_us": 0.64
+    },
+    "dormant_0": {
+     "runtime_us": 199.39,
+     "per_round_us": 198.92,
+     "fixed_ms": -8.28
+    },
+    "dormant_256": {
+     "runtime_us": 208.55,
+     "per_round_us": 214.82,
+     "fixed_ms": 2.06
+    },
+    "dormant_1024": {
+     "runtime_us": 220.43,
+     "per_round_us": 208.19,
+     "fixed_ms": 28.11
+    },
+    "leases_1": {
+     "runtime_us": 218.82
+    },
+    "leases_4": {
+     "runtime_us": 235.97
+    },
+    "leases_16": {
+     "runtime_us": 320.74
+    }
+   },
+   "samples_us": {
+    "cheap_1": {
+     "runtime_us": [
+      189.99599000017042,
+      172.24842099858506,
+      180.86565399971732,
+      206.91706649995467,
+      190.19800550086075,
+      186.74416999965615,
+      186.86759649972373
+     ],
+     "direct_us": [
+      0.07525900036853272,
+      0.07771349919494241,
+      0.1162054995802464,
+      0.07401400034723338,
+      0.07500900028389879,
+      0.07407849989249371,
+      0.08063399945967831
+     ]
+    },
+    "cheap_4": {
+     "runtime_us": [
+      209.33960599904822,
+      182.66042950017436,
+      188.91875900044397,
+      198.8236599991069,
+      209.0403484999115,
+      202.4560019999626,
+      190.62793599914585
+     ],
+     "direct_us": [
+      0.1847040002758149,
+      0.18215350064565428,
+      0.18553399968368467,
+      0.22019100106263068,
+      0.1834539998526452,
+      0.20396450054249726,
+      0.18316900059289765
+     ]
+    },
+    "cheap_16": {
+     "runtime_us": [
+      253.86345650076694,
+      239.6818439992785,
+      250.02641700120878,
+      238.66693300078623,
+      247.0869210010278,
+      248.59959350033023,
+      249.2382345008082
+     ],
+     "direct_us": [
+      0.6379405003826832,
+      0.6343149998428999,
+      0.66052150032192,
+      0.6361300002026837,
+      0.6264849998842692,
+      0.6077340003685094,
+      0.6530464997922536
+     ]
+    },
+    "dormant_0": {
+     "runtime_us": [
+      205.26768200033985,
+      203.73445950099267,
+      199.38660700063338,
+      223.74570349893474,
+      189.0050424990477,
+      195.6493435009179,
+      188.43595200087293
+     ],
+     "per_round_us": [
+      209.4092607494531,
+      191.532526499941,
+      203.46274424991861,
+      193.5203150005691,
+      194.77045350049593,
+      207.39683949977916,
+      198.92004449957312
+     ],
+     "fixed_ms": [
+      -8.283157498226501,
+      24.403866002103314,
+      -8.152274498570478,
+      60.45077699673129,
+      -11.530822002896457,
+      -23.494991997722536,
+      -20.968184997400385
+     ]
+    },
+    "dormant_256": {
+     "runtime_us": [
+      214.0618524990714,
+      215.85087700077565,
+      200.10368449948146,
+      207.14024100016104,
+      225.02073150099022,
+      200.7283529983397,
+      208.5525950005831
+     ],
+     "per_round_us": [
+      207.95937225011585,
+      214.8189587496745,
+      230.892987750849,
+      213.9720169998327,
+      216.5931144991191,
+      198.025967751164,
+      220.8501762488595
+     ],
+     "fixed_ms": [
+      12.204960497911088,
+      2.063836502202321,
+      -61.578606502735056,
+      -13.663551999343326,
+      16.855234003742225,
+      5.404770494351396,
+      -24.595162496552803
+     ]
+    },
+    "dormant_1024": {
+     "runtime_us": [
+      230.7131465004204,
+      220.43083800053864,
+      217.41040300003078,
+      224.0909925003507,
+      222.24736849966575,
+      212.39617450009973,
+      219.05618900018453
+     ],
+     "per_round_us": [
+      201.01555849942088,
+      215.95966449967818,
+      210.3507219999301,
+      197.75206550002622,
+      208.19161024974164,
+      219.32910874966183,
+      203.81285800067417
+     ],
+     "fixed_ms": [
+      59.39517600199906,
+      8.942347001720918,
+      14.119362000201363,
+      52.67785400064895,
+      28.11151649984822,
+      -13.86586849912419,
+      30.486661999020725
+     ]
+    },
+    "leases_1": {
+     "runtime_us": [
+      225.57643950131023,
+      223.94594050092564,
+      224.1574119998404,
+      216.9908720006788,
+      205.3369234999991,
+      218.81703550025122,
+      210.90601949981647
+     ]
+    },
+    "leases_4": {
+     "runtime_us": [
+      233.40672650010674,
+      224.1113714990206,
+      245.93343150081634,
+      227.90691000045626,
+      235.9698344989738,
+      267.2337299991341,
+      250.0546145001863
+     ]
+    },
+    "leases_16": {
+     "runtime_us": [
+      321.63749800020014,
+      327.8214679994562,
+      317.5351840000076,
+      303.83717350014194,
+      310.2060224991874,
+      327.5128740006039,
+      320.74190650018863
+     ]
+    }
+   }
+  },
+  {
+   "python": "3.14.5 free-threading build (main, Jun  2 2026, 22:25:39) [Clang 22.1.3 ]",
+   "gil_enabled": false,
+   "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+   "iterations": 2000,
+   "repeats": 7,
+   "median_us_per_iteration": {
+    "cheap_1": {
+     "runtime_us": 181.32,
+     "direct_us": 0.07
+    },
+    "cheap_4": {
+     "runtime_us": 201.55,
+     "direct_us": 0.18
+    },
+    "cheap_16": {
+     "runtime_us": 238.12,
+     "direct_us": 0.69
+    },
+    "dormant_0": {
+     "runtime_us": 197.12,
+     "per_round_us": 201.41,
+     "fixed_ms": -9.34
+    },
+    "dormant_256": {
+     "runtime_us": 207.08,
+     "per_round_us": 212.1,
+     "fixed_ms": -8.23
+    },
+    "dormant_1024": {
+     "runtime_us": 222.47,
+     "per_round_us": 202.8,
+     "fixed_ms": 33.54
+    },
+    "leases_1": {
+     "runtime_us": 216.23
+    },
+    "leases_4": {
+     "runtime_us": 244.89
+    },
+    "leases_16": {
+     "runtime_us": 315.2
+    }
+   },
+   "samples_us": {
+    "cheap_1": {
+     "runtime_us": [
+      179.97097650004434,
+      199.0434390008886,
+      181.31595950035262,
+      179.80126199836377,
+      180.39761500040186,
+      185.3221265009779,
+      183.62748350045877
+     ],
+     "direct_us": [
+      0.07514400022046175,
+      0.09094949928112328,
+      0.07487900074920617,
+      0.07427399941661861,
+      0.07494850069633685,
+      0.07410850048472639,
+      0.08002899994608015
+     ]
+    },
+    "cheap_4": {
+     "runtime_us": [
+      215.7343189992389,
+      206.34419599991816,
+      185.54870399930223,
+      201.54775999981211,
+      188.176317999023,
+      206.28475049852568,
+      188.32251650019316
+     ],
+     "direct_us": [
+      0.1840385011746548,
+      0.18317849935556296,
+      0.18260349861520808,
+      0.181803499799571,
+      0.20106950069020968,
+      0.18347849982092157,
+      0.1834385002439376
+     ]
+    },
+    "cheap_16": {
+     "runtime_us": [
+      241.0240490007709,
+      233.83592249956564,
+      252.073763500448,
+      243.2194419998268,
+      221.63236449887336,
+      238.11726949861622,
+      236.78024000037112
+     ],
+     "direct_us": [
+      0.6273434992181137,
+      0.6887460003781598,
+      0.6977869998081587,
+      0.7551489998149918,
+      0.6969070000195643,
+      0.6650904997513862,
+      0.6672355011687614
+     ]
+    },
+    "dormant_0": {
+     "runtime_us": [
+      220.92296949995216,
+      196.7410414999904,
+      195.7800589989347,
+      197.47221449870267,
+      209.96406449921778,
+      194.94321849924745,
+      197.123414998714
+     ],
+     "per_round_us": [
+      192.28396675043768,
+      201.4114769999651,
+      206.65963050123537,
+      204.3942580003204,
+      196.93727274989214,
+      192.1574275002058,
+      215.11285150063486
+     ],
+     "fixed_ms": [
+      57.27800549902895,
+      -9.340870999949402,
+      -21.759143004601356,
+      -13.844087003235472,
+      26.053583498651278,
+      5.571581998083275,
+      -35.97887300384173
+     ]
+    },
+    "dormant_256": {
+     "runtime_us": [
+      208.04377300009946,
+      200.02193250002165,
+      207.07762349957193,
+      196.35219449992292,
+      202.1041169991804,
+      230.22872100045788,
+      223.33857600096962
+     ],
+     "per_round_us": [
+      212.09937525054556,
+      215.48230400003376,
+      214.78402674983954,
+      222.94805374986026,
+      206.2169927503419,
+      211.33228524922743,
+      204.60097049908654
+     ],
+     "fixed_ms": [
+      -8.1112045008922,
+      -30.92074300002423,
+      -15.412806500535225,
+      -53.191718499874696,
+      -8.225751502322964,
+      37.79287150246091,
+      37.47521100376616
+     ]
+    },
+    "dormant_1024": {
+     "runtime_us": [
+      220.76189900144527,
+      218.834061999587,
+      214.67887149992748,
+      239.17035900012706,
+      223.7022254994372,
+      222.5996284996654,
+      222.47187349967135
+     ],
+     "per_round_us": [
+      200.3945237484004,
+      204.4374852503097,
+      202.80445575008343,
+      193.29232224936277,
+      206.9309232510932,
+      210.94016850020125,
+      199.86343950040464
+     ],
+     "fixed_ms": [
+      40.73475050608977,
+      28.793153498554602,
+      23.748831499688094,
+      91.75607350152859,
+      33.542604496688,
+      23.318919998928322,
+      45.21686799853342
+     ]
+    },
+    "leases_1": {
+     "runtime_us": [
+      216.22774949901213,
+      214.3050279992167,
+      233.86911250054254,
+      222.97494300073595,
+      231.51533099917287,
+      215.14046400079678,
+      207.29293699878326
+     ]
+    },
+    "leases_4": {
+     "runtime_us": [
+      245.07852100032326,
+      237.6560939992487,
+      244.88770700008902,
+      251.45137999970757,
+      238.8813300003676,
+      227.68955749961606,
+      245.02301849861396
+     ]
+    },
+    "leases_16": {
+     "runtime_us": [
+      315.20392399943375,
+      326.1665185000311,
+      337.4626115000865,
+      286.6573569990578,
+      303.51345500093885,
+      297.5358059993596,
+      329.39522249944275
+     ]
+    }
+   }
+  }
+ ],
+ "reference_reports": [
+  {
+   "environment": {
+    "python": "3.14.5",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+    "processor": "",
+    "gc_enabled": true,
+    "clock": "perf_counter_ns",
+    "iterations": 10000,
+    "repeats": 7
+   },
+   "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+   "current_loop": {
+    "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+    "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+    "scope": "actual call expression with direct fixture facade; argument dispatch only"
+   },
+   "timing_us_per_call": {
+    "harness_floor": {
+     "median": 0.0244342,
+     "min": 0.0241171,
+     "max": 0.0411119,
+     "samples": [
+      0.024255199999999998,
+      0.0244342,
+      0.0268934,
+      0.0243231,
+      0.025019200000000002,
+      0.0411119,
+      0.0241171
+     ]
+    },
+    "candidate_1_cheap": {
+     "median": 2.5493,
+     "min": 2.5124859,
+     "max": 2.7558236000000003,
+     "samples": [
+      2.5440936,
+      2.5124859,
+      2.6255528,
+      2.5400166,
+      2.5493,
+      2.7558236000000003,
+      2.745648
+     ]
+    },
+    "direct_1_cheap": {
+     "median": 1.4377668000000001,
+     "min": 1.4199772,
+     "max": 1.5886665,
+     "samples": [
+      1.4377668000000001,
+      1.4438321,
+      1.5886665,
+      1.4315627,
+      1.4391671,
+      1.4199772,
+      1.435644
+     ]
+    },
+    "candidate_4_cheap": {
+     "median": 3.7210148,
+     "min": 3.6867701999999998,
+     "max": 3.9377,
+     "samples": [
+      3.7130585999999997,
+      3.7148577,
+      3.9377,
+      3.7325415,
+      3.7358846,
+      3.6867701999999998,
+      3.7210148
+     ]
+    },
+    "direct_4_cheap": {
+     "median": 1.6097686000000002,
+     "min": 1.6069695,
+     "max": 1.6675425,
+     "samples": [
+      1.6097686000000002,
+      1.6069695,
+      1.6095575,
+      1.612355,
+      1.6675425,
+      1.6268127,
+      1.6071138
+     ]
+    },
+    "candidate_16_cheap": {
+     "median": 8.4467824,
+     "min": 8.3934128,
+     "max": 8.5591389,
+     "samples": [
+      8.4808053,
+      8.4467824,
+      8.3934128,
+      8.4670867,
+      8.3950185,
+      8.4070579,
+      8.5591389
+     ]
+    },
+    "direct_16_cheap": {
+     "median": 2.2297743999999997,
+     "min": 2.2121226000000003,
+     "max": 2.2529426,
+     "samples": [
+      2.2529426,
+      2.2247052,
+      2.2297743999999997,
+      2.2312784999999997,
+      2.2372166,
+      2.2121226000000003,
+      2.2193368999999996
+     ]
+    },
+    "candidate_4_compute": {
+     "median": 38.801396399999994,
+     "min": 38.6608829,
+     "max": 40.0786928,
+     "samples": [
+      40.0786928,
+      38.9842897,
+      38.911305999999996,
+      38.801396399999994,
+      38.6751705,
+      38.7579014,
+      38.6608829
+     ]
+    },
+    "direct_4_compute": {
+     "median": 37.053875999999995,
+     "min": 36.5030415,
+     "max": 38.853017099999995,
+     "samples": [
+      38.853017099999995,
+      36.5030415,
+      37.6834141,
+      36.5127653,
+      36.7546823,
+      37.053875999999995,
+      38.502537600000004
+     ]
+    },
+    "current_loop_4_cheap_dispatch": {
+     "median": 2.3257904,
+     "min": 2.3013141,
+     "max": 2.3680547,
+     "samples": [
+      2.3568289,
+      2.3013141,
+      2.3257904,
+      2.3193945,
+      2.3142803,
+      2.3680547,
+      2.3388733999999998
+     ]
+    },
+    "workflow_tick": {
+     "median": 10.6374326,
+     "min": 10.384739,
+     "max": 10.8316313,
+     "samples": [
+      10.561644099999999,
+      10.384739,
+      10.6827702,
+      10.461125299999999,
+      10.7240324,
+      10.6374326,
+      10.8316313
+     ]
+    },
+    "workflow_lookup": {
+     "median": 0.08530289999999999,
+     "min": 0.0830698,
+     "max": 0.0909132,
+     "samples": [
+      0.0870215,
+      0.0843853,
+      0.08457930000000001,
+      0.0830698,
+      0.0909132,
+      0.0902521,
+      0.08530289999999999
+     ]
+    },
+    "input_admission": {
+     "median": 0.2892433,
+     "min": 0.2841391,
+     "max": 0.31029629999999997,
+     "samples": [
+      0.30515359999999997,
+      0.2841716,
+      0.28838569999999997,
+      0.2892433,
+      0.29566950000000003,
+      0.2841391,
+      0.31029629999999997
+     ]
+    },
+    "attempt_correlation": {
+     "median": 2.2820671999999997,
+     "min": 2.2433552,
+     "max": 2.5237697,
+     "samples": [
+      2.3394453,
+      2.2433552,
+      2.2820671999999997,
+      2.2492642999999997,
+      2.5237697,
+      2.2735544,
+      2.4501064
+     ]
+    },
+    "workflow_tick_dormant_256": {
+     "median": 10.5892301,
+     "min": 10.424883,
+     "max": 10.9254274,
+     "samples": [
+      10.8330927,
+      10.424883,
+      10.7293336,
+      10.535410599999999,
+      10.527861399999999,
+      10.5892301,
+      10.9254274
+     ]
+    },
+    "workflow_tick_dormant_1024": {
+     "median": 10.545706299999999,
+     "min": 10.4609833,
+     "max": 11.8213507,
+     "samples": [
+      10.545706299999999,
+      10.5447792,
+      10.711506799999999,
+      10.4609833,
+      11.8213507,
+      10.5363998,
+      10.8611577
+     ]
+    },
+    "workflow_tick_units_2": {
+     "median": 11.2609929,
+     "min": 11.0779315,
+     "max": 12.7694794,
+     "samples": [
+      11.2609929,
+      11.0779315,
+      12.7694794,
+      11.2341677,
+      11.7704414,
+      11.2522966,
+      11.308189
+     ]
+    },
+    "workflow_tick_units_16": {
+     "median": 19.5431933,
+     "min": 19.428068,
+     "max": 21.371497899999998,
+     "samples": [
+      21.371497899999998,
+      19.517413700000002,
+      20.1434108,
+      21.0362477,
+      19.428068,
+      19.5431933,
+      19.4477539
+     ]
+    }
+   },
+   "allocations": {
+    "candidate_1_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1704,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_1_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1728,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_16_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1824,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_16_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_compute": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 2024,
+     "retained_extra_bytes_before_gc": 1192,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_compute": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1164,
+     "retained_extra_bytes_before_gc": 680,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "current_loop_4_cheap_dispatch": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1492,
+     "retained_extra_bytes_before_gc": 848,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_lookup": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 184,
+     "retained_extra_bytes_before_gc": 184,
+     "retained_extra_bytes_after_gc": 4096
+    },
+    "input_admission": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 15272,
+     "retained_extra_bytes_before_gc": 14904,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "attempt_correlation": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 16856,
+     "retained_extra_bytes_before_gc": 15168,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_256": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_1024": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_2": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18520,
+     "retained_extra_bytes_before_gc": 15968,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_16": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 19640,
+     "retained_extra_bytes_before_gc": 16304,
+     "retained_extra_bytes_after_gc": 4192
+    }
+   },
+   "paired_candidate_minus_direct_us": {
+    "1_cheap": {
+     "median": 1.1084539
+    },
+    "4_cheap": {
+     "median": 2.1078882
+    },
+    "16_cheap": {
+     "median": 6.2220772
+    },
+    "4_compute": {
+     "median": 1.7040254000000061
+    }
+   }
+  },
+  {
+   "environment": {
+    "python": "3.14.5",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+    "processor": "",
+    "gc_enabled": true,
+    "clock": "perf_counter_ns",
+    "iterations": 10000,
+    "repeats": 7
+   },
+   "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+   "current_loop": {
+    "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+    "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+    "scope": "actual call expression with direct fixture facade; argument dispatch only"
+   },
+   "timing_us_per_call": {
+    "harness_floor": {
+     "median": 0.0245732,
+     "min": 0.0242652,
+     "max": 0.0267512,
+     "samples": [
+      0.0267512,
+      0.024307099999999998,
+      0.0242791,
+      0.0245732,
+      0.0242652,
+      0.0246461,
+      0.0253642
+     ]
+    },
+    "candidate_1_cheap": {
+     "median": 2.5365048999999997,
+     "min": 2.5135703,
+     "max": 2.7029848000000003,
+     "samples": [
+      2.5135703,
+      2.6716783,
+      2.7029848000000003,
+      2.5365048999999997,
+      2.5438143,
+      2.5338622,
+      2.5234758000000004
+     ]
+    },
+    "direct_1_cheap": {
+     "median": 1.4441947,
+     "min": 1.4334486,
+     "max": 1.5762539,
+     "samples": [
+      1.4353879,
+      1.5657003999999999,
+      1.5762539,
+      1.4441947,
+      1.4445538,
+      1.4428831,
+      1.4334486
+     ]
+    },
+    "candidate_4_cheap": {
+     "median": 3.7129488,
+     "min": 3.680888,
+     "max": 4.3157905,
+     "samples": [
+      3.680888,
+      3.9794045000000002,
+      4.3157905,
+      3.7116841,
+      3.7262358,
+      3.7129488,
+      3.6961929000000002
+     ]
+    },
+    "direct_4_cheap": {
+     "median": 1.6638674,
+     "min": 1.6178734,
+     "max": 1.8208574000000002,
+     "samples": [
+      1.6638674,
+      1.8208574000000002,
+      1.7744173,
+      1.6816189,
+      1.6460702,
+      1.6178734,
+      1.6426907000000002
+     ]
+    },
+    "candidate_16_cheap": {
+     "median": 8.4251272,
+     "min": 8.2945988,
+     "max": 9.1069992,
+     "samples": [
+      8.2945988,
+      8.5474102,
+      8.4251272,
+      9.1069992,
+      8.3066767,
+      8.3701126,
+      8.5420868
+     ]
+    },
+    "direct_16_cheap": {
+     "median": 2.2837481,
+     "min": 2.2224052000000003,
+     "max": 2.4887502,
+     "samples": [
+      2.2246331,
+      2.2837481,
+      2.2224052000000003,
+      2.4441117,
+      2.2397711,
+      2.2912108,
+      2.4887502
+     ]
+    },
+    "candidate_4_compute": {
+     "median": 38.9278172,
+     "min": 38.7640717,
+     "max": 40.151426,
+     "samples": [
+      38.9278172,
+      38.798239,
+      39.1723076,
+      39.974521200000005,
+      38.920574800000004,
+      40.151426,
+      38.7640717
+     ]
+    },
+    "direct_4_compute": {
+     "median": 37.562484,
+     "min": 36.782830800000006,
+     "max": 38.9230311,
+     "samples": [
+      36.9981201,
+      37.666521,
+      37.943456899999994,
+      37.562484,
+      37.538119,
+      38.9230311,
+      36.782830800000006
+     ]
+    },
+    "current_loop_4_cheap_dispatch": {
+     "median": 2.3509023,
+     "min": 2.3011491,
+     "max": 2.5025545,
+     "samples": [
+      2.3157235999999997,
+      2.3407068,
+      2.3628199,
+      2.5025545,
+      2.3509023,
+      2.3011491,
+      2.3550277
+     ]
+    },
+    "workflow_tick": {
+     "median": 10.5036348,
+     "min": 10.423978,
+     "max": 10.710690399999999,
+     "samples": [
+      10.5471528,
+      10.710690399999999,
+      10.4805216,
+      10.423978,
+      10.474703400000001,
+      10.5036348,
+      10.6820253
+     ]
+    },
+    "workflow_lookup": {
+     "median": 0.084787,
+     "min": 0.08225790000000001,
+     "max": 0.0878292,
+     "samples": [
+      0.085361,
+      0.0840659,
+      0.0875051,
+      0.08225790000000001,
+      0.084787,
+      0.0827069,
+      0.0878292
+     ]
+    },
+    "input_admission": {
+     "median": 0.2875668,
+     "min": 0.2833793,
+     "max": 0.31132960000000004,
+     "samples": [
+      0.2923678,
+      0.2926858,
+      0.2872115,
+      0.2833793,
+      0.31132960000000004,
+      0.2875668,
+      0.2860276
+     ]
+    },
+    "attempt_correlation": {
+     "median": 2.2684814,
+     "min": 2.2501855,
+     "max": 2.5014718,
+     "samples": [
+      2.2868703,
+      2.2684814,
+      2.2521007,
+      2.2501855,
+      2.2570178999999997,
+      2.2990901,
+      2.5014718
+     ]
+    },
+    "workflow_tick_dormant_256": {
+     "median": 10.616850099999999,
+     "min": 10.5241487,
+     "max": 11.153152799999999,
+     "samples": [
+      10.8606384,
+      10.616850099999999,
+      10.5801333,
+      10.5241487,
+      10.5275738,
+      10.9288483,
+      11.153152799999999
+     ]
+    },
+    "workflow_tick_dormant_1024": {
+     "median": 10.612697899999999,
+     "min": 10.5646365,
+     "max": 11.3245573,
+     "samples": [
+      11.3245573,
+      10.5937289,
+      10.5675098,
+      10.6614462,
+      10.612697899999999,
+      10.5646365,
+      10.6710239
+     ]
+    },
+    "workflow_tick_units_2": {
+     "median": 11.2056404,
+     "min": 11.0408519,
+     "max": 11.5266057,
+     "samples": [
+      11.319614900000001,
+      11.0408519,
+      11.2878665,
+      11.5266057,
+      11.0695243,
+      11.095510399999998,
+      11.2056404
+     ]
+    },
+    "workflow_tick_units_16": {
+     "median": 19.6036477,
+     "min": 19.462564999999998,
+     "max": 19.8091483,
+     "samples": [
+      19.6036477,
+      19.462564999999998,
+      19.718497,
+      19.8091483,
+      19.590010999999997,
+      19.508028200000002,
+      19.722197100000002
+     ]
+    }
+   },
+   "allocations": {
+    "candidate_1_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1704,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_1_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1728,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_16_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1824,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_16_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_compute": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 2024,
+     "retained_extra_bytes_before_gc": 1192,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_compute": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1164,
+     "retained_extra_bytes_before_gc": 680,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "current_loop_4_cheap_dispatch": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1492,
+     "retained_extra_bytes_before_gc": 848,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_lookup": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 184,
+     "retained_extra_bytes_before_gc": 184,
+     "retained_extra_bytes_after_gc": 4096
+    },
+    "input_admission": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 15272,
+     "retained_extra_bytes_before_gc": 14904,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "attempt_correlation": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 16856,
+     "retained_extra_bytes_before_gc": 15168,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_256": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_1024": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_2": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18520,
+     "retained_extra_bytes_before_gc": 15968,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_16": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 19640,
+     "retained_extra_bytes_before_gc": 16304,
+     "retained_extra_bytes_after_gc": 4192
+    }
+   },
+   "paired_candidate_minus_direct_us": {
+    "1_cheap": {
+     "median": 1.0923101999999998
+    },
+    "4_cheap": {
+     "median": 2.0801656
+    },
+    "16_cheap": {
+     "median": 6.078901800000001
+    },
+    "4_compute": {
+     "median": 1.3824558000000025
+    }
+   }
+  },
+  {
+   "environment": {
+    "python": "3.14.5",
+    "platform": "Linux-6.18.40.1-microsoft-standard-WSL2-x86_64-with-glibc2.42",
+    "processor": "",
+    "gc_enabled": true,
+    "clock": "perf_counter_ns",
+    "iterations": 10000,
+    "repeats": 7
+   },
+   "scope": "CPU fixtures only; compilation/startup excluded; workflow uses ready input and reported contribution, no optimizer/model compute. Component timings overlap and are not additive. Reports are drained after each tick.",
+   "current_loop": {
+    "source_sha256": "7da8804b7fefc38e26df5d599f9096e5ecb28b1752d67a2b9be9826cc220d88d",
+    "expression": "strategies.process_batch(batch, trainer.text_encoders, trainer.denoiser, trainer.trainable_model, trainer.vae, trainer.objective_runtime, trainer.vae_dtype, trainer.weight_dtype, accelerator, cfg, is_train=True, train_text_encoder=trainer._train_text_encoder, train_denoiser=trainer._train_denoiser, global_step=trainer.global_step)",
+    "scope": "actual call expression with direct fixture facade; argument dispatch only"
+   },
+   "timing_us_per_call": {
+    "harness_floor": {
+     "median": 0.0242764,
+     "min": 0.0240643,
+     "max": 0.0245152,
+     "samples": [
+      0.0242482,
+      0.0245152,
+      0.024220199999999997,
+      0.0242814,
+      0.0240643,
+      0.0244393,
+      0.0242764
+     ]
+    },
+    "candidate_1_cheap": {
+     "median": 2.7535634,
+     "min": 2.5126763,
+     "max": 2.7896,
+     "samples": [
+      2.778896,
+      2.5126763,
+      2.632295,
+      2.7896,
+      2.7535634,
+      2.7047188,
+      2.7668453
+     ]
+    },
+    "direct_1_cheap": {
+     "median": 1.5182033,
+     "min": 1.4269109,
+     "max": 1.5899250999999999,
+     "samples": [
+      1.4269109,
+      1.4593254,
+      1.5566991000000001,
+      1.5363102,
+      1.5899250999999999,
+      1.5182033,
+      1.515674
+     ]
+    },
+    "candidate_4_cheap": {
+     "median": 3.9346421,
+     "min": 3.6673359999999997,
+     "max": 4.1079272,
+     "samples": [
+      3.6673359999999997,
+      3.7191825,
+      4.1079272,
+      3.9921033,
+      3.9346421,
+      3.9355171,
+      3.8246689999999997
+     ]
+    },
+    "direct_4_cheap": {
+     "median": 1.618846,
+     "min": 1.6075272,
+     "max": 1.712377,
+     "samples": [
+      1.6098816,
+      1.618846,
+      1.6927637,
+      1.6075272,
+      1.6075911,
+      1.712377,
+      1.6284943
+     ]
+    },
+    "candidate_16_cheap": {
+     "median": 8.330961799999999,
+     "min": 8.248455,
+     "max": 8.8771923,
+     "samples": [
+      8.248455,
+      8.323137500000001,
+      8.8771923,
+      8.3747813,
+      8.3268596,
+      8.7619998,
+      8.330961799999999
+     ]
+    },
+    "direct_16_cheap": {
+     "median": 2.2402922,
+     "min": 2.2108827,
+     "max": 2.3492972,
+     "samples": [
+      2.2108827,
+      2.2435723,
+      2.2537767,
+      2.2402922,
+      2.2220472,
+      2.3492972,
+      2.2236002
+     ]
+    },
+    "candidate_4_compute": {
+     "median": 39.9278064,
+     "min": 38.654056,
+     "max": 42.1445305,
+     "samples": [
+      39.1580303,
+      39.9278064,
+      39.9898424,
+      39.3564159,
+      38.654056,
+      42.1445305,
+      41.1754549
+     ]
+    },
+    "direct_4_compute": {
+     "median": 37.6787049,
+     "min": 36.9686535,
+     "max": 39.5781782,
+     "samples": [
+      36.9686535,
+      39.060711600000005,
+      39.092591,
+      37.6787049,
+      37.1727168,
+      39.5781782,
+      36.9916227
+     ]
+    },
+    "current_loop_4_cheap_dispatch": {
+     "median": 2.4169479999999997,
+     "min": 2.2971064,
+     "max": 2.571598,
+     "samples": [
+      2.2980269,
+      2.571598,
+      2.4719911999999997,
+      2.4339573999999997,
+      2.4169479999999997,
+      2.3069459,
+      2.2971064
+     ]
+    },
+    "workflow_tick": {
+     "median": 10.796016600000002,
+     "min": 10.4239149,
+     "max": 11.4948757,
+     "samples": [
+      10.4900012,
+      10.5594434,
+      11.4948757,
+      10.8965797,
+      10.900786400000001,
+      10.796016600000002,
+      10.4239149
+     ]
+    },
+    "workflow_lookup": {
+     "median": 0.0851511,
+     "min": 0.0826906,
+     "max": 0.09430920000000001,
+     "samples": [
+      0.0845741,
+      0.08433710000000001,
+      0.0851511,
+      0.0880183,
+      0.0862968,
+      0.09430920000000001,
+      0.0826906
+     ]
+    },
+    "input_admission": {
+     "median": 0.2929142,
+     "min": 0.2845098,
+     "max": 0.3220969,
+     "samples": [
+      0.2957282,
+      0.2845098,
+      0.3155332,
+      0.29284410000000005,
+      0.2929142,
+      0.3220969,
+      0.2928832
+     ]
+    },
+    "attempt_correlation": {
+     "median": 2.3685393,
+     "min": 2.2635542,
+     "max": 2.4555615,
+     "samples": [
+      2.302266,
+      2.2635542,
+      2.4555615,
+      2.3685393,
+      2.3988240000000003,
+      2.452967,
+      2.3379556
+     ]
+    },
+    "workflow_tick_dormant_256": {
+     "median": 10.8650633,
+     "min": 10.4381996,
+     "max": 11.6825737,
+     "samples": [
+      10.696446,
+      10.4381996,
+      11.6825737,
+      10.8650633,
+      11.0284475,
+      10.6881365,
+      11.4018732
+     ]
+    },
+    "workflow_tick_dormant_1024": {
+     "median": 11.0712541,
+     "min": 10.6300604,
+     "max": 11.5690781,
+     "samples": [
+      10.693259,
+      10.689615700000001,
+      11.5690781,
+      11.0712541,
+      11.169568100000001,
+      10.6300604,
+      11.3481231
+     ]
+    },
+    "workflow_tick_units_2": {
+     "median": 11.4996825,
+     "min": 10.944040000000001,
+     "max": 11.983907499999999,
+     "samples": [
+      11.1597204,
+      10.944040000000001,
+      11.5960708,
+      11.7101999,
+      11.4996825,
+      11.1184254,
+      11.983907499999999
+     ]
+    },
+    "workflow_tick_units_16": {
+     "median": 20.1456809,
+     "min": 19.3287465,
+     "max": 21.3563409,
+     "samples": [
+      20.9481627,
+      19.9542957,
+      20.144681499999997,
+      20.572954699999997,
+      20.1456809,
+      19.3287465,
+      21.3563409
+     ]
+    }
+   },
+   "allocations": {
+    "candidate_1_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1704,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_1_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1728,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_16_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1824,
+     "retained_extra_bytes_before_gc": 896,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_16_cheap": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 964,
+     "retained_extra_bytes_before_gc": 480,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "candidate_4_compute": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 2024,
+     "retained_extra_bytes_before_gc": 1192,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "direct_4_compute": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1164,
+     "retained_extra_bytes_before_gc": 680,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "current_loop_4_cheap_dispatch": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 1492,
+     "retained_extra_bytes_before_gc": 848,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_lookup": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 184,
+     "retained_extra_bytes_before_gc": 184,
+     "retained_extra_bytes_after_gc": 4096
+    },
+    "input_admission": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 15272,
+     "retained_extra_bytes_before_gc": 14904,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "attempt_correlation": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 16856,
+     "retained_extra_bytes_before_gc": 15168,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_256": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_dormant_1024": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18440,
+     "retained_extra_bytes_before_gc": 15944,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_2": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 18520,
+     "retained_extra_bytes_before_gc": 15968,
+     "retained_extra_bytes_after_gc": 4192
+    },
+    "workflow_tick_units_16": {
+     "batch_calls": 100,
+     "peak_extra_bytes": 19640,
+     "retained_extra_bytes_before_gc": 16304,
+     "retained_extra_bytes_after_gc": 4192
+    }
+   },
+   "paired_candidate_minus_direct_us": {
+    "1_cheap": {
+     "median": 1.1865155000000003
+    },
+    "4_cheap": {
+     "median": 2.2231401
+    },
+    "16_cheap": {
+     "median": 6.107361599999999
+    },
+    "4_compute": {
+     "median": 1.6777110000000022
+    }
+   }
+  }
+ ]
+}

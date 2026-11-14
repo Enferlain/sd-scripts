@@ -14,8 +14,12 @@ captures without rewriting their provenance.
 
 The runnable evidence remains here:
 
-- [Shared xDSL language slice](xdsl_language/README.md): current bounded
+- [Shared xDSL language slice](_deprecated/xdsl_language/README.md): bounded
   verification, reference, owner-target, effects and retained-product evidence.
+  Rewritten as `library/iro`; moved to `_deprecated/` once its coverage row
+  was checked (tasks 14.4), kept for reference until final cleanup. Its own
+  tests import sibling research packages by relative path and no longer run
+  from there.
 - [Original connected candidate](execution_candidate/README.md): shared
   execution and ownership mechanisms reused by later experiments.
 - [xDSL candidate](xdsl_candidate/README.md) and

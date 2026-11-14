@@ -168,6 +168,16 @@ spins in Python, under either GIL state. `tests/unit/iro/runtime/` runs the conf
 the reference and the runtime: schedule-independent fixtures report exactly
 the reference's facts, and every run settles and empties its bookkeeping.
 
+Cost is measured apart from the tests (G3.7). `tests/unit/iro/runtime/cost_probe.py`
+times the cheap-action, dormant-work and lease cases against direct Python;
+`cost_gate.py` runs it and the retained reference experiment's probe in three
+processes each and applies G3.7's regression gates. The record of
+2026-11-14 is `openspec/changes/rework-model-strategy-trainer/research/iro-runtime-cost-results.json`:
+dormant work passes, and the cheap action fails, at 181 to 244 microseconds
+over direct Python against 2 to 7 allowed. Meeting it is the overhead pass
+(sd-scripts-syv.53), which the design requires before section 18's SDXL run
+is accepted.
+
 ## Written forms
 
 A strategy prints in one canonical layout, and printing a parsed strategy
