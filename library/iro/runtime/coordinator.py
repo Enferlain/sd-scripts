@@ -77,7 +77,18 @@ from library.iro.runtime.state import (
     Stream,
     Ticket,
 )
-from library.iro.seams import CallContext, Completion, CopiesStorage, Device, HoldsDeviceStorage, Implementation, Owner, Use, Version
+from library.iro.seams import (
+    CallContext,
+    Capture,
+    Completion,
+    CopiesStorage,
+    Device,
+    HoldsDeviceStorage,
+    Implementation,
+    Owner,
+    Use,
+    Version,
+)
 
 Observer = Callable[[Fact], None]
 
@@ -193,6 +204,11 @@ class Coordinator:
         self._away: set[str] = set()
         self._holding: dict[str, int] = defaultdict(int)
         self._moves: dict[str, asyncio.Task] = {}
+        # Snapshots of device storage (D15): where each participant's storage lives, the captures still
+        # being queued, by participant, and the updates still being queued, which a capture must follow.
+        self._placed = dict(prepared.placed)
+        self._capturing: dict[str, set[asyncio.Task]] = {}
+        self._writing: dict[str, int] = defaultdict(int)  # by participant, so bounded by the participants updated
         unknown = set(self.devices) - {facts.name for facts in prepared.target.devices}
         if unknown:
             raise ValueError(f"adapters for devices the run was not prepared for: {', '.join(sorted(unknown))}")
@@ -443,6 +459,7 @@ class Coordinator:
                 self._state(root, State.SETTLING)
                 await self._until(lambda: self.closing or not self._pending_under(root), ("requests",))
                 self._settle_requests(root)
+                await asyncio.gather(*(task for tasks in list(self._capturing.values()) for task in tasks), return_exceptions=True)
                 await asyncio.gather(*self._moves.values(), return_exceptions=True)
                 if self.checked and self._failed and not self.cancelled and outcome.status != "failed":
                     # A miss closes admission without raising where it was found, so the root saw only that.
@@ -750,7 +767,9 @@ class Coordinator:
             self._grant_turn(device, identity, identity[:-1])
         try:
             for lease in leases:
-                if lease.resource in self._leaving:
+                if lease.capture is not None:
+                    await asyncio.shield(lease.capture)  # the body's calls receive the copies (D15)
+                elif lease.resource in self._leaving:
                     await self._present(lease.resource)  # the first work of the admission that uses it (D15)
             return await self._body(step.bodies[0], self._entry(step, args, leases), identity)
         finally:
@@ -927,17 +946,26 @@ class Coordinator:
             if self.explore is not None:
                 for _ in range(self.explore.randrange(3)):
                     await asyncio.sleep(0)
-            # Calls not declared safe for concurrent use run one at a time per participant (D15).
+            # Calls not declared safe for concurrent use run one at a time per participant (D15), and an
+            # update waits until the captures of its participant's snapshots are queued before it.
             busy: set[str] = set()
+            writes = [lease.resource for lease in leased if lease.mode == AccessMode.OWNER_UPDATE] if leased else []
             if not step.safe and leased:
                 busy = {lease.resource for lease in leased}
-                await self._until(lambda: self.closing or not busy & self._busy, *(("resource", r) for r in busy))
+            if busy or (writes and self._capturing):
+                capturing = self._capturing
+                await self._until(
+                    lambda: self.closing or not (busy & self._busy or any(r in capturing for r in writes)),
+                    *(("resource", r) for r in busy.union(writes)),
+                )
                 self._admission_point()
             after = [c for lease in leased for c in self.protection[lease.resource].pending]
             after += [p.completion for p in borrowed if p.completion is not None]
             reaches = tuple(lease.handle for lease in leased)
             assert self._executor is not None
             self._busy |= busy
+            for name in writes:
+                self._writing[name] += 1
             self._working += 1
             try:
                 reports, completions = await asyncio.get_running_loop().run_in_executor(
@@ -946,6 +974,10 @@ class Coordinator:
             finally:
                 self._working -= 1
                 self._busy -= busy
+                for name in writes:
+                    self._writing[name] -= 1
+                    if not self._writing[name] and name in self._capturing:
+                        self._changed(("resource", name))
             if not step.wait:
                 # Later work on these participants follows each call's completion (D15).
                 queued = [c for c in completions if c is not None]
@@ -1208,11 +1240,25 @@ class Coordinator:
         return tuple(held)
 
     def _hold(self, name: str, mode: AccessMode, granted) -> Held:
+        capture = granted.handle if isinstance(granted.handle, Capture) else None
+        adapter = None
+        if capture is not None:
+            try:
+                adapter = self._capturer(name, mode, granted.version)
+            except RunFailure:
+                granted.release()
+                raise
         lease = Held(self._next_token, name, mode, granted, granted.version)
         self._next_token += 1
         self.leases[lease.token] = lease
         if name in self._leaving:
             self._holding[name] += 1
+        if capture is not None:
+            assert adapter is not None
+            if name in self._leaving:
+                self._holding[name] += 1  # the capture keeps the storage on the device until its copy is queued
+            lease.capture = task = self._spawn(self._capture(lease, capture, adapter))
+            self._capturing.setdefault(name, set()).add(task)
         return lease
 
     def _release_product(self, product: Product, how: str) -> None:
@@ -1245,9 +1291,73 @@ class Coordinator:
         self._fact(lease.resource, (), "lease_released", lease.version)
         self._changed(("resource", lease.resource))
         if lease.resource in self._leaving:
-            self._holding[lease.resource] -= 1
-            if not self._holding[lease.resource]:
-                self._moves[lease.resource] = self._spawn(self._leave(lease.resource, self._moves.get(lease.resource)))
+            self._unhold(lease.resource)
+
+    def _unhold(self, name: str) -> None:
+        self._holding[name] -= 1
+        if not self._holding[name]:
+            self._moves[name] = self._spawn(self._leave(name, self._moves.get(name)))
+
+    # Snapshots of device storage (D15): an owner's snapshot lease names the storage its version lives
+    # in, and the runtime queues the copy on the device's stream: after the work that produced the
+    # version, and before any later update of it, which waits until the copy is queued. The access's
+    # calls receive the handle the owner builds over the copies, and follow the copy's completion.
+
+    def _capturer(self, name: str, mode: AccessMode, version: Version) -> CopiesStorage:
+        if mode != AccessMode.SNAPSHOT:
+            raise RunFailure(f"@{name}: only a snapshot lease is captured, and the owner asked to capture a {mode} lease")
+        device = self._placed.get(name)
+        if device is None:
+            raise RunFailure(
+                f"@{name}: a snapshot of device storage is copied on the one device whose work uses it, "
+                "and device work on no device or on several uses it"
+            )
+        adapter = self.devices[device]
+        if not isinstance(adapter, CopiesStorage) or "copies" not in adapter.offers:
+            raise RunFailure(f"@{name}: a snapshot of device storage needs storage copies, and {device}'s adapter does not offer them")
+        if version != self.owners[name].current(name):
+            raise RunFailure(f"@{name}: a capture copies live storage, and the snapshot's version is not the current one")
+        return adapter
+
+    async def _capture(self, lease: Held, capture: Capture, adapter: CopiesStorage) -> None:
+        name = lease.resource
+        try:
+            if self._writing[name]:
+                # An update still being queued: it may not have moved the version yet, so the check below
+                # waits for it; the update moves the version inside its call, so the check then fails.
+                await self._until(lambda: self.closing or not self._writing[name], ("resource", name))
+                self._admission_point()
+            if name in self._leaving:
+                await self._present(name)
+            if lease.version != self.owners[name].current(name):
+                raise RunFailure(f"@{name}: an update moved it past its snapshot's version before the capture was queued")
+            after = list(self.protection[name].pending)
+            assert self._executor is not None
+            self._working += 1
+            try:
+                copies, completion = await asyncio.get_running_loop().run_in_executor(
+                    self._executor, adapter.capture, capture.storage, after
+                )
+            finally:
+                self._working -= 1
+            lease.built = capture.over(copies)
+            # The access's calls, and any other later work on it off this stream, follow the copy.
+            self._follows(name, completion)
+        except RunFailure as failed:
+            self._note_failure(failed)
+            raise
+        except Exception as error:
+            failed = RunFailure(f"@{name}: capturing its snapshot failed: {error!r}")
+            self._note_failure(failed)
+            raise failed from error
+        finally:
+            tasks = self._capturing[name]
+            tasks.discard(asyncio.current_task())
+            if not tasks:
+                del self._capturing[name]
+            self._changed(("resource", name))
+            if name in self._leaving:
+                self._unhold(name)
 
     # Leaving the device (D15): a permitted participant's storage leaves when its last lease is
     # released, unless it is leased again before that move begins, and comes back as the first work
@@ -1277,7 +1387,13 @@ class Coordinator:
             self._working -= 1
         self._away.discard(name)
         # Host work on it waits for the copy on the CPU; device work on its stream follows it (D15).
-        self.protection[name].pending.append(completion)
+        self._follows(name, completion)
+
+    def _follows(self, name: str, completion: Completion) -> None:
+        """Later work on the participant follows the completion; those already done are dropped, so the list stays short."""
+        pending = self.protection[name].pending
+        pending[:] = [c for c in pending if not c.done()]
+        pending.append(completion)
 
     async def _leave(self, name: str, before: asyncio.Task | None) -> None:
         if before is not None and not before.done():
@@ -1342,19 +1458,26 @@ class Coordinator:
         self._changed(("handler", target.path), ("requests",))
 
     def _reserve(self, request: Request, handler: HandlerInfo) -> None:
-        """Holds the version at the request for each at_request use: a snapshot is taken now, a live read reserved."""
-        for name, use in handler.at_request:
-            owner = self.owners[name]
-            if use.mode == AccessMode.SNAPSHOT:
-                (granted,) = owner.lease([Use(name, use.mode, VersionSelection.CURRENT_AT_START, use.route, use.view)])
-                lease = self._hold(name, use.mode, granted)
-                request.snapshots[name] = lease
-                version = lease.version
-            else:
-                version = owner.current(name)
-                request.reserved[name] = version
-                self.protection[name].reservations.add(id(request))
-            self._fact(name, request.cause, "reserved", version, str(use.mode))
+        """Holds the version at the request for each at_request use: a snapshot is taken now, a live read reserved.
+
+        If one cannot be held, those already held are released: the request is never made.
+        """
+        try:
+            for name, use in handler.at_request:
+                owner = self.owners[name]
+                if use.mode == AccessMode.SNAPSHOT:
+                    (granted,) = owner.lease([Use(name, use.mode, VersionSelection.CURRENT_AT_START, use.route, use.view)])
+                    lease = self._hold(name, use.mode, granted)
+                    request.snapshots[name] = lease
+                    version = lease.version
+                else:
+                    version = owner.current(name)
+                    request.reserved[name] = version
+                    self.protection[name].reservations.add(id(request))
+                self._fact(name, request.cause, "reserved", version, str(use.mode))
+        except BaseException:
+            self._end_reservations(request)
+            raise
 
     def _end_reservations(self, request: Request) -> None:
         for name in request.reserved:
