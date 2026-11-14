@@ -1222,11 +1222,11 @@ class Writer:
             raise ValueError(f"{op.name} has no written form")
         rendered = write(self, op, names, indent)
         visible = [r for r in op.results if r.uses and not all(self._implicitly_yielded(r, use.operation) for use in r.uses)]
+        # A result not shown is used only by a yield the printer drops, so it takes no name: naming it
+        # would shift the numbers of later unnamed values, and a strategy read back from its printed
+        # form, whose unshown results lost their names, would then print differently.
         if visible or (op.results and isinstance(op, ForkOp)):
             rendered.results = ", ".join(names.bind(r) for r in op.results)
-        else:
-            for r in op.results:
-                names.bind(r)
         return rendered
 
     def _implicitly_yielded(self, value: SSAValue, user: Operation) -> bool:

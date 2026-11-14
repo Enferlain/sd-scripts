@@ -82,3 +82,60 @@ def test_a_failing_implementation_fails_the_run_and_still_empties_its_bookkeepin
     assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protections.by_resource.values())
     assert all(not h.pending and h.active == 0 for h in coordinator.requests.handlers.values())
     assert not coordinator.turns.admissions and coordinator._records.empty() and coordinator._all_records.empty()
+
+
+NESTED_HANDLERS = """iro.strategy @s uses(@step v1, @look v1, @peek v1) {
+  %m = iro.resource @m : participant
+  %n = iro.resource @n : participant
+
+  iro.parallel @all capture(%m, %n) {
+    iro.repeat @train 2 times capture(%m) {
+    ^(%k: int):
+      iro.access %m owner_update {
+      ^(%u):
+        iro.call @step(%u)
+      }
+      iro.request @outer(%k) from @train at settled_success
+    }
+
+    iro.handler @outer sources [@train] max 1 capture(%m, %n) {
+    ^(%x: int):
+      iro.parallel @inside capture(%m, %n, %x) {
+        iro.sequence @work capture(%m, %x) {
+          iro.access %m protected_current at_request {
+          ^(%l):
+            iro.call @look(%l)
+          }
+          iro.request @inner(%x) from @work at settled_success
+        }
+
+        iro.handler @inner sources [@work] max 1 capture(%n) {
+        ^(%y: int):
+          iro.access %n protected_current at_request {
+          ^(%l):
+            iro.call @peek(%l)
+          }
+        }
+      }
+    }
+  }
+}
+"""
+
+
+def test_a_request_reserves_only_what_its_own_handler_reads_at_the_request() -> None:
+    """An at_request use belongs to its innermost handler: the outer handler's requests do not reserve the inner's reads."""
+    from library.iro.reference import StandIn, returning
+    from tests.unit.iro.test_reference import increment
+
+    lease = "protected_current lease"
+    standins = {
+        "step": StandIn(("owner_update lease",), (), increment, updates=(0,)),
+        "look": StandIn((lease,), (), returning()),
+        "peek": StandIn((lease,), (), returning()),
+    }
+    result = run_both(NESTED_HANDLERS, {"m": 1, "n": 1}, standins)
+    assert result.coordinator.errors == [] and result.reference.errors == []
+    runtime = Counter(f.owner for f in result.facts if f.kind == "reserved")
+    reference = Counter(f.owner for f in result.reference.facts if f.kind == "reserved")
+    assert runtime == reference == Counter({"m": 2, "n": 2}), "each of the two outer and two inner requests reserves only its own reads"

@@ -347,3 +347,26 @@ def test_a_participant_may_be_permitted_to_leave_the_device_and_nothing_else_may
     assert "materialize(@load_vae) may_leave_device" in print_strategy(strategy) and round_trips(print_strategy(strategy))
     with pytest.raises(Rejection):
         parse("iro.strategy @s {\n  %p = iro.resource @policy may_leave_device\n}\n")
+
+
+NAMED_RESULTS_LAST = """iro.strategy @s uses(@both v1) {
+  %m = iro.resource @m : participant
+  iro.sequence @once capture(%m) {
+    iro.access %m protected_current {
+    ^(%lease):
+      %a, %b = iro.call @both(%lease) -> retained int, int
+    }
+  }
+}
+"""
+
+
+def test_results_the_printer_does_not_show_take_no_names() -> None:
+    """A strategy and its printed form, whose unshown results lost their names, print the same once normalized."""
+    from library.iro.normalize import normalize
+
+    printed = print_strategy(parse(NAMED_RESULTS_LAST))
+    assert "%a" not in printed, "the call's results are yielded implicitly, so they are not shown"
+    from_original = normalize(parse(NAMED_RESULTS_LAST)).text()
+    assert normalize(parse(printed)).text() == from_original
+    assert "%v0, %v1 = iro.access" in from_original, "no number goes to a value that is not shown"

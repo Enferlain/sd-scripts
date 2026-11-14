@@ -1,6 +1,9 @@
 """Lifetime words: producer, handler, request and stop (D16)."""
 
+from collections.abc import Iterable, Iterator
+
 from xdsl.dialects.builtin import ArrayAttr, IntegerAttr, StringAttr, SymbolRefAttr
+from xdsl.ir import Operation
 from xdsl.irdl import irdl_op_definition, operand_def, opt_prop_def, prop_def, region_def, traits_def
 from xdsl.traits import IsolatedFromAbove
 from xdsl.utils.exceptions import VerifyException
@@ -116,4 +119,26 @@ class StopOp(Word):
 
 OPERATIONS = (ProducerOp, HandlerOp, RequestOp, StopOp)
 
-__all__ = ["OPERATIONS", "HandlerOp", "ProducerOp", "RequestOp", "StopOp"]
+
+def handled(handler: Operation) -> Iterator[Operation]:
+    """The statements whose requested work is this handler's: those in its body, apart from a nested handler's.
+
+    A statement belongs to its innermost handler (D14), so an ``at_request``
+    use inside a nested handler reads the version at that handler's request,
+    not at the enclosing one's.
+    """
+    for region in handler.regions:
+        for block in region.blocks:
+            yield from _within(block.ops)
+
+
+def _within(ops: Iterable[Operation]) -> Iterator[Operation]:
+    for op in ops:
+        yield op
+        if not isinstance(op, HandlerOp):
+            for region in op.regions:
+                for block in region.blocks:
+                    yield from _within(block.ops)
+
+
+__all__ = ["OPERATIONS", "HandlerOp", "ProducerOp", "RequestOp", "StopOp", "handled"]

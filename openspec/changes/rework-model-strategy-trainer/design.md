@@ -2805,7 +2805,9 @@ The existing owner engine's protected production epochs realize
 **Requested work may select the version at its request.** A use inside a
 handler may select the version of owner state that was current when its
 request was made (`at_request`), in place of the version
-current when the handler starts. A request is made at the point its
+current when the handler starts. A use belongs to its innermost handler:
+inside a handler nested in another, it selects the version at the nested
+handler's request. A request is made at the point its
 obligation is first owned: by the emitting invocation while it waits for
 request capacity, or by acceptance. It is never the later point at which the
 handler is admitted. From that point two things exist, with different

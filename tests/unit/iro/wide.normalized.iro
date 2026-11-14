@@ -41,8 +41,8 @@ iro.strategy @wide normalized
         }
         %value = iro.borrow %b
         %weight = iro.sequence @weigh capture(%value) from(iro.derived @weigh) {
-          %v1 = iro.call @keep(%value) -> bool
-          iro.yield %v1
+          %v0 = iro.call @keep(%value) -> bool
+          iro.yield %v0
         }
         %cond = iro.access %te1 protected_current, %te2 protected_current {
         ^(%l1, %l2):

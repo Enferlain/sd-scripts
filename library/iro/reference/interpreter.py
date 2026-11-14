@@ -46,7 +46,7 @@ from library.iro.reference.standins import CallResult, StandIn
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import BorrowOp, DisposeOp, ForkOp, StreamOp, TakeOp
-from library.iro.words.lifetimes import HandlerOp, RequestOp, StopOp
+from library.iro.words.lifetimes import HandlerOp, RequestOp, StopOp, handled
 from library.iro.words.model import RelationshipOp, ResourceOp
 from library.iro.words.structure import StrategyOp
 from library.iro.words.types import OptionalType, written
@@ -730,7 +730,7 @@ class Reference:
         """The resources the handler's work reads at the version of its request."""
         return [
             self._resource_name(access, use.subject)
-            for access in handler.walk()
+            for access in handled(handler)
             if isinstance(access, AccessOp)
             for use in ResourceSemantics().describe(access).uses
             if use.selection == VersionSelection.AT_REQUEST
@@ -738,7 +738,7 @@ class Reference:
 
     def _reserve(self, request: Request, handler: Operation) -> None:
         """Holds the version at the request for each at_request use the handler makes."""
-        for access in (op for op in handler.walk() if isinstance(op, AccessOp)):
+        for access in (op for op in handled(handler) if isinstance(op, AccessOp)):
             for use in ResourceSemantics().describe(access).uses:
                 if use.selection != VersionSelection.AT_REQUEST:
                     continue

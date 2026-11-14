@@ -54,7 +54,7 @@ from library.iro.seams import Implementation
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import BorrowOp, DisposeOp, ForkOp, StreamOp, TakeOp
-from library.iro.words.lifetimes import HandlerOp, RequestOp, StopOp
+from library.iro.words.lifetimes import HandlerOp, RequestOp, StopOp, handled
 from library.iro.words.model import RelationshipOp, ResourceOp
 from library.iro.words.structure import StrategyOp
 from library.iro.words.types import ClaimType, LeaseType, OptionalType, RetainedType
@@ -481,7 +481,7 @@ class _Lowering:
         info = self.handlers.get(where)
         if info is None:
             at_request = []
-            for access in handler.walk():
+            for access in handled(handler):
                 if isinstance(access, AccessOp):
                     for use in ResourceSemantics().describe(access).uses:
                         name = _resource(use.subject)
