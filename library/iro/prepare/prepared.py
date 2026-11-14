@@ -21,7 +21,9 @@ implementations and a target, and derives the prepared run:
   released, where normalization placed the release;
 - **participants on devices** (D15): each participant that device work on
   exactly one device leases, with that device, where its device storage
-  lives; the runtime queues a snapshot's capture of that storage there;
+  lives; the runtime queues a snapshot's capture of that storage there. A
+  participant no access updates or grants is marked frozen: its storage
+  already is its only version, so a snapshot of it needs no copy;
 - **leaving the device** (D15): each participant permitted to leave the
   device between uses, with the device its storage leaves from. Only frozen
   storage leaves, from one device, whose adapter offers storage copies;
@@ -128,6 +130,7 @@ class Prepared:
     admissions: tuple[Admission, ...]
     placed: tuple[tuple[str, str], ...]  # (participant, the one device whose work uses it, where its device storage lives)
     leaving: tuple[tuple[str, str], ...]  # (participant, the device its storage leaves from)
+    updated: tuple[str, ...]  # the resources some access updates or grants; the others never change in the run
     loaded: Loaded = field(compare=False, repr=False)
 
     def group_of(self, call: str) -> Group:
@@ -153,7 +156,7 @@ class Prepared:
             lines.append(f"  {a.device} from {a.begins}: groups {covered}; ends {', '.join(a.ends)}")
         if self.placed:
             lines.append("participants on devices")
-            lines += [f"  @{participant} on {device}" for participant, device in self.placed]
+            lines += [f"  @{p} on {d}{'' if p in self.updated else ', frozen'}" for p, d in self.placed]
         if self.leaving:
             lines.append("leaving the device")
             lines += [f"  @{participant} from {device}" for participant, device in self.leaving]
@@ -232,13 +235,25 @@ class _Preparation:
         admissions = self._admissions(groups)
         used = self._used_on()
         placed = tuple(sorted((name, next(iter(devices))) for name, devices in used.items() if len(devices) == 1))
-        leaving = self._leaving(used)
+        updated = self._updated()
+        leaving = self._leaving(used, updated)
         self.problems.reject_if_any()
         run = self.loaded.run
         manifest = tuple(
             ManifestEntry(name, version, digest, code_identity(self.installed[name])) for name, version, digest in run.implementations
         )
-        return Prepared(self.strategy.sym_name.data, run.identity, self.target, manifest, groups, admissions, placed, leaving, self.loaded)
+        return Prepared(
+            self.strategy.sym_name.data,
+            run.identity,
+            self.target,
+            manifest,
+            groups,
+            admissions,
+            placed,
+            leaving,
+            tuple(sorted(updated)),
+            self.loaded,
+        )
 
     # Matching and placement.
 
@@ -388,7 +403,16 @@ class _Preparation:
                     devices.setdefault(name, set()).add(device)
         return devices
 
-    def _leaving(self, devices: Mapping[str, set[str]]) -> tuple[tuple[str, str], ...]:
+    def _updated(self) -> set[str]:
+        """The resources some access updates or grants; the rest keep their version for the whole run."""
+        updated: set[str] = set()
+        for access in (op for op in self.strategy.walk() if isinstance(op, AccessOp)):
+            for use in ResourceSemantics().describe(access).uses:
+                if use.mode in (AccessMode.OWNER_UPDATE, AccessMode.GRANT) and (name := _resource_of(use.subject)) is not None:
+                    updated.add(name)
+        return updated
+
+    def _leaving(self, devices: Mapping[str, set[str]], updated: set[str]) -> tuple[tuple[str, str], ...]:
         """Each participant permitted to leave the device, with the device its storage leaves from.
 
         The first realization keeps one exact host copy, so the storage must
@@ -399,11 +423,6 @@ class _Preparation:
         permitted = [op for op in self.strategy.walk() if isinstance(op, ResourceOp) and op.may_leave_device is not None]
         if not permitted:
             return ()
-        updated: set[str] = set()
-        for access in (op for op in self.strategy.walk() if isinstance(op, AccessOp)):
-            for use in ResourceSemantics().describe(access).uses:
-                if use.mode in (AccessMode.OWNER_UPDATE, AccessMode.GRANT) and (name := _resource_of(use.subject)) is not None:
-                    updated.add(name)
         facts = {d.name: d for d in self.target.devices}
         leaving = []
         for op in permitted:

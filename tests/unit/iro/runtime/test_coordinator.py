@@ -627,9 +627,20 @@ def test_a_capture_copies_live_storage_so_an_older_version_of_device_storage_fai
     assert "capture" not in log and not seen
 
 
-def test_a_snapshot_of_device_storage_needs_the_one_device_whose_work_uses_it() -> None:
-    installed = {"look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: 0)}
-    text = """iro.strategy @s uses(@look v1) {
+def _host_only(text: str, owner) -> tuple:
+    installed = {
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: handle),
+        "bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(lambda o: o.update(5) or 0),
+    }
+    installed = {k: v for k, v in installed.items() if f"@{k} v1" in text}
+    run = accepted_run(text, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    facts: list[Fact] = []
+    coordinator = Coordinator(prepared, {"m": owner}, installed, {"host": Host()}, observe=facts.append, checked=True)
+    return asyncio.run(coordinator.run()), coordinator, prepared, facts
+
+
+ONLY_A_SNAPSHOT = """iro.strategy @s uses(@look v1) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m snapshot {
@@ -639,12 +650,49 @@ def test_a_snapshot_of_device_storage_needs_the_one_device_whose_work_uses_it() 
   }
 }
 """
-    run = accepted_run(text, installed=installed)
-    prepared = prepare(cold_load(run, installed=installed), installed, Target())
-    coordinator = Coordinator(prepared, {"m": OnDevice([])}, installed, {"host": Host()}, checked=True)
-    outcome = asyncio.run(coordinator.run())
+
+UPDATED_THEN_SNAPSHOT = ONLY_A_SNAPSHOT.replace("uses(@look v1)", "uses(@bump v1, @look v1)").replace(
+    "    iro.access %m snapshot {",
+    "    iro.access %m owner_update {\n    ^(%u):\n      %b = iro.call @bump(%u) -> int\n    }\n    iro.access %m snapshot {",
+)
+
+
+def test_a_snapshot_of_updated_device_storage_needs_the_one_device_whose_work_uses_it() -> None:
+    outcome, coordinator, _, _ = _host_only(UPDATED_THEN_SNAPSHOT, OnDevice([]))
     assert outcome.status == "failed" and "on no device or on several" in (outcome.error or "")
     assert not coordinator.protections.leases
+
+
+def test_a_snapshot_of_a_participant_the_run_never_updates_is_its_live_storage_without_a_copy() -> None:
+    log: list = []
+    owner = OnDevice(log)
+    outcome, _, prepared, facts = _host_only(ONLY_A_SNAPSHOT, owner)
+    assert outcome.status == "succeeded", outcome.error
+    assert prepared.updated == () and log == [], "nothing updates @m, so no copy is made"
+    (handle,) = next(f.values[1] for f in facts if f.kind == "call_completed")
+    assert handle[0] == "snapshot" and handle[1] is owner.box, "the owner's handle over the live storage itself"
+
+
+def test_the_prepared_form_marks_participants_the_run_never_updates() -> None:
+    installed = {
+        "first": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(
+            lambda owner: 0
+        ),
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
+        "second": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(
+            lambda owner: 0
+        ),
+    }
+    target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))))
+    updated = prepare(
+        cold_load(accepted_run(SNAPSHOT_BETWEEN_UPDATES.replace("SELECTION", "snapshot"), installed=installed), installed=installed),
+        installed,
+        target,
+    )
+    assert updated.updated == ("m",) and "  @m on cuda:0\n" in updated.text()
+    frozen = {"look": installed["look"]}
+    prepared = prepare(cold_load(accepted_run(ONLY_A_SNAPSHOT, installed=frozen), installed=frozen), frozen, target)
+    assert prepared.updated == () and "  @m on cuda:0, frozen\n" in prepared.text()
 
 
 REQUESTED_SNAPSHOTS = """iro.strategy @s uses(@step v1, @look v1) {
@@ -733,7 +781,11 @@ def _requested(text: str, owners: dict, device) -> Coordinator:
         "both": implementation(version=1, inputs=("snapshot lease", "snapshot lease", "int"), outputs=("int",), name="both")(
             lambda first, second, x: 0
         ),
+        "bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(
+            lambda owner: owner.update(0) or 0
+        ),
     }
+    installed = {k: v for k, v in installed.items() if f"@{k} v1" in text}
     run = accepted_run(text, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
     prepared = prepare(cold_load(run, installed=installed), installed, target)
@@ -748,8 +800,14 @@ def _clean(coordinator: Coordinator) -> None:
 
 
 def test_a_request_whose_second_snapshot_cannot_be_captured_releases_the_first() -> None:
+    # @n is updated, on the host only, so its snapshot needs a copy and no device holds its storage.
     text = (
-        REQUESTED_SNAPSHOTS.replace("@look v1", "@look v1, @both v1")
+        REQUESTED_SNAPSHOTS.replace("@look v1", "@look v1, @both v1, @bump v1")
+        .replace(
+            "      iro.request @sample(%k) from @train at settled_success",
+            "      iro.access %n owner_update {\n      ^(%u):\n        %c = iro.call @bump(%u) -> int\n      }\n"
+            "      iro.request @sample(%k) from @train at settled_success",
+        )
         .replace("%m = iro.resource @m : participant", "%m = iro.resource @m : participant\n  %n = iro.resource @n : participant")
         .replace("capture(%m)", "capture(%m, %n)")
         .replace(
@@ -913,11 +971,12 @@ def _leaving_snapshots() -> tuple[Coordinator, list]:
     return Coordinator(prepared, {"m": owner}, installed, {"host": Host(), "cuda:0": Moving(log=log)}, checked=True), log
 
 
-def test_a_participant_that_may_leave_is_on_the_device_for_its_capture_and_leaves_after() -> None:
+def test_a_snapshot_of_a_participant_that_may_leave_reads_its_storage_like_a_live_use() -> None:
+    """Only frozen storage may leave, so its snapshot needs no copy: the storage comes back for the use and leaves after."""
     coordinator, log = _leaving_snapshots()
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "succeeded", outcome.error
-    assert log == ["capture", "leave", "return", "capture", "leave"], "each capture found it present, and it left after each use"
+    assert log == ["leave", "return", "leave"], "no copy; it left after each use and came back for the second"
     _clean(coordinator)
 
 
@@ -925,21 +984,18 @@ def test_a_capture_cancelled_before_it_begins_leaves_nothing_behind() -> None:
     from library.iro.operation_contracts import AccessMode, VersionSelection
     from library.iro.seams import Use
 
-    coordinator, log = _leaving_snapshots()
+    log: list = []
+    coordinator = _requested(REQUESTED_SNAPSHOTS, {"m": OnDevice(log)}, Copier(log=log))  # @m is updated: its snapshot copies
 
     async def cancel_at_once() -> None:
         (granted,) = coordinator.owners["m"].lease([Use("m", AccessMode.SNAPSHOT, VersionSelection.CURRENT_AT_START)])
         lease = coordinator.protections.hold("m", AccessMode.SNAPSHOT, granted)
-        assert coordinator.storage.capturing and coordinator.storage.holding["m"] == 2, (
-            "the lease and its capture each hold it on the device"
-        )
+        assert lease.capture is not None and coordinator.storage.capturing
         lease.capture.cancel()
         for _ in range(3):
             await asyncio.sleep(0)
         assert lease.capture.cancelled() and log == [], "it never began"
-        assert not coordinator.storage.capturing and coordinator.storage.holding["m"] == 1, (
-            "the capture's entries went with it; the lease's stay"
-        )
+        assert not coordinator.storage.capturing, "its entry went with it, so later updates of @m are not held back"
 
     asyncio.run(cancel_at_once())
 

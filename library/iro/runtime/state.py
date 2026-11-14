@@ -88,11 +88,13 @@ class Held:
     active: bool = True
     body_ended: bool = False
     capture: asyncio.Task | None = None  # for a snapshot of device storage: the task queuing its copy (D15)
-    built: object = None  # the handle the owner built over the copies, once the capture is queued
+    built: object = None  # for a snapshot of device storage: the handle the owner built over its storage
+    over_storage: bool = False  # whether ``built`` is the handle the body's calls receive
+    requested: bool = False  # a request's snapshot: the request holds it until it settles, not the access using it
 
     @property
     def handle(self) -> object:
-        return self.lease.handle if self.capture is None else self.built
+        return self.built if self.over_storage else self.lease.handle
 
 
 @dataclass(eq=False)

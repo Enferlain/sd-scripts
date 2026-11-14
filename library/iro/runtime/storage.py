@@ -88,8 +88,8 @@ class DeviceStorage:
             self.holding[name] += 1
         if capture is not None:
             assert adapter is not None
-            if name in self.leaving:
-                self.holding[name] += 1  # the copy keeps the storage on the device until it is queued
+            # Only frozen storage may leave, and frozen storage is never copied (Protections.hold).
+            assert name not in self.leaving, f"@{name} may leave the device, and a copy of it was asked for"
             lease.capture = task = self.kernel.spawn(self.capture(lease, capture, adapter))
             self.capturing.setdefault(name, set()).add(task)
             task.add_done_callback(lambda ended: self._captured(name, ended))
@@ -147,14 +147,12 @@ class DeviceStorage:
                 kernel.admission_point()
             if not lease.active:
                 return  # released before its copy was queued, as when its request was cancelled: nothing reads it
-            if name in self.leaving:
-                await self.present(name)
             # A guard: no writer was leased when the snapshot was, and updates leased since wait for this copy.
             if lease.version != self.owners[name].current(name):
                 raise RunFailure(f"@{name}: an update moved it past its snapshot's version before the capture was queued")
             after = list(self.protection[name].pending)
             copies, completion = await kernel.submit(adapter.capture, capture.storage, after)
-            lease.built = capture.over(copies)
+            lease.built, lease.over_storage = capture.over(copies), True
             # The access's calls, and any other later work on it off this stream, follow the copy.
             self.follows(name, completion)
         except RunFailure as failed:
@@ -174,8 +172,6 @@ class DeviceStorage:
         if not tasks:
             del self.capturing[name]
         self.kernel.changed(("resource", name))
-        if name in self.leaving:
-            self._unhold(name)
 
     # Leaving the device.
 

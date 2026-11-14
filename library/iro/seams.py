@@ -112,6 +112,13 @@ class Capture:
     hold the storage's values at the lease's version, which must be the
     current one when the lease is taken: a capture copies live storage. The
     owner never copies device storage itself, and ``over`` only wraps.
+
+    For a participant the run never updates, the live storage already is the
+    version, so the runtime calls ``over(storage)`` on the coordinator thread
+    instead of copying: ``over`` must neither copy nor change what it is given,
+    and must build the same handle over the live storage as over copies of
+    it. Such a participant's storage objects are the same for the whole run:
+    a route may move their contents within a use, never rebind them.
     """
 
     storage: Sequence[object]

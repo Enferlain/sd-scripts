@@ -2823,7 +2823,9 @@ lifetimes:
   selects protected live access, the reservation ends when the work's uses
   complete. Where a detached realization holds the version, such as a
   selected snapshot or a product's capture, it ends as soon as that
-  realization is complete, and updates proceed.
+  realization is complete, and updates proceed. A request holds one version
+  per resource and kind, which every use of it in the handler's work reads;
+  a request's snapshot stays with the request until it settles.
 
 No lease leaves its scope, and the handler still takes its lease when it
 runs. A request that ends with a cancelled or unfulfilled disposition
@@ -3287,13 +3289,13 @@ and launch device work. Owners hold state.
   guarantee (D18). A capture copies live storage, so it realizes only the
   current version; a published initial snapshot of device state the strategy
   updates is refused with the reason until the initial version is kept. The
-  first realization copies on the device, even for a participant the run
-  never updates, and refuses with the reason storage that a route keeps on
-  the host between uses. Copies in pinned host memory, for when device
-  memory is short, and of storage kept on the host, copied there after the
-  device work that moved it, come with device capacity admission; where a
-  copy goes is a target choice like the place storage waits when it leaves
-  the device.
+  first realization copies on the device, builds the handle over the live
+  storage of a participant the run never updates, which preparation marks
+  frozen, and refuses with the reason storage that a route keeps on the host
+  between uses. Copies in pinned host memory, for when device memory is
+  short, and of storage kept on the host, copied there after the device work
+  that moved it, come with device capacity admission; where a copy goes is a
+  target choice like the place storage waits when it leaves the device.
 - **Overlap, once realized.** Overlapped work needs random state of its
   own: an implementation that draws from a device's default generator, as
   dropout does, runs only in turn. A copy made on one stream and read by

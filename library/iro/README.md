@@ -138,7 +138,9 @@ what the work before it left, storage a route moves within a use included,
 and an `at_request` snapshot holds the version at the request however late
 its handler runs. A capture copies live storage, so it realizes only the
 current version. It copies on the device, and the adapter refuses, with the
-reason, storage kept on the host between uses.
+reason, storage kept on the host between uses. A participant no access
+updates needs no copy: preparation marks it frozen, and its snapshot's handle
+is built over the live storage.
 
 Device work takes turns: one admission at a time per device, granted in
 request order. An access takes its leases and its turn together, so it never

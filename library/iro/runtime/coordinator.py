@@ -131,7 +131,7 @@ class Coordinator:
         self._records = Records()
         self._all_records = Records()  # checked mode: every invocation's records, to compare with the lowered ones
         self.turns = Turns(kernel)
-        self.protections = Protections(kernel, self.owners, self.turns, self.storage, protection)
+        self.protections = Protections(kernel, self.owners, self.turns, self.storage, protection, frozenset(prepared.updated))
         self.requests = Requests(kernel, self.protections, self.outcomes, self._records, self._all_records, self._enter)
         self.flow = Flow(kernel, self.owners, self.protections, self.requests.stopped, self._enter, self._run_entry)
         self.calls = CallRunner(kernel, self.devices, self.protections, self.storage, self.turns, self.requests.request_of)
@@ -499,10 +499,7 @@ class Coordinator:
                     await storage.ready(lease)
             return await self._body(step.bodies[0], self._entry(step, args, leases), identity)
         finally:
-            for lease in leases:
-                lease.body_ended = True
-            for lease in leases:
-                protections.release_lease_if_done(lease)
+            protections.ended(leases)
             if device is not None:
                 turns.work_ended(identity)
 

@@ -737,13 +737,19 @@ class Reference:
         ]
 
     def _reserve(self, request: Request, handler: Operation) -> None:
-        """Holds the version at the request for each at_request use the handler makes."""
+        """Holds the version at the request for each resource the handler's at_request uses read.
+
+        Once per resource and kind: every use of it in the handler's work
+        reads the same snapshot, or the same reserved version.
+        """
         for access in (op for op in handled(handler) if isinstance(op, AccessOp)):
             for use in ResourceSemantics().describe(access).uses:
                 if use.selection != VersionSelection.AT_REQUEST:
                     continue
                 name = self._resource_name(access, use.subject)
                 resource = self.resources[name]
+                if name in (request.snapshots if use.mode == AccessMode.SNAPSHOT else request.reserved):
+                    continue
                 if use.mode == AccessMode.SNAPSHOT:
                     request.snapshots[name] = (resource.version, deepcopy(resource.value))
                 else:

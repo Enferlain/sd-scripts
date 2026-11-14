@@ -139,3 +139,52 @@ def test_a_request_reserves_only_what_its_own_handler_reads_at_the_request() -> 
     runtime = Counter(f.owner for f in result.facts if f.kind == "reserved")
     reference = Counter(f.owner for f in result.reference.facts if f.kind == "reserved")
     assert runtime == reference == Counter({"m": 2, "n": 2}), "each of the two outer and two inner requests reserves only its own reads"
+
+
+TWICE_AT_REQUEST = """iro.strategy @s uses(@step v1, @look v1) {
+  %m = iro.resource @m : participant
+
+  iro.parallel @all capture(%m) {
+    iro.repeat @train 2 times capture(%m) {
+    ^(%k: int):
+      iro.access %m owner_update {
+      ^(%u):
+        iro.call @step(%u)
+      }
+      iro.request @twice(%k) from @train at settled_success
+    }
+
+    iro.handler @twice sources [@train] max 1 capture(%m) {
+    ^(%x: int):
+      iro.access %m snapshot at_request {
+      ^(%l):
+        iro.call @look(%l)
+      }
+      iro.access %m snapshot at_request {
+      ^(%l):
+        iro.call @look(%l)
+      }
+    }
+  }
+}
+"""
+
+
+def test_every_use_in_a_handler_reads_its_requests_one_snapshot() -> None:
+    """Two at_request snapshots of one resource in one handler: one reservation per request, both reading it."""
+    from library.iro.reference import StandIn, returning
+    from tests.unit.iro.test_reference import increment
+
+    standins = {
+        "step": StandIn(("owner_update lease",), (), increment, updates=(0,)),
+        "look": StandIn(("snapshot lease",), (), returning()),
+    }
+    result = run_both(TWICE_AT_REQUEST, {"m": 1}, standins)
+    assert result.coordinator.errors == [] and result.reference.errors == []
+    for facts in (result.facts, result.reference.facts):
+        reserved = [f.values[0].ordinal for f in facts if f.kind == "reserved"]
+        leased = [f.values[2].ordinal for f in facts if f.kind == "leased" and "@twice" in f.owner]
+        assert sorted(reserved) == [1, 2], "one reservation per request, at the version after its iteration's update"
+        assert sorted(leased) == [1, 1, 2, 2], "both uses read the snapshot their request holds"
+    assert not result.coordinator.protections.leases, "each request's snapshot went when the request settled"
+    assert all(not lease.active for lease in result.reference.leases.values())

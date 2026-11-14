@@ -7,7 +7,7 @@ request for each ``at_request`` use: a snapshot is taken at once, a live
 read reserved, and updates wait while a reservation stands.
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from library.iro.operation_contracts import AccessMode, ResourceUse, VersionSelection
 from library.iro.prepare.lowered import Call, HandlerInfo, Invoke
@@ -22,9 +22,16 @@ class Protections:
     """The run's leases, each resource's protection, and the retained results that keep leases."""
 
     def __init__(
-        self, kernel: Kernel, owners: Mapping[str, Owner], turns: Turns, storage: DeviceStorage, protection: Mapping[str, Protection]
+        self,
+        kernel: Kernel,
+        owners: Mapping[str, Owner],
+        turns: Turns,
+        storage: DeviceStorage,
+        protection: Mapping[str, Protection],
+        updated: frozenset[str],
     ):
         self.kernel = kernel
+        self.changing = updated  # the resources some access updates; the others keep one version for the run
         self.owners, self.turns, self.storage = owners, turns, storage
         self.by_resource = protection
         self.leases: dict[int, Held] = {}
@@ -48,10 +55,16 @@ class Protections:
         try:
             return self._acquire_each(step, identity, request, held)
         except BaseException:
-            for lease in held:
-                lease.body_ended = True
-                self.release_lease_if_done(lease)
+            self.ended(held)
             raise
+
+    def ended(self, leases: Sequence[Held]) -> None:
+        """An access's body ended: its leases go once nothing retained keeps them; a request's snapshots stay with it."""
+        for lease in leases:
+            if not lease.requested:
+                lease.body_ended = True
+        for lease in leases:
+            self.release_lease_if_done(lease)
 
     def _acquire_each(self, step: Invoke, identity: Identity, request: Request | None, held: list[Held]) -> tuple[Held, ...]:
         for name, use in step.uses:
@@ -61,8 +74,7 @@ class Protections:
                 raise RunFailure(f"{step.path}: at_request outside requested work")
             if use.mode == AccessMode.SNAPSHOT and use.selection == VersionSelection.AT_REQUEST:
                 assert request is not None
-                lease = request.snapshots.pop(name)
-                lease.body_ended = False
+                lease = request.snapshots[name]  # every use in the handler's work reads the request's one snapshot
             else:
                 reserved = {name: request.reserved[name]} if request is not None and name in request.reserved else None
                 (granted,) = self.owners[name].lease([Use(name, use.mode, use.selection, use.route, use.view)], reserved)
@@ -83,16 +95,29 @@ class Protections:
         return tuple(held)
 
     def hold(self, name: str, mode: AccessMode, granted) -> Held:
-        """Tracks an owner's lease; a snapshot of device storage asks for its copy (D15)."""
+        """Tracks an owner's lease; a snapshot of device storage asks for its copy (D15).
+
+        A participant the run never updates needs no copy: its live storage
+        already is the snapshot's version, so the handle is built over it.
+        """
         capture = granted.handle if isinstance(granted.handle, Capture) else None
         adapter = None
-        if capture is not None:
+        built = None
+        if capture is not None and mode == AccessMode.SNAPSHOT and name not in self.changing:
+            try:
+                built, capture = capture.over(capture.storage), None
+            except BaseException:
+                granted.release()
+                raise
+        elif capture is not None:
             try:
                 adapter = self.storage.capturer(name, mode, granted.version)
             except RunFailure:
                 granted.release()
                 raise
         lease = Held(self._next_token, name, mode, granted, granted.version)
+        if built is not None:
+            lease.built, lease.over_storage = built, True
         self._next_token += 1
         self.leases[lease.token] = lease
         self.storage.held(lease, capture, adapter)
@@ -175,14 +200,20 @@ class Protections:
     def reserve(self, request: Request, handler: HandlerInfo) -> None:
         """Holds the version at the request for each at_request use: a snapshot is taken now, a live read reserved.
 
-        If one cannot be held, those already held are released: the request is never made.
+        Once per resource and kind: every use of it in the handler's work reads
+        the same snapshot, or the same reserved version. The request holds its
+        snapshots until it settles. If one cannot be held, those already held
+        are released: the request is never made.
         """
         try:
             for name, use in handler.at_request:
                 owner = self.owners[name]
+                if name in (request.snapshots if use.mode == AccessMode.SNAPSHOT else request.reserved):
+                    continue
                 if use.mode == AccessMode.SNAPSHOT:
                     (granted,) = owner.lease([Use(name, use.mode, VersionSelection.CURRENT_AT_START, use.route, use.view)])
                     lease = self.hold(name, use.mode, granted)
+                    lease.requested = True
                     request.snapshots[name] = lease
                     version = lease.version
                 else:
@@ -200,7 +231,7 @@ class Protections:
         names = list(request.reserved)
         request.reserved.clear()
         for lease in request.snapshots.values():
-            lease.body_ended = True
+            lease.requested, lease.body_ended = False, True
             self.release_lease_if_done(lease)
         request.snapshots.clear()
         self.kernel.changed(*(("resource", name) for name in names))
