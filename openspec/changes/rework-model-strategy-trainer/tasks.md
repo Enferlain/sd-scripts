@@ -225,12 +225,111 @@ Section 13's checks, 2026-11-13:
 
 ## 14. Build The IR Runtime And Device Adapters
 
-- [ ] 14.1 Build `prepare/` (implementation matching, effect checks, fusion and lowering; prepared forms and implementation manifests with their cold loading), `runtime/` (the coordinator, invocations, streams and admission, claims, leases and protection, requests and handlers, and bounded bookkeeping), the implementation declaration decorator, `devices/` (the host, and a shared base for PyTorch backends with the CUDA adapter first) and the per-call execution context: grad mode, module mode, precision, stream and RNG.
-- [ ] 14.2 Check the runtime against the reference semantics under explored interleavings. Run free-threaded with the actual GIL state reported, never forcing `PYTHON_GIL=0`. Test CUDA completion, hand-off with events and protection released on device completion. Measure the G3.7 cost cases against direct Python. Check that retained runtime state stays within fixed bounds as attempts accumulate, run the allocation diagnostics apart from timing, and keep the GIL progress witness. G3.7 cases: conformance: ordinary computation and differing modalities; conformance: equivalent lowering and combined work; conformance: protected current use across owners (their gradient and unit parts are checked in section 16); cost: cheap action with 1, 4, 16 operations (+ regression gate); cost: whole-run dispatch and dormant work; cost: admission/freshness and lookup.
-- [ ] 14.3 Governing requirements: `accepted-training-execution`: Equivalent execution preserves required interactions; Static choices leave the hot path; Input handoff retains identity and admission meaning; Completion and failure follow the accepted activity relationships; Current-use protection spans owners and actual use; Conformance and execution cost are checked against accepted meaning; Required interactions need not remain separate dispatches; Input handoffs preserve work identity and boundaries; Production provenance identifies the source states used; Started work reports its effects separately from uncertainty; Conflicting work waits, is rejected or is isolated; Performance checks compare matched execution with required guards in scope; Cost budgets cover required coordination and scale with due work. `workflow-composition`: Local rewriting preserves observable contracts; Prepared realizations preserve semantic correspondence; Retained products declare dependencies and release; Version selection, device admission and placement are independent.
-- [ ] 14.4 Check these D21 coverage rows against today's code or the baseline: research xdsl_language; research execution_candidate. D20 rows covered here: set_train / set_eval. Then move research xdsl_language to `_deprecated/`; research execution_candidate moves after its last check in 16.4.
-- [ ] 14.5 Also covers: bead: sd-scripts-syv.35.8 the extent of one device admission; bead: sd-scripts-syv.35.10 the rule for implementation versions; D14/D16: cold loading: prepared forms and implementation manifests; D16 work: 4 device adapters: host and CUDA (the project's backend is section 26); D16 work: 5 bounded runtime bookkeeping; D15 qualification: the CUDA completion adapter; D15 qualification: the runtime's own concurrency without the GIL (implementations' declarations are qualified in section 26); D15 qualification: bounded bookkeeping retirement; D15 acceptance: GPU early: the CUDA adapter only (the real SDXL training action is section 16); bead: sd-scripts-syv.31.23 GIL progress witness; bead: sd-scripts-syv.31.30 bounded bookkeeping; D14: request reservations for the version at the request (waiting updates and detached realizations), the provable wait-cycle check, and the rule that work never waits while holding a device; D15: the extent one admission covers; D18: reads and updates taken from lease types in the signature; D16: protection kept past the access body until a dependent result's last use; D15: participants resident on a device and leaving it between uses; bead: sd-scripts-syv.41 the device adapter structure; bead: sd-scripts-syv.45 owners' device storage; bead: sd-scripts-syv.52 snapshots of participants the run never updates, without a copy. Settled on 2026-11-14 and written to D15 and D16: the permission to leave the device is `may_leave_device` on the participant's declaration, rejected on a trained participant, with a route form added when first needed. Settled on 2026-11-13 and written to D15 and D16: one admission per access body, turns on one runtime-assigned stream per device, completion as an ordering of later work rather than a wait on the coordinator, turns granted in request order, and a participant's device storage leaving between uses (permitted, frozen storage only, out after every use in the first realization, released after its last possible use); implementation and definition versions with declaration digests and the repository test that keeps them, pins of the definitions a run uses in place of the whole-contract digest that section 13 pins, and prepared and compiled forms keyed on code; one device adapter per PyTorch backend on a shared base, each reporting what it offers for preparation to check, CUDA first and backends no one has run recorded as untested; and every read or copy of a participant's device storage as device work the runtime queues on the device's stream. Overlap stays unrealized here; section 23 realizes it; moved out on 2026-11-14 to the sections that first need them: device capacity admission with syv.49 and syv.51 to 23.5, syv.29 and the gradient and unit parts of the G3.7 conformance cases to 16.5, the undeclared-mutation qualification to 26.3, authored file and line to 17.5 (already there), and syv.48 and syv.42 to the overhead pass (sd-scripts-syv.53, 18.5).
-- [ ] 14.6 Close the section: run focused and regression tests (on GPU for training paths), the dependency test, Ruff, format and ty; update module READMEs and guide examples; record D15's feature cost and generality; confirm the rollback boundary is the previous section's revision; complete the required review and address its findings; update the bead.
+- [x] 14.1 Build `prepare/` (implementation matching, effect checks, fusion and lowering; prepared forms and implementation manifests with their cold loading), `runtime/` (the coordinator, invocations, streams and admission, claims, leases and protection, requests and handlers, and bounded bookkeeping), the implementation declaration decorator, `devices/` (the host, and a shared base for PyTorch backends with the CUDA adapter first) and the per-call execution context: grad mode, module mode, precision, stream and RNG.
+- [x] 14.2 Check the runtime against the reference semantics under explored interleavings. Run free-threaded with the actual GIL state reported, never forcing `PYTHON_GIL=0`. Test CUDA completion, hand-off with events and protection released on device completion. Measure the G3.7 cost cases against direct Python. Check that retained runtime state stays within fixed bounds as attempts accumulate, run the allocation diagnostics apart from timing, and keep the GIL progress witness. G3.7 cases: conformance: ordinary computation and differing modalities; conformance: equivalent lowering and combined work; conformance: protected current use across owners (their gradient and unit parts are checked in section 16); cost: cheap action with 1, 4, 16 operations (+ regression gate); cost: whole-run dispatch and dormant work; cost: admission/freshness and lookup.
+- [x] 14.3 Governing requirements: `accepted-training-execution`: Equivalent execution preserves required interactions; Static choices leave the hot path; Input handoff retains identity and admission meaning; Completion and failure follow the accepted activity relationships; Current-use protection spans owners and actual use; Conformance and execution cost are checked against accepted meaning; Required interactions need not remain separate dispatches; Input handoffs preserve work identity and boundaries; Production provenance identifies the source states used; Started work reports its effects separately from uncertainty; Conflicting work waits, is rejected or is isolated; Performance checks compare matched execution with required guards in scope; Cost budgets cover required coordination and scale with due work. `workflow-composition`: Local rewriting preserves observable contracts; Prepared realizations preserve semantic correspondence; Retained products declare dependencies and release; Version selection, device admission and placement are independent.
+- [x] 14.4 Check these D21 coverage rows against today's code or the baseline: research xdsl_language; research execution_candidate. D20 rows covered here: set_train / set_eval. Then move research xdsl_language to `_deprecated/`; research execution_candidate moves after its last check in 16.4.
+- [x] 14.5 Also covers: bead: sd-scripts-syv.35.8 the extent of one device admission; bead: sd-scripts-syv.35.10 the rule for implementation versions; D14/D16: cold loading: prepared forms and implementation manifests; D16 work: 4 device adapters: host and CUDA (the project's backend is section 26); D16 work: 5 bounded runtime bookkeeping; D15 qualification: the CUDA completion adapter; D15 qualification: the runtime's own concurrency without the GIL (implementations' declarations are qualified in section 26); D15 qualification: bounded bookkeeping retirement; D15 acceptance: GPU early: the CUDA adapter only (the real SDXL training action is section 16); bead: sd-scripts-syv.31.23 GIL progress witness; bead: sd-scripts-syv.31.30 bounded bookkeeping; D14: request reservations for the version at the request (waiting updates and detached realizations), the provable wait-cycle check, and the rule that work never waits while holding a device; D15: the extent one admission covers; D18: reads and updates taken from lease types in the signature; D16: protection kept past the access body until a dependent result's last use; D15: participants resident on a device and leaving it between uses; bead: sd-scripts-syv.41 the device adapter structure; bead: sd-scripts-syv.45 owners' device storage; bead: sd-scripts-syv.52 snapshots of participants the run never updates, without a copy. Settled on 2026-11-14 and written to D15 and D16: the permission to leave the device is `may_leave_device` on the participant's declaration, rejected on a trained participant, with a route form added when first needed. Settled on 2026-11-13 and written to D15 and D16: one admission per access body, turns on one runtime-assigned stream per device, completion as an ordering of later work rather than a wait on the coordinator, turns granted in request order, and a participant's device storage leaving between uses (permitted, frozen storage only, out after every use in the first realization, released after its last possible use); implementation and definition versions with declaration digests and the repository test that keeps them, pins of the definitions a run uses in place of the whole-contract digest that section 13 pins, and prepared and compiled forms keyed on code; one device adapter per PyTorch backend on a shared base, each reporting what it offers for preparation to check, CUDA first and backends no one has run recorded as untested; and every read or copy of a participant's device storage as device work the runtime queues on the device's stream. Overlap stays unrealized here; section 23 realizes it; moved out on 2026-11-14 to the sections that first need them: device capacity admission with syv.49 and syv.51 to 23.5, syv.29 and the gradient and unit parts of the G3.7 conformance cases to 16.5, the undeclared-mutation qualification to 26.3, authored file and line to 17.5 (already there), and syv.48 and syv.42 to the overhead pass (sd-scripts-syv.53, 18.5).
+- [x] 14.6 Close the section: run focused and regression tests (on GPU for training paths), the dependency test, Ruff, format and ty; update module READMEs and guide examples; record D15's feature cost and generality; confirm the rollback boundary is the previous section's revision; complete the required review and address its findings; update the bead.
+
+
+Section 14's checks, 2026-11-14:
+
+- 14.3: `accepted-training-execution`'s requirements, by evidence in
+  `tests/unit/iro`:
+  - Equivalent execution preserves required interactions, and local
+    rewriting preserves observable contracts: the runtime reports exactly the
+    reference's facts on schedule-independent fixtures, every runtime outcome
+    under explored schedules is one the reference reaches, and a fused group
+    keeps each call's facts and updates.
+  - Static choices leave the hot path: execution reads only the lowered form
+    (a run with the strategy stripped from it gives the same results).
+  - Required interactions need not remain separate dispatches: a fused group
+    is one submission.
+  - Input handoff retains identity and admission meaning, handoffs preserve
+    work identity and boundaries, and production provenance identifies the
+    source states used: claims settle once (forks when all forks have),
+    admission applies exact-current, bounded-lag and provenance policies to
+    the versions a production's leases observed.
+  - Completion and failure follow the accepted activity relationships:
+    lifecycle states, failure closing admission for siblings, cancellation
+    and settling, with bookkeeping empty after every run.
+  - Current-use protection spans owners and actual use: protection lasts
+    until device completion and while a retained result keeps its lease;
+    snapshot copies are ordered between a participant's calls.
+  - Started work reports its effects separately from uncertainty: calls
+    report entry, completion or failure, and a group failing midway reports
+    only the calls that ran.
+  - Conflicting work waits, is rejected or is isolated: protection waits,
+    admission rejects, snapshots isolate.
+  - Conformance is checked against accepted meaning by the conformance
+    suite. Execution cost is measured against matched direct Python, with the
+    required guards in scope, by `cost_gate.py` against the retained reference
+    in the same environment, but its budget is not met: dormant work scales
+    with due work, while the cheap action costs 181-244 microseconds over
+    direct Python against 2-7 allowed, and about 200 per round even with no
+    dormant work (record: `research/iro-runtime-cost-results.json`). 14.2 asks
+    for the measurement, which is done; the design requires the gate before
+    18 accepts the SDXL run, and meeting it is the overhead pass,
+    sd-scripts-syv.53 (18.5), placed after 15 and 16 by the user.
+  `workflow-composition`'s: prepared realizations preserve semantic
+  correspondence (a saved prepared form that differs from a fresh
+  derivation is refused, implementations are pinned by version and code);
+  retained products declare dependencies and release (they keep their
+  leases and admissions until the release normalization placed); version
+  selection, device admission and placement are independent (owners select
+  versions, turns admit, preparation places).
+- 14.4: the research `xdsl_language` row is covered: its preparation, owner
+  target and bindings became `prepare/` and the runtime; its local rewrite
+  became preparation's fusion of calls into groups, each call's facts kept;
+  `observations.py` became the conformance harness and the interleaving
+  explorer; its filter, product and cold-process qualification (interruption,
+  history erasure, detached optimized execution) became flow's filters,
+  retained results, cancellation tests, the bookkeeping witness, the
+  strategy-strip test and cold loading. Retained autograd graphs need a real
+  backward and are exercised in 16. It moved to
+  `docs_design/models-strategy-trainer/_deprecated/xdsl_language/`, where its
+  own tests no longer run (they import sibling research packages by
+  relative path). The research `execution_candidate` row's runtime part is
+  covered: `access.py` became protection, turns and verification's
+  wait-cycle check; `progress.py` the kernel's waits and stall detection;
+  `workers.py` the kernel's handoff and the target's workers; `prepare.py`
+  preparation and lowering; `graph.py` is superseded by `library/iro`. Its
+  `state.py`, `optimizer.py` and examples are the run state and training's
+  owners, checked in 16.4; its GIL-on/off parallel-work probe becomes the
+  worker-scaling measurement in sd-scripts-syv.53. D20's `set_train` /
+  `set_eval` row: the device adapter establishes and restores each call's
+  module mode; deriving it from training's words is 16's, and optimizer-local
+  transitions as unit owner updates are 16's and 20's (23.4 checks the row
+  again).
+- The per-call context (14.1): grad mode, module mode, precision and the
+  caller's random state, saved and restored around each call
+  (`devices/torch_context.py`), tested on the host and on the GPU; RNG
+  ownership through recomputation is 16's (sd-scripts-syv.29). The GPU tests
+  ran on the RTX 3080 (PyTorch's cuda:1) in every full run of the suite.
+- Feature cost and generality (D15): a PyTorch backend is a class naming its
+  device type on the shared base, reporting what it offers; device storage
+  work outside a call is one method on the adapter's copies seam and one
+  routine in `runtime/storage.py`, ordered by the same rule; a runtime
+  protocol is one handler in the coordinator's protocol table with its rule
+  in the reference semantics. The coordinator is split by concern, so each
+  lands in one module.
+- Rollback boundary: cf8a4f15, the last revision before this section.
+- Reviews (Sonnet, medium, one per chunk), fixed: a safe call group clearing
+  an unsafe group's busy flag, completions crossing devices waited on the
+  CPU, carried values missed by the lowering, lost wakes undetected outside
+  checked mode; several threads entering one shared stream object aborting
+  the process; leaving the device copying views instead of whole storage
+  and unordered after the calling thread's stream; a refused request
+  leaking reservations, pending completions growing without bound, calls
+  through retained results unordered against snapshot copies, cancellation
+  before a copy began leaking its bookkeeping; the printer numbering values
+  it does not show, nested handlers' reservations, and two at_request
+  snapshots of one resource losing a lease. Filed for later sections:
+  sd-scripts-syv.49, .50, .51 and .53, and the moves of 2026-11-14 recorded
+  in 14.5. The new system's tests run with the GIL off
+  (`--confcutdir=tests/unit/iro`), and a fresh-process test keeps importing
+  the new system from turning it on.
 
 ## 15. Build The Run State
 

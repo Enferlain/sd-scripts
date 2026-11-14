@@ -12,9 +12,20 @@ Rules:
 
 ## [2026-11-14]
 
+### Added
+
+- **`library/iro` gains its runtime and device adapters (section 14)** — preparation for a target (implementation matching, effect checks, fused call groups, device admissions, implementation manifests keyed on code, cold loading of prepared forms, participants' devices and which never change), lowering to numbered slots and bound steps, and a coordinator split into components (kernel, turns, device storage, protection, requests, flow, calls) that realizes every lifecycle protocol and is checked against the reference semantics under explored interleavings. Device adapters: the host, and a shared PyTorch base with CUDA first (per-call settings, one stream per device, completion as events that order later work). Owners' device storage is work the runtime queues on the device's stream: participants permitted to leave the device between uses do so, and snapshots of device state are copies ordered between the participant's calls, or the live storage for participants the run never updates. Implementation and definition versions are pinned with declaration digests.
+- **Checks for the runtime** — witnesses for bounded bookkeeping and coordinator progress, GPU tests run on an RTX 3080, the G3.7 cost probe and `cost_gate.py` (dormant work passes; the cheap action is 181-244 microseconds over direct Python against 2-7 allowed, the target of the overhead pass before section 18), and a fresh-process test that importing the new system keeps the GIL off. The new system's tests run with the GIL off via `--confcutdir=tests/unit/iro`.
+
 ### Changed
 
+- **Rework design, section 14 decisions** — D15 states the capture order, the in-place evaluation-point swap as runtime device work with other routes excluded (D20), that an implementation joins its own streams before returning, and that a copy read on another stream is marked for it; D14 says an `at_request` use belongs to its innermost handler and a request holds one version per resource and kind. Section 14's remaining items moved to the sections that first need them (capacity admission to 23, RNG ownership to 16, undeclared-mutation qualification to 26, the overhead pass to 18).
+- **The research language package is retired** — its coverage row is checked and it moves to `docs_design/models-strategy-trainer/_deprecated/xdsl_language/`.
 - **The permission to leave the device has its spelling** — D15 and D16: `may_leave_device` on a participant's declaration lets its device storage leave between uses; preparation rejects it on a trained participant, a derived route's copy gets a route form when a strategy first needs it, and where the storage waits stays a target choice (pinned host memory first), exact copies only.
+
+### Fixed
+
+- **Written form and requests** — printing no longer numbers values it does not show, so a strategy and its printed form normalize alike; an outer handler's requests no longer reserve a nested handler's reads; two `at_request` snapshots of one resource in one handler no longer lose a lease.
 
 ## [2026-11-13]
 

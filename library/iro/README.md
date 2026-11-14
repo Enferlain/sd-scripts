@@ -4,11 +4,11 @@ Kuroiro, the IR a strategy is read into, and the system that accepts, checks
 and will run it ([design](../../openspec/changes/rework-model-strategy-trainer/design.md)
 D14, D16–D18, D21). Operations print under the `iro` prefix. It is built on
 xDSL and imports only xDSL, observability fact types and base; Torch loads
-only in its device adapters, which arrive with the runtime.
+only in its device adapters (`devices/`).
 
-This is the language half (section 13). The front end that reads Python
-strategies, fulfillment, preparation, the runtime and device adapters come in
-later sections.
+It holds the language half (section 13) and preparation, the runtime and the
+device adapters (section 14). The front end that reads Python strategies and
+fulfillment come in later sections.
 
 ## Stages
 
