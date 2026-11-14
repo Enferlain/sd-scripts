@@ -53,12 +53,12 @@ def test_every_run_settles_completely_and_its_bookkeeping_empties(name: str, che
     produced = {(f.owner, f.values[0]) for f in result.facts if f.kind in ("published", "nothing_produced")}
     assert all(n == 1 for n in dispositions.values()), "every item settles once"
     assert set(dispositions) | {k for k in produced if k not in dispositions} >= produced
-    assert not coordinator.leases and not coordinator.products and not coordinator.outcomes
-    assert all(not s.outstanding and not s.ready for s in coordinator.streams.values())
-    assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protection.values())
-    assert all(not h.pending and h.active == 0 for h in coordinator.handlers.values())
-    assert coordinator._records.empty() and coordinator._all_records.empty() and not coordinator.admissions
-    assert all(t.holder is None and not t.waiting for t in coordinator.turns.values())
+    assert not coordinator.protections.leases and not coordinator.protections.products and not coordinator.outcomes
+    assert all(not s.outstanding and not s.ready for s in coordinator.flow.streams.values())
+    assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protections.by_resource.values())
+    assert all(not h.pending and h.active == 0 for h in coordinator.requests.handlers.values())
+    assert coordinator._records.empty() and coordinator._all_records.empty() and not coordinator.turns.admissions
+    assert all(t.holder is None and not t.waiting for t in coordinator.turns.by_device.values())
 
 
 @pytest.mark.parametrize("name", sorted(CASES))
@@ -77,8 +77,8 @@ def test_a_failing_implementation_fails_the_run_and_still_empties_its_bookkeepin
     outcome, facts, coordinator = run_runtime(fixture(name), resources, installed)
     called = any(f.kind == "call_entered" and f.owner for f in facts)
     assert outcome.status in ("failed", "succeeded") and called
-    assert not coordinator.leases and not coordinator.products and not coordinator.outcomes
-    assert all(not s.outstanding and not s.ready for s in coordinator.streams.values())
-    assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protection.values())
-    assert all(not h.pending and h.active == 0 for h in coordinator.handlers.values())
-    assert not coordinator.admissions and coordinator._records.empty() and coordinator._all_records.empty()
+    assert not coordinator.protections.leases and not coordinator.protections.products and not coordinator.outcomes
+    assert all(not s.outstanding and not s.ready for s in coordinator.flow.streams.values())
+    assert all(not p.readers and p.writer is None and not p.reservations for p in coordinator.protections.by_resource.values())
+    assert all(not h.pending and h.active == 0 for h in coordinator.requests.handlers.values())
+    assert not coordinator.turns.admissions and coordinator._records.empty() and coordinator._all_records.empty()

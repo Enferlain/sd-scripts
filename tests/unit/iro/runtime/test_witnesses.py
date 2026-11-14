@@ -110,25 +110,31 @@ def run_long(times: int) -> tuple[dict[str, int], int]:
 
 # Containers of live state, which must be empty after a run; the others are keyed by the program.
 LIVE = frozenset(
-    {"leases", "products", "outcomes", "request_of", "stops", "admissions", "_admission_of", "_productions"}
-    | {"_records", "_all_records", "_failures", "outstanding", "ready", "pending", "_tasks"}
+    {"leases", "products", "outcomes", "request_of", "stops", "admissions", "admission_of", "productions"}
+    | {"_records", "_all_records", "_failures", "outstanding", "ready", "pending", "tasks"}
 )
 
 
 def sizes(coordinator: Coordinator) -> dict[str, int]:
-    """The size of every container the coordinator holds, and of the streams' and handlers' queues."""
+    """The size of every container the coordinator and its components hold, and of the streams' and handlers' queues."""
     found = {}
-    for key, value in vars(coordinator).items():
-        if isinstance(value, dict | list | set | frozenset) and key not in ("owners", "installed", "devices", "named", "groups"):
-            found[key] = len(value)
+    holders = (coordinator, coordinator.kernel, coordinator.turns, coordinator.storage, coordinator.protections)
+    seen: dict[str, object] = {}
+    for holder in (*holders, coordinator.requests, coordinator.flow, coordinator.calls):
+        for key, value in vars(holder).items():
+            if isinstance(value, dict | list | set | frozenset) and key not in ("owners", "installed", "devices", "named", "groups"):
+                # One name, one container: two components sharing a name would hide one of them here.
+                assert seen.setdefault(key, value) is value, f"two components hold a container named {key}"
+                found[key] = len(value)
     found["_ordinals"] = sum(len(v) for v in coordinator._ordinals.values())
     found["_records"] = coordinator._records.size()
     found["_all_records"] = coordinator._all_records.size()
-    found["emissions"] = sum(len(v) for v in coordinator.emissions.values())
-    found["outstanding"] = sum(len(s.outstanding) for s in coordinator.streams.values())
-    found["ready"] = sum(len(s.ready) for s in coordinator.streams.values())
-    found["pending"] = sum(len(h.pending) for h in coordinator.handlers.values())
-    found["_tasks"] = sum(1 for t in coordinator._tasks if not t.done())
+    found["emissions"] = sum(len(v) for v in coordinator.requests.emissions.values())
+    found["outstanding"] = sum(len(s.outstanding) for s in coordinator.flow.streams.values())
+    found["ready"] = sum(len(s.ready) for s in coordinator.flow.streams.values())
+    found["pending"] = sum(len(h.pending) for h in coordinator.requests.handlers.values())
+    found["tasks"] = sum(1 for t in coordinator.kernel.tasks if not t.done())
+    assert set(found) >= LIVE, f"live state the check no longer finds: {sorted(LIVE - set(found))}"
     return found
 
 

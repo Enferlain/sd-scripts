@@ -197,4 +197,4 @@ def test_a_retaining_call_that_returns_more_than_its_retained_result_fails_when_
     coordinator = Coordinator(prepared, {"m": Memory({"m": 0})}, installed, {"host": Host()}, checked=True)
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "failed" and "returns exactly one result, the retained one" in (outcome.error or "")
-    assert not coordinator.leases and not coordinator.products
+    assert not coordinator.protections.leases and not coordinator.protections.products

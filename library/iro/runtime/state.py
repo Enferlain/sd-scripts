@@ -8,14 +8,19 @@ they happen and are not kept here, so a long run's bookkeeping stays bounded.
 
 import asyncio
 from collections import deque
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import NamedTuple
 
 from library.iro.operation_contracts import AccessMode, FlowContract
+from library.iro.prepare.lowered import Invoke
 from library.iro.seams import Lease, Version
 
 Identity = tuple[tuple[str, int], ...]
+
+# Runs a step's body with the entries its protocol supplies: (step, args, identity, supplied).
+Enter = Callable[[Invoke, tuple[object, ...], Identity, tuple[object, ...]], Awaitable[tuple[object, ...]]]
 
 
 class State(StrEnum):
@@ -157,6 +162,7 @@ class Protection:
 __all__ = [
     "TRANSITIONS",
     "Cancelled",
+    "Enter",
     "Fact",
     "HandlerState",
     "Held",

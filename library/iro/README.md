@@ -64,7 +64,7 @@ a fix. Codes by area:
 | `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
-| `runtime/` | The coordinator and its control state: every lifecycle protocol, leases and protection, retained results, claims and stream admission, requests and handlers, device turns, calls on worker threads |
+| `runtime/` | The coordinator and its control state, one component per concern: `kernel.py` (facts, failure, waits and wakes, tasks, the one handoff to workers), `turns.py` (device turns and admissions), `storage.py` (snapshot copies and leaving the device), `protection.py` (leases, protection, retained results, reservations), `requests.py` (requests, handlers, stops), `flow.py` (streams, claims, producers, filters), `calls.py` (the call path); `coordinator.py` runs the strategy: lifecycles, bodies and the structural protocols |
 | `devices/` | Device adapters: the host, and one per PyTorch backend on the shared base in `pytorch.py` (per-call settings, one stream per device, completion as events); so far `cuda.py`. Each reports what it offers, the target records it, and the coordinator refuses adapters that differ from what the run was prepared for. Other backends are untested until someone runs them |
 | `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form; lowering to the form the coordinator executes |
 

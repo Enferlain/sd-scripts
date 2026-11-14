@@ -127,7 +127,7 @@ def test_a_failure_fails_the_run_and_closes_admission_for_its_siblings() -> None
     assert [f.values[1] for f in facts if f.kind == "call_failed"] == ["selected code failed"]
     statuses = {f.owner.rsplit("/", 1)[-1]: f.values[0] for f in facts if f.kind == "outcome"}
     assert statuses["@right"] == "failed" and statuses["@left"] in ("cancelled", "succeeded")
-    assert not coordinator.outcomes and not coordinator.leases
+    assert not coordinator.outcomes and not coordinator.protections.leases
 
 
 def test_cancellation_closes_admission_and_the_run_settles() -> None:
@@ -207,7 +207,7 @@ def test_device_work_of_different_activities_takes_turns_and_a_turn_lasts_until_
     assert order.count("solo") == 3 and order.count("look") == 3
     released = [i for i, f in enumerate(facts) if f.kind == "product_released"]
     assert len(released) == 3
-    assert all(t.holder is None and not t.waiting for t in coordinator.turns.values()) and not coordinator.admissions
+    assert all(t.holder is None and not t.waiting for t in coordinator.turns.by_device.values()) and not coordinator.turns.admissions
 
 
 def test_a_fused_group_that_fails_midway_reports_only_the_calls_that_ran() -> None:
@@ -298,7 +298,7 @@ def test_an_access_never_waits_for_the_device_while_holding_its_leases() -> None
             LEASE_AND_TURN, installed, resources={"m": 0, "n": 0}, target=CUDA, devices={"cuda:0": FakeDevice()}
         )
         assert outcome.status == "succeeded", outcome.error
-        assert not coordinator.admissions and all(t.holder is None for t in coordinator.turns.values())
+        assert not coordinator.turns.admissions and all(t.holder is None for t in coordinator.turns.by_device.values())
 
 
 def test_cancellation_while_queued_for_a_turn_leaves_no_turn_behind() -> None:
@@ -320,8 +320,8 @@ def test_cancellation_while_queued_for_a_turn_leaves_no_turn_behind() -> None:
         TURNS, installed, resources={"m": 1, "n": 2}, target=CUDA, devices={"cuda:0": FakeDevice()}, before=holder.append
     )
     assert outcome.status == "cancelled"
-    assert not coordinator.admissions and all(t.holder is None and not t.waiting for t in coordinator.turns.values())
-    assert not coordinator.leases and not coordinator.products and not coordinator.outcomes
+    assert not coordinator.turns.admissions and all(t.holder is None and not t.waiting for t in coordinator.turns.by_device.values())
+    assert not coordinator.protections.leases and not coordinator.protections.products and not coordinator.outcomes
 
 
 def test_a_run_where_every_activity_waits_reports_a_stall_instead_of_hanging() -> None:
@@ -331,7 +331,7 @@ def test_a_run_where_every_activity_waits_reports_a_stall_instead_of_hanging() -
     coordinator = Coordinator(prepare(cold_load(run, installed=installed), installed, Target()), {}, installed, {"host": Host()})
 
     async def wait_forever():
-        await coordinator._until(lambda: False)
+        await coordinator.kernel.until(lambda: False)
 
     import pytest
 
@@ -394,7 +394,7 @@ def test_calls_not_safe_for_concurrent_use_run_one_at_a_time_on_a_participant_ev
     outcome, _, coordinator = execute(SHARED, installed, resources={"m": 0}, target=Target(workers=4))
     assert outcome.status == "succeeded", outcome.error
     assert unsafe["most"] == 1, "two calls not safe for concurrent use ran at once on @m"
-    assert not coordinator._busy
+    assert not coordinator.calls.busy
 
 
 TWO_WRITERS = """iro.strategy @s uses(@write v1) {
@@ -424,16 +424,18 @@ def test_checked_mode_fails_a_run_that_loses_a_wake() -> None:
         return 0
 
     installed = {"write": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="write")(write)}
-    original = Coordinator._changed
+    from library.iro.runtime.kernel import Kernel
+
+    original = Kernel.changed
 
     def losing(self, *keys):
         return original(self, *(key for key in keys if key != ("resource", "m")))
 
-    Coordinator._changed = losing  # ty: ignore[invalid-assignment]
+    Kernel.changed = losing  # ty: ignore[invalid-assignment]
     try:
         outcome, _, coordinator = execute(TWO_WRITERS, installed, resources={"m": 0})
     finally:
-        Coordinator._changed = original  # ty: ignore[invalid-assignment]
+        Kernel.changed = original  # ty: ignore[invalid-assignment]
     assert outcome.status == "failed"
     assert any("without a change on the keys it waits on" in error for error in coordinator.errors), coordinator.errors
 
@@ -642,7 +644,7 @@ def test_a_snapshot_of_device_storage_needs_the_one_device_whose_work_uses_it() 
     coordinator = Coordinator(prepared, {"m": OnDevice([])}, installed, {"host": Host()}, checked=True)
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "failed" and "on no device or on several" in (outcome.error or "")
-    assert not coordinator.leases
+    assert not coordinator.protections.leases
 
 
 REQUESTED_SNAPSHOTS = """iro.strategy @s uses(@step v1, @look v1) {
@@ -684,12 +686,6 @@ TWO_LEASES = (
 def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is_copied(shape: str) -> None:
     seen = []
 
-    class Late(Coordinator):
-        async def _capture(self, lease, capture, adapter):
-            # Queued late, as behind its storage coming back: the loop's next update is ready long before.
-            await asyncio.sleep(0.05)
-            await super()._capture(lease, capture, adapter)
-
     def look(handle, x):
         seen.append((x, handle))
         return 0
@@ -713,7 +709,15 @@ def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
     prepared = prepare(cold_load(run, installed=installed), installed, target)
     owners = {"m": owner, "n": OnDevice([], "n")} if "%n" in text else {"m": owner}
-    coordinator = Late(prepared, owners, installed, {"host": Host(), "cuda:0": Copier(log=log)}, checked=True)
+    coordinator = Coordinator(prepared, owners, installed, {"host": Host(), "cuda:0": Copier(log=log)}, checked=True)
+    copy = coordinator.storage.capture
+
+    async def late(lease, capture, adapter):
+        # Queued late, as behind its storage coming back: the loop's next update is ready long before.
+        await asyncio.sleep(0.05)
+        await copy(lease, capture, adapter)
+
+    coordinator.storage.capture = late  # ty: ignore[invalid-assignment]
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "succeeded", outcome.error
     assert sorted(seen) == [(0, ("snapshot", [1])), (1, ("snapshot", [2])), (2, ("snapshot", [3]))], "each request saw its own version"
@@ -737,8 +741,10 @@ def _requested(text: str, owners: dict, device) -> Coordinator:
 
 
 def _clean(coordinator: Coordinator) -> None:
-    assert not coordinator.leases, "no lease is left behind"
-    assert not coordinator._capturing and not any(coordinator._using.values()) and not any(coordinator._holding.values())
+    assert not coordinator.protections.leases, "no lease is left behind"
+    assert (
+        not coordinator.storage.capturing and not any(coordinator.storage.using.values()) and not any(coordinator.storage.holding.values())
+    )
 
 
 def test_a_request_whose_second_snapshot_cannot_be_captured_releases_the_first() -> None:
@@ -923,13 +929,17 @@ def test_a_capture_cancelled_before_it_begins_leaves_nothing_behind() -> None:
 
     async def cancel_at_once() -> None:
         (granted,) = coordinator.owners["m"].lease([Use("m", AccessMode.SNAPSHOT, VersionSelection.CURRENT_AT_START)])
-        lease = coordinator._hold("m", AccessMode.SNAPSHOT, granted)
-        assert coordinator._capturing and coordinator._holding["m"] == 2, "the lease and its capture each hold it on the device"
+        lease = coordinator.protections.hold("m", AccessMode.SNAPSHOT, granted)
+        assert coordinator.storage.capturing and coordinator.storage.holding["m"] == 2, (
+            "the lease and its capture each hold it on the device"
+        )
         lease.capture.cancel()
         for _ in range(3):
             await asyncio.sleep(0)
         assert lease.capture.cancelled() and log == [], "it never began"
-        assert not coordinator._capturing and coordinator._holding["m"] == 1, "the capture's entries went with it; the lease's stay"
+        assert not coordinator.storage.capturing and coordinator.storage.holding["m"] == 1, (
+            "the capture's entries went with it; the lease's stay"
+        )
 
     asyncio.run(cancel_at_once())
 
