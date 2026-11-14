@@ -23,7 +23,15 @@ uv run pytest tests/unit/iro/test_text.py -v
 
 # With short traceback
 uv run pytest tests/unit/ -v --tb=short
+
+# The new IR system, without the GIL: --confcutdir skips tests/conftest.py,
+# whose imports of today's code load torchvision and Triton, turning the GIL on
+uv run pytest tests/unit/iro --confcutdir=tests/unit/iro
 ```
+
+The IR suite's pytest header reports the GIL state it runs with.
+`tests/unit/test_dependency_rules.py` checks, in a fresh process, that
+importing the new system keeps the GIL off on the free-threaded interpreter.
 
 `uv run` uses `.venv-wsl` (set through `UV_PROJECT_ENVIRONMENT`). Today's
 trainer does not run in this environment; it runs only from the pinned Windows

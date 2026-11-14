@@ -7,11 +7,16 @@ section that adds a package adds it here.
 
 Besides each layer's rule, new code never imports the code it replaces,
 research code, or a ``_deprecated/`` folder, and no production module imports
-the test-only accepted-run builder (D1).
+the test-only accepted-run builder (D1). On a free-threaded interpreter,
+importing the new system keeps the GIL off: imports that would turn it back
+on stay off the default path (D15).
 """
 
 import ast
+import os
+import subprocess
 import sys
+import sysconfig
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -221,3 +226,45 @@ def test_a_replaced_module_imported_from_its_package_is_caught(tmp_path: Path) -
     probe.write_text("from library.training import runners\nfrom library.strategies import factory\n")
     found = problems_in(probe, production=True, name="library.strategies.probe")
     assert len([f for f in found if "code the new system replaces" in f]) == 2
+
+
+def gil_turned_on_by(names: list[str], path: Path | None = None) -> str | None:
+    """The first module whose import turns the GIL on, imported one by one in a fresh process.
+
+    A fresh process, because this session's own imports may already have
+    turned the GIL on; the GIL is never forced off (no PYTHON_GIL).
+    """
+    environment = {k: v for k, v in os.environ.items() if k != "PYTHON_GIL"}
+    if path is not None:
+        environment["PYTHONPATH"] = os.pathsep.join(filter(None, (str(path), environment.get("PYTHONPATH"))))
+    code = (
+        "import importlib, sys, warnings\n"
+        "warnings.simplefilter('ignore', RuntimeWarning)\n"
+        f"for name in {names!r}:\n"
+        "    importlib.import_module(name)\n"
+        "    if sys._is_gil_enabled():\n"
+        "        print('ON', name)\n"
+        "        break\n"
+        "else:\n"
+        "    print('OFF')\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code], cwd=ROOT, env=environment, capture_output=True, text=True, timeout=300)
+    assert done.returncode == 0, done.stderr
+    last = done.stdout.strip().splitlines()[-1]
+    return None if last == "OFF" else last.removeprefix("ON ")
+
+
+free_threaded = pytest.mark.skipif(not sysconfig.get_config_var("Py_GIL_DISABLED"), reason="needs a free-threaded interpreter")
+
+
+@free_threaded
+def test_importing_the_new_system_keeps_the_gil_off() -> None:
+    names = [dotted(file) for entry in NEW_SYSTEM for file in modules(entry)]
+    culprit = gil_turned_on_by(names)
+    assert culprit is None, f"importing {culprit} turns the GIL on; load what it needs only where a selected implementation uses it (D15)"
+
+
+@free_threaded
+def test_the_gil_check_names_the_module_that_turns_it_on(tmp_path: Path) -> None:
+    (tmp_path / "gil_probe.py").write_text("import torch._dynamo  # loads Triton, which has not declared free-threading support\n")
+    assert gil_turned_on_by(["library.iro", "gil_probe"], tmp_path) == "gil_probe"
