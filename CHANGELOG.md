@@ -10,6 +10,12 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-14]
+
+### Changed
+
+- **The permission to leave the device has its spelling** — D15 and D16: `may_leave_device` on a participant's declaration lets its device storage leave between uses; preparation rejects it on a trained participant, a derived route's copy gets a route form when a strategy first needs it, and where the storage waits stays a target choice (pinned host memory first), exact copies only.
+
 ## [2026-11-13]
 
 ### Added

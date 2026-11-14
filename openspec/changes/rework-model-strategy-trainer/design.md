@@ -3292,6 +3292,18 @@ and launch device work. Owners hold state.
   - A strategy may permit a participant to leave the device between uses.
     Like overlap, it is a permission: moving changes no result, so
     preparation and the coordinator decide whether the participant leaves.
+    The permission is written on the participant's declaration, after its
+    materializer:
+    `%vae = iro.resource @vae : participant materialize(@load_vae) may_leave_device`.
+    It covers the participant's own storage. On a trained participant,
+    whose storage Trainer optimization refers to, preparation rejects it
+    with the reason rather than moving anything else. A derived route's own
+    copy is permitted by naming its route,
+    `may_leave_device(route @sample)`, a form added when a strategy first
+    needs it. Where the storage waits is a target choice: the first
+    realization keeps it in pinned host memory, and a frozen participant's
+    source file is a later choice. Only exact copies qualify; a quantized or
+    streamed copy is a route's realization.
     The first realization moves a permitted participant out after every
     use. Keeping it when measured peaks show it fits, and copying it in
     ahead of its use, are later target choices that need no strategy
@@ -3715,7 +3727,7 @@ Applying the one-word rule turned up four collisions:
 | Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its release, placed by normalization after the last use and shown in the normalized form | `retained`, `release_product` | Exists |
 | Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
 | Calls | `uses` | The strategy header that pins each implementation's version | Per-call version | Exists, moved to the header |
-| Model | `resource`, `materialize` | Declare something an owner holds, such as a participant; name the implementation that materializes it | `lang.resource` | Exists; `materialize` planned |
+| Model | `resource`, `materialize`, `may_leave_device` | Declare something an owner holds, such as a participant; name the implementation that materializes it; permit a participant's device storage to leave the device between uses (D15) | `lang.resource` | Exists; `materialize` and `may_leave_device` planned |
 | Model | `participant`, `view`, `route` | A model resource with identity; its typed projections and its execution routes (D6). An access names a view, or a route other than the normal one; a call reaches the route through its lease | — | Planned |
 | Model | `relationship` | A declared relation between participants, such as an attachment, with its own identity and state (D6) | — | Planned |
 | Training | `unit`, `window`, `contribute` | An independently advanced optimization responsibility (D9), whose attributes include its members, optimizer policy, joint windows and clipping scope (D20); contributions advanced together; offer an addressed input to a unit | — | Planned |
