@@ -45,8 +45,9 @@ class PyTorchDevice:
     """One device of a PyTorch backend: its stream, its callers' random states and its capacity facts.
 
     ``offers`` says what the adapter realizes (D15): ``ordering``
-    (completion ordered on the device), ``copies`` (an owner's device
-    storage leaving the device and coming back) and, where the backend
+    (completion ordered on the device), ``copies`` (copies of an owner's
+    device storage for snapshots, and the storage leaving the device and
+    coming back) and, where the backend
     reports it, ``memory`` (free and total device memory). The target records
     it, preparation checks a run's needs against it, and the coordinator
     refuses an adapter offering less than the run was prepared for.
@@ -83,14 +84,18 @@ class PyTorchDevice:
     @contextmanager
     def context(self, call: CallContext, after: Sequence[Completion], reaches: Sequence[object]) -> Generator[None]:
         with self._current():
-            for completion in after:
-                if isinstance(completion, Recorded) and completion.stream.device_type == self.stream.device_type:
-                    if completion.stream != self.stream:
-                        self.stream.wait_event(completion.event)
-                else:
-                    completion.wait()
+            self._follow(after)
             with entered(call, reaches, self.device, self.random):
                 yield
+
+    def _follow(self, after: Sequence[Completion]) -> None:
+        """Orders this stream's next work after each completion: on the device where it can, otherwise on the CPU."""
+        for completion in after:
+            if isinstance(completion, Recorded) and completion.stream.device_type == self.stream.device_type:
+                if completion.stream != self.stream:
+                    self.stream.wait_event(completion.event)
+            else:
+                completion.wait()
 
     def empty(self, storage: Sequence[object]) -> None:
         """Frees each tensor's device memory, keeping an exact copy of its whole storage in pinned host memory.
@@ -148,6 +153,40 @@ class PyTorchDevice:
                 memory.resize_(copy.host.numel())
                 _bytes(memory, self.device).copy_(copy.host, non_blocking=True)
             return self.completion()
+
+    def capture(self, storage: Sequence[object], after: Sequence[Completion]) -> tuple[list[torch.Tensor], Recorded]:
+        """Exact copies of the tensors on this device, for a snapshot: each storage is copied whole, once.
+
+        The copies are queued on this stream after ``after``, the work
+        already there and what the calling thread's stream had queued, so
+        they hold the values of the version the work so far produced; later
+        work on this stream, such as the next update, comes after them. Each
+        copy has its tensor's shape, strides and offset into a copy of its
+        storage, so tensors sharing a storage share one copy, as they did.
+        The copies hold no autograd history. Their memory is the caching
+        allocator's for this stream, freed once nothing refers to them; work
+        on another stream that reads them must record that stream on them
+        first (``record_stream``). The runtime's calls on this device run on
+        this stream, so they need not.
+        """
+        outer = torch.accelerator.current_stream(self.device.index)
+        with self._current():
+            self.stream.wait_stream(outer)
+            self._follow(after)
+            copied: dict[int, torch.UntypedStorage] = {}  # by storage address, for tensors sharing one storage
+            copies = []
+            for tensor in storage:
+                assert isinstance(tensor, torch.Tensor) and tensor.device == self.device
+                memory = tensor.untyped_storage()
+                if memory.nbytes() == 0 and tensor.numel():
+                    raise RuntimeError("the storage is not on the device: a snapshot copies storage that is present")
+                address = memory.data_ptr()
+                copy = copied.get(address)
+                if copy is None:
+                    copy = copied[address] = memory.clone()
+                view = torch.empty(0, dtype=tensor.dtype, device=self.device)
+                copies.append(view.set_(copy, tensor.storage_offset(), tensor.size(), tensor.stride()))
+            return copies, self.completion()
 
     def completion(self) -> Recorded:
         return Recorded(self.stream.record_event(), self.stream)

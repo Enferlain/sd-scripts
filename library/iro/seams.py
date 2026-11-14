@@ -21,7 +21,7 @@ composition (D2).
 """
 
 import hashlib
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -99,6 +99,23 @@ class Owner(Protocol):
         lease is released.
         """
         ...
+
+
+@dataclass(frozen=True)
+class Capture:
+    """A snapshot lease's handle when the snapshot is of device storage: what to copy and how to build the handle (D15).
+
+    The owner names the storage the version lives in and how its ordinary
+    handle is built over copies of it; the runtime queues the copy on the
+    device's stream, after the work that produced the version and before
+    later updates, and gives the access's calls ``over(copies)``. The copies
+    hold the storage's values at the lease's version, which must be the
+    current one when the lease is taken: a capture copies live storage. The
+    owner never copies device storage itself, and ``over`` only wraps.
+    """
+
+    storage: Sequence[object]
+    over: Callable[[Sequence[object]], object]
 
 
 @runtime_checkable
@@ -282,7 +299,7 @@ class Device(Protocol):
 
 @runtime_checkable
 class CopiesStorage(Protocol):
-    """A device adapter that offers ``copies``: it moves an owner's device storage off the device and back (D15)."""
+    """A device adapter that offers ``copies``: it copies an owner's device storage for a snapshot, and moves it off the device and back (D15)."""
 
     def empty(self, storage: Sequence[object]) -> None:
         """Frees the storage's device memory after the work already queued, keeping an exact host copy."""
@@ -292,9 +309,14 @@ class CopiesStorage(Protocol):
         """Brings the storage back from its host copy, queued before any later work; the completion says when it is there."""
         ...
 
+    def capture(self, storage: Sequence[object], after: Sequence[Completion]) -> tuple[Sequence[object], Completion]:
+        """Exact copies of the storage, one per item, queued after ``after`` and the work already queued; the completion says when they are made."""
+        ...
+
 
 __all__ = [
     "CallContext",
+    "Capture",
     "Completion",
     "CopiesStorage",
     "Declaration",

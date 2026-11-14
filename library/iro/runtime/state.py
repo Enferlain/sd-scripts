@@ -6,6 +6,7 @@ what lifecycle state each invocation is. Facts are reported to an observer as
 they happen and are not kept here, so a long run's bookkeeping stays bounded.
 """
 
+import asyncio
 from collections import deque
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -81,10 +82,12 @@ class Held:
     version: Version
     active: bool = True
     body_ended: bool = False
+    capture: asyncio.Task | None = None  # for a snapshot of device storage: the task queuing its copy (D15)
+    built: object = None  # the handle the owner built over the copies, once the capture is queued
 
     @property
     def handle(self) -> object:
-        return self.lease.handle
+        return self.lease.handle if self.capture is None else self.built
 
 
 @dataclass(eq=False)

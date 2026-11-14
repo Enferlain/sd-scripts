@@ -19,6 +19,9 @@ implementations and a target, and derives the prepared run:
   per group of device work outside an access. It begins after the body's
   inputs are taken and ends when the last retained result it produced is
   released, where normalization placed the release;
+- **participants on devices** (D15): each participant that device work on
+  exactly one device leases, with that device, where its device storage
+  lives; the runtime queues a snapshot's capture of that storage there;
 - **leaving the device** (D15): each participant permitted to leave the
   device between uses, with the device its storage leaves from. Only frozen
   storage leaves, from one device, whose adapter offers storage copies;
@@ -123,6 +126,7 @@ class Prepared:
     manifest: tuple[ManifestEntry, ...]
     groups: tuple[Group, ...]
     admissions: tuple[Admission, ...]
+    placed: tuple[tuple[str, str], ...]  # (participant, the one device whose work uses it, where its device storage lives)
     leaving: tuple[tuple[str, str], ...]  # (participant, the device its storage leaves from)
     loaded: Loaded = field(compare=False, repr=False)
 
@@ -147,6 +151,9 @@ class Prepared:
         for a in self.admissions:
             covered = ", ".join(str(g) for g in a.groups)
             lines.append(f"  {a.device} from {a.begins}: groups {covered}; ends {', '.join(a.ends)}")
+        if self.placed:
+            lines.append("participants on devices")
+            lines += [f"  @{participant} on {device}" for participant, device in self.placed]
         if self.leaving:
             lines.append("leaving the device")
             lines += [f"  @{participant} from {device}" for participant, device in self.leaving]
@@ -223,13 +230,15 @@ class _Preparation:
     def derive(self) -> Prepared:
         groups = self._groups()
         admissions = self._admissions(groups)
-        leaving = self._leaving()
+        used = self._used_on()
+        placed = tuple(sorted((name, next(iter(devices))) for name, devices in used.items() if len(devices) == 1))
+        leaving = self._leaving(used)
         self.problems.reject_if_any()
         run = self.loaded.run
         manifest = tuple(
             ManifestEntry(name, version, digest, code_identity(self.installed[name])) for name, version, digest in run.implementations
         )
-        return Prepared(self.strategy.sym_name.data, run.identity, self.target, manifest, groups, admissions, leaving, self.loaded)
+        return Prepared(self.strategy.sym_name.data, run.identity, self.target, manifest, groups, admissions, placed, leaving, self.loaded)
 
     # Matching and placement.
 
@@ -367,7 +376,19 @@ class _Preparation:
 
     # Leaving the device (D15).
 
-    def _leaving(self) -> tuple[tuple[str, str], ...]:
+    def _used_on(self) -> dict[str, set[str]]:
+        """The devices other than the host whose work leases each participant."""
+        devices: dict[str, set[str]] = {}
+        for call in (op for op in self.strategy.walk() if isinstance(op, CallOp)):
+            device = self._device(call)
+            if device == HOST.name:
+                continue
+            for operand in call.operands:
+                if isinstance(operand.type, LeaseType) and (name := _leased(operand)) is not None:
+                    devices.setdefault(name, set()).add(device)
+        return devices
+
+    def _leaving(self, devices: Mapping[str, set[str]]) -> tuple[tuple[str, str], ...]:
         """Each participant permitted to leave the device, with the device its storage leaves from.
 
         The first realization keeps one exact host copy, so the storage must
@@ -383,14 +404,6 @@ class _Preparation:
             for use in ResourceSemantics().describe(access).uses:
                 if use.mode in (AccessMode.OWNER_UPDATE, AccessMode.GRANT) and (name := _resource_of(use.subject)) is not None:
                     updated.add(name)
-        devices: dict[str, set[str]] = {}
-        for call in (op for op in self.strategy.walk() if isinstance(op, CallOp)):
-            device = self._device(call)
-            if device == HOST.name:
-                continue
-            for operand in call.operands:
-                if isinstance(operand.type, LeaseType) and (name := _leased(operand)) is not None:
-                    devices.setdefault(name, set()).add(device)
         facts = {d.name: d for d in self.target.devices}
         leaving = []
         for op in permitted:

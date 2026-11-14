@@ -3264,8 +3264,19 @@ and launch device work. Owners hold state.
   measured on 2026-11-13 on the RTX 3080, a copy on the thread's default
   stream saw the value from before a queued update in 3 of 3 trials, and the
   same copy on the runtime's stream saw the update. A snapshot of device
-  state is therefore a real copy, on the device or in pinned host memory,
-  and preparation chooses which as it does for leaving the device.
+  state is therefore a real copy. Its owner's snapshot lease names the
+  storage its version lives in and how its ordinary handle is built over
+  copies, and the access's calls receive that handle. The device is the one
+  preparation finds the participant's device work on. An update of the
+  participant, which goes through its owner's update protocol, waits until
+  every capture already asked for is queued, so a
+  requested snapshot holds the version at the request, however late its
+  handler runs. A capture copies live storage, so it realizes only the
+  current version; a published initial snapshot of device state the strategy
+  updates is refused with the reason until the initial version is kept. The
+  first realization copies on the device; a copy in pinned host memory, for
+  when device memory is short, is a target choice like the place storage
+  waits when it leaves the device, and comes with capacity decisions.
 - **Overlap, once realized.** Overlapped work needs random state of its
   own: an implementation that draws from a device's default generator, as
   dropout does, runs only in turn. On several ranks, whether work overlaps

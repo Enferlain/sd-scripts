@@ -365,3 +365,99 @@ def test_storage_that_leaves_comes_back_whole_for_views_offsets_and_shared_stora
 
     with pytest.raises(RuntimeError, match="already empty"):
         Cuda(gpu_index()).empty((first,))
+
+
+def test_a_capture_copies_whole_storage_after_the_work_queued_and_before_later_work() -> None:
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    base = torch.zeros(1 << 20, device=device.device)
+    torch.cuda.synchronize(device.device)
+    # Written on the calling thread's own stream behind busy work, as loading weights would be.
+    busy(torch.randn(2048, 2048, device=device.device), 200)
+    base.fill_(4.0)
+    first, second = base[: 1 << 19], base[(1 << 19) + 7 :]  # two views of one storage, one with an offset
+    copies, done = device.capture((first, second), ())
+    with device.context(CallContext(), (), ()):
+        base.fill_(9.0)  # the next update, queued on the device's stream after the copy
+    done.wait()
+    torch.cuda.synchronize(device.device)
+    assert all(torch.all(c == 4.0) for c in copies), "the copy followed the write before it and preceded the one after"
+    assert [c.shape for c in copies] == [first.shape, second.shape] and copies[1].storage_offset() == second.storage_offset()
+    assert copies[0].untyped_storage().data_ptr() == copies[1].untyped_storage().data_ptr() != base.untyped_storage().data_ptr()
+    assert not any(c.requires_grad for c in copies)
+
+
+SNAPSHOT_BETWEEN_UPDATES = """iro.strategy @s uses(@first v1, @look v1, @second v1) {
+  %m = iro.resource @m : participant
+  iro.sequence @once capture(%m) {
+    iro.access %m owner_update {
+    ^(%lease):
+      %u = iro.call @first(%lease) -> int
+    }
+    iro.access %m snapshot {
+    ^(%lease):
+      %v = iro.call @look(%lease) -> int
+    }
+    iro.access %m owner_update {
+    ^(%lease):
+      %w = iro.call @second(%lease) -> int
+    }
+  }
+}
+"""
+
+
+class Captured(Weights):
+    """Weights whose snapshot lease asks the runtime to copy the tensor; the handle is the copy itself."""
+
+    def lease(self, uses, reserved=None):
+        from library.iro.operation_contracts import AccessMode
+        from library.iro.seams import Capture
+        from tests.unit.iro.runtime.harness import Granted
+
+        return [
+            Granted(use, self.current("m"), Capture((self.tensor,), lambda copies: copies[0]) if use.mode == AccessMode.SNAPSHOT else self)
+            for use in uses
+        ]
+
+
+def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_without_a_host_wait() -> None:
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    owner = Captured(torch.zeros(2048, 2048, device=device.device))
+    seen = {}
+
+    def first(weights):
+        busy(torch.randn(2048, 2048, device=weights.tensor.device), 200)
+        weights.tensor.fill_(1.0)
+        weights.ordinal += 1
+        return 0
+
+    def look(snapshot):
+        seen["stream_busy"] = not torch.cuda.current_stream(snapshot.device).query()
+        seen["snapshot"] = snapshot
+        return 0
+
+    def second(weights):
+        weights.tensor.fill_(5.0)
+        weights.ordinal += 1
+        return 0
+
+    update = ("owner_update lease",)
+    installed = {
+        "first": implementation(version=1, inputs=update, outputs=("int",), effects=["device"], name="first")(first),
+        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(look),
+        "second": implementation(version=1, inputs=update, outputs=("int",), effects=["device"], name="second")(second),
+    }
+    run = accepted_run(SNAPSHOT_BETWEEN_UPDATES, installed=installed)
+    target = Target((HOST, DeviceFacts.of(device)), device=device.name)
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    coordinator = Coordinator(prepared, {"m": owner}, installed, {"host": Host(), device.name: device}, checked=True)
+    outcome = asyncio.run(coordinator.run())
+    assert outcome.status == "succeeded", outcome.error
+    torch.cuda.synchronize(device.device)
+    assert seen["stream_busy"], "the copy and the call reading it were queued behind the first update, not after a host wait"
+    assert torch.all(seen["snapshot"] == 1.0), "the snapshot holds the version it leased"
+    assert torch.all(owner.tensor == 5.0), "the later update went to the live state, not the snapshot"
