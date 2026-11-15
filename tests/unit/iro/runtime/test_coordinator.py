@@ -576,13 +576,16 @@ class OnDevice:
                 version = Seen(self.name, 1, "initial", 0) if initial else self.current(self.name)
                 granted.append(Granted(use, version, Capture((self.box,), lambda copies: ("snapshot", copies[0]))))
             else:
-                granted.append(Granted(use, self.current(self.name), self))
+                granted.append(Granted(use, self.current(self.name), self, self.advanced))
         return granted
+
+    def advanced(self):
+        self.ordinal += 1
+        return self.current(self.name)
 
     def update(self, value):
         self.log.append("update")
         self.box[0] = value
-        self.ordinal += 1
 
 
 def _between_updates(selection: str = "snapshot"):

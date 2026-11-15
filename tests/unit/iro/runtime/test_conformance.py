@@ -12,6 +12,7 @@ from collections import Counter
 
 import pytest
 
+from library.iro.seams import Version
 from tests.unit.iro.conformance import standins
 from tests.unit.iro.conformance.test_conformance import CASES, fixture
 from tests.unit.iro.runtime.harness import run_both
@@ -20,6 +21,11 @@ SCHEDULE_INDEPENDENT = ("lifetime", "lifetime_scoped")
 
 # Checked mode runs every check lowering narrows in full; the default runs only the lowered ones.
 MODES = pytest.mark.parametrize("checked", [True, False], ids=["checked", "unchecked"])
+
+
+def ordinal(value: object) -> int:
+    assert isinstance(value, Version)
+    return value.ordinal
 
 
 def both(name: str, checked: bool = True):
@@ -182,9 +188,44 @@ def test_every_use_in_a_handler_reads_its_requests_one_snapshot() -> None:
     result = run_both(TWICE_AT_REQUEST, {"m": 1}, standins)
     assert result.coordinator.errors == [] and result.reference.errors == []
     for facts in (result.facts, result.reference.facts):
-        reserved = [f.values[0].ordinal for f in facts if f.kind == "reserved"]
-        leased = [f.values[2].ordinal for f in facts if f.kind == "leased" and "@twice" in f.owner]
+        reserved = [ordinal(f.values[0]) for f in facts if f.kind == "reserved"]
+        leased = [ordinal(f.values[2]) for f in facts if f.kind == "leased" and "@twice" in f.owner]
         assert sorted(reserved) == [1, 2], "one reservation per request, at the version after its iteration's update"
         assert sorted(leased) == [1, 1, 2, 2], "both uses read the snapshot their request holds"
     assert not result.coordinator.protections.leases, "each request's snapshot went when the request settled"
     assert all(not lease.active for lease in result.reference.leases.values())
+
+
+UPDATES_THAT_CHANGE_NOTHING = """iro.strategy @s uses(@keep v1, @look v1) {
+  %m = iro.resource @m : participant
+  iro.sequence @once capture(%m) {
+    iro.access %m owner_update {
+    ^(%u):
+      iro.call @keep(%u)
+      iro.call @keep(%u)
+    }
+    iro.access %m snapshot {
+    ^(%l):
+      iro.call @look(%l)
+    }
+  }
+}
+"""
+
+
+def test_an_update_that_changes_nothing_still_advances_the_version() -> None:
+    """The runtime tells the update lease after every declared update, and the reference advances alike (D16)."""
+    from library.iro.reference import StandIn, returning
+
+    standins = {
+        "keep": StandIn(("owner_update lease",), (), returning(), updates=(0,)),
+        "look": StandIn(("snapshot lease",), (), returning()),
+    }
+    result = run_both(UPDATES_THAT_CHANGE_NOTHING, {"m": 1}, standins)
+    assert result.coordinator.errors == [] and result.reference.errors == []
+    assert result.runtime_facts() == result.reference_facts()
+    for facts in (result.facts, result.reference.facts):
+        assert [ordinal(f.values[0]) for f in facts if f.kind == "updated"] == [1, 2], "each declared update advanced the version"
+        (snapshot,) = [f.values[2] for f in facts if f.kind == "leased" and f.values[1] == "snapshot"]
+        assert ordinal(snapshot) == 2, "a later snapshot observes the advanced version"
+    assert result.owner.values == {"m": 1}, "nothing changed the value"

@@ -377,3 +377,23 @@ def test_a_handler_whose_source_never_starts_settles_once_it_cannot_start() -> N
         run.run()
         assert run.settled and run.errors == [], taken
         assert len(run.facts_of("request_settled")) == (1 if taken else 0)
+
+
+TWO_UPDATES_IN_ONE_CALL = """iro.strategy @s uses(@twice v1) {
+  %m = iro.resource @m : participant
+  iro.sequence @once capture(%m) {
+    iro.access %m owner_update {
+    ^(%u):
+      iro.call @twice(%u)
+    }
+  }
+}
+"""
+
+
+def test_two_updates_of_one_lease_in_one_call_are_refused() -> None:
+    """A call's result updates the state behind each lease at most once; each declared update advances it once (D16)."""
+    standins = {"twice": StandIn(("owner_update lease",), (), lambda _: CallResult((), (Update(0, 1), Update(0, 2))), updates=(0,))}
+    run = reference(TWO_UPDATES_IN_ONE_CALL, {"m": 0}, standins)
+    run.run()
+    assert len(run.errors) == 1 and "updates the state behind one lease twice in one call" in run.errors[0]

@@ -6,7 +6,7 @@ the interfaces here, which a domain fills in and the IR runtime calls:
 
 - an **owner** holds one kind of state and realizes the access modes for it,
   with versions and evidence: the run authority for participants, Trainer
-  optimization for weight updates, a producer for its cursor;
+  optimization for its units, a producer for its cursor;
 - an **implementation** is selected code with a declaration: its inputs,
   outputs, effects, concurrency safety and completion at one implementation
   version;
@@ -77,6 +77,16 @@ class Lease(Protocol):
     @property
     def handle(self) -> object: ...
     def release(self) -> None: ...
+
+    def updated(self) -> Version:
+        """Told by the runtime after each call whose declaration says it updates through this lease.
+
+        The owner advances the version and returns it, so a change made in
+        place, such as an optimizer step, never goes unrecorded; a call that
+        changed nothing still advances it (D16). Only an ``owner_update`` or
+        ``grant`` lease is told.
+        """
+        ...
 
 
 @runtime_checkable

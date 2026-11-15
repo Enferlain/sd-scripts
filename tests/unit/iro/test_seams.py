@@ -19,11 +19,16 @@ class Seen:
 class Granted:
     use: Use
     version: Seen
-    handle: object
+    handle: Counter
     released: bool = False
 
     def release(self) -> None:
         self.released = True
+
+    def updated(self) -> Seen:
+        self.handle.ordinal += 1
+        self.version = self.handle.current(self.use.resource)
+        return self.version
 
 
 @dataclass

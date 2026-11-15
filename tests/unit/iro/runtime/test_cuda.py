@@ -91,10 +91,14 @@ class Weights:
 
         return Seen("m", 1, "initial", self.ordinal)
 
+    def advanced(self):
+        self.ordinal += 1
+        return self.current("m")
+
     def lease(self, uses, reserved=None):
         from tests.unit.iro.runtime.harness import Granted
 
-        return [Granted(use, self.current("m"), self) for use in uses]
+        return [Granted(use, self.current("m"), self, self.advanced) for use in uses]
 
 
 def test_a_host_read_after_device_work_waits_for_its_completion_not_for_python_to_return() -> None:
@@ -106,7 +110,6 @@ def test_a_host_read_after_device_work_waits_for_its_completion_not_for_python_t
     def update(weights):
         busy(torch.randn(2048, 2048, device=weights.tensor.device), 200)
         weights.tensor.fill_(3.0)  # queued after the busy work on the device's stream
-        weights.ordinal += 1
         return 0
 
     def read(weights):
@@ -184,14 +187,12 @@ def test_device_work_after_device_work_is_ordered_on_the_device_without_a_wait_o
     def first(weights):
         busy(torch.randn(2048, 2048, device=weights.tensor.device), 200)
         weights.tensor.fill_(1.0)
-        weights.ordinal += 1
         return 0
 
     def second(weights):
         # Had the worker waited for the first call's completion, the stream would be idle by now.
         seen["stream_busy"] = not torch.cuda.current_stream(weights.tensor.device).query()
         weights.tensor.add_(1.0)
-        weights.ordinal += 1
         return 0
 
     update = ("owner_update lease",)
@@ -417,7 +418,9 @@ class Captured(Weights):
         from tests.unit.iro.runtime.harness import Granted
 
         return [
-            Granted(use, self.current("m"), Capture((self.tensor,), lambda copies: copies[0]) if use.mode == AccessMode.SNAPSHOT else self)
+            Granted(use, self.current("m"), Capture((self.tensor,), lambda copies: copies[0]))
+            if use.mode == AccessMode.SNAPSHOT
+            else Granted(use, self.current("m"), self, self.advanced)
             for use in uses
         ]
 
@@ -432,7 +435,6 @@ def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_
     def first(weights):
         busy(torch.randn(2048, 2048, device=weights.tensor.device), 200)
         weights.tensor.fill_(1.0)
-        weights.ordinal += 1
         return 0
 
     def look(snapshot):
@@ -442,7 +444,6 @@ def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_
 
     def second(weights):
         weights.tensor.fill_(5.0)
-        weights.ordinal += 1
         return 0
 
     update = ("owner_update lease",)

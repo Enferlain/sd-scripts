@@ -6,9 +6,10 @@ import pytest
 
 from library.iro.diagnostics import Rejection
 from library.iro.normalize import normalize
-from library.iro.operation_contracts import Reproducibility
+from library.iro.operation_contracts import AccessMode, Reproducibility, VersionSelection
+from library.iro.seams import Use
 from library.iro.text import parse
-from library.iro.verify import CORE_EXECUTION, Checkpoint, Verification, verify
+from library.iro.verify import CORE_EXECUTION, Checkpoint, Evaluator, ObligationKind, Verification, verify
 
 HERE = Path(__file__).parent
 WIDE = (HERE / "wide.iro").read_text()
@@ -46,6 +47,42 @@ def test_the_fixture_verifies_with_obligations_at_two_checkpoints() -> None:
 
 def test_a_cold_loaded_normalized_form_derives_the_same_obligations() -> None:
     assert verified(WIDE_NORMALIZED).obligations.revision == verified(WIDE).obligations.revision
+
+
+def test_every_obligation_names_its_kind_and_evaluator() -> None:
+    """The evaluator picks the obligations it judges by kind, never by reading their words (D19)."""
+    obligations = verified(WIDE).obligations
+    by_kind = {o.kind for o in obligations}
+    assert {ObligationKind.BOUND, ObligationKind.LEASE, ObligationKind.PROTECTED_UNTIL_RELEASE, ObligationKind.STOPS} <= by_kind
+    (unet,) = [o for o in obligations if o.kind == ObligationKind.BOUND and o.names == ("@unet",)]
+    assert unet.evaluator == Evaluator.RUN_AUTHORITY
+    assert all(o.evaluator == Evaluator.RESOURCE_OWNER for o in obligations if o.kind == ObligationKind.LEASE)
+    assert all(o.evaluator == Evaluator.IR_RUNTIME for o in obligations if o.kind == ObligationKind.STOPS)
+    (requested,) = obligations.at(Checkpoint("evaluation"))
+    assert requested.use == Use("unet", AccessMode.PROTECTED_CURRENT, VersionSelection.AT_REQUEST), "a lease obligation carries its use"
+
+
+OTHER_RESOURCE = """iro.strategy @s uses(@read v1) {
+  %m = iro.resource @m : participant
+  %p = iro.resource @p
+  iro.sequence @once capture(%m, %p) {
+    iro.access %m protected_current {
+    ^(%l):
+      iro.call @read(%l)
+    }
+    iro.access %p protected_current {
+    ^(%l):
+      iro.call @read(%l)
+    }
+  }
+}
+"""
+
+
+def test_the_run_authority_judges_only_participants_bindings() -> None:
+    """The authority holds participants; another resource's owner judges that resource is bound (D19)."""
+    bound = {o.names: o.evaluator for o in verified(OTHER_RESOURCE).obligations if o.kind == ObligationKind.BOUND}
+    assert bound == {("@m",): Evaluator.RUN_AUTHORITY, ("@p",): Evaluator.RESOURCE_OWNER}
 
 
 def test_the_fixture_reports_why_it_may_depend_on_scheduling() -> None:

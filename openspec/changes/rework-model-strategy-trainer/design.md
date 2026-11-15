@@ -3555,9 +3555,19 @@ through them and never select behavior by operation name, fixture or case.
 | Seam | What a domain supplies | Examples |
 | --- | --- | --- |
 | Definitions | Operations and types, each with region, flow, resource, realization and decision contracts (D14) | Training units, windows and advancement; data production and filtering; model invocation and views |
-| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence | The run authority for participants; Trainer optimization for weight updates; producers for their cursors and policies |
+| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence | The run authority for participants; Trainer optimization for units, whose advancement updates their members' weights through update leases on them; producers for their cursors and policies |
 | Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion | Family conditioning and denoiser calls, objectives, codecs, serializers |
 | Devices | Execution context and physical completion for one backend, what it offers and knows of the device's capacity, and the copies of owners' device storage | Host execution; one adapter per PyTorch backend on a shared base, CUDA first; the project's own backend |
+
+An owner's versions advance through the runtime. After each call whose
+declaration says it updates through a lease, the runtime tells that lease,
+and the owner advances the version and returns it for the `updated` fact. An
+owner therefore never has to notice a change made in place, such as an
+optimizer step, and no change made through a declared update goes
+unrecorded. A call that turns out to change nothing, such as a skipped
+optimizer step, still advances the version: a version may advance without a
+change, never the reverse. The notice replaces asking the owner for its
+current version after the call, so it adds no work per update.
 
 Registration through every seam is explicit composition (D2).
 
@@ -4567,7 +4577,7 @@ changes at its own rate:
 | Identity | A reference to one incarnation | A reference to one incarnation | Never. A change of identity creates a new incarnation |
 | Meaning | The declaration: what it is and how it materializes | The definition: members, groups and policies | A governed change: rare, checked and all-or-nothing |
 | Realization | The binding, which is the loaded state, and the routes and views prepared from it | The prepared unit: optimizer, scheduler and groups | A materialization or preparation attempt |
-| Live state | The numeric version: which weights | Progress, optimizer state and the gradient window | Every step, by the owner with update access; the authority's records stay unchanged |
+| Live state | The numeric version: which weights | Progress, optimizer state and the gradient window | Every step, through an update lease (D16); the authority's records stay unchanged |
 
 An optimizer step changes live state only. The authority's records change
 when meaning or realization does: on materialization, bound-state
@@ -4605,7 +4615,7 @@ run-state layer (D15).
 | Type | What it is |
 | --- | --- |
 | Reference | One incarnation of something an owner manages, as an opaque value made of the run identity, a kind and a serial number. Only its owner creates one, by minting it or by restoring it from a cut; other code only compares references, and none is ever reused. The authority mints the run identity when the accepted run seeds it (D17), and mints `ParticipantRef` and `RelationshipRef`; Trainer optimization mints `UnitRef` (D20). Cuts and facts store a reference as a string of its three parts and parse it back exactly. |
-| `Version` | Which state a use saw: a reference, the revision of what is bound and a numeric version. Snapshot reads return it, produced items carry it as provenance, and stream admission policies compare it with the current version (D16). |
+| `Version` | Which state a use saw: a reference, the revision of what is bound and a numeric version. Snapshot reads return it, produced items carry it as provenance, and stream admission policies compare it with the current version (D16). At the owner seam, the reference's serial number is the version's incarnation, the binding revision its version lineage and the numeric version its ordinal, with the resource's name as owner. The numeric version is never reused within an incarnation. Versions from different incarnations, or from either side of a bound-state replacement, are therefore incomparable, and admission gives them its explicit disposition instead of comparing them (D14). The version lineage is unrelated to a participant's lineage, which records succession (below). |
 | `Dependencies` | What a projection or prepared realization relies on. The default is its whole source section; an exact set of revisions is the narrower alternative (D6). |
 | Evidence | A typed value, one kind per obligation kind, declared beside the evaluator that judges it (D18). Each value records the attempt that produced it and the revisions it was produced under. A producer's own claim, or a Boolean, is never evidence. |
 | Attempt | A governed job's identity, its basis (the revisions it started from) and whether it replaces state or mutates it in place. Its result is bound to it. `MaterializationAttempt` and `PreparationAttempt` are the two kinds. |
@@ -4628,7 +4638,12 @@ observers (D8).
   publication that conflicts with an outstanding protected use waits for it,
   is rejected or uses supported isolation (`training-runtime-preparation`).
   A reservation held for a pending request counts as outstanding use here
-  (D14).
+  (D14). The IR runtime enforces this, because only it sees reservations: a
+  publication while the run executes enters through the runtime as the
+  planned `transition`, an exclusive use of what it changes, which waits for
+  readers, writers and reservations as an owner update does. The run
+  authority also refuses to publish over a lease it still has outstanding,
+  so a publication that bypasses the runtime fails instead of racing a use.
 - **Withdrawal.** Each owner's section can withdraw the realizations that
   depend on changed revisions without fallible work. An authority transition
   and the withdrawals it causes therefore publish in one generation, and
@@ -4660,7 +4675,7 @@ observers (D8).
 | `View` | A typed, revision-pinned look at one participant that is not a route: original, unwrapped, inspection, metadata or artifact |
 | `Relationship` | Reference and address, endpoints, kind, operational state, revision and history. It changes independently of its endpoints |
 | `TargetRef` | A reference into a participant's structure: the participant, the selected component, module or parameter substructure, its public selector and any declared component provenance. It holds no live object (`optimization-target-refs`). Where `expand-model-metadata-identity-and-structure` has resolved them, it also carries optional catalog and structural path associations, which never replace the semantic identity. Optimization, PEFT targeting and persistence share it, and sharing it makes none of them the owner of targeting (D12) |
-| `Obligations` | The obligation set at its revision. Each entry names its subject, the readiness checkpoint at which it must first be fulfilled, the evidence kind it needs, its evaluator and the strategy location it came from (`training-contract`) |
+| `Obligations` | The obligation set at its revision. Each entry names its subject, the readiness checkpoint at which it must first be fulfilled, the evidence kind it needs, its evaluator and the strategy location it came from (`training-contract`). The run authority judges the obligations of participants and relationships, the owner of any other resource judges that resource's, and the IR runtime judges lifecycles |
 | Authority section | The authority's part of a generation: these records at one authority revision. The specs call it the authority snapshot |
 
 Four details follow from D6 and D7:
@@ -4836,8 +4851,10 @@ resolved against the loaded structure.
 
 A unit's optimizer state, progress and open gradient window are live state,
 and only Trainer optimization changes them. An ordinary advancement changes
-them and its members' numeric versions. It publishes nothing and triggers no
-re-preparation (D9, G3.5).
+them and, through update leases on its members, its members' numeric
+versions, so protection keeps it from racing a protected read (D16, D17). How
+a window takes those leases is settled with training's words (task 16.1). It
+publishes nothing and triggers no re-preparation (D9, G3.5).
 
 Each unit counts its own progress. Attempted optimizer calls and
 backend-confirmed non-skipped advancements are counted apart, because a

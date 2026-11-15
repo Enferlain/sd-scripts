@@ -10,6 +10,17 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-15]
+
+### Added
+
+- **`library/runstate` begins (section 15, first pass)** — the owner pattern (references and their mints, versions, dependencies, evidence, attempts), generations with one-store publication that stays correct without the GIL, target references with component-qualified and participant-qualified selectors, and the run authority: seeding from an accepted run, materialization attempts that run the declared materializers as one job, route rebinding, readiness at a checkpoint, and leases at the owner seam through the execution projection. What this pass leaves out fails with its reason: relationships, views, snapshots of participants the run updates, grants and materializer settings.
+
+### Changed
+
+- **Section 15's opening decisions in the rework design** — D16: an owner's versions advance through the runtime, which tells the update lease after each declared update; D19: how a version maps onto the owner seam, that the runtime enforces publication conflicts while the authority refuses to publish over its own leases, and who judges which obligations; D20: an advancement updates its members' weights through update leases on them.
+- **The IR's update path and obligations** — the runtime tells `seams.Lease.updated()` after a call instead of asking the owner for its version, and the reference semantics advances every declared update, even one that changes nothing; obligations carry a kind and an evaluator, a lease obligation carries its use, and a resource other than a participant is judged by its own owner.
+
 ## [2026-11-14]
 
 ### Added

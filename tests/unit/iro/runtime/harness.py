@@ -8,9 +8,10 @@ owner_update lease, so both realizations run the same fixtures.
 
 import asyncio
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
+from functools import partial
 
 from library.iro.accepted import cold_load
 from library.iro.devices import Host, Returned
@@ -36,7 +37,11 @@ class Seen:
 
 @dataclass
 class Cell:
-    """What a live lease reaches: the resource's value, updated in place by an owner update."""
+    """What a live lease reaches: the resource's value, changed in place by an owner update.
+
+    The version advances when the runtime tells the update lease, not here
+    (D16).
+    """
 
     owner: Memory
     name: str
@@ -47,7 +52,6 @@ class Cell:
 
     def update(self, value: object) -> None:
         self.owner.values[self.name] = deepcopy(value)
-        self.owner.ordinals[self.name] += 1
 
 
 @dataclass(frozen=True)
@@ -57,13 +61,21 @@ class Frozen:
 
 @dataclass
 class Granted:
+    """A test owner's lease; ``advance`` is how its owner advances the version when the runtime tells an update lease."""
+
     use: Use
     version: Seen
     handle: object
+    advance: Callable[[], Seen] | None = None
     released: bool = False
 
     def release(self) -> None:
         self.released = True
+
+    def updated(self) -> Seen:
+        assert self.advance is not None, "only a live lease is told of updates"
+        self.version = self.advance()
+        return self.version
 
 
 @dataclass
@@ -85,6 +97,10 @@ class Memory:
     def current(self, resource: str) -> Seen:
         return Seen(resource, 1, "initial", self.ordinals[resource])
 
+    def advanced(self, resource: str) -> Seen:
+        self.ordinals[resource] += 1
+        return self.current(resource)
+
     def lease(self, uses, reserved=None):
         granted = []
         for use in uses:
@@ -93,7 +109,7 @@ class Memory:
             elif use.mode == AccessMode.SNAPSHOT:
                 granted.append(Granted(use, self.current(use.resource), Frozen(deepcopy(self.values[use.resource]))))
             else:
-                granted.append(Granted(use, self.current(use.resource), Cell(self, use.resource)))
+                granted.append(Granted(use, self.current(use.resource), Cell(self, use.resource), partial(self.advanced, use.resource)))
         return granted
 
 

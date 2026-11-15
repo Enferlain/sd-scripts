@@ -16,6 +16,7 @@ import hashlib
 from collections import defaultdict
 from collections.abc import Iterable, Iterator
 from dataclasses import dataclass, field
+from enum import StrEnum
 
 from xdsl.ir import Block, BlockArgument, Operation, OpResult, SSAValue
 from xdsl.traits import IsTerminator
@@ -46,6 +47,7 @@ from library.iro.operation_contracts import (
     symbol,
     symbols,
 )
+from library.iro.seams import Use
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, retained_positions
 from library.iro.words.data import StreamOp, TakeOp
@@ -76,21 +78,45 @@ class Checkpoint:
 CORE_EXECUTION = Checkpoint()
 
 
+class ObligationKind(StrEnum):
+    """What an obligation needs shown; its evaluator declares the evidence it accepts for each kind (D19)."""
+
+    BOUND = "bound"  # a resource is bound before core execution
+    LEASE = "lease"  # the owner realizes a use in its mode at its version selection
+    PROTECTED_UNTIL_RELEASE = "protected until release"  # leased state stays protected until a retained result's release
+    REGISTERED = "registered"  # a handler is registered before its source reaches the boundary
+    STOPS = "stops"  # a producer stops admitting once another activity settles
+    SETTLES = "settles"  # a handler settles with every accepted request disposed
+    ADMISSION = "admission"  # every admitted item settles, and admission follows the stream's policy
+    DISTRIBUTED = "distributed"  # a decision is made once and distributed before dependent collective work
+
+
+class Evaluator(StrEnum):
+    """Who judges an obligation: the run authority for participants and relationships, a resource's own owner, or the IR runtime (D19)."""
+
+    RUN_AUTHORITY = "the run authority"
+    RESOURCE_OWNER = "the resource's owner"
+    IR_RUNTIME = "the IR runtime"
+
+
 @dataclass(frozen=True, order=True)
 class Obligation:
     """Something the run must discharge, with where it came from and who judges it.
 
     ``subject`` is the statement it is about, by its structural path;
-    ``evidence`` what must be shown; ``evaluator`` the owner that judges it:
-    the run authority, a resource owner or the IR runtime.
+    ``kind`` what kind of evidence it needs and ``evidence`` what must be
+    shown, in words; ``evaluator`` who judges it. A lease obligation carries
+    the ``use`` its owner must realize, which its words already state.
     """
 
     checkpoint: Checkpoint
     subject: str
+    kind: ObligationKind
     evidence: str
-    evaluator: str
+    evaluator: Evaluator
     names: tuple[str, ...] = ()
     source: str = ""
+    use: Use | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -101,7 +127,7 @@ class Obligations:
 
     @property
     def revision(self) -> str:
-        listing = "\n".join(f"{o.checkpoint}|{o.subject}|{o.evidence}|{o.evaluator}|{','.join(o.names)}" for o in self.entries)
+        listing = "\n".join(f"{o.checkpoint}|{o.subject}|{o.kind}|{o.evidence}|{o.evaluator}|{','.join(o.names)}" for o in self.entries)
         return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
 
     @property
@@ -231,9 +257,19 @@ class Analysis:
     def problem(self, code: str, op: Operation, message: str, *, names: Iterable[str] = (), fix: str | None = None) -> None:
         self.problems.add(code, message, names=tuple(names), source=origin(op), fix=fix, path=path(op))
 
-    def owe(self, op: Operation, evidence: str, evaluator: str, *, names: Iterable[str] = (), checkpoint: Checkpoint | None = None) -> None:
+    def owe(
+        self,
+        op: Operation,
+        kind: ObligationKind,
+        evidence: str,
+        evaluator: Evaluator,
+        *,
+        names: Iterable[str] = (),
+        checkpoint: Checkpoint | None = None,
+        use: Use | None = None,
+    ) -> None:
         self.obligations.append(
-            Obligation(checkpoint or self.checkpoint(op), path(op), evidence, evaluator, tuple(names), origin(op) or "")
+            Obligation(checkpoint or self.checkpoint(op), path(op), kind, evidence, evaluator, tuple(names), origin(op) or "", use)
         )
 
     def checkpoint(self, op: Operation) -> Checkpoint:
@@ -460,8 +496,9 @@ class Analysis:
         else:
             self.owe(
                 releases[0],
+                ObligationKind.PROTECTED_UNTIL_RELEASE,
                 "the leased state stays protected until this release",
-                "the IR runtime",
+                Evaluator.IR_RUNTIME,
                 names=tuple(sorted(f"@{name}" for name in self.held(value))),
             )
 
@@ -525,9 +562,11 @@ class Analysis:
                 via = f" through route @{use.route}" if use.route else f" as its {use.view} view" if use.view else ""
                 self.owe(
                     op,
+                    ObligationKind.LEASE,
                     f"{use.mode} lease of {name}{via} at {use.selection}",
-                    "the resource's owner",
+                    Evaluator.RESOURCE_OWNER,
                     names=(name,),
+                    use=Use(subject.sym_name.data, use.mode, use.selection, use.route, use.view),
                 )
 
     def _nested(self, op: Operation, mode: AccessMode, subject: ResourceOp) -> None:
@@ -591,8 +630,9 @@ class Analysis:
                 how = f"materialized by @{symbol(op.materialize)}" if op.materialize is not None else "supplied by its owner"
                 self.owe(
                     op,
+                    ObligationKind.BOUND,
                     f"{kind} @{op.sym_name.data} bound, {how}",
-                    "the run authority",
+                    Evaluator.RUN_AUTHORITY if kind == "participant" else Evaluator.RESOURCE_OWNER,
                     names=(f"@{op.sym_name.data}",),
                     checkpoint=CORE_EXECUTION,
                 )
@@ -660,8 +700,9 @@ class Analysis:
                     )
                 self.owe(
                     op,
+                    ObligationKind.REGISTERED,
                     f"registered before @{described.source} reaches {described.boundary}; kept through an orderly stop",
-                    "the IR runtime",
+                    Evaluator.IR_RUNTIME,
                     names=(f"@{described.target}",),
                 )
             elif isinstance(op, StopOp):
@@ -676,8 +717,9 @@ class Analysis:
                 stops[target].append(op)
                 self.owe(
                     op,
+                    ObligationKind.STOPS,
                     f"@{described.target} stops admitting once @{described.source} settles; its admitted items still settle",
-                    "the IR runtime",
+                    Evaluator.IR_RUNTIME,
                     names=(f"@{described.target}", f"@{described.source}"),
                 )
         for handler in (op for op in self.strategy.walk() if isinstance(op, HandlerOp)):
@@ -685,8 +727,9 @@ class Analysis:
             sources = ", ".join(f"@{name}" for name in named) + (" settle" if len(named) > 1 else " settles")
             self.owe(
                 handler,
+                ObligationKind.SETTLES,
                 f"settles after {sources}, with every accepted request disposed",
-                "the IR runtime",
+                Evaluator.IR_RUNTIME,
                 names=(f"@{handler.sym_name.data}",) if handler.sym_name is not None else (),
                 checkpoint=CORE_EXECUTION,
             )
@@ -805,8 +848,9 @@ class Analysis:
             if takes:
                 self.owe(
                     stream,
+                    ObligationKind.ADMISSION,
                     f"every item admitted from {name} is settled, and admission follows {contract.versions.admission}",
-                    "the IR runtime",
+                    Evaluator.IR_RUNTIME,
                     names=(name,),
                     checkpoint=CORE_EXECUTION,
                 )
@@ -827,7 +871,12 @@ class Analysis:
         for op, decision in self._decisions():
             rank = decision.rank
             if rank == RankRule.DISTRIBUTED:
-                self.owe(op, "decided once and distributed before any dependent collective work", "the IR runtime")
+                self.owe(
+                    op,
+                    ObligationKind.DISTRIBUTED,
+                    "decided once and distributed before any dependent collective work",
+                    Evaluator.IR_RUNTIME,
+                )
             elif rank != RankRule.REPLICATED:
                 self.problem(
                     "iro-decide-001",
@@ -917,4 +966,14 @@ class Analysis:
         return overall, tuple(contributors)
 
 
-__all__ = ["CORE_EXECUTION", "Checkpoint", "Contributor", "Obligation", "Obligations", "Verification", "verify"]
+__all__ = [
+    "CORE_EXECUTION",
+    "Checkpoint",
+    "Contributor",
+    "Evaluator",
+    "Obligation",
+    "ObligationKind",
+    "Obligations",
+    "Verification",
+    "verify",
+]

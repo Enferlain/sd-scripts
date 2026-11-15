@@ -159,16 +159,16 @@ class Protections:
         """Records an owner update, which only the current writer's lease can make.
 
         A call that updates owner state is never fused with another, so each
-        update is observed after the one call that made it. The fact carries
-        the version; the value stays with its owner.
+        update is observed after the one call that made it. The runtime tells
+        the lease, and the owner advances the version, even when the call
+        changed nothing (D16). The fact carries the version; the value stays
+        with its owner.
         """
         if not isinstance(held, Held) or held.mode not in (AccessMode.OWNER_UPDATE, AccessMode.GRANT):
             raise RunFailure(f"{call}: updates state it holds no owner_update lease for")
         if self.by_resource[held.resource].writer != held.token:
             raise RunFailure(f"{call}: a stale owner update of @{held.resource}")
-        now = self.owners[held.resource].current(held.resource)
-        if now == held.version:
-            return
+        now = held.lease.updated()
         if (now.incarnation, now.lineage) != (held.version.incarnation, held.version.lineage) or now.ordinal <= held.version.ordinal:
             raise RunFailure(f"{call}: @{held.resource} moved to an incomparable or older version")
         held.version = now

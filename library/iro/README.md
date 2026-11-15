@@ -58,7 +58,7 @@ a fix. Codes by area:
 | `composition.py` | The contract: definitions with area, definition version and declaration digest, pins for a run, `extend` for domain vocabularies, the readable printout |
 | `text.py` | The written form: printer and parser with exact round trip; a domain word brings its own form through its definition |
 | `normalize.py` | Normalization and the relationships it resolves |
-| `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report |
+| `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report. Each obligation names its kind and its evaluator: the run authority for participants, a resource's own owner for its other resources, or the IR runtime for lifecycles; a lease obligation carries the use its owner must realize |
 | `diagnostics.py` | The shared diagnostic |
 | `accepted.py` | The accepted run, its authority seed and cold loading |
 | `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
@@ -151,8 +151,11 @@ window member's forward and backward are one admission.
 Bookkeeping is bounded: an invocation's records live while it or its scope
 is live. When every live activity waits and no selected work runs, the run
 fails with a stall instead of hanging. A call that updates owner state is
-never fused, so each update is observed after the call that made it; the
-`updated` fact carries the version, and the value stays with its owner. The
+never fused, so each update is observed after the call that made it: the
+runtime tells the update lease (`seams.Lease.updated`), and the owner
+advances the version and returns it, even when the call changed nothing, so
+a change made in place is never missed (D16). The `updated` fact carries the
+version, and the value stays with its owner. The
 runtime also reports `settled` when an item's claim settles, which the
 reference semantics does not.
 

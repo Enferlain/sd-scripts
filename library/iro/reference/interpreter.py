@@ -1132,14 +1132,24 @@ class Reference:
                 raise ReferenceFailure(f"{path(op)}: the stand-in raised {raised}") from raised
             if not isinstance(result, CallResult):
                 raise ReferenceFailure(f"{path(op)}: the stand-in returned something other than a CallResult")
+            values: dict[int, object] = {}
             for update in result.updates:
-                lease = args[update.lease]
-                if update.lease not in pending.standin.updates or not isinstance(lease, Lease) or lease.mode != AccessMode.OWNER_UPDATE:
+                if update.lease not in pending.standin.updates:
+                    raise ReferenceFailure(f"{path(op)}: updates state it holds no owner_update lease for")
+                if update.lease in values:
+                    raise ReferenceFailure(f"{path(op)}: updates the state behind one lease twice in one call")
+                values[update.lease] = update.value
+            # Each declared update advances its version, even one that changed nothing (D16).
+            for position in pending.standin.updates:
+                lease = args[position]
+                if not isinstance(lease, Lease) or lease.mode != AccessMode.OWNER_UPDATE:
                     raise ReferenceFailure(f"{path(op)}: updates state it holds no owner_update lease for")
                 resource = self.resources[lease.resource]
                 if resource.writer != lease.token or resource.version != lease.version:
                     raise ReferenceFailure(f"{path(op)}: a stale owner update of @{lease.resource}")
-                resource.value, resource.ordinal = deepcopy(update.value), resource.ordinal + 1
+                if position in values:
+                    resource.value = deepcopy(values[position])
+                resource.ordinal += 1
                 lease.value, lease.version = resource.value, resource.version
                 self._fact(lease.resource, identity, "updated", resource.version, resource.value)
             outputs = pending.standin.outputs
