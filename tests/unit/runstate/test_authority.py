@@ -405,15 +405,29 @@ UPDATE_THEN_SNAPSHOT = """iro.strategy @s uses(@load v1, @step v1, @peek v1) {
 """
 
 
-def test_a_use_the_authority_refuses_fails_the_run_with_its_reason() -> None:
+def test_a_strategy_that_snapshots_a_participant_it_updates_fails_before_it_runs() -> None:
+    """The obligations show both uses, so the refusal comes at preparation and readiness, not mid-run."""
     installed = {"load": load, "step": step, "peek": peek}
-    run = accepted_run(UPDATE_THEN_SNAPSHOT, installed=installed)
-    authority = RunAuthority.seed(run)
+    authority = RunAuthority.seed(accepted_run(UPDATE_THEN_SNAPSHOT, installed=installed))
     assert isinstance(MaterializationAttempt(authority, ["m", "k"], installed=installed, device=Host()).run(), Published)
+    attempt = authority.attempt()
+    m = authority.section.at("m")
+    result = authority.submit(
+        [RouteRebinding(m.reference, NORMAL, "callable", None, Prepared(attempt.reference, attempt.basis, 1))], attempt
+    )
+    assert isinstance(result, Rejected) and "which the run updates, needs a copy of its device storage" in str(result)
+    assert any("needs a copy" in reason for reason in authority.readiness(CORE_EXECUTION))
+
+
+def test_a_use_the_authority_refuses_fails_the_run_with_its_reason() -> None:
+    """Readiness was skipped here, so the unbound participant fails at its use, and the run reports why."""
+    run = accepted_run(STRATEGY, installed=INSTALLED)
+    authority = RunAuthority.seed(run)
+    assert isinstance(MaterializationAttempt(authority, ["m", "k"], installed=INSTALLED, device=Host()).run(), Published)
     routed(authority, names=("m", "k"))
-    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    prepared = prepare(cold_load(run, installed=INSTALLED), INSTALLED, Target())
     execution = Execution(authority)
-    coordinator = Coordinator(prepared, dict.fromkeys(execution.resources(), execution), installed, {"host": Host()})
+    coordinator = Coordinator(prepared, dict.fromkeys(execution.resources(), execution), INSTALLED, {"host": Host()})
     outcome = asyncio.run(coordinator.run())
-    assert outcome.status == "failed" and outcome.error is not None and "needs a copy of its device storage" in outcome.error
+    assert outcome.status == "failed" and outcome.error is not None and "@n is declared, not bound" in outcome.error
     assert not authority._outstanding, "the refused access holds nothing"

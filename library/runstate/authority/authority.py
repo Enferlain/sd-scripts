@@ -18,8 +18,11 @@ for uses and reservations (D19).
 A snapshot is the live route while nothing has updated the participant,
 and then the participant may no longer be updated for the run. A snapshot
 of a participant the run updates needs a copy of its device storage, which
-the model definitions supply with section 18; until then such a use fails
-with the reason, as does a grant, which comes with training's words.
+the model definitions supply with section 18; until then a strategy that
+both snapshots and updates a participant is refused at route rebinding and
+readiness, since its lease obligations show both uses, and the check at the
+use remains as a backstop. A grant, which comes with training's words, is
+refused the same way.
 """
 
 import threading
@@ -32,7 +35,7 @@ from library.iro.accepted import AcceptedRun
 from library.iro.operation_contracts import AccessMode
 from library.iro import seams
 from library.iro.seams import Use
-from library.iro.verify import Checkpoint, ObligationKind, Obligations
+from library.iro.verify import UPDATE_MODES, Checkpoint, ObligationKind, Obligations
 from library.runstate.authority.records import NORMAL, Binding, Lifecycle, Participant, ParticipantRef, Route
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import (
@@ -85,6 +88,9 @@ class RunAuthority:
         self.obligations: Obligations = run.obligations
         self._pins = {name: (version, digest) for name, version, digest in run.implementations}
         self._declared = {participant.name: participant for participant in run.seed.participants}
+        self._updated = frozenset(
+            o.use.resource for o in run.obligations if o.kind == ObligationKind.LEASE and o.use is not None and o.use.mode in UPDATE_MODES
+        )
         self._participants = Mint(ParticipantRef, generations.run)
         self._lock = threading.Lock()
         self._outstanding: dict[ParticipantRef, int] = {}
@@ -260,7 +266,7 @@ class RunAuthority:
                 assert obligation.use is not None
                 if route is not None and (obligation.use.view is not None or (obligation.use.route or NORMAL) != route):
                     continue
-                reason = judge_lease(obligation, participant, section)
+                reason = judge_lease(obligation, participant, section, updated=participant.address in self._updated)
             if reason is not None:
                 reasons.append(f"{reason} ({obligation.source or obligation.subject})")
         return reasons
@@ -283,7 +289,7 @@ class RunAuthority:
                     if kind == ObligationKind.BOUND:
                         reason = judge_bound(participant, self._pins)
                     else:
-                        reason = judge_lease(obligation, participant, section)
+                        reason = judge_lease(obligation, participant, section, updated=participant.address in self._updated)
                     if reason is not None:
                         reasons.append(f"{reason} ({obligation.source or obligation.subject})")
         return tuple(reasons)

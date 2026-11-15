@@ -8,8 +8,9 @@ supplies. The attempt proposes materialization transitions with their
 evidence, and the authority judges and publishes them together; a
 materializer that fails stops realization with nothing changed.
 
-Materializers take no inputs yet: their settings arrive with the model
-definitions (section 18), and one that reads another participant's view
+Materializers take no inputs yet: how one receives its settings, such as a
+checkpoint path, is settled with the first real materializer (section 16),
+and one that reads another participant's view
 comes with views in the second pass of section 15.
 """
 
@@ -91,7 +92,9 @@ class MaterializationAttempt:
             return []
         declared = implementation.declaration
         if declared.inputs:
-            reasons.append(f"@{materializer} takes inputs; materializer settings come with the model definitions (section 18)")
+            reasons.append(
+                f"@{materializer} takes inputs; how a materializer receives its settings comes with the first real one (section 16)"
+            )
             return []
         if len(declared.outputs) != len(members):
             reasons.append(f"@{materializer} declares {len(declared.outputs)} outputs for {len(members)} participants ({names})")

@@ -968,6 +968,7 @@ class Analysis:
 
 __all__ = [
     "CORE_EXECUTION",
+    "UPDATE_MODES",
     "Checkpoint",
     "Contributor",
     "Evaluator",

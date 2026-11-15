@@ -189,4 +189,4 @@ def run_both(
     return Both(reference, facts, coordinator, owner)
 
 
-__all__ = ["Both", "Memory", "Returned", "comparable", "implementation", "run_both", "run_runtime"]
+__all__ = ["RUNTIME_ONLY", "Both", "Cell", "Memory", "Returned", "comparable", "implementation", "run_both", "run_runtime"]

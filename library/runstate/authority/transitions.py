@@ -92,12 +92,15 @@ def judge_bound(participant: Participant, pins: Mapping[str, tuple[str, str]]) -
     return None
 
 
-def judge_lease(obligation: Obligation, participant: Participant, section: AuthoritySection) -> str | None:
+def judge_lease(obligation: Obligation, participant: Participant, section: AuthoritySection, *, updated: bool) -> str | None:
     """The evaluator of a ``lease`` obligation on a participant: why the authority cannot realize the use, or None.
 
     The participant is bound, and the use's route is prepared from its
-    current binding. Grants come with training's words and views with the
-    second pass of section 15; both fail here instead of at the use.
+    current binding. ``updated`` says some use in the run updates the
+    participant, so a snapshot of it needs a copy of its device storage,
+    which the model definitions supply in section 18. Grants come with
+    training's words and views with the second pass of section 15. Each
+    fails here, before the run starts, instead of at the use.
     """
     use = obligation.use
     assert use is not None, "a lease obligation carries its use"
@@ -109,6 +112,8 @@ def judge_lease(obligation: Obligation, participant: Participant, section: Autho
         return f"{name} is used through a grant; grants come with training's words (section 16)"
     if use.view is not None:
         return f"{name} is used as its {use.view} view; views come with the second pass of section 15"
+    if use.mode == AccessMode.SNAPSHOT and updated:
+        return f"a snapshot of {name}, which the run updates, needs a copy of its device storage, which comes with the model definitions (section 18)"
     route_name = use.route or NORMAL
     route = participant.routes.get(route_name)
     if route is None:

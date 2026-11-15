@@ -15,6 +15,8 @@ Rules:
 ### Added
 
 - **`library/runstate` begins (section 15, first pass)** — the owner pattern (references and their mints, versions, dependencies, evidence, attempts), generations with one-store publication that stays correct without the GIL, target references with component-qualified and participant-qualified selectors, and the run authority: seeding from an accepted run, materialization attempts that run the declared materializers as one job, route rebinding, readiness at a checkpoint, and leases at the owner seam through the execution projection. What this pass leaves out fails with its reason: relationships, views, snapshots of participants the run updates, grants and materializer settings.
+- **Preparation attempts in `library/runstate`** — `PreparationAttempt` derives one job from one generation, reads its participants through the `Preparation` projection pinned to that generation, and publishes the authority's routes with every named contributor's section in one publication, or nothing when the result is stale, failed, partial or refused. A strategy that both snapshots and updates a participant is now refused at preparation and readiness instead of at the use.
+- **The IR's admission, freshness and protected-use cases run against the real authority** — the conformance fixtures, exact-current and bounded-lag admission, and requested work reading its reserved version, with the participants bound, prepared and leased through the run authority.
 
 ### Changed
 

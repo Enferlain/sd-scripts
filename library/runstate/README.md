@@ -20,7 +20,8 @@ views and each owner's part of a cut.
 | `generation.py` | `Generation`, `Generations` (owner registration, attempts, the current generation) and `Publication` |
 | `targets.py` | `TargetRef`: component-qualified and participant-qualified selectors |
 | `authority/` | `RunAuthority`, its records (`Participant`, `Binding`, `Route`, `View`), its section, transitions with the evidence and evaluators that judge them, and `MaterializationAttempt` |
-| `projections.py` | What consumers receive instead of the authority; so far `Execution`, the owner seam for the coordinator |
+| `preparation.py` | `PreparationAttempt`, its `PreparationRequest` and `PreparationResult`: one coherent job, published together or not at all |
+| `projections.py` | What consumers receive instead of the authority: `Execution`, the owner seam for the coordinator, and `Preparation`, the requested participants pinned to one generation |
 
 ## Realization
 
@@ -30,7 +31,8 @@ views and each owner's part of a cut.
      |                             declared participant, unbound (generation 1)
      |  MaterializationAttempt     run the declared materializers as one job;
      |                             the authority judges each binding's evidence
-     |  route rebinding            preparation installs prepared routes
+     |  PreparationAttempt         prepare routes off to the side; publish them
+     |                             with every contributor's section, together
      |  readiness(CORE_EXECUTION)  every participant bound and every use's
      |                             route prepared from its current binding
   Execution(authority)             the coordinator's owner for participants
@@ -46,6 +48,20 @@ generation takes no lock, publications are serialized with each other, and
 published sections never change, so correctness does not depend on the GIL.
 In-place work, which first withdraws the guarantees it affects, is refused
 until withdrawal arrives.
+
+## Preparation
+
+`PreparationAttempt.derive` rejects a request that names an unbound
+participant, or asks for nothing to publish, before any work. The job reads
+the participants it requested through the `Preparation` projection, pinned
+to the generation it was derived from, and returns a `PreparationResult`
+whose parts stay apart by owner: routes for the authority, each
+contributor's next section (every contributor the request names must
+supply one), or failures. `publish` installs them in one
+publication only while that generation is current; a stale, failed or
+refused result publishes nothing, and the routes it would have replaced stay
+usable. Publishing does not establish readiness: the host checks the
+checkpoint once every attempt it needs has published.
 
 ## The run authority
 
@@ -68,9 +84,13 @@ Limits of this pass, each failing with its reason:
 
 - A snapshot hands over the live route while nothing has updated the
   participant, and then pins it: the run may not update it afterwards. A
-  snapshot of a participant the run has updated needs a copy of its device
-  storage, which the model definitions supply in section 18.
+  strategy that both snapshots and updates a participant is refused at
+  preparation and readiness, since the obligations show both uses, even
+  where the two uses would never run in one execution: such a snapshot
+  needs a copy of the participant's device storage, which the model
+  definitions supply in section 18.
 - Grants come with training's words (section 16).
 - Views, and materializers that read another participant's view, come with
   the second pass.
-- Materializers take no inputs; their settings come with section 18.
+- Materializers take no inputs; how one receives its settings is settled with
+  the first real materializer (section 16).

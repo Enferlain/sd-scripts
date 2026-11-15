@@ -109,9 +109,9 @@ class Generations:
         sections = tuple(sorted((owner, section.revision) for owner, section in generation.sections.items()))
         return Basis(generation.number, sections, obligations)
 
-    def attempt(self, obligations: str, mutation: Mutation = Mutation.REPLACES) -> Attempt:
-        """A new attempt, based on the current generation."""
-        return Attempt(self._attempts(), self.basis(obligations), mutation)
+    def attempt(self, obligations: str, mutation: Mutation = Mutation.REPLACES, generation: Generation | None = None) -> Attempt:
+        """A new attempt, based on a generation the caller read, the current one by default."""
+        return Attempt(self._attempts(), self.basis(obligations, generation), mutation)
 
     def publish(self, publication: Publication) -> Generation:
         """Installs the publication's sections as the next generation, or raises :class:`Refused` and changes nothing."""
