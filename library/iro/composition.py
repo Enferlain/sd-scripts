@@ -94,6 +94,8 @@ def _stable(value: object) -> str:
     if dataclasses.is_dataclass(value):
         fields = ", ".join(f"{f.name}={_stable(getattr(value, f.name))}" for f in dataclasses.fields(value))
         return f"{type(value).__qualname__}({fields})"
+    if type(value).__repr__ is object.__repr__:
+        return f"{type(value).__module__}.{type(value).__qualname__}()"  # the default repr holds an address
     return repr(value)
 
 

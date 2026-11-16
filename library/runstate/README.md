@@ -29,7 +29,8 @@ views and each owner's part of a cut.
   accepted run
      |  RunAuthority.seed          mint the run identity; publish every
      |                             declared participant, unbound (generation 1)
-     |  MaterializationAttempt     run the declared materializers as one job;
+     |  MaterializationAttempt     run the declared materializers as one job,
+     |                             with the settings the strategy gives them;
      |                             the authority judges each binding's evidence
      |  PreparationAttempt         prepare routes off to the side; publish them
      |                             with every contributor's section, together
@@ -92,5 +93,3 @@ Limits of this pass, each failing with its reason:
 - Grants come with training's words (section 16).
 - Views, and materializers that read another participant's view, come with
   the second pass.
-- Materializers take no inputs; how one receives its settings is settled with
-  the first real materializer (section 16).

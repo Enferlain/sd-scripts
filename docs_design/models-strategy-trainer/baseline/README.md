@@ -285,6 +285,55 @@ directly.
 - **Throughput and peak memory** are read against the recorded runs above and
   the historical runs below, using their logs and phase breakdowns.
 
+Refined by the user on 2026-11-16, after the environment probe below:
+
+- **The Windows baseline is for performance and resource usage.** Its losses
+  and recorded steps show obvious problems, but they are not expected to
+  match one to one across Windows and WSL/Linux.
+- **Exact correctness is checked in this environment.** A reference step is
+  made here by running today's model code on the recorded step's inputs with
+  PyTorch's deterministic algorithms on, and the new system's step must equal
+  it bit for bit: model output, loss, gradients and the optimizer update.
+- **The historical runs are reference only**, for throughput and resource
+  usage.
+- **Record the GPUs' tensor-unlock state with every throughput measurement**,
+  and compare like with like (see GPU state below). The baseline should be
+  rechecked with the cards unlocked before it is compared for performance.
+
+### Environment probe (2026-11-16)
+
+Today's SDXL UNet, run in this repository's environment (CPython 3.14.5t,
+torch 2.14.1, SDPA attention because xformers is not installed, autocast
+bf16, the RTX 3080 unlocked) on the recorded fine-tune step 0:
+
+| Against the Windows recording | This environment | Baseline's own repeat |
+| --- | --- | --- |
+| Model output | 46% of elements identical, relative L2 0.36%, cosine 0.999994 | identical |
+| Loss | relative difference 1.25e-4 | identical |
+| Global gradient norm | relative difference 0.99% | 1.7e-4 |
+| Sampled gradients | cosine 0.99991, 2.1% opposite signs | 0.999998, 0.1% |
+
+The differences are at bf16 rounding scale, which is what different kernels
+give (attention, torch version, operating system); adding xformers alone
+would not remove them. Without autocast the output is slightly further from
+the recording, so the baseline ran under autocast. The recorded per-sample
+loss is the mean squared error times the min-SNR (gamma 5) weight for
+v-prediction. In this environment the forward and the loss repeat bit for
+bit; the backward does too once `torch.use_deterministic_algorithms(True)`
+is set with `CUBLAS_WORKSPACE_CONFIG=:4096:8`, and otherwise differs at about
+1e-5. Forward and backward together peaked at 11.4 GB.
+
+### GPU state
+
+Both cards can carry a volatile tensor-rate unlock (applied before the OS
+boots, lost on every restart), which raises BF16, FP16 and TF32 tensor
+throughput by about 50-80% and leaves FP32 unchanged. It changes how fast
+tensor instructions issue, not what they compute. The historical runs were
+taken without it; whether the 2026-11-10 runs had it is not known. A BF16
+8192x8192 GEMM tells the state in seconds: about 100 TFLOPS unlocked against
+63 locked for the RTX 3080 at 256 W, and about 92-95 against 63.5 for the RTX
+3090 at 262.5 W. On 2026-11-16 both cards were unlocked.
+
 ### Historical runs
 
 `D:\Projects\sd-scripts\tests\test_output` and `benchmark_output` hold 212

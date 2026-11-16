@@ -15,7 +15,8 @@ fulfillment come in later sections.
 ```text
   written form or (later) Python front end
      |  text.parse            -> accepted strategy
-     |  normalize.normalize   expand derived words, place releases,
+     |  normalize.normalize   expand derived words (later words first, so a
+     |                        word still finds what it names), place releases,
      |                        resolve what requests, stops and streams name
      |  verify.verify         claims, leases, accesses, calls, lifecycles,
      |                        streams, decisions -> obligations, or a rejection
@@ -38,7 +39,7 @@ a fix. Codes by area:
 | Area | Rules |
 | --- | --- |
 | `iro-text-` | Reading the written form: syntax, names, captures, shapes |
-| `iro-norm-` | Names used twice or unresolved, wrong kind, request type or source, expansion that does not end, normalization that would change meaning, a normalized form missing a release |
+| `iro-norm-` | Names used twice or unresolved, wrong kind, request type or source, expansion that does not end or cannot be made, normalization that would change meaning, a normalized form missing a release |
 | `iro-claim-` | A claim settled zero or several times, used after settling, captured into a body that does not run once, used by more than one parallel branch, or used without a claim contract |
 | `iro-lease-` | A lease leaving its access; a retained result leaving its activity, released wrongly, or keeping state that an update needs |
 | `iro-access-` | `at_request` outside requested work, a nested access that waits for itself, an access to something that is not a resource |
@@ -56,11 +57,11 @@ a fix. Codes by area:
 | `words/` | Kuroiro's core operations and types by area: structure, lifetimes, data, access, calls and model use |
 | `operation_contracts.py` | Region, flow, resource, realization and decision contracts, read by every stage through traits |
 | `composition.py` | The contract: definitions with area, definition version and declaration digest, pins for a run, `extend` for domain vocabularies, the readable printout |
-| `text.py` | The written form: printer and parser with exact round trip; a domain word brings its own form through its definition |
+| `text.py` | The written form: printer and parser with exact round trip; a domain word brings its own form through its definition, built on `write_leaf`, `with_body`, `local_inner`, `yield_of` and `literal_text` |
 | `normalize.py` | Normalization and the relationships it resolves |
 | `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report. Each obligation names its kind and its evaluator: the run authority for participants, a resource's own owner for its other resources, or the IR runtime for lifecycles; a lease obligation carries the use its owner must realize |
 | `diagnostics.py` | The shared diagnostic |
-| `accepted.py` | The accepted run, its authority seed and cold loading |
+| `accepted.py` | The accepted run, its authority seed (each participant with its materializer and the settings the strategy gives it) and cold loading |
 | `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |

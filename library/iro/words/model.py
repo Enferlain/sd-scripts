@@ -26,16 +26,20 @@ class ResourceOp(Word):
     """Declares something an owner holds, such as a participant.
 
     ``reads`` are the participants whose views the materializer reads, with
-    the view kind of each in ``read_views``. ``may_leave_device`` permits a
-    participant's device storage to leave the device between uses (D15).
+    the view kind of each in ``read_views``. ``settings`` are the values the
+    materializer receives after those views, such as the checkpoint it
+    loads; they come from the strategy's parameters (D16, D18).
+    ``may_leave_device`` permits a participant's device storage to leave the
+    device between uses (D15).
     """
 
     name = "iro.resource"
-    DEFINITION_VERSION: ClassVar[int] = 2  # 2: may_leave_device
+    DEFINITION_VERSION: ClassVar[int] = 3  # 2: may_leave_device; 3: materializer settings
 
     sym_name = prop_def(StringAttr)
     materialize = opt_prop_def(SymbolRefAttr)
     read_views = opt_prop_def(ArrayAttr[StringAttr])
+    settings = opt_prop_def(ArrayAttr)
     may_leave_device = opt_prop_def(UnitAttr)
     reads = var_operand_def(ResourceType)
     handle = result_def(ResourceType)
@@ -47,6 +51,8 @@ class ResourceOp(Word):
             raise VerifyException(f"{path(self)}: each participant a materializer reads names its view")
         if self.reads and self.materialize is None:
             raise VerifyException(f"{path(self)}: only a materializer reads other participants")
+        if self.settings is not None and self.materialize is None:
+            raise VerifyException(f"{path(self)}: only a materializer takes settings")
         if any(view != INSPECTION for view in views):
             raise VerifyException(f"{path(self)}: a materializer reads a participant's inspection view")
         kind = self.handle.type.kind.data if isinstance(self.handle.type, ResourceType) else ""

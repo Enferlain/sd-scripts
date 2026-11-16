@@ -470,16 +470,27 @@ def _read_resource(r: Reader, scope: Scope, block: Block, s: Statement) -> Opera
     properties: dict[str, Attribute] = {"sym_name": StringAttr(name)}
     reads: list[SSAValue] = []
     views: list[StringAttr] = []
+    settings: list[Attribute] = []
     if r.accept("materialize"):
         r.expect("(")
         properties["materialize"] = SymbolRefAttr(r.symbol())
         while r.accept(","):
-            reads.append(r.value(scope, block))
-            r.expect("view")
-            views.append(StringAttr(r.word("a view kind")))
+            if r.peek().kind == "value":
+                if settings:
+                    raise r.error("a materializer's settings follow the participants it reads", r.peek())
+                reads.append(r.value(scope, block))
+                r.expect("view")
+                views.append(StringAttr(r.word("a view kind")))
+            else:
+                if r.at("("):
+                    raise r.error("a setting's type is its literal's; write the literal without a type", r.peek())
+                setting, _ = r.literal()
+                settings.append(setting)
         r.expect(")")
     if views:
         properties["read_views"] = ArrayAttr(views)
+    if settings:
+        properties["settings"] = ArrayAttr(settings)
     if r.accept("may_leave_device"):
         properties["may_leave_device"] = UnitAttr()
     return ResourceOp.create(operands=reads, result_types=[t.resource(kind)], properties=properties)
@@ -1050,18 +1061,22 @@ def _type_text(type_: Attribute) -> str:
     return t.written(type_)
 
 
+def _attribute_text(value: Attribute) -> str:
+    """A literal's written form: ``true``, ``3``, ``0.5`` or a quoted string."""
+    if isinstance(value, IntegerAttr) and isinstance(value.type, IntegerType) and value.type.width.data == 1:
+        return "true" if value.value.data else "false"
+    if isinstance(value, IntegerAttr):
+        return str(value.value.data)
+    if isinstance(value, FloatAttr):
+        return repr(float(value.value.data))
+    if isinstance(value, StringAttr):
+        return json.dumps(value.data, ensure_ascii=False)
+    raise ValueError(f"no literal form for {value}")
+
+
 def _literal_text(op: ConstantOp) -> str:
     value = op.value
-    if isinstance(value, IntegerAttr) and isinstance(value.type, IntegerType) and value.type.width.data == 1:
-        text = "true" if value.value.data else "false"
-    elif isinstance(value, IntegerAttr):
-        text = str(value.value.data)
-    elif isinstance(value, FloatAttr):
-        text = repr(float(value.value.data))
-    elif isinstance(value, StringAttr):
-        text = json.dumps(value.data, ensure_ascii=False)
-    else:
-        raise ValueError(f"no literal form for {value}")
+    text = _attribute_text(value)
     natural = literal_type(value)
     written = op.result.type
     if isinstance(written, t.ValueType) and written.text == natural:
@@ -1301,6 +1316,7 @@ def _w_resource(w: Writer, op: Operation, names: Names, indent: str) -> Rendered
     if op.materialize is not None:
         reads = op.read_views.data if op.read_views is not None else ()
         extra = "".join(f", {w.operand(names, v)} view {view.data}" for v, view in zip(op.reads, reads, strict=True))
+        extra += "".join(f", {_attribute_text(setting)}" for setting in (op.settings.data if op.settings is not None else ()))
         head += f" materialize(@{op.materialize.root_reference.data}{extra})"
     if op.may_leave_device is not None:
         head += " may_leave_device"
@@ -1599,4 +1615,31 @@ def round_trips(text: str, composition: Composition | None = None) -> bool:
     return print_strategy(parse(text, composition), composition) == text
 
 
-__all__ = ["Reader", "Token", "Writer", "parse", "print_strategy", "round_trips", "tokenize"]
+# What a domain word's form builds on (Definition.form): a leaf statement, a statement with a body,
+# a local body's names, and a body's yield.
+write_leaf = _write_leaf
+with_body = _with_body
+local_inner = _local_inner
+yield_of = _yield
+literal_text = _attribute_text
+
+__all__ = [
+    "Names",
+    "ReadForm",
+    "Reader",
+    "Rendered",
+    "Scope",
+    "Statement",
+    "Token",
+    "WriteForm",
+    "Writer",
+    "literal_text",
+    "local_inner",
+    "parse",
+    "print_strategy",
+    "round_trips",
+    "tokenize",
+    "with_body",
+    "write_leaf",
+    "yield_of",
+]

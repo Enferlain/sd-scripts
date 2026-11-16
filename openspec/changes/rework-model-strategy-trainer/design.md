@@ -3853,6 +3853,13 @@ Conventions for the written form:
 - A materializer that reads another participant's structure names that
   participant's inspection view among its arguments:
   `materialize(@build_lora, %unet view inspection)`.
+- A materializer's settings, such as the checkpoint it loads, are values in
+  the strategy and follow among its arguments:
+  `materialize(@load_sdxl_unet, "models/sdxl.safetensors")`. They come from
+  the strategy's declared parameters, which the run config fills at
+  fulfillment (D18), so they are part of the accepted strategy and its
+  content identity. The materialization evidence records what was actually
+  loaded, such as the file's hash (D19).
 
 For example, latents read from a cache and encoded live on a miss, then
 conditioning from two text encoders taken in one access:
@@ -4134,6 +4141,10 @@ owner protocol:
 
 A window is a maintained derived word over existing protocols: a repeat over
 members, then an owner update of the unit. It needs no new lifecycle protocol.
+The owner update at its end is one access that takes the unit's update
+lease together with an update lease on each participant the unit's members
+belong to, so advancement excludes protected reads of those participants and
+advances their numeric versions (D16, D20). The normalized form shows it.
 
 Capability work such as validation, sampling and persistence runs as handlers
 that triggers request; the IR runtime coordinates the requests, and each
@@ -4749,6 +4760,14 @@ parts. A result publishes
 only while its basis is current. An older optimistic result can never restore
 guarantees that a destructive attempt withdrew.
 
+In-place work first withdraws the guarantees it affects: the participant's
+published routes and views and the leases on it (D8). Before a participant's
+first route or view is published, and while no lease on it is out, there is
+nothing to withdraw, so in-place preparation then needs no withdrawal step,
+such as setting trainability from unit membership or turning on gradient
+checkpointing. The authority checks that none exist when the attempt
+publishes.
+
 #### Projections
 
 Consumers never receive the authority, a section or a generation. Each kind
@@ -4852,9 +4871,9 @@ resolved against the loaded structure.
 A unit's optimizer state, progress and open gradient window are live state,
 and only Trainer optimization changes them. An ordinary advancement changes
 them and, through update leases on its members, its members' numeric
-versions, so protection keeps it from racing a protected read (D16, D17). How
-a window takes those leases is settled with training's words (task 16.1). It
-publishes nothing and triggers no re-preparation (D9, G3.5).
+versions, so protection keeps it from racing a protected read (D16, D17): the
+end of a window takes the unit's update lease and those leases in one access
+(D17). It publishes nothing and triggers no re-preparation (D9, G3.5).
 
 Each unit counts its own progress. Attempted optimizer calls and
 backend-confirmed non-skipped advancements are counted apart, because a

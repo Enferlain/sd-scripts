@@ -43,3 +43,12 @@ def test_the_printout_lists_words_by_area_with_their_meaning() -> None:
     assert text.startswith(f"# kuroiro contract {core().version}\n")
     assert "## access" in text
     assert "iro.fork     v1  Splits a claim into forks" in text
+
+
+def test_a_word_s_form_digests_by_its_code_never_by_an_object_s_address() -> None:
+    class Form:
+        pass
+
+    first, second = Definition(WindowOp, "training", form=Form()), Definition(WindowOp, "training", form=Form())
+    assert first.digest == second.digest, "two instances of one form give one digest in every process"
+    assert Definition(WindowOp, "training", form=Form).digest != Definition(WindowOp, "training").digest

@@ -8,10 +8,11 @@ supplies. The attempt proposes materialization transitions with their
 evidence, and the authority judges and publishes them together; a
 materializer that fails stops realization with nothing changed.
 
-Materializers take no inputs yet: how one receives its settings, such as a
-checkpoint path, is settled with the first real materializer (section 16),
-and one that reads another participant's view
-comes with views in the second pass of section 15.
+A materializer receives its settings, such as the checkpoint it loads, as
+its inputs: values in the strategy, from its declared parameters (D16).
+Participants materialized by one call give the same settings. A materializer
+that reads another participant's view comes with views in the second pass of
+section 15.
 """
 
 from collections.abc import Iterable, Mapping
@@ -91,10 +92,21 @@ class MaterializationAttempt:
             reasons.append(f"@{materializer} materializes {names} and is not installed")
             return []
         declared = implementation.declaration
-        if declared.inputs:
-            reasons.append(
-                f"@{materializer} takes inputs; how a materializer receives its settings comes with the first real one (section 16)"
-            )
+        written = {_typed(self.authority.section.participants[member].declaration.settings) for member in members}
+        if len(written) != 1:
+            reasons.append(f"{names} name @{materializer} with different settings, and one call materializes them")
+            return []
+        given = self.authority.section.participants[members[0]].declaration.settings
+        if len(declared.inputs) != len(given):
+            reasons.append(f"@{materializer} declares {len(declared.inputs)} inputs, and the strategy gives it {len(given)} settings")
+            return []
+        mismatched = [
+            f"setting {index + 1} is {type(value).__name__}, and @{materializer} declares {expected}"
+            for index, (value, expected) in enumerate(zip(given, declared.inputs, strict=True))
+            if type(value).__name__ != expected
+        ]
+        if mismatched:
+            reasons.extend(mismatched)
             return []
         if len(declared.outputs) != len(members):
             reasons.append(f"@{materializer} declares {len(declared.outputs)} outputs for {len(members)} participants ({names})")
@@ -104,7 +116,7 @@ class MaterializationAttempt:
             return []
         try:
             with self.device.context(CallContext(), (), ()):
-                results, completion = implementation(self.device)
+                results, completion = implementation(self.device, *given)
             completion.wait()
         except Exception as failed:
             reasons.append(f"@{materializer} failed to materialize {names}: {failed}")
@@ -115,6 +127,11 @@ class MaterializationAttempt:
             return []
         evidence = Materialized(self.attempt.reference, self.attempt.basis, materializer, declared.version, declared.digest)
         return [Materialization(member, value, evidence) for member, value in zip(members, results, strict=True)]
+
+
+def _typed(settings: tuple[str | int | float | bool, ...]) -> tuple[tuple[str, str | int | float | bool], ...]:
+    """Settings compared with their types, so 1, 1.0 and true stay different."""
+    return tuple((type(value).__name__, value) for value in settings)
 
 
 __all__ = ["MaterializationAttempt"]

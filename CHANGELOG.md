@@ -10,6 +10,19 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-16]
+
+### Added
+
+- **Training's words (section 16, first pass)** — `library/training/words` extends the contract with `iro.train.unit`, `iro.train.window` and `iro.train.contribute` and the standard ownership profile. Each is a derived word over existing protocols: a unit becomes a resource Trainer optimization holds, a contribution an owner update of the unit, and a window a repeat over its body followed by one access that takes the unit's and its participants' update leases. Their written forms mirror the Python face of D18; a unit's gradient-norm limit is `max_grad_norm`.
+- **Materializer settings** — values in the strategy, such as the checkpoint a materializer loads, follow its arguments (`materialize(@load_sdxl_unet, "…")`), reach the authority seed and are passed to the materializer as its inputs, checked against its declared inputs.
+
+### Changed
+
+- **Section 16's opening decisions in the rework design** — D16: materializer settings are values in the strategy; D17 and D20: the end of a window takes the unit's and its members' update leases in one access; D19: in-place work withdraws the guarantees that exist, so before a participant's first route there is nothing to withdraw.
+- **The baseline's pass criteria** — refined after an environment probe: the Windows baseline serves performance, resource usage and obvious problems, exact correctness is checked against a reference made in this environment with deterministic algorithms, and every throughput measurement records the GPUs' tensor-unlock state.
+- **Normalization** expands later derived words first, so a word still finds what it names, and reports every expansion that fails (`iro-norm-009`); a definition's form is digested by its code, never by an object's address.
+
 ## [2026-11-15]
 
 ### Added

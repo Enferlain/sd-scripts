@@ -370,3 +370,31 @@ def test_results_the_printer_does_not_show_take_no_names() -> None:
     from_original = normalize(parse(NAMED_RESULTS_LAST)).text()
     assert normalize(parse(printed)).text() == from_original
     assert "%v0, %v1 = iro.access" in from_original, "no number goes to a value that is not shown"
+
+
+def test_a_materializer_takes_its_settings_after_the_participants_it_reads() -> None:
+    text = (
+        "iro.strategy @s {\n"
+        '  %unet = iro.resource @unet : participant materialize(@load_unet, "models/sdxl.safetensors", 4, 0.5, true)\n'
+        "  %lora = iro.resource @lora : participant materialize(@build_lora, %unet view inspection, 16)\n"
+        "}\n"
+    )
+    strategy = parse(text)
+    unet = op_named(strategy, ResourceOp, "unet")
+    assert unet.settings is not None
+    assert [type(value) for value in unet.settings.data] == [StringAttr, IntegerAttr, FloatAttr, IntegerAttr]
+    printed = print_strategy(strategy)
+    assert 'materialize(@load_unet, "models/sdxl.safetensors", 4, 0.5, true)' in printed
+    assert "materialize(@build_lora, %unet view inspection, 16)" in printed and round_trips(printed)
+    with pytest.raises(Rejection, match="settings follow the participants it reads"):
+        parse(
+            "iro.strategy @s {\n  %u = iro.resource @u : participant\n  %l = iro.resource @l : participant materialize(@b, 16, %u view inspection)\n}\n"
+        )
+
+
+def test_a_setting_keeps_its_literal_s_type_negative_numbers_and_escapes_included() -> None:
+    text = 'iro.strategy @s {\n  %m = iro.resource @m : participant materialize(@l, -2, -0.5, "a \\"quoted\\" path")\n}\n'
+    printed = print_strategy(parse(text))
+    assert 'materialize(@l, -2, -0.5, "a \\"quoted\\" path")' in printed and round_trips(printed)
+    with pytest.raises(Rejection, match="a setting's type is its literal's"):
+        parse("iro.strategy @s {\n  %m = iro.resource @m : participant materialize(@l, (3 : float))\n}\n")

@@ -68,8 +68,8 @@ LAYERS = (
 )
 
 # What exists of the new system: package directories, and test directories that are new code too.
-NEW_SYSTEM = ("library/iro", "library/runstate")
-NEW_TESTS = ("tests/unit/iro", "tests/unit/runstate", "tests/unit/test_dependency_rules.py")
+NEW_SYSTEM = ("library/iro", "library/runstate", "library/training/words")
+NEW_TESTS = ("tests/unit/iro", "tests/unit/runstate", "tests/unit/training_core", "tests/unit/test_dependency_rules.py")
 
 # Code the new system replaces or must not depend on (D21's coverage of today's code).
 REPLACED = (

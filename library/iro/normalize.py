@@ -196,15 +196,27 @@ def _type_name(type_: Attribute | None) -> str:
 
 
 def _expand(strategy: StrategyOp, problems: Problems) -> None:
-    """Expands derived words until none remain, recording each in what its expansion creates."""
+    """Expands derived words until none remain, recording each in what its expansion creates.
+
+    Each round expands later words first. A word that names another, as a
+    window names its unit, comes after it, so it still finds what it names
+    unexpanded; ancestry comes out the same in either order.
+    """
+    failed: set[Operation] = set()
     for _ in range(MAX_EXPANSION_DEPTH):
-        derived = [op for op in strategy.walk() if op.has_trait(DerivedWord)]
+        derived = [op for op in strategy.walk() if op.has_trait(DerivedWord) and op not in failed]
         if not derived:
-            return
-        for op in derived:
+            break
+        for op in reversed(derived):
             if op.parent_op() is None:
                 continue  # erased with an enclosing derived word in this round
-            _expand_one(op)
+            try:
+                _expand_one(op)
+            except VerifyException as why:
+                problems.add("iro-norm-009", f"{op.name} cannot expand: {why}", source=origin(op), path=path(op))
+                failed.add(op)
+    if failed:
+        return
     still = [op for op in strategy.walk() if op.has_trait(DerivedWord)]
     for op in still:
         problems.add(

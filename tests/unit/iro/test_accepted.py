@@ -42,6 +42,18 @@ def test_the_authority_seed_declares_every_participant_and_relationship_unbound(
     assert seed.obligations == accepted_run(WIDE).obligations.revision
 
 
+def test_the_seed_carries_each_materializer_s_settings_as_values() -> None:
+    text = (
+        "iro.strategy @s uses(@load_unet v1) {\n"
+        '  %unet = iro.resource @unet : participant materialize(@load_unet, "models/sdxl.safetensors", 2, false)\n'
+        "}\n"
+    )
+    run = accepted_run(text)
+    (unet,) = run.seed.participants
+    assert unet.settings == ("models/sdxl.safetensors", 2, False)
+    assert cold_load(run).run is run, "the settings are derived from the written form like the rest of the seed"
+
+
 def test_locations_survive_into_the_written_form_and_the_seed() -> None:
     located = WIDE.replace(
         "  %vae  = iro.resource @vae : participant materialize(@load_sdxl)",

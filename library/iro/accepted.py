@@ -21,7 +21,7 @@ import hashlib
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 
-from xdsl.dialects.builtin import ArrayAttr
+from xdsl.dialects.builtin import ArrayAttr, FloatAttr, IntegerAttr, IntegerType, StringAttr
 from xdsl.ir import Attribute, Operation
 
 from library.iro.composition import Composition, core
@@ -41,7 +41,8 @@ class DeclaredParticipant:
     """A participant the strategy declares: its name, kind and how it materializes.
 
     ``reads`` are the participants whose views its materializer reads, as
-    ``(name, view)`` pairs.
+    ``(name, view)`` pairs; ``settings`` the values its materializer receives
+    after them, as Python values.
     """
 
     name: str
@@ -49,6 +50,7 @@ class DeclaredParticipant:
     materializer: str | None = None
     reads: tuple[tuple[str, str], ...] = ()
     origin: str = ""
+    settings: tuple[str | int | float | bool, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -205,6 +207,7 @@ def seed(strategy: StrategyOp, strategy_revision: str, obligation_revision: str)
                     symbol(op.materialize) if op.materialize is not None else None,
                     tuple((names.get(read) or "", view) for read, view in zip(op.reads, views, strict=True)),
                     origin(op) or "",
+                    tuple(_setting(value) for value in op.settings.data) if op.settings is not None else (),
                 )
             )
         elif isinstance(op, RelationshipOp):
@@ -218,6 +221,19 @@ def seed(strategy: StrategyOp, strategy_revision: str, obligation_revision: str)
                 )
             )
     return AuthoritySeed(strategy_revision, obligation_revision, tuple(participants), tuple(relationships))
+
+
+def _setting(value: Attribute) -> str | int | float | bool:
+    """A materializer setting as the Python value its implementation receives."""
+    if isinstance(value, IntegerAttr) and isinstance(value.type, IntegerType) and value.type.width.data == 1:
+        return bool(value.value.data)
+    if isinstance(value, IntegerAttr):
+        return int(value.value.data)
+    if isinstance(value, FloatAttr):
+        return float(value.value.data)
+    if isinstance(value, StringAttr):
+        return value.data
+    raise ValueError(f"a materializer setting is a literal, not {value}")
 
 
 @dataclass(frozen=True)

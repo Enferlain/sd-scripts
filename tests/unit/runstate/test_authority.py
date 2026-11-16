@@ -431,3 +431,61 @@ def test_a_use_the_authority_refuses_fails_the_run_with_its_reason() -> None:
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "failed" and outcome.error is not None and "@n is declared, not bound" in outcome.error
     assert not authority._outstanding, "the refused access holds nothing"
+
+
+SETTINGS = """iro.strategy @s uses(@load_one v1) {
+  %m = iro.resource @m : participant materialize(@load_one, "weights.safetensors", 3)
+}
+"""
+
+
+def test_a_materializer_receives_the_settings_the_strategy_gives_it() -> None:
+    received = []
+
+    @implementation(version=1, inputs=("str", "int"), outputs=("weights",), name="load_one")
+    def load_one(path, count):
+        received.append((path, count))
+        return Box(count)
+
+    installed = {"load_one": load_one}
+    authority = RunAuthority.seed(accepted_run(SETTINGS, installed=installed))
+    assert isinstance(MaterializationAttempt(authority, ["m"], installed=installed, device=Host()).run(), Published)
+    assert received == [("weights.safetensors", 3)]
+    binding = authority.section.at("m").binding
+    assert binding is not None and isinstance(binding.value, Box) and binding.value.value == 3
+
+
+def test_a_materializer_must_declare_one_input_per_setting() -> None:
+    wrong = implementation(version=1, inputs=("str",), outputs=("weights",), name="load_one")(lambda path: Box(0))
+    authority = RunAuthority.seed(accepted_run(SETTINGS))
+    result = MaterializationAttempt(authority, ["m"], installed={"load_one": wrong}, device=Host()).run()
+    assert isinstance(result, Rejected) and "declares 1 inputs, and the strategy gives it 2 settings" in str(result)
+
+
+def test_participants_sharing_one_materializer_call_give_it_the_same_settings() -> None:
+    text = """iro.strategy @s uses(@load_two v1) {
+  %a = iro.resource @a : participant materialize(@load_two, "one.safetensors")
+  %b = iro.resource @b : participant materialize(@load_two, "two.safetensors")
+}
+"""
+    two = implementation(version=1, inputs=("str",), outputs=("weights", "weights"), name="load_two")(lambda path: (Box(1), Box(2)))
+    authority = RunAuthority.seed(accepted_run(text, installed={"load_two": two}))
+    result = MaterializationAttempt(authority, ["a", "b"], installed={"load_two": two}, device=Host()).run()
+    assert isinstance(result, Rejected) and "different settings" in str(result)
+
+
+def test_settings_that_differ_only_in_type_are_different_and_must_match_the_declared_inputs() -> None:
+    text = """iro.strategy @s uses(@load_two v1) {
+  %a = iro.resource @a : participant materialize(@load_two, 1)
+  %b = iro.resource @b : participant materialize(@load_two, true)
+}
+"""
+    two = implementation(version=1, inputs=("int",), outputs=("weights", "weights"), name="load_two")(lambda n: (Box(1), Box(2)))
+    authority = RunAuthority.seed(accepted_run(text, installed={"load_two": two}))
+    result = MaterializationAttempt(authority, ["a", "b"], installed={"load_two": two}, device=Host()).run()
+    assert isinstance(result, Rejected) and "different settings" in str(result), "1 and true are not the same setting"
+
+    wrong_type = implementation(version=1, inputs=("int", "int"), outputs=("weights",), name="load_one")(lambda path, count: Box(0))
+    authority = RunAuthority.seed(accepted_run(SETTINGS))
+    result = MaterializationAttempt(authority, ["m"], installed={"load_one": wrong_type}, device=Host()).run()
+    assert isinstance(result, Rejected) and "setting 1 is str, and @load_one declares int" in str(result)
