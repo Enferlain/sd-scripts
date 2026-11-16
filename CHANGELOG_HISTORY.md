@@ -5,6 +5,517 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2026-07-19]
+
+### Added
+
+- **Metadata migration now keeps a deferred capability ledger** — prematurely displaced behavior is classified as migrated, retained at an IO boundary, deferred to an explicit owner/Beads issue, a future-family onboarding obligation, or an intentionally discarded implementation detail.
+
+### Changed
+
+- **Remaining model-artifact helpers now follow their actual ownership boundaries** — thumbnail encoding is private builder input handling, checkpoint implementation provenance reuses the accepted run Git revision, and safetensors header reads live with safetensors IO utilities.
+
+### Fixed
+
+- **Textual-inversion artifact metadata no longer depends on the removed broad ModelSpec facade** — SD/SDXL textual-inversion roles resolve through family checkpoint facets and a central standalone artifact boundary now projects canonical facts to repo-owned `kuro.*` and compatibility `modelspec.*` output.
+
+### Removed
+
+- **The obsolete `library/utils/model_metadata.py` remainder is gone** — its three unrelated post-migration helpers were placed with the central model builder, existing repository provenance, and safetensors IO boundary instead of preserving a misleading metadata mini-module.
+
+## [2026-07-18]
+
+### Changed
+
+- **Model compatibility exports now project from canonical accepted facts** — `kuro.*` preserves explicitly scoped model-artifact, realization, component, and family-contribution identities; ModelSpec maps typed artifact semantics instead of filtering pre-rendered keys; SD3 attention-mask facts project back to compatibility-only `ss_*`; and safetensors remains the final stringification boundary.
+- **Checkpoint metadata now follows the typed model-artifact path end to end** — trainer checkpoint assembly files family-resolved artifact facts through the shared metadata runtime, scopes exports to the accepted artifact and model realization, preserves current `no_metadata` behavior, passes central projections unchanged through SDXL/SD3 writers and adapter exports, and gives loss-modifier sidecars their real artifact identities and coordinates.
+- **SDXL full-model metadata now retains the configured training resolution** — stable-format saves no longer rebuild ModelSpec with the generic `1024x1024` default after the trainer has already resolved the artifact facts.
+- **Model metadata utilities now expose only narrow active helpers** — `library/utils/model_metadata.py` retains implementation-version, thumbnail data-URL, and safetensors-read helpers without carrying model-family selection or export construction.
+
+### Removed
+
+- **Transitional model metadata dictionary seams are gone from production code** — removed strategy `get_model_metadata()` / `update_metadata()` hooks, the `get_model_metadata_from_config()` facade, the broad `ModelSpecMetadata` / `build_metadata*` flag-driven construction surface, the `ModelSpecFacts` compatibility-dictionary wrapper/emitter, and ModelSpec projection fallback parsing of pre-rendered keys.
+
+## [2026-07-17]
+
+### Added
+
+- **The metadata catalog now represents model families relationally** — added qualified typed facts, central validation/emitter routes, and memory/SQLite round trips for model realizations, loaded components, versioned family contributions, artifact-facing model facts, and explicit artifact-to-realization provenance.
+- **SD, SDXL, and SD3 now resolve canonical artifact semantics through family facets** — typed resolvers distinguish adapter and full-model roles, validate supported formats and prediction modes, preserve optional omission behavior, and identify the applicable public family reference implementations without authoring compatibility keys.
+
+### Changed
+
+- **Metadata construction and emission now have separate central stages** — central builders assemble run and artifact-resolution inputs, emitters convert accepted facts into records and relationships, normal domains retain lifecycle call sites, and the shared runtime files loaded model realizations once for later checkpoint, resource, optimization, and analytics reuse.
+
+### Fixed
+
+- **The guarded training interrupt is responsive without sacrificing clean shutdown** — the first `Ctrl+C` still protects against accidental stops, a confirmed second press immediately raises `KeyboardInterrupt`, and ordinary Python interruption remains available during final reports and cleanup.
+
+## [2026-07-16]
+
+### Added
+
+- **Model-family metadata centralization now has a governing OpenSpec track** — archived the completed family-declared loaded-component change and defined the typed fact, identity, family-resolution, persistence, projection-parity, checkpoint-migration, and compatibility-removal milestones for the broader model metadata system.
+
+### Changed
+
+- **Resource intelligence is verified end to end** — successful basic and sampled 50-step training runs confirmed metadata-backed reports, compatibility JSONL equivalence, durable profiles, evidence-constrained accounting, explicit gaps, and zero dropped sampled telemetry; 212 focused metadata, logging, and trainer tests now also cover failure/OOM cleanup and original-error preservation.
+
+### Fixed
+
+- **The failure-context regression test now patches slotted metadata runtimes safely** — inject metadata filing failure through the `MetadataRuntime` class method so the cleanup contract executes consistently on Python 3.13 instead of failing during mock setup.
+
+## [2026-07-12]
+
+### Added
+
+- **Resource intelligence now has settled ownership and operator documentation** — documented fact semantics, collection policies, metadata-backed report flow, evidence-constrained accounting, and the two remaining compatibility fallbacks.
+
+### Changed
+
+- **Metadata item validation and emitter routing now share one registry** — accepted runtime item types and their emitter routes are declared together so filing and validation support cannot drift independently.
+- **Superseded resource exploration notes are archived** — the governing resource-intelligence guide and OpenSpec now replace the earlier visibility-capability and empirical-resource-database design notes.
+
+### Fixed
+
+- **Resource cleanup can no longer mask the original training failure** — trainer integration treats monitor finalization as best effort, sampled/deep shutdown steps cannot block base finalization, and failed final collection preserves the latest accepted resource context without replaying the session.
+
+## [2026-07-03]
+
+### Changed
+
+- **Resource-derived facts now validate their evidence before acceptance** — profile, accounting, and accounting-gap metadata now require non-empty derivation versions, meaningful source-reference identities and relationships, and backend validation that referenced evidence records and declared relationship edges exist.
+- **Resource migration now has acceptance gates for typed-fact authority and compatibility outputs** — documented coarse cross-policy ingestion/query/artifact thresholds and added focused checks proving metadata-backed resource views remain authoritative while compatibility JSONL/report projections stay equivalent for declared fields.
+
+## [2026-07-02]
+
+### Changed
+
+- **Resource reports now present accounting statements and gaps separately** — metadata-backed report projections and Markdown output now show accepted accounting statements apart from unresolved accounting gaps, while JSONL fallback reports keep those accounting views explicitly empty and phase/step observations remain unable to create owner-bearing accounting claims.
+
+## [2026-06-30]
+
+### Changed
+
+- **Resource accounting now preserves unexplained profile gaps without fallback owners** — resource monitor shutdown now files explicit accounting gaps for accepted run profile quantities that are not explained by accepted accounting statements, while operation/window accounting remains empty until accepted owner-scope evidence exists.
+
+## [2026-06-29]
+
+### Changed
+
+- **Resource monitor shutdown now files structural accounting statements** — accepted startup structural resource facts now produce evidence-linked `ResourceAccountingFacts` for component parameter memory, trainable parameter memory, gradient estimates, and optimizer-state estimates while filtering unsupported structural owners out of the first accounting slice.
+- **Resource accounting now has a bounded first-slice definition** — the resource-intelligence design now limits initial accounting to owner-bearing statements from accepted structural facts and explicit gaps from accepted observed/profiled evidence, while excluding phase-delta and operation-local ownership claims until stronger evidence exists.
+
+## [2026-06-28]
+
+### Added
+
+- **Resource monitor runs now file the first durable resource profile** — end-of-session resource monitoring now derives a versioned `run_resource_summary` profile from accepted observation frames, measurements, and structural facts, preserving source evidence while keeping profile meaning in the resource domain instead of report/export formatting.
+- **Stored resource profiles can now be compared through metadata views** — `ResourceRunView` gained profile filtering, latest-profile selection, and neutral profile comparison results with numeric deltas and caller-supplied regression thresholds.
+- **Benchmark reports now render durable resource profile views** — metadata-owned report projections include accepted profile records and resolved evidence, and Markdown reports render profile values without recomputing profile claims in report formatting.
+
+## [2026-06-27]
+
+### Changed
+
+- **Startup training-state estimates now become bounded structural resource facts** — resource monitor startup breakdowns now file gradient and optimizer-state structural facts from trusted trainable-byte inputs, preserve estimator version/basis/caveats including DeepSpeed/ZeRO uncertainty, and expose an optional optimizer-state multiplier override for future optimizer/performance-owned estimates.
+- **Startup component memory estimates now become structural resource facts** — resource monitor startup breakdowns now file canonical `StructuralResourceFacts` for loaded and trainable parameter memory when metadata is available, using stable component keys as owner identity while keeping display labels as metadata for reports and console output.
+
+## [2026-06-26]
+
+### Changed
+
+- **Resource-run views now expose collector-status evidence without treating it as observations** — decided against adding new collectors in the current slice and added run, degraded, collector, and rank queries for durable collector-status metadata so future profiles and reports can qualify fallback or partial telemetry claims.
+- **Resource monitor collector degradation paths now have explicit evidence coverage** — collector failures for process memory and CUDA allocator snapshots now file degraded collector-status facts, while focused tests cover NVML unavailable/fallback behavior, torch fallback failure, deep allocator unavailable/failure/budget status, and bounded sampled/deep diagnostic windows that avoid re-recording stale measurements.
+
+## [2026-06-25]
+
+### Changed
+
+- **Resource monitor collection now executes through capability-backed collector adapters** — extracted process-memory, CUDA allocator snapshot, NVML GPU-used, torch GPU-used fallback, and deep allocator diagnostic reads behind internal collector boundaries; made collection policy gate those providers directly; and kept diagnostic-window orchestration, metadata filing, JSONL projection, and console rendering outside the collectors.
+
+## [2026-06-24]
+
+### Changed
+
+- **Resource monitor collection now has explicit capability policy and measurement provenance** — added collector capability contracts for cost, scope, cadence, availability, and degraded behavior; mapped existing `off`, `basic`, `sampled`, and `deep` modes onto policy capabilities; preserved exact sampled GPU-used source provenance for NVML versus torch fallback; and stopped canonical event production from carrying cached sampled/deep values into unrelated lifecycle frames.
+
+## [2026-06-21]
+
+### Changed
+
+- **Canonical resource frames now replace the normal compatibility metadata mirror** — retained bundled compatibility facts only for boundaries that cannot produce a frame, made ordered frame-measurement queries use direct indexed relationships instead of repeated run-wide scans, and removed duplicate resource report-schema assembly from logging after equivalence verification.
+
+## [2026-06-20]
+
+### Changed
+
+- **Resource exports now use versioned metadata-owned schemas and source-run artifact links** — added report, profile, and accounting projection documents over `ResourceRunView`, moved report resource-section shaping behind the projection boundary, preserved profile/accounting evidence and explicit gaps, registered resource JSONL and report artifacts with schema metadata, and linked identified observability artifacts to their source run.
+- **Benchmark reports now prefer metadata-backed resource-run input over JSONL parsing** — moved the shared flat resource compatibility-event projection into metadata ownership, reused it for live JSONL and stored frame records, preserved existing session/phase/per-device/debug summaries, exposed the selected input source, and retained JSONL parsing only as a fallback for callers without a resource view.
+- **Resource-run metadata queries now use a reusable snapshot graph index** — replaced repeated full-edge scans with once-per-snapshot record/source/target indexes, added rank and component query views, preserved semantic fact classes through memory and SQLite snapshots, and allowed explicit evidence references to resolve cross-run observations and artifact records without treating them as facts owned by the viewed run.
+
+## [2026-06-11]
+
+### Added
+
+- **Metadata now exposes a resource-run view over accepted resource facts** — added generic metadata graph traversal helpers and a `ResourceRunView` that can query run-scoped observation frames, frame measurements, structural facts, profiles, accounting statements, gaps, scoped observations, and source evidence from `MetadataSnapshot` without reading raw storage or report JSONL.
+- **Metadata runtime now supports bounded resource-telemetry ingestion** — added accepted shared-context observation frames with individually addressable measurements, batch backend/store ingestion, bounded `drop_oldest` / `drop_newest` buffering, explicit degraded-ingestion events, SQLite batch transactions, representative volume measurements, and focused retention/failure tests.
+
+### Changed
+
+- **Metadata now has a shared graph vocabulary used by resource intelligence** — resource facts now emit reusable metadata graph relationships for runs, hosts, processes/ranks, phases/events, steps, collectors, devices, components/groups, owners, and source evidence so the upcoming resource-run view can query accepted facts without depending on ad hoc edge strings.
+- **Resource monitor migration now has cross-surface equivalence coverage** — added an end-to-end lifecycle test proving current JSONL events, metadata compatibility events, canonical observation frames, measurements, and presentation-only console summaries stay aligned during the resource-fact migration.
+- **Resource monitor console output now uses resource-domain summaries for live session, phase, and step lines** — preserved the existing user-facing console messages while moving normal live resource summary rendering behind presentation-only summary objects instead of formatting directly from monitor internals.
+- **Resource monitor JSONL now projects from produced resource facts for identified runs** — existing flat resource JSONL events are now rebuilt from canonical observation-frame measurements while preserving the current artifact shape, with a narrow fallback for JSONL-only runs that lack a durable run identifier.
+- **Resource monitor now produces canonical observation frames alongside compatibility facts** — current session, phase, step, sampled, and deep-counter event paths now build typed co-collected measurement frames once through the resource-domain production seam while preserving existing JSONL and metadata events for migration.
+- **Resource intelligence now has one reconciled governing design** — settled observation frames as the shared-context container for individually addressable measurements, mapped current monitor/metadata/startup/report surfaces into the target fact model, preserved evidence-constrained owner-scope requirements, and superseded the phase-only accounting direction.
+- **Resource monitor metadata filing now crosses an explicit resource-domain fact-production seam** — preserved the existing lifecycle API and compatibility facts while separating resource fact production from metadata filing ahead of canonical observation-frame migration.
+
+## [2026-06-07]
+
+### Added
+
+- **Resource intelligence now has its first metadata-backed fact catalog slice** — added accepted resource observation, structural-resource, profile, accounting, and accounting-gap fact dataclasses, central metadata emitters, runtime filing routes, source-reference validation for derived resource facts, and focused metadata tests proving semantic classes and evidence relationships survive filing.
+
+## [2026-06-03]
+
+### Added
+
+- **Resource allocation provenance now has a dedicated OpenSpec design track** — added the `resource-allocation-provenance` change with proposal, design, specs, and tasks so future resource-ownership / causality work can proceed from an explicit evidence-level and instrumentation-window model instead of growing ad hoc fields on top of observational resource counters.
+
+### Changed
+
+- **Benchmark reports now add an explicit non-causal resource-interpretation layer on top of the live resource schema** — `library.logging.reports` now derives session and per-phase delta summaries plus explanatory observations from the existing start/end/peak counters, exposes those interpretations only in the report/debug payload, and renders a `Resource Interpretation` section in the Markdown report while explicitly calling out that the summaries do not claim component-level ownership or allocation causality.
+
+## [2026-05-31]
+
+### Added
+
+- **Resource visibility expansion now has a spec-driven implementation track** — added the `expand-resource-visibility` OpenSpec change with proposal, design, specs, and implementation tasks, and captured the current capability investigation in `docs_design/resource_visibility_capability_map.md` so the resource-observability work can proceed from a stable implementation reference instead of scattered notes.
+
+### Changed
+
+- **Resource-monitor live events and benchmark reports now carry CPU virtual memory alongside RSS** — the resource-monitor raw event path, metadata-facing `ResourceMonitorFacts`, and benchmark report/session/phase payloads now include `cpu_vms_mb`, including phase start/end rows and rendered report tables, so host-memory visibility is no longer limited to resident-set size alone.
+- **The resource monitor now has a compact package layout instead of one oversized module** — `library.logging.resource_monitor` now stays as the stable public import surface while splitting collection, event transport, startup breakdown rendering, and monitor orchestration into short internal modules, which should make the next per-device/resource-visibility slices easier to implement and review without changing trainer call sites.
+- **Resource-monitor live events and report payloads now preserve per-device GPU readings alongside aggregate totals** — snapshot and sampled GPU collection now emit additive per-device maps for allocated, reserved, peak-allocated, and used memory while keeping the existing aggregate fields, and the benchmark-report JSON/snapshot payloads now preserve per-device session and phase peaks without forcing the markdown report away from its current aggregate-oriented summary.
+- **Benchmark reports now derive richer per-device debug summaries from the live resource schema instead of inventing a second collection path** — the report payload now includes derived per-device session and phase resource rows under a debug-oriented summary block, the markdown report renders dedicated per-device GPU sections from those derived rows, and `docs_design/resource_visibility_capability_map.md` now records the explicit split between live metadata facts and report/debug-only summaries.
+
+## [2026-05-27]
+
+### Changed
+
+- **Trainer-facing observability now flows through the observer seam more consistently** — step-metric emission now routes through `TrainingObserver.log_metrics(...)` instead of bypassing the observer and calling raw tracker helpers directly, the former `MetricsSink` / `AccelerateMetricsSink` names have been tightened to `TrackerSink` / `AccelerateTrackerSink`, and the old step/epoch tracker-wrapper entrypoints have been dropped from `library.logging.metrics` so the trainer-facing seam is no longer shadowed by parallel helper calls.
+- **Checkpoint save-start lifecycle logs now have one canonical training-owned home** — `Trainer.save_checkpoint()` now emits the canonical `[checkpoint.save] saving checkpoint: ...` line for both adapter and fine-tune paths, while SDXL/SD3 strategy serializers and adapter-mode saving no longer print their own competing save-start lifecycle messages.
+- **The training loop now makes epoch index vs display-epoch intent explicit without changing the `Epoch 1/N` banner UX** — `run_training_loop()` now uses a dedicated zero-based `epoch_index` for runtime phase identity and a separate one-based `display_epoch` for user-facing progress/tracker state, reducing ambiguity without forcing a zero-based console counter.
+- **The runtime trace/checkpoint helpers now align a little more tightly with the intended semantics** — training-epoch phase detection now only matches numeric `training.epoch.<n>` tags, checkpoint completion events are recorded before the enclosing checkpoint-save phase closes, and runtime-trace phase-end recording now keeps a phase open for diagnostics if unexpected end-recording failures occur mid-cleanup.
+- **Benchmark reports now explain bootstrap-only trace coverage more clearly and use cleaner runtime names** — the runtime trace milestone payload now uses `time_to_run_ended_s`, report payloads/markdown now call out trace-only spans such as `startup.accelerator` when they began before resource-monitor coverage existed, and checkpoint save-start lifecycle logs now normalize user-facing checkpoint paths instead of mixing separators on Windows-style output dirs.
+- **Resource phase-summary console output now uses explicit `off/default/verbose` modes** — `output.logging.resource_monitor.phase_summary` now defaults to `default`, accepts legacy booleans as compatibility input (`true -> verbose`, `false -> off`), and filters only the printed `Resource phase[...]` console lines while leaving resource-monitor event capture intact for JSONL/report surfaces.
+- **Resource-monitor and report payloads now use `run_identifier` consistently** — the resource-monitor constructor/API, raw JSONL event payloads, and report-side event filtering now use `run_identifier` instead of `run_id`, matching the rest of the metadata/reporting surface instead of preserving the older name in one subsystem.
+- **Hydra runtime-context lookup now has one shared utility instead of duplicated logging/report helpers** — the Hydra config-name and task-override lookup now lives in `library.utils.common_utils.resolve_hydra_runtime_context()`, with trainer/report call sites using that shared helper directly instead of keeping separate local implementations for metrics/trainer and benchmark reports.
+- **Failure-path observability coverage now exercises the previously-thin startup and pre-epoch cases** — focused trainer and loop tests now verify that benchmark-report/resource-trace cleanup still behaves correctly for startup-phase failures, startup-eval failures, and training-loop failures that happen after the progress bar has started but before an epoch completes.
+- **Training-run metadata now uses a repo-owned Kuro-first shape instead of authoring `ss_*` compatibility payloads up front** — the startup metadata bundle now records neutral training-run facts, checkpoint export defaults to `kuro.*` plus `modelspec.*`, compatibility-only dataset/tag-frequency payloads and legacy model/VAE hashes are no longer built in the active startup path, and the old `ss_*` names are kept only as a reference table for a future alias option.
+- **The old minimum-metadata checkpoint subset is gone from the active metadata path** — `TrainingMetadataState` now carries only the full run-facts view, checkpoint projection no longer selects a reduced minimum subset, the dead `SS_METADATA_MINIMUM_KEYS` constant was removed, and follow-up `no_metadata` behavior is tracked separately in bead `sd-scripts-due` instead of being preserved implicitly from the old repo.
+
+## [2026-05-26]
+
+### Changed
+
+- **Training/runtime traces now use a structured shared trace vocabulary instead of ad hoc labels** — added `library.logging.phase_tags` with an explicit split between duration-bearing phase tags and point-in-time event tags, then moved startup, cache, training-prep, training-epoch, progress-bar, and checkpoint traces onto that shared vocabulary so console logs, resource-monitor phases, and report parsing all describe the same runtime boundaries consistently.
+- **Launcher-relative runtime trace recording now ships with benchmark reports and analytics snapshots** — added a lightweight `library.logging.runtime_trace` recorder owned by `Trainer`, started it from the top of `train.py`, wired the canonical startup/cache/training/checkpoint phases plus first-step milestone events through the existing trainer seams, and surfaced the machine-readable trace summary in the benchmark report JSON/markdown and the existing benchmark analytics snapshot payload without changing the resource-monitor JSONL schema.
+
+## [2026-05-22]
+
+### Changed
+
+- **Trainer startup now surfaces real training-prep boundaries more clearly** — the progress bar is now created at the actual training-loop boundary instead of during early tracking setup, which avoids interleaving the `steps: 0%` bar with the startup-summary block and makes console step timing less misleading before the first epoch begins.
+- **Silent adapter-mode startup spans now emit clearer phase logs** — added explicit `[startup]` and `[training-prep]` logs around startup-summary emission, metadata/runtime initialization, trainable-module preparation, scheduler creation, accelerator preparation, and gradient-checkpointing setup so post-cache pauses read like named work instead of apparent hangs.
+- **Model-prep wording now reflects conditional denoiser deferral instead of implying it always happens** — tightened the `prepare_models()` denoiser-load comment so SDXL/adapter paths that already loaded the denoiser during setup no longer read like they are still relying on lazy loading.
+- **Training epoch identifiers now separate presentation from runtime truth more consistently** — the user-facing banner still prints `Epoch 1/N`, but resource-monitor phase names now use the underlying zero-based epoch index (for example `training_epoch_0`) so internal/runtime logs align with other true epoch references like `prepared epoch 0`.
+
+## [2026-05-21]
+
+### Changed
+
+- **The central metadata package now has an explicit local README for settled ownership and lifecycle conventions** — added `library/metadata/README.md` to document the agreed split between origin-owned runtime state and central metadata assembly, the shared dataclass rule, the projection boundary, and the explicit local-exception policy for plugin-like metadata such as adapter methods.
+- **Observability metadata now has a live direct item-filing runtime path through the logging observer** — `library/logging/metrics.py` now files `RunLifecycleFacts` and `LoggedArtifactFacts` through `MetadataRuntime.file(item)`, while `library.metadata` centrally validates typed items, routes them through observability emitters, and ingests the results into the backend snapshot instead of exposing concern-specific submission/provider wrappers as the main public flow.
+- **Resource monitor, benchmark reports, and analytics snapshots now file typed observability metadata into the same runtime snapshot** — resource monitor session/phase/sample events now file `ResourceMonitorFacts` through the observer-owned metadata runtime, `write_run_report()` now files one `RunReportFacts` record at the report-generation boundary, and the same report path now files a backend-neutral `AnalyticsSnapshotFacts` payload summary while still registering the produced Markdown/JSON files as benchmark-report artifacts.
+- **Observability lifecycle and startup metadata now carry richer trainer-owned context** — trainer startup now files run lifecycle facts with a stable session-backed run identifier plus mode/strategy/optimizer/config context, run-finish metadata now preserves failed-run status and error messages, the observer now files the structured startup summary as an analytics snapshot, and the run-report metadata conversion has been tightened into smaller local fact-builder helpers.
+- **Observability startup and resource-monitor metadata now line up with the real trainer flow** — tracking initialization now happens before the startup summary is emitted so the `training_startup_summary` analytics snapshot files during actual trainer runs, and resource-monitor `config_name` now uses the same Hydra config-name meaning as the lifecycle/report metadata instead of overloading that field with `output_name`.
+- **Metadata payload versioning is now owned centrally instead of repeated on every filed fact dataclass** — added `library.metadata.versions.METADATA_PAYLOAD_VERSION`, kept the storage schema version separate in `library.metadata.storage`, removed per-item `schema_version` fields from the shared fact dataclasses, and updated central emitters/records/providers to stamp payload versions in one place.
+- **The new direct metadata runtime path now has focused architecture coverage** — refreshed the observability and logging tests for the direct `LoggedArtifactFacts` filing flow, added `tests/unit/metadata/test_metadata_runtime.py` for `MetadataRuntime.file(item)` and payload-version assertions, and avoided the pytest basename collision by giving the new metadata runtime test a unique filename.
+
+## [2026-05-18]
+
+### Changed
+
+- **Central metadata facts are now schema-only and central emitters own record/event assembly** — removed the remaining `to_record()` / `to_event()` conversion methods from the shared metadata dataclasses, replaced the one-record/one-event provider wrapper classes with emitter builder functions that return `MetadataProviderResult`, and updated checkpoint/observability tests and exports to follow the cleaner `dataclass -> emitter -> projection` flow.
+
+## [2026-05-17]
+
+### Changed
+
+- **Observability/report metadata now has central emitter and fact homes** — added typed observability facts and provider wrappers under `library.metadata`, and switched the logging observer’s registered artifact shape over to the central `LoggedArtifactFacts` dataclass.
+- **Training metadata assembly now lives in the central metadata package** — moved the substantive training-run and checkpoint metadata builders into `library.metadata.emitters`, switched active trainer setup to the central emitter path, and left `library.training.metadata` as a compatibility wrapper instead of the primary home.
+- **Optimizer runtime metadata facts now live in the central catalog** — moved `SchedulerRuntimeMetadata` and `OptimizerRuntimeMetadata` to `library.metadata.dataclasses.optimization` and kept the optimization package names as compatibility aliases.
+- **The central metadata package now reexports the shared fact dataclasses directly** — `library.metadata` now exposes the run, checkpoint artifact, model-spec, and optimizer runtime fact types so the new backbone is easier to consume from the rest of the repo.
+- **Deprecated PEFT scripts now fail with clear metadata-backbone migration guidance** — replaced the retired SD and SDXL PEFT script copies with small stubs that point users to the active `train.py` Hydra presets instead of importing removed training metadata helpers.
+- **Metadata tracking now keeps the overall system effort open** — restored `metadata-backbone` as an active OpenSpec change, added explicit remaining-slice tasks, and filed beads for model-family, observability, adapter-method, and optimization metadata integration.
+
+### Added
+
+- **The metadata backbone now has a durable SQLite store** — added `SQLiteMetadataStore` under `library.metadata.storage` with versioned schema initialization, record/event/edge persistence, and round-trip tests while keeping the in-memory store path available for lightweight flows and tests.
+
+## [2026-05-16]
+
+### Changed
+
+- **Metadata design language now names the central-system target explicitly** — docs and OpenSpec now describe central metadata dataclasses, emitters/builders, projections, backend/storage, local lifecycle call sites, and explicit plugin/family exceptions instead of implying `metadata.py` modules should spread through normal domain folders.
+
+## [2026-05-15]
+
+### Added
+
+- **The metadata backbone now has its first typed implementation slice** — added `library/metadata/` with typed identities, records, events, edges, provider contracts, fail-fast required-fact validation, in-memory backend/storage seams, and projection support for `kuro.*`, legacy `ss_*`, `modelspec.*`, and safetensors metadata export.
+- **Shared metadata fact dataclasses now start the legacy migration path** — added typed run, checkpoint artifact, and model-spec-compatible fact dataclasses under `library/metadata/dataclasses/` so provider wrappers can convert legacy dictionaries at the boundary instead of treating them as the authoring shape.
+
+### Changed
+
+- **Metadata design docs now spell out the schema ownership contract** — clarified that recorded metadata dataclasses live in `library/metadata/dataclasses/` like config dataclasses, while domain code owns production/emission; local metadata schemas are limited to explicit plugin-like exceptions such as adapter methods.
+- **Active training-run metadata now uses the metadata backbone as its source of truth** — replaced `create_training_metadata(...)` with `library.training.metadata` build-context/bundle helpers, stored trainer checkpoint metadata as typed `RunMetadataFacts`, and made checkpoint provider assembly consume typed run/model/artifact facts instead of converting legacy dictionaries at the boundary.
+- **Training metadata state now lives outside the trainer** — `TrainingMetadataState` owns full/minimum run facts, late compatibility fact updates, and checkpoint projection delegation so `Trainer` keeps metadata orchestration narrow.
+- **Training metadata now has one module in the training corner** — merged the provider wrappers and checkpoint projection helper into `library.training.metadata` and removed `library/training/metadata_providers.py` to avoid parallel metadata files for one domain.
+- **Active checkpoint metadata now routes through metadata providers and projections** — backbone-facing provider wrappers bridge the existing `ss_*` and `modelspec.*` metadata builders into the new metadata path while preserving minimum/no-metadata behavior and adding initial `kuro.*` keys for full metadata exports.
+- **Legacy `ss_*` key ownership now lives in the metadata package** — `library.metadata.keys` owns the `SS_METADATA_*` and minimum-key definitions, while `library.constants` keeps compatibility re-exports for existing imports.
+
+### Removed
+
+- **Deleted the old active training metadata helper module** — `library/training/training_metadata.py` is no longer kept as a compatibility wrapper; active training and tests now import the backbone-facing builder directly.
+
+## [2026-05-13]
+
+### Added
+
+- **Benchmark report files now register as logging artifacts after they are written** — the training observer now records produced artifact paths with kind/format metadata, and trainer finalization registers both Markdown and JSON benchmark reports through that observer hook while keeping report generation itself local and backend-agnostic.
+- **Training observers now receive explicit run lifecycle calls** — observer startup records the tracker run name and sanitized tracker config before metrics/artifacts are emitted, and trainer cleanup finishes the observer run after final report artifacts are registered so future logging sinks can bracket complete runs cleanly.
+- **Benchmark report payload construction now has an explicit run-context boundary** — `write_run_report()` remains trainer-facing, while payload assembly now consumes a `RunReportContext` and declared non-adapter key-config policy instead of scattering direct trainer/config lookups through the report builder.
+- **Step metric logging now builds from a typed runtime event before rendering tracker payloads** — `generate_step_logs()` preserves the existing flat metric keys for current callers while the logging concern now owns a structured `StepMetricsEvent`, explicit LR-label validation, DAdapt/Prodigy derived-LR rendering, sampler metric coverage, and non-mutating W&B tracker payload routing.
+
+### Fixed
+
+- **Adapter startup resource estimates now include adapter trainable memory** — the resource startup breakdown still reports loaded base-model weights, but trainer startup now overlays adapter diagnostic trainable bytes onto the owning components so gradients and optimizer-state estimates no longer show `0.0MB` for adapter runs with trainable parameters.
+
+## [2026-05-12]
+
+### Changed
+
+- **Observability, optimizer grouping, and adapter target resolution now consume family-declared loaded components instead of reconstructing the old SD-shaped trio** — startup diagnostics and fine-tune mode now project labels/order from `trainer.loaded_components`, fine-tune selector/grouping paths now derive parameter-target provenance and public selector prefixes from declared components, and adapter runtime target expansion now resolves component identity from the same loaded-component surface through stricter loaded-components-only helper APIs.
+  - Added focused coverage for declared-order diagnostics, selector-qualified fine-tune matching, adapter target resolution, and non-slot component shapes with custom keys/order so the migration is locked to the component contract rather than the legacy `text_encoderN`/`vae`/`denoiser` reconstruction path.
+  - Fixed the follow-up regressions where adapter optimizer grouping still derived text-encoder LR policy from legacy `text_encoderN` key parsing alone and fine-tune gradient clipping still gathered params through hardcoded `denoiser` / `text_encoderN` buckets instead of the resolved component-key sets.
+- **The model-layer README now documents the loaded-component contract conventions explicitly** — `library/models/README.md` now records that shared top-level component helpers live in `library/models/components.py`, family package `__init__.py` files own ordered `LOADED_MODEL_COMPONENT_SPECS` declarations, and generic runtime code should consume roles/capabilities instead of drifting back into family-name branches.
+
+## [2026-05-11]
+
+### Changed
+
+- **The active strategy/trainer root contract now loads family-declared components instead of unpacking the old SD-shaped tuple** — `ModelLoadingStrategy.load_target_model()` now returns ordered `LoadedModelComponent` values, trainer setup stores `loaded_components` as the primary top-level model state, and the startup resource breakdown consumes that declared component surface directly instead of rebuilding it from `text_encoders`, `vae`, and `denoiser`.
+  - Moved the shared component helpers into `library/models/components.py`, kept `library.models` as a thin public re-export surface, updated the parameter-dump tool to load/render top-level components through the new contract, and added focused contract/test coverage for the updated strategy, trainer, model-prep, and inspection paths.
+- **The new family-declared loaded-component contract now has its initial repo-owned declaration seam** — `library.models` now exposes `LoadedModelComponentSpec` plus component-spec resolution, the current SD / SDXL / SD3 model-family packages declare ordered top-level components through that seam, and the legacy name-only helper is derived from the new declarations so the broader runtime migration can proceed incrementally from one source of truth.
+  - Added focused model/declaration coverage proving the current families expose the expected ordered component specs and that the legacy component-name helper still derives the same public labels from those declarations.
+- **Shared public model-component naming now lives under `library.models` instead of the parameter-dump module** — The repo-owned `NamedParameterComponentNames`, component-name resolution, selector-name construction, and loaded-component grouping helpers now sit on the model package surface, so startup summaries, optimizer grouping, adapter targeting, config validation, and the dump tool no longer depend on a file whose real purpose is YAML inspection formatting.
+  - Updated the model-family package exports plus the affected runtime, logging, optimization, and dump-tool consumers to import the extracted seam from `library.models`, while keeping `library/models/parameter_dump.py` focused on dump rendering and preserving existing public component labels/selector behavior.
+
+## [2026-05-10]
+
+### Changed
+
+- **Adapter trainable-ref validation now fails at the shared contract layer instead of only during reporting** — Missing `adapter_module_path` provenance is now rejected as soon as repo-owned adapter trainable refs are read, so malformed adapter runtimes fail closer to the source instead of surfacing later in startup reporting.
+  - Centralized trainable-ref validation under `library/adapters/shared/trainables.py`, removed the reporting-only check from adapter component-row assembly, updated the remaining deprecated PEFT runtimes to populate `adapter_module_path`, and tightened the affected adapter/optimizer tests to match the stronger repo-owned contract.
+- **Startup resource-table rendering now has a small defensive empty-row guard** — The width-calculation path in the startup resource breakdown now safely returns before `max(...)` if it ever encounters an empty table-row list, keeping the startup monitor logic robust against future caller or formatting changes.
+- **Progress-safe lifecycle output now has a trainer-owned fallback seam instead of repeated loop-local branching** — The main training loop now routes epoch banners and prepared-epoch status lines through shared trainer helpers, so the console-vs-logger fallback policy lives in one place and the `log_external()` stacklevel behavior is documented more explicitly at the console transport boundary.
+  - Added focused attribution coverage to prove that progress-safe lifecycle logs still resolve to the real caller `file:line` through the trainer-helper and console transport layers.
+- **Startup resource rows now follow the same producer-owned component order as the `components` table** — The startup weight-residency block no longer shows a different component order than the main diagnostics table when both are rendered during bootup.
+- **Logging callers now import the real observability module homes directly instead of going through compatibility wrappers** — Deprecated scripts and focused unit tests now import metrics/report helpers from `library.logging.metrics` and `library.logging.reports`, removing the need for the temporary `step_logging.py` and `run_report.py` shim modules.
+- **Fine-tune full-model save-start messages now use the same tagged checkpoint logger style as the rest of training lifecycle output** — SDXL and SD3 full-model checkpointing no longer drop a bare `accelerator.print(...)` line for save-start status, keeping checkpoint lifecycle output visually consistent before the final `[checkpoint] checkpoint saved` confirmation.
+- **Double-`Ctrl+C` interrupt handling is now documented at the code seam where it matters** — The shared interrupt guard now explains its warning-only first press, 5-second second-press window, possible signal-delivery delay during long C/CUDA work, and the fact that real cleanup still happens in the trainer’s unconditional `finally` path.
+
+### Fixed
+
+- Removed stray blank checkpoint log lines from SDXL/SD3 full-model checkpoint saves so closeout logging stays consistent with adapter saves.
+
+## [2026-05-09]
+
+### Added
+
+- **Training interruption handling now has a shared double-`Ctrl+C` guard with a short retry window** — Active launcher runs can now ignore accidental first interrupts, warn clearly, and only raise `KeyboardInterrupt` when the second `Ctrl+C` arrives within a 5-second cooldown window.
+  - Added `library/training/interrupts.py` plus focused launcher/trainer coverage for the warning-only first press, cooldown reset behavior, real second interrupt, and progress-bar cleanup on interrupted exits.
+
+### Changed
+
+- **Canonical lifecycle output now stays clean around the live progress bar without giving up the normal logger style** — Epoch banners, prepared-epoch status, and resource-monitor lines emitted during active training now use `tqdm` external-write mode so they do not collide with the live bar while still preserving timestamped `file:line` formatting.
+  - The data-layer `prepare_epoch()` helper no longer owns lifecycle status emission; the training loop now logs the canonical `[epoch] prepared epoch ...` line itself so progress/UI output stays in orchestration code.
+- **Trainer shutdown now tears down the live progress bar before final save/session logging** — Final checkpoint and resource-summary lines no longer render beside a stale `100%` bar at the end of a successful run.
+  - `_finalize_training()` now closes and clears the active progress bar before final save/checkpoint work, `Trainer.train()` also performs unconditional crash/interrupt cleanup in `finally`, and the final save confirmation now reads `[checkpoint] checkpoint saved` to stay consistent with the tagged lifecycle style.
+- **Startup resource memory now uses one shared loaded-weight view for both fine-tune and adapter runs** — The bootup resource block now reports loaded/trainable/frozen weight residency from the real loaded model components instead of reusing the adapter-centric diagnostics rows.
+  - The startup resource block now appears under `Resource startup breakdown`, groups `loaded model weights` separately from estimated `training state`, renders the loaded-weight section as an aligned terminal-friendly table, prints the dense startup block directly instead of squeezing it through the multiline `INFO` logger gutter, and leaves a visual blank line between the main startup summary and the resource block.
+- **Startup `components` now use the same table-oriented presentation style as the resource block** — Dense component diagnostics no longer repeat inline prose labels per row, making both fine-tune and adapter startup output easier to scan in a normal terminal width.
+  - The `components` table keeps `params` left-aligned as a ratio field, uses `trainable` as the final status column, preserves the older inner ratio padding for values like `0/  99`, exposes the extra `adapter modules` column in adapter mode when present, and now preserves producer/source order instead of imposing alphabetical sorting in shared reporting code.
+
+## [2026-05-07]
+
+### Added
+
+- **Training observability now has explicit module homes under `library/logging/`** — The repo now has first-pass `console.py`, `metrics.py`, `summaries.py`, and `reports.py` ownership buckets alongside the existing `resource_monitor.py`, with compatibility wrappers left in `step_logging.py` and `run_report.py` for existing imports.
+  - Added shared startup-summary dataclasses/rendering, a repo-facing `TrainingObserver` seam plus a narrower backend `MetricsSink` contract, and a `MainProcessConsole` helper for canonical human-facing training output.
+
+### Changed
+
+- **Startup diagnostics now flow through one shared observability summary path instead of ad hoc `accelerator.print(...)` formatting** — Trainer startup now builds structured rows, renders sectioned startup blocks, and reuses the same summary facts for benchmark-report memory estimates.
+  - The preferred console split is now a sectioned startup block for dense run/configuration output plus tagged lifecycle lines such as `[epoch] ...` and `[checkpoint] ...` for standalone status messages.
+  - The startup summary block now renders directly through the repo console layer instead of as a multiline `INFO` log record, preserving the full terminal width for dense component rows while leaving normal one-line logs on the timestamped `file:line` logger path.
+- **Adapter diagnostics now derive from repo-owned trainable-ref provenance and default to public component labels** — Adapter-mode startup and report breakdowns now group by stable internal component keys while showing public model-family labels like `unet`, `clip_l`, and `clip_g` in user-facing output.
+  - Adapter-side reporting facts now live under `library/adapters/shared/reporting.py`, with repo-owned trainable refs carrying explicit adapter-module provenance so logging can consume both original component-module counts and adapter-module counts without owning PEFT-specific inference.
+  - Resource startup memory estimates now accept structured diagnostic rows directly, so adapter and fine-tune paths can share the same reporting flow without rebuilding component stats separately.
+  - Adapter runs now surface the active method inside the `training run` startup section as `method: ...`, sourced from `AdapterMode`/trainer state instead of a stray standalone print.
+- **Canonical training lifecycle output now uses progress-bar-safe emission without falling back to raw text formatting** — The epoch banner, prepared-epoch status line, and resource-monitor summaries emitted while training is live now write through `tqdm` external-write mode so they no longer collide with the active progress bar.
+  - The progress-safe path keeps normal logger formatting for those lines instead of introducing a separate raw-text transport, so timestamped `file:line` output remains intact where the logger already owns presentation.
+
+## [2026-05-06]
+
+### Changed
+
+- **Repo-owned PEFT methods now share an autocast-first precision rule for their hot forward paths** — The common adapter wrappers now rely on a shared PEFT precision helper so normal mixed-precision training avoids unnecessary input/output dtype shuffling, while no-autocast mismatch handling stays explicit and narrow.
+  - Applied the shared cast/restore helpers across repo-owned LoRA, VeRA, GLoRA, LoCon, DyLoRA, BOFT, OFT, IA3, and LoKr module paths, and added focused shared precision coverage for the new helper behavior under CPU autocast.
+
+### Fixed
+
+- **Repo-owned LoRA rank dropout now masks the actual rank axis for Linear outputs instead of assuming channel-first layout** — `LoraModule._apply_rank_dropout()` now applies rank dropout on the last axis for Linear activations such as `[batch, seq, rank]`, while preserving the existing channel-axis behavior for Conv outputs.
+  - Added focused unit coverage for Linear-shaped rank-dropout broadcasting so sequence-shaped LoRA activations do not silently mask the wrong dimension.
+
+## [2026-05-04]
+
+### Added
+
+- **The strategy layer now exposes scoped runtime facts through `StrategyContext` during denoiser forward** — Active diffusion families can now publish phase, model family, global step, timesteps, and selected sample indices for the duration of denoiser execution, giving lower library layers one shared read path instead of new per-method parameter threading.
+  - Added `library/strategies/base/context.py` plus focused unit coverage for scoped publication, nested restoration, absence-safe reads, and read-only context records.
+  - Added focused SD, SDXL, and SD3 strategy coverage proving denoiser-forward context is visible only during the intended train/validation forward scopes, including indexed prior-preservation passes.
+
+### Changed
+
+- **The denoiser strategy seam now carries explicit runtime facts without introducing a separate request/helper layer** — `DenoiserCallingStrategy` now defines the denoiser-forward runtime facts directly in its signature, while SD, SDXL, and SD3 denoiser facets publish `StrategyContext` locally inside their family-owned denoiser execution paths.
+  - Migrated SD, SDXL, and SD3 diffusion/denoiser paths off the temporary request/helper shape, kept `contracts.py` definition-oriented, and threaded `global_step` through SD and SD3 validation denoiser paths so train/validation contexts stay aligned.
+
+### Fixed
+
+- **Repo-owned TLora now consumes published strategy timesteps through the PEFT runtime boundary instead of staying method-local-only** — The TLora runtime now reads `StrategyContext.denoiser.timesteps`, derives timestep masks per forward, applies them to TLora modules in scope, and clears the transient mask state after execution.
+  - Added receiver-side registry/runtime coverage proving TLora output changes with published timesteps and that temporary mask state does not leak after the forward returns.
+
+## [2026-05-03]
+
+### Added
+
+- **VeRA is now available as a repo-owned PEFT adapter method under `adapter.peft.vera`** — The active adapter runtime can now build, train, export, load, and merge a Hugging Face PEFT VeRA-style method through the same repo-owned resolved-target/runtime surface as the other modernized adapter methods.
+  - Added repo-owned VeRA config/runtime/state-dict ownership under `library/adapters/methods/peft/vera/`, with a runtime-owned shared projection bank (`vera_A` / `vera_B`), per-target learned `vera_lambda_b` / `vera_lambda_d` vectors, repo-owned trainable-ref provenance, and loaded-runtime merge behavior.
+  - Kept the repo-owned VeRA slice intentionally narrow and explicit while still covering the remaining method-local gaps: plain `nn.Linear` plus Transformers `Conv1D`-style linear wrappers, deterministic projection init via `projection_prng_key`, and metadata-backed `save_projection=False` reconstruction without adding empty sentinel state-dict keys.
+  - Added focused module/runtime/config coverage for zero-delta initialization, merged-weight consistency, registry-owned runtime construction, repo-owned trainable refs, runtime export/load/merge round-trips, and centralized config validation for the new method branch.
+- **LoRA is now a repo-owned PEFT runtime instead of the remaining legacy wrapper path** — The active adapter runtime can now build, train, export, load, and merge LoRA modules from optimization-owned resolved targets through repo-owned method code instead of delegating steady-state behavior to the older built-in adapter implementation.
+  - Added repo-owned LoRA module/runtime/state-dict ownership under `library/adapters/methods/peft/lora/`, with Linear and Conv1d/2d/3d support, trainable-ref provenance, repo-owned save/load helpers, and loaded-runtime merge behavior.
+  - Added focused module/runtime/config coverage for merged-weight consistency, mixed-dtype forward behavior, registry-owned runtime construction, repo-owned trainable refs, and config validation around the narrowed method-local LoRA surface.
+- **TLora is now available as a repo-owned PEFT adapter method under `adapter.peft.tlora`** — The active adapter runtime can now build, train, export, load, and merge TLora modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving TLora only in the vendored LyCORIS layer.
+  - Added repo-owned TLora config/runtime/state-dict ownership under `library/adapters/methods/peft/tlora/`, including SVD-based orthogonal initialization, learnable singular values, optional scalar mode, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.tlora` typed config plus `configs/_defaults/adapter/peft/tlora.yaml`, with focused validation for missing/non-positive rank, invalid mask bounds, invalid mask schedule values, unsupported singular-vector choices, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for TLora initialization, mixed-dtype batched-mask forward behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+
+### Changed
+
+- **The active LoRA method surface now stays method-local and rejects old optimizer-policy compatibility knobs** — The repo-owned LoRA config translation now treats rank, alpha, dropout, and Conv rank/alpha as the active method contract while leaving block-rank, LoRA+, and related grouping-policy fields as explicit rejected legacy inputs instead of silently carrying them forward.
+  - Updated `library/adapters/methods/peft/lora/config.py` to fail fast on invalid ranks, invalid dropout probabilities, and `conv_alpha` without `conv_rank`, while rejecting legacy optimizer-policy fields through method-local validation.
+  - Updated the repo-owned LoRA runtime and registry coverage so trainable parameter refs now preserve resolved-target provenance instead of exposing the older wrapper behavior where source target identity had to stay unset.
+
+### Removed
+
+- **Obsolete legacy LoRA implementation files are removed from the active PEFT package** — The old built-in LoRA implementation sources and their legacy-only tests no longer live beside the repo-owned LoRA runtime now that the method package owns the active LoRA training/runtime path directly.
+  - Removed `library/adapters/methods/peft/lora/impl.py`, `lora.py`, and `lora_diffusers.py`, plus the legacy-only unit coverage in `tests/unit/adapters/test_adapters_lora.py` and `tests/unit/adapters/test_adapters_lora_diffusers.py`.
+- **LoRA no longer exposes legacy optimizer-policy knobs on the active method config surface** — The forward `adapter.peft.lora` dataclass/default YAML now only carries method-local LoRA behavior, instead of keeping rejected block-rank and LoRA+ compatibility fields visible in the active config schema.
+  - Removed the legacy policy fields from `library/adapters/methods/peft/lora/config.py`, `library/config/dataclasses/peft.py` via the imported method config, `configs/_defaults/adapter/peft/lora.yaml`, and the LoRA-specific training-mode/config-validation tests that only existed to reject those fields after config construction.
+- **The PEFT family config no longer carries adapter-shell migration shims as active structured fields** — The active `adapter.peft` surface now relies on branch presence plus `continue_from` / `continue_mode`, instead of keeping the old `method`, `adapter_module`, `adapter_args`, `adapter_weights`, `adapter_rank_from_weights`, `base_weights`, `base_weights_multiplier`, and `training_comment` aliases alive inside the structured PEFT config.
+  - Removed the adapter-level shim fields from `library/config/dataclasses/peft.py` and `configs/_defaults/adapter/peft/default.yaml`, simplified `library/adapters/methods/peft/config_resolution.py` to branch-presence resolution only, dropped the legacy continuation/base-merge normalization from `library/config/config_validation.py` and `library/training/modes/adapter_mode.py`, removed the `base_weights` / `base_weights_multiplier` pre-merge path that only existed behind those shims, and updated the affected config/mode/smoke-test fixtures accordingly.
+
+### Fixed
+
+- **Repo-owned TLora now documents the vendor-only timestep-mask contract explicitly instead of quietly widening the architecture boundary** — The method package keeps the TLora mask helpers and validation local, but the active repo training path does not yet wire the vendor-described timestep scheduling into shared strategy/denoiser layers.
+  - Added explicit notes in the TLora runtime/default config and PEFT design notes pointing at `library/vendor/lycoris/lycoris/modules/tlora.py`, `library/vendor/lycoris/docs/Algo-Details.md`, and `library/vendor/lycoris/docs/Network-Args.md` as the reference surface for future timestep-mask integration work.
+  - Kept the repo-owned TLora module fail-fast behavior for batched-mask merged-weight requests so manual or future integration work still cannot silently collapse per-sample mask intent into invalid merged-weight math.
+
+## [2026-05-02]
+
+### Added
+
+- **ABBA is now available as a repo-owned PEFT adapter method under `adapter.peft.abba`** — The active adapter runtime can now build, train, export, load, and merge ABBA modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving ABBA only in the vendored LyCORIS layer.
+  - Added repo-owned ABBA config/runtime/state-dict ownership under `library/adapters/methods/peft/abba/`, with the LyCORIS-style split rank surface, optional plain/rank/module dropout, optional scalar mode, optional weight decomposition, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.abba` typed config plus `configs/_defaults/adapter/peft/abba.yaml`, with focused validation for missing/too-small rank, invalid dropout probabilities, and invalid bypass/decompose combinations.
+  - Added focused module/runtime/config coverage for ABBA initialization, merged-weight consistency, mixed-dtype forward behavior, stale-cache regression coverage, convolution bypass bias behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+- **IA3 is now available as a repo-owned PEFT adapter method under `adapter.peft.ia3`** — The active adapter runtime can now build, train, export, load, and merge IA3 modules through the same repo-owned method surface as the other PEFT methods instead of leaving IA3 only as a vendored LyCORIS path.
+  - Added repo-owned IA3 config/runtime/state-dict ownership under `library/adapters/methods/peft/ia3/`, with explicit input-vs-output axis selection through `train_on_input`, optional module dropout, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.ia3` typed config plus `configs/_defaults/adapter/peft/ia3.yaml`, with focused validation for invalid module-dropout probabilities.
+  - Added focused module/runtime/config coverage for IA3 initialization, merged-weight consistency, mixed-dtype forward behavior, input-axis bypass diff behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+
+### Fixed
+
+- **Repo-owned ABBA now fixes the main vendor-path correctness hazards while keeping the actual Hadamard-product method shape intact** — The repo-owned ABBA path now treats its optimized linear bypass math as a fresh view of current parameters instead of a stale cache, and its merge/bypass behavior matches the intended diff semantics for both linear and convolution targets.
+  - Fixed ABBA linear bypass behavior so Khatri-Rao factors are rebuilt from the current trainable weights instead of being cached once and silently going stale as training updates the factors.
+  - Fixed ABBA convolution bypass diff behavior so the adapter delta path no longer adds the original bias a second time before the main forward adds the base-module output.
+  - Fixed the standard ABBA merged-weight path so the adapter contribution is scaled by `multiplier` exactly once instead of being multiplied once in diff construction and again during merge.
+  - Fixed ABBA export behavior so scalar mode no longer depends on a fragile `sqrt(scalar)` symmetry bake; the repo-owned artifact now folds scalar into one exported factor directly and reloads with identity scalar state.
+- **Repo-owned IA3 now fixes the main vendor-path correctness hazards while keeping the actual scaling method intact** — The repo-owned IA3 path now treats input-vs-output scaling as first-class state instead of incidental tensor shape, and its merged-weight path matches the real activation-space behavior for biasful output-side targets.
+  - Fixed IA3 merged-weight behavior so output-side scaling transforms bias consistently instead of scaling only the weight matrix.
+  - Fixed IA3 state-dict reconstruction so the saved `on_input` flag participates in module rebuilds and vendor-style convolution weight layouts are normalized cleanly on load.
+  - Fixed the initial repo-owned IA3 runtime shape so leaving `adapter.peft.ia3.train_on_input` unset now auto-selects the axis per target using the current IA3 target-name patterns (`k_proj` / `v_proj` / `to_k` / `to_v` on output, `mlp.fc2` / `ff.net.2` on input) instead of forcing one global default across every target.
+
+## [2026-05-01]
+
+### Added
+
+- **OFT is now available as a repo-owned PEFT adapter method under `adapter.peft.oft`** — The active adapter runtime can now build, train, export, load, and merge OFT modules through the same repo-owned method surface as LoHa, LoCon, and LoKr instead of treating the old built-in OFT path as a supported contract.
+  - Added repo-owned OFT config/runtime/state-dict ownership under `library/adapters/methods/peft/oft/`, including LyCORIS-style factorized orthogonal blocks, optional learned rescaling, bypass mode, module dropout, plain dropout, rank dropout, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.oft` typed config plus `configs/_defaults/adapter/peft/oft.yaml`, with focused validation for missing/non-positive factors, negative constraints, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for OFT initialization, merged-weight consistency, mixed-dtype forward behavior, export/load round-trips, registry-owned config translation, and centralized config validation.
+- **BOFT is now available as a repo-owned PEFT adapter method under `adapter.peft.boft`** — The active adapter runtime can now build, train, export, load, and merge BOFT modules through the same repo-owned method surface as LoHa, LoCon, LoKr, and OFT instead of relying on the vendored LyCORIS implementation as the repo contract.
+  - Added repo-owned BOFT config/runtime/state-dict ownership under `library/adapters/methods/peft/boft/`, including LyCORIS-style butterfly factorization, optional partial butterfly depth through `num_stages`, optional learned rescaling, bypass mode, module dropout, plain multiplicative dropout on butterfly transforms, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.boft` typed config plus `configs/_defaults/adapter/peft/boft.yaml`, with focused validation for missing/non-positive factors, negative constraints, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for BOFT initialization, merged-weight consistency, mixed-dtype forward behavior, vendor-parity bypass diff behavior, compact export/load round-trips, registry-owned config translation, and centralized config validation.
+- **DyLoRA is now available as a repo-owned PEFT adapter method under `adapter.peft.dylora`** — The active adapter runtime can now build, train, export, load, and merge DyLoRA modules through the same repo-owned method surface as the other absorbed PEFT methods instead of routing `library.adapters.dylora` through the old legacy bridge.
+  - Added repo-owned DyLoRA config/runtime/state-dict ownership under `library/adapters/methods/peft/dylora/`, with LoRA-shaped weights, explicit `block_size` layout ownership, module dropout, optional bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.dylora` typed config plus `configs/_defaults/adapter/peft/dylora.yaml`, with focused validation for missing/non-positive ranks, invalid `block_size`, and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for DyLoRA initialization, merged-weight consistency, mixed-dtype forward behavior, gradient isolation to the sampled block, registry-owned config translation, and centralized config validation.
+- **GLoRA is now available as a repo-owned PEFT adapter method under `adapter.peft.glora`** — The active adapter runtime can now build, train, export, load, and merge GLoRA modules through the same repo-owned method surface as the other absorbed PEFT methods instead of leaving `library.adapters.glora` as a vendor-only path.
+  - Added repo-owned GLoRA config/runtime/state-dict ownership under `library/adapters/methods/peft/glora/`, including the real branch-A/branch-B method shape, optional Tucker factorization on the B branch for convolution targets, scalar mode, orthogonalization, bypass mode, trainable-ref provenance, and repo-owned save/load/merge behavior.
+  - Added `adapter.peft.glora` typed config plus `configs/_defaults/adapter/peft/glora.yaml`, with focused validation for missing/non-positive ranks and invalid dropout probabilities.
+  - Added focused module/runtime/config coverage for GLoRA initialization, merged-weight consistency, bypass multiplier behavior, mixed-dtype forward behavior, Tucker reachability, registry-owned config translation, and centralized config validation.
+
+### Changed
+
+- **The active PEFT registry now promotes OFT as a normal repo-owned method instead of keeping the old built-in path in the supported adapter list** — `library.adapters.oft` now resolves through the repo-owned OFT registration, and the stale `oft_deprecated` package has been removed instead of remaining as on-disk cleanup debt.
+  - Repo-owned OFT now stores only the independent upper-triangle values for each skew-symmetric block in its native trainable/exported parameter layout, reducing OFT parameter/state size while keeping the same effective Diag-OFT transform math.
+- **The active PEFT registry now promotes BOFT as a normal repo-owned method instead of keeping it as vendored LyCORIS-only behavior** — `library.adapters.boft` now resolves through the repo-owned BOFT registration, and the BOFT path follows the same method-local config/runtime/state-dict ownership model as the other absorbed repo-owned PEFT methods.
+  - Repo-owned BOFT stores only the independent upper-triangle values for each butterfly-stage skew block in its native trainable/exported parameter layout, avoiding the older full-square vendor storage while preserving the same effective transform math.
+- **The active PEFT registry now promotes DyLoRA as a normal repo-owned method instead of keeping `library.adapters.dylora` on the legacy bridge path** — The active registry now resolves DyLoRA through the repo-owned method package, and the method is treated as a LoRA-shaped training-policy method with explicit block-size ownership instead of as compatibility debt.
+- **The active PEFT registry now promotes GLoRA as a normal repo-owned method instead of leaving it as a vendor-only path** — `library.adapters.glora` now resolves through the repo-owned GLoRA registration, and the active method surface owns the method-local config/runtime/state-dict behavior directly rather than depending on vendored wrapper behavior.
+
+### Fixed
+
+- **Repo-owned OFT now fixes broken vendor/legacy bypass behavior while preserving the intended Diag-OFT algorithm shape** — The absorbed OFT path no longer relies on raw mixed-dtype module forwards in bypass/dropout paths, and its bypass diff/rescale behavior now uses shape-safe logic instead of the buggy vendor/legacy implementation.
+  - Removed the stale output-shaped plain-dropout mask from the OFT bypass path so `bypass_forward_diff()` no longer hits invalid batch-vs-block broadcasting during training and keeps plain dropout scoped to the OFT block transforms themselves.
+  - Fixed OFT state-dict reconstruction so saved block layouts are reloaded exactly instead of being reinterpreted through the generic factorization hint, and fixed `apply_max_norm()` so it actually clamps large effective OFT norms instead of silently no-oping.
+  - Fixed the standard OFT merged-weight path so biasful target modules now transform and merge bias consistently with the output-space orthogonal transform instead of leaving the original bias untouched.
+- **Repo-owned BOFT now owns its runtime math with repo-tested mixed-dtype, dropout, and checkpoint behavior instead of inheriting those details opaquely from vendored LyCORIS code** — The absorbed BOFT path now has explicit repo coverage for merged-weight parity, bypass diff behavior, compact/full export compatibility, and partial-checkpoint reporting through the active adapter runtime.
+  - Added focused BOFT coverage for partial-stage exports/load round-trips and direct/runtime validation of invalid `num_stages` settings.
+  - Fixed the standard BOFT merged-weight path so biasful target modules now transform and merge bias consistently with the output-space butterfly operation instead of leaving the original bias untouched.
+- **Repo-owned DyLoRA now fixes several vendor-path correctness hazards while keeping the useful dynamic-prefix training idea** — The absorbed DyLoRA path no longer depends on vendor `.data` concatenation, disabled state-dict loading, or the broken `scale` / `gamma` bypass branch.
+  - Added explicit block-size-aware export/load ownership so DyLoRA artifacts round-trip the dynamic training layout exactly instead of dropping that information on save.
+  - Rebuilt DyLoRA dynamic-prefix training so the sampled block receives gradients while the effective update still uses the prefix through that block, and kept full-rank export/merge on standard LoRA-shaped weights.
+- **Repo-owned GLoRA now fixes the main vendor-path correctness hazards while keeping the actual GLoRA branch math intact** — The absorbed GLoRA path no longer leaves Tucker effectively unreachable on convolution targets, and bypass mode now applies multiplier/scale handling consistently instead of inheriting the vendor mismatch.
+  - Preserved the unusual LyCORIS non-bypass plain-dropout behavior as an explicit method-local choice for now, rather than silently normalizing it into generic LoRA-family assumptions.
+
 ## [2026-04-30]
 
 ### Added
