@@ -82,10 +82,10 @@ class PyTorchDevice:
                 torch.accelerator.set_stream(previous)
 
     @contextmanager
-    def context(self, call: CallContext, after: Sequence[Completion], reaches: Sequence[object]) -> Generator[None]:
+    def context(self, call: CallContext, after: Sequence[Completion]) -> Generator[None]:
         with self._current():
             self._follow(after)
-            with entered(call, reaches, self.device, self.random):
+            with entered(call, self.device, self.random):
                 yield
 
     def _follow(self, after: Sequence[Completion]) -> None:

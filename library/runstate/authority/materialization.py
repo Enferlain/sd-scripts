@@ -115,7 +115,7 @@ class MaterializationAttempt:
             reasons.append(f"@{materializer} has no device to run on")
             return []
         try:
-            with self.device.context(CallContext(), (), ()):
+            with self.device.context(CallContext(), ()):
                 results, completion = implementation(self.device, *given)
             completion.wait()
         except Exception as failed:

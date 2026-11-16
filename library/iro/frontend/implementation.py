@@ -70,11 +70,14 @@ def implementation(
     concurrency_safe: bool = False,
     completion: str = "device",
     name: str | None = None,
+    differentiates: Iterable[int] = (),
+    differentiable: Iterable[int] = (),
 ) -> Callable[[Callable[..., object]], Declared]:
     """Declares the decorated function as an implementation at one implementation version.
 
     D16 says what a version covers: change it whenever the declaration or the
-    results change.
+    results change. ``differentiates`` and ``differentiable`` are input
+    positions (:class:`~library.iro.seams.Declaration`).
     """
 
     def declare(function: Callable[..., object]) -> Declared:
@@ -86,6 +89,8 @@ def implementation(
             frozenset(Effect(e) for e in effects),
             concurrency_safe,
             completion,
+            tuple(differentiates),
+            tuple(differentiable),
         )
         return Declared(declaration, function)
 

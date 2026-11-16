@@ -31,7 +31,7 @@ class Host:
         self._creating = threading.Lock()
 
     @contextmanager
-    def context(self, call: CallContext, after: Sequence[Completion], reaches: Sequence[object]) -> Generator[None]:
+    def context(self, call: CallContext, after: Sequence[Completion]) -> Generator[None]:
         """Waits on the CPU for the work the call follows, and establishes the call's Torch settings.
 
         A run that has not loaded Torch has no Torch settings to establish.
@@ -54,7 +54,7 @@ class Host:
             with self._creating:
                 if self._random is None:
                     self._random = RandomStates(torch.device("cpu"), self.seed)
-        with entered(call, reaches, torch.device("cpu"), self._random):
+        with entered(call, torch.device("cpu"), self._random):
             yield
 
     def completion(self) -> Returned:

@@ -108,6 +108,18 @@ class UnitOp(Word):
         for member in self.members:
             if not isinstance(member.type, ResourceType) or member.type.kind.data != "participant":
                 raise VerifyException(f"{path(self)}: a unit's members are participants")
+        declared = [provider(member) for member in self.members]
+        if len(set(declared)) != len(declared):
+            raise VerifyException(f"{path(self)}: a unit names each participant it trains once")
+        root: Operation = self
+        while not isinstance(root, StrategyOp) and (parent := root.parent_op()) is not None:
+            root = parent
+        for other in root.walk():
+            if isinstance(other, UnitOp) and other is not self and set(map(provider, other.members)) & set(declared):
+                raise VerifyException(
+                    f"{path(self)}: @{self.sym_name.data} and @{other.sym_name.data} train the same participant, "
+                    "and standard ownership does not overlap"
+                )
         names = self.setting_names.data if self.setting_names is not None else ()
         values = self.setting_values.data if self.setting_values is not None else ()
         if len(names) != len(values):

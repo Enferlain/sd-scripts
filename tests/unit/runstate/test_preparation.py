@@ -71,7 +71,7 @@ def test_a_request_that_current_facts_rule_out_is_rejected_before_any_work() -> 
     result = PreparationAttempt.derive(authority, PreparationRequest(routes=((refs(authority, "m")[0], NORMAL),)))
     assert isinstance(result, Rejected) and "@m is declared, not bound, so it cannot be prepared" in str(result)
     result = PreparationAttempt.derive(materialized(authority), PreparationRequest(mutation=Mutation.IN_PLACE))
-    assert isinstance(result, Rejected) and "withdraws" in str(result)
+    assert isinstance(result, Rejected) and "asks for no route and no contribution" in str(result)
 
 
 def test_one_publication_installs_every_prepared_route_and_makes_the_run_ready() -> None:
@@ -248,3 +248,51 @@ def test_a_route_never_changes_under_a_lease_held_on_another_thread() -> None:
     assert mismatches == []
     assert published + refused > 0
     assert not authority._outstanding
+
+
+# In-place preparation before a participant's first route (D19).
+
+
+def in_place(authority, *names: str) -> PreparationAttempt:
+    return derived(authority, PreparationRequest(routes=tuple((r, NORMAL) for r in refs(authority, *names)), mutation=Mutation.IN_PLACE))
+
+
+def test_in_place_work_before_the_first_route_has_nothing_to_withdraw_and_publishes() -> None:
+    authority = materialized()
+    attempt = in_place(authority, "m")
+    binding = attempt.projection[refs(authority, "m")[0]].binding
+    assert binding is not None
+    binding.value.value += 1  # the work changes the bound object in place, as setting trainability does
+    result = attempt.publish(PreparationResult(attempt.attempt.reference, prepared_routes(attempt)))
+    assert isinstance(result, Published), result
+    assert authority.section.at("m").routes[NORMAL].callable == ("prepared", binding.value)
+
+
+def test_in_place_work_after_a_route_is_published_waits_for_withdrawal() -> None:
+    authority = materialized()
+    attempt = derived(authority, every_normal_route(authority))
+    assert isinstance(attempt.publish(PreparationResult(attempt.attempt.reference, prepared_routes(attempt))), Published)
+    result = PreparationAttempt.derive(
+        authority, PreparationRequest(routes=((refs(authority, "m")[0], NORMAL),), mutation=Mutation.IN_PLACE)
+    )
+    assert isinstance(result, Rejected) and "withdrawal comes with the second pass of section 15" in str(result)
+
+
+def test_in_place_work_on_a_participant_leased_while_it_ran_never_publishes() -> None:
+    authority = materialized()
+    attempt = in_place(authority, "m")
+    (lease,) = authority.lease([Use("m", AccessMode.OWNER_UPDATE, VersionSelection.OWNER_PROTOCOL)])
+    lease.release()
+    result = attempt.publish(PreparationResult(attempt.attempt.reference, prepared_routes(attempt)))
+    assert isinstance(result, Rejected) and "@m was leased while in-place work on it ran" in str(result)
+    assert not authority.section.at("m").routes, "nothing published"
+
+
+def test_in_place_work_on_a_participant_with_a_lease_out_is_refused_before_it_starts() -> None:
+    authority = materialized()
+    (lease,) = authority.lease([Use("m", AccessMode.OWNER_UPDATE, VersionSelection.OWNER_PROTOCOL)])
+    result = PreparationAttempt.derive(
+        authority, PreparationRequest(routes=((refs(authority, "m")[0], NORMAL),), mutation=Mutation.IN_PLACE)
+    )
+    assert isinstance(result, Rejected) and "@m has a lease out" in str(result)
+    lease.release()

@@ -479,3 +479,98 @@ def test_a_permission_to_leave_the_device_that_cannot_be_realized_is_a_target_li
     with pytest.raises(Rejection) as rejected:
         prepared(text, target, effects={"encode": ["device"], "tune": ["device"]})
     assert rejected.value.codes == (code,) and rejected.value.target_limits_only
+
+
+# Call contexts (D15, D20).
+
+LEARNING = """iro.strategy @s uses(@batch v1, @encode v1, @measure v1, @predict v1, @objective v1, @learn v1) {
+  %net = iro.resource @net : participant
+  %enc = iro.resource @enc : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %enc, %w) {
+    %batch = iro.call @batch() -> batch
+    %cond = iro.access %enc protected_current {
+    ^(%e):
+      iro.call @encode(%e, %batch) -> retained cond
+    }
+    %loss = iro.access %net protected_current {
+    ^(%n):
+      %seen = iro.call @measure(%n, %batch) -> int
+      %prediction = iro.call @predict(%n, %cond, %batch) -> retained prediction
+      iro.call @objective(%prediction, %batch) -> retained loss
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
+    }
+  }
+}
+"""
+
+DIFFERENTIATION = {
+    "predict": {"differentiable": (1,)},
+    "objective": {"differentiable": (0,)},
+    "learn": {"differentiates": (1,)},
+}
+
+
+def contexts(result) -> dict[str, tuple[bool, tuple[str, ...]]]:
+    return {name: (g.context.grad, g.context.derivatives_to) for g in result.groups for name in g.implementations}
+
+
+def test_grad_mode_follows_the_dataflow_into_a_differentiated_input() -> None:
+    effects = {name: ["device"] for name in ("encode", "measure", "predict", "objective", "learn")}
+    result, _ = prepared(LEARNING, effects=effects, **DIFFERENTIATION)
+    assert contexts(result) == {
+        "batch": (False, ()),  # its value reaches only inputs not declared differentiable
+        "encode": (True, ("w",)),  # through the prediction's conditioning, declared differentiable
+        "measure": (False, ()),  # its result reaches nothing
+        "predict": (True, ("w",)),
+        "objective": (True, ("w",)),
+        "learn": (False, ()),  # it differentiates its input, and its own results reach nothing
+    }
+    (measure,) = [g for g in result.groups if "measure" in g.implementations]
+    (predict,) = [g for g in result.groups if "predict" in g.implementations]
+    assert measure.index != predict.index, "calls with different contexts are not fused"
+    assert predict.implementations == ("predict", "objective"), "calls with the same context still are"
+    assert "grad True, derivatives to @w" in result.text()
+
+
+def test_an_input_not_declared_differentiable_stops_the_walk() -> None:
+    declared = DIFFERENTIATION | {"objective": {}}
+    result, _ = prepared(LEARNING, **declared)
+    assert contexts(result)["predict"] == (False, ()) and contexts(result)["objective"] == (True, ("w",))
+
+
+def test_a_differentiation_declaration_names_value_inputs_that_exist() -> None:
+    with pytest.raises(ValueError, match="a lease"):
+        implementation(version=1, inputs=("owner_update lease", "retained loss"), differentiates=(0,))(lambda *a: None)
+    with pytest.raises(ValueError, match="declares 1 inputs"):
+        implementation(version=1, inputs=("retained loss",), differentiable=(1,))(lambda *a: None)
+    plain = implementation(version=1, inputs=("retained loss",))(lambda *a: None).declaration
+    marked = implementation(version=1, inputs=("retained loss",), differentiable=(0,))(lambda *a: None).declaration
+    assert plain.digest != marked.digest, "the declaration's digest covers what it differentiates"
+
+
+CARRIED_INTO_LEARNING = """iro.strategy @s uses(@first v1, @step v1, @learn v1) {
+  %w = iro.resource @w
+  iro.sequence @once capture(%w) {
+    %f = iro.call @first() -> loss
+    %last = iro.repeat @loop 2 times capture(%w) carry(%c = %f) {
+    ^(%i: int):
+      %n = iro.call @step(%c) -> loss
+      iro.yield %n
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %last)
+    }
+  }
+}
+"""
+
+
+def test_grad_mode_follows_a_value_into_a_repeat_as_its_carry_and_out_as_its_result() -> None:
+    result, _ = prepared(CARRIED_INTO_LEARNING, step={"differentiable": (0,)}, learn={"differentiates": (1,)})
+    assert contexts(result)["first"] == (True, ("w",)), "the initial carry reaches the learning through the repeat"
+    assert contexts(result)["step"] == (True, ("w",))

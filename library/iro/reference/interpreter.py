@@ -704,8 +704,9 @@ class Reference:
     def _release_product(self, product: Product, how: str) -> None:
         if self.products.get(product.key) is not product or not product.active:
             raise ReferenceFailure(f"{product.key[0]}: a retained result is released twice")
-        if product.borrowers or any(any(p is product for p in other.parents) for other in self.products.values() if other.active):
-            raise ReferenceFailure(f"{product.key[0]}: released while a dependent use is still running")
+        # A result that keeps this one holds its leases too, so it may outlive it; a call still using it may not (D16).
+        if product.borrowers:
+            raise ReferenceFailure(f"{product.key[0]}: released while a call is still using it")
         product.active = False
         del self.products[product.key]
         self._fact(product.key[0], (), "product_released", product.key[1], how)

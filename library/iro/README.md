@@ -62,7 +62,7 @@ a fix. Codes by area:
 | `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report. Each obligation names its kind and its evaluator: the run authority for participants, a resource's own owner for its other resources, or the IR runtime for lifecycles; a lease obligation carries the use its owner must realize |
 | `diagnostics.py` | The shared diagnostic |
 | `accepted.py` | The accepted run, its authority seed (each participant with its materializer and the settings the strategy gives it) and cold loading |
-| `seams.py` | The owner, implementation and device interfaces the runtime will call, and an implementation's `Declaration` |
+| `seams.py` | The owner, implementation and device interfaces the runtime calls, an implementation's `Declaration` (with the inputs it differentiates and is differentiable through), and `Establishes`, a lease that sets up what its state needs for each call |
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
 | `runtime/` | The coordinator and its control state, one component per concern: `kernel.py` (facts, failure, waits and wakes, tasks, the one handoff to workers), `turns.py` (device turns and admissions), `storage.py` (snapshot copies and leaving the device), `protection.py` (leases, protection, retained results, reservations), `requests.py` (requests, handlers, stops), `flow.py` (streams, claims, producers, filters), `calls.py` (the call path); `coordinator.py` runs the strategy: lifecycles, bodies and the structural protocols |
@@ -76,8 +76,9 @@ implementations it selects, each with its version and a digest of its
 declaration (D16). Cold loading refuses a run whose pinned definitions are
 missing or changed, and ignores definitions it does not use, so new
 vocabulary never stops a saved run from loading. `check_implementations` is
-the Trainer's check of installed implementations against the pins; a run
-accepted without installed implementations never passes it.
+a host's check of installed implementations against the pins, as the
+Trainer's is; a run accepted without installed implementations never passes
+it.
 `tests/unit/iro/test_versions.py` keeps the digest of every definition
 version and implementation version in `recorded_versions.json`: a
 declaration that changes under a recorded version fails it, and
@@ -87,10 +88,15 @@ declaration that changes under a recorded version fails it, and
 
 `prepare.prepare(loaded, installed, target)` derives the prepared run. A
 call that declares device use goes to its activity's placed device or the
-target's device for device work; other calls run on the host. Consecutive
-calls in one body on one device, whose completion the device covers and that
-have no external effects or collectives, form one group, submitted as one
-piece of work. Each access body with device work is one device admission,
+target's device for device work; other calls run on the host. A call runs
+with grad mode when one of its results reaches an input an implementation
+declares it differentiates, through inputs declared differentiable, and its
+context names where those derivatives go: the resources the differentiating
+calls update. The IR gives that no further meaning; what a domain makes of
+it, such as module mode, its leases establish (D15). Consecutive calls in
+one body on one device, whose completion the device covers, that have no
+external effects or collectives and establish the same context, form one
+group, submitted as one piece of work. Each access body with device work is one device admission,
 from after its takes to the release of the last retained result it produced
 (D15). The printout is saved for inspection only: `load_prepared` prepares
 again and refuses a saved form that differs, so a forged fusion or admission
@@ -103,7 +109,11 @@ executes a prepared run on one event loop and reports the same owner-visible
 facts as the reference semantics, to the observer as they happen. Selected
 calls run on worker threads through the implementation and device seams; a
 fused group is one submission, and the coordinator waits for completion
-without blocking.
+without blocking. A device sets each call's grad mode, precision and random
+state. A lease that establishes what its state needs for each call
+(`seams.Establishes`) does so on the worker before the group's calls, and
+the group then uses that resource alone, even when its calls are declared
+safe for concurrent use.
 
 The coordinator executes the run's lowered form (`prepare.lower`), so a
 round never reads the strategy again: a body's values sit in numbered slots,

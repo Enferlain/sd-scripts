@@ -10,12 +10,19 @@ not depend on the GIL.
 
 Owners register with the run's generations, and each may refuse a
 publication of its next section, such as the run authority over a lease it
-still has out. A publication whose basis is not the current generation is
+still has out. A publication of in-place work is checked by every owner
+with a section, since the work may affect any of them, whether or not it
+publishes a next section for that owner (D8). A publication whose basis is not the current generation is
 stale and never publishes; its dependencies are the whole of every section,
 which is the conservative default (D6). Rank agreement before the swap
 comes with multi-process runs (D15).
+
+An executable run exists only after publication, once every owner that
+judges obligations finds its readiness checkpoint met (D17). It reads
+through the generation it was realized on and runs once.
 """
 
+import asyncio
 import threading
 from collections.abc import Iterable, Mapping
 from contextlib import AbstractContextManager, ExitStack
@@ -23,6 +30,11 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Protocol
 
+from library.iro.prepare import Prepared
+from library.iro.runtime import Coordinator, Fact, Observer, Outcome
+from library.iro.seams import Device, Implementation, Owner
+from library.iro.verify import CORE_EXECUTION, Checkpoint
+from library.iro.words.model import ResourceOp
 from library.runstate.owners import Attempt, AttemptRef, Basis, Mint, Mutation, Refused, Stale
 
 
@@ -45,6 +57,9 @@ class Publishes(Protocol):
 
     def admit(self, publication: Publication, current: Section | None, next: Section) -> AbstractContextManager[None]:
         """Raises :class:`Refused` on entry when ``next`` may not replace ``current`` now.
+
+        For an owner whose section a publication of in-place work does not
+        change, ``next`` is ``current``.
 
         On entry it checks, and it holds what the check relied on until the
         swap is done, when it is left. It changes no state and does no
@@ -119,20 +134,95 @@ class Generations:
             current = self._current
             if publication.basis.generation != current.number:
                 raise Stale(f"built from generation {publication.basis.generation}, and generation {current.number} is current")
-            if publication.attempt is not None and publication.attempt.mutation == Mutation.IN_PLACE:
-                raise Refused(
-                    "in-place work first withdraws the guarantees it affects; withdrawal comes with the second pass of section 15"
-                )
             changed = _changed(publication.sections, current)
+            unregistered = [owner for owner in changed if owner not in self._owners]
+            if unregistered:
+                raise Refused(f"{unregistered[0]} is not registered with the run's generations")
+            admitting = dict(changed)
+            if publication.attempt is not None and publication.attempt.mutation == Mutation.IN_PLACE:
+                # In-place work may affect any owner's guarantees, so every owner with a section checks it.
+                admitting |= {owner: section for owner, section in current.sections.items() if owner not in changed}
             with ExitStack() as admitted:
-                for owner, section in changed.items():
-                    registered = self._owners.get(owner)
-                    if registered is None:
-                        raise Refused(f"{owner} is not registered with the run's generations")
-                    admitted.enter_context(registered.admit(publication, current.sections.get(owner), section))
+                for owner, section in admitting.items():
+                    admitted.enter_context(self._owners[owner].admit(publication, current.sections.get(owner), section))
                 installed = Generation(current.number + 1, MappingProxyType({**current.sections, **changed}))
                 self._current = installed
             return installed
+
+
+class Judges(Protocol):
+    """An owner that judges the obligations on what it holds at a readiness checkpoint (D19)."""
+
+    def readiness(self, checkpoint: Checkpoint) -> tuple[str, ...]:
+        """Why its obligations at the checkpoint do not hold now; empty once they all do."""
+        ...
+
+
+@dataclass(frozen=True)
+class Readiness:
+    """The evidence an executable run was accepted with: who judged which checkpoint, at which generation."""
+
+    checkpoint: Checkpoint
+    generation: int
+    judges: tuple[str, ...]
+
+
+class ExecutableRun:
+    """A prepared run ready to execute against the published state it was realized on (D17).
+
+    It holds the prepared strategy with its lowered runtime instance, the
+    owners and device adapters it runs against, the generation and
+    obligation revision its state came from, the preparation attempts that
+    published it, and the readiness evidence it was accepted with. It is
+    single-use: a governed transition or a restoration realizes a new one.
+    """
+
+    def __init__(
+        self,
+        generations: Generations,
+        prepared: Prepared,
+        owners: Mapping[str, Owner],
+        installed: Mapping[str, Implementation],
+        devices: Mapping[str, Device],
+        judges: Mapping[str, Judges],
+        *,
+        attempts: tuple[AttemptRef, ...] = (),
+        observe: Observer | None = None,
+    ):
+        """Checks every judge's core-execution checkpoint, then builds the run's runtime; raises :class:`Refused` with every reason."""
+        declared = {op.sym_name.data for op in prepared.loaded.normalized.strategy.walk() if isinstance(op, ResourceOp)}
+        reasons = [f"@{name} has no owner to serve it" for name in sorted(declared - set(owners))]
+        generation = generations.current
+        for name, judge in judges.items():
+            reasons += [f"{name}: {reason}" for reason in judge.readiness(CORE_EXECUTION)]
+        if reasons:
+            raise Refused("the run is not ready to execute:\n" + "\n".join(f"  {reason}" for reason in reasons))
+        self.generations = generations
+        self.prepared = prepared
+        self.obligations = prepared.loaded.run.obligations.revision
+        self.attempts = attempts
+        self.devices = dict(devices)
+        self.readiness = Readiness(CORE_EXECUTION, generation.number, tuple(judges))
+        self.facts: list[Fact] = []
+        self.coordinator = Coordinator(prepared, owners, installed, self.devices, observe=observe or self.facts.append)
+        self._executed = False
+        self._lock = threading.Lock()
+
+    @property
+    def generation(self) -> int:
+        """The generation the run was realized on."""
+        return self.readiness.generation
+
+    def execute(self) -> Outcome:
+        """Runs the strategy once, while the generation it was realized on is still current."""
+        with self._lock:
+            if self._executed:
+                raise Refused("an executable run is single-use; realize a new one")
+            self._executed = True
+        current = self.generations.current.number
+        if current != self.generation:
+            raise Stale(f"realized on generation {self.generation}, and generation {current} is current")
+        return asyncio.run(self.coordinator.run())
 
 
 def _changed(sections: Iterable[Section], current: Generation) -> dict[str, Section]:
@@ -147,4 +237,4 @@ def _changed(sections: Iterable[Section], current: Generation) -> dict[str, Sect
     return changed
 
 
-__all__ = ["Generation", "Generations", "Publication", "Publishes", "Section"]
+__all__ = ["ExecutableRun", "Generation", "Generations", "Judges", "Publication", "Publishes", "Readiness", "Section"]

@@ -20,7 +20,7 @@ from typing import ClassVar
 
 from library.iro.operation_contracts import AccessMode
 from library.iro.verify import Evaluator, Obligation, ObligationKind, Obligations
-from library.runstate.authority.records import NORMAL, Participant, ParticipantRef
+from library.runstate.authority.records import NORMAL, Establish, Participant, ParticipantRef
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.owners import Evidence
 
@@ -98,8 +98,8 @@ def judge_lease(obligation: Obligation, participant: Participant, section: Autho
     The participant is bound, and the use's route is prepared from its
     current binding. ``updated`` says some use in the run updates the
     participant, so a snapshot of it needs a copy of its device storage,
-    which the model definitions supply in section 18. Grants come with
-    training's words and views with the second pass of section 15. Each
+    which the model definitions supply in section 18. Grants come with the
+    second pass of section 16 and views with the second pass of section 15. Each
     fails here, before the run starts, instead of at the use.
     """
     use = obligation.use
@@ -109,7 +109,7 @@ def judge_lease(obligation: Obligation, participant: Participant, section: Autho
     if binding is None:
         return f"{name} is not bound"
     if use.mode == AccessMode.GRANT:
-        return f"{name} is used through a grant; grants come with training's words (section 16)"
+        return f"{name} is used through a grant; grants come with the second pass of section 16"
     if use.view is not None:
         return f"{name} is used as its {use.view} view; views come with the second pass of section 15"
     if use.mode == AccessMode.SNAPSHOT and updated:
@@ -162,13 +162,14 @@ class Materialization:
 
 @dataclass(frozen=True)
 class RouteRebinding:
-    """Installs a route's new prepared callable; ``expected`` is the route's current revision, or None for a new route."""
+    """Installs a route's new prepared callable, with what it establishes per call; ``expected`` is the route's current revision, or None for a new route."""
 
     target: ParticipantRef
     route: str
     callable: object
     expected: int | None
     evidence: Prepared
+    establish: Establish | None = None
     kind: ClassVar[TransitionKind] = TransitionKind.ROUTE_REBINDING
 
 

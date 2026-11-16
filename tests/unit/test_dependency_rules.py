@@ -63,12 +63,25 @@ LAYERS = (
         "library.strategies",
         ("library.strategies", "library.training", "library.runstate", "library.iro", *LIBRARIES, "library.observability", "library.base"),
     ),
+    # Each library may import the run state, the IR system, observability fact types, base and the libraries below it.
+    *(
+        Layer(library, (*LIBRARIES[: index + 1], "library.runstate", "library.iro", FACTS, "library.base"))
+        for index, library in enumerate(LIBRARIES)
+    ),
     Layer("library.observability", ("library.observability", "library.base")),
     Layer("library.base", ("library.base",)),
 )
 
 # What exists of the new system: package directories, and test directories that are new code too.
-NEW_SYSTEM = ("library/iro", "library/runstate", "library/training/words")
+NEW_SYSTEM = (
+    "library/iro",
+    "library/runstate",
+    "library/training/words",
+    "library/training/units",
+    "library/training/preparation.py",
+    "library/training/trainer.py",
+    "library/optimization/construction.py",
+)
 NEW_TESTS = ("tests/unit/iro", "tests/unit/runstate", "tests/unit/training_core", "tests/unit/test_dependency_rules.py")
 
 # Code the new system replaces or must not depend on (D21's coverage of today's code).

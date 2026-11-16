@@ -320,7 +320,7 @@ def test_leases_taken_together_are_all_released_when_one_cannot_be_taken() -> No
         Use("m", AccessMode.PROTECTED_CURRENT, VersionSelection.CURRENT_AT_START),
         Use("m", AccessMode.GRANT, VersionSelection.CURRENT_AT_START),
     ]
-    with pytest.raises(Unavailable, match="grants come with training's words"):
+    with pytest.raises(Unavailable, match="grants come with the second pass of section 16"):
         authority.lease(uses)
     rebinding = authority.attempt()
     reference = authority.section.at("m").reference

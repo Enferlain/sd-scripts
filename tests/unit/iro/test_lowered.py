@@ -144,10 +144,10 @@ def test_a_step_lowering_cannot_realize_fails_when_it_runs() -> None:
     installed = {"a": implementation(version=1, inputs=("int",), outputs=("int",), name="a")(lambda i: i)}
     prepared = _prepared(POLICY, installed)
     loop = _invokes(lower(prepared, installed).root)["@loop"]
-    assert loop.kind == INVOKE and loop.problem is not None and "by policy" in loop.problem
+    assert loop.kind == INVOKE and loop.problem is not None and "until a policy" in loop.problem
     coordinator = Coordinator(prepared, {}, installed, {"host": Host()}, checked=True)
     outcome = asyncio.run(coordinator.run())
-    assert outcome.status == "failed" and "by policy" in (outcome.error or "")
+    assert outcome.status == "failed" and "until a policy" in (outcome.error or "")
 
 
 def _strip(body: Body) -> None:

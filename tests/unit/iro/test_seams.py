@@ -63,7 +63,7 @@ class Host:
     offers: frozenset[str] = frozenset()
     work: list = field(default_factory=list)
 
-    def context(self, call, after, reaches):
+    def context(self, call, after):
         return nullcontext()
 
     def completion(self):

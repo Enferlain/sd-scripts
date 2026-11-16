@@ -21,8 +21,8 @@ of a participant the run updates needs a copy of its device storage, which
 the model definitions supply with section 18; until then a strategy that
 both snapshots and updates a participant is refused at route rebinding and
 readiness, since its lease obligations show both uses, and the check at the
-use remains as a backstop. A grant, which comes with training's words, is
-refused the same way.
+use remains as a backstop. A grant, which comes with the second pass of
+section 16, is refused the same way.
 """
 
 import threading
@@ -34,9 +34,9 @@ from types import MappingProxyType
 from library.iro.accepted import AcceptedRun
 from library.iro.operation_contracts import AccessMode
 from library.iro import seams
-from library.iro.seams import Use
+from library.iro.seams import CallContext, Use
 from library.iro.verify import UPDATE_MODES, Checkpoint, ObligationKind, Obligations
-from library.runstate.authority.records import NORMAL, Binding, Lifecycle, Participant, ParticipantRef, Route
+from library.runstate.authority.records import NORMAL, Binding, Establish, Lifecycle, Participant, ParticipantRef, Route
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import (
     Declaration,
@@ -50,7 +50,7 @@ from library.runstate.authority.transitions import (
     judge_lease,
 )
 from library.runstate.generation import Generations, Publication, Section
-from library.runstate.owners import Attempt, Dependencies, Mint, Refused, Stale, Version, new_run
+from library.runstate.owners import Attempt, AttemptRef, Dependencies, Mint, Mutation, Refused, Stale, Version, new_run
 
 
 class Unavailable(Exception):
@@ -72,6 +72,21 @@ class AuthorityLease:
     def updated(self) -> Version:
         """The runtime's notice that a call updated through this lease: the numeric version advances (D16)."""
         return self._authority._advance(self)
+
+
+class EstablishingLease(AuthorityLease):
+    """A lease through a route that establishes what the participant needs for each call (D15)."""
+
+    __slots__ = ("_establish",)
+
+    def __init__(
+        self, authority: RunAuthority, reference: ParticipantRef, use: Use, version: Version, handle: object, establish: Establish
+    ):
+        super().__init__(authority, reference, use, version, handle)
+        self._establish = establish
+
+    def establish(self, call: CallContext, handle: object) -> None:
+        self._establish(call, handle)
 
 
 class RunAuthority:
@@ -97,6 +112,8 @@ class RunAuthority:
         self._writers: dict[ParticipantRef, AuthorityLease] = {}
         self._numeric: dict[ParticipantRef, int] = {}
         self._pinned: set[ParticipantRef] = set()
+        self._granted: dict[ParticipantRef, int] = {}  # leases ever granted on each participant
+        self._in_place: dict[AttemptRef, dict[ParticipantRef, int]] = {}  # in-place attempts, with the grants each began after
 
     @classmethod
     def seed(cls, run: AcceptedRun, *, identity: str | None = None) -> RunAuthority:
@@ -130,6 +147,15 @@ class RunAuthority:
         if not isinstance(section, AuthoritySection):
             raise RuntimeError("the run authority has published nothing yet")
         return section
+
+    def incarnation(self, address: str) -> ParticipantRef:
+        """The current incarnation of the participant declared at an address.
+
+        Addresses only locate declarations (D19): an owner deriving what the
+        accepted strategy defines over participants, such as an optimization
+        unit's members, uses it to name them by reference.
+        """
+        return self.section.at(address).reference
 
     # Changing the records.
 
@@ -253,6 +279,7 @@ class RunAuthority:
             existing.revision + 1 if existing is not None else 1,
             Dependencies(exact=((AUTHORITY, str(participant.reference), evidence.binding),)),
             evidence,
+            transition.establish,
         )
         routes = {**participant.routes, transition.route: route}
         participants[participant.reference] = replace(participant, routes=MappingProxyType(routes))
@@ -294,16 +321,56 @@ class RunAuthority:
                         reasons.append(f"{reason} ({obligation.source or obligation.subject})")
         return tuple(reasons)
 
+    # In-place work.
+
+    def begin_in_place(self, attempt: AttemptRef, participants: Sequence[ParticipantRef]) -> tuple[str, ...]:
+        """Registers in-place work on the participants, or says why there is something to withdraw first (D8, D19).
+
+        Before a participant's first route or view is published, and while no
+        lease on it is out, in-place work has nothing to withdraw, such as
+        setting trainability or turning on gradient checkpointing. Withdrawal
+        comes with the second pass of section 15, so in-place work on a
+        participant that has a route or view is refused. When the work
+        publishes, :meth:`admit` checks that no lease was taken on these
+        participants meanwhile.
+        """
+        with self._lock:
+            section = self.section
+            reasons = []
+            for reference in participants:
+                participant = section.participants.get(reference)
+                if participant is None:
+                    reasons.append(f"{reference} is not a participant of this run")
+                    continue
+                name = f"@{participant.address}"
+                if participant.routes or participant.views:
+                    reasons.append(
+                        f"{name} has a published route or view, which in-place work first withdraws; "
+                        "withdrawal comes with the second pass of section 15"
+                    )
+                if self._outstanding.get(reference):
+                    reasons.append(f"{name} has a lease out, which in-place work first withdraws")
+            if not reasons:
+                self._in_place[attempt] = {reference: self._granted.get(reference, 0) for reference in participants}
+            return tuple(reasons)
+
+    def end_in_place(self, attempt: AttemptRef) -> None:
+        """Forgets an in-place attempt that will not publish."""
+        with self._lock:
+            self._in_place.pop(attempt, None)
+
     # Publication checks.
 
     @contextmanager
     def admit(self, publication: Publication, current: Section | None, next: Section) -> Generator[None]:
         """Refuses a publication that changes a participant's records while a lease on it is out (D19).
 
+        A publication of in-place work is refused unless the attempt
+        registered its participants, none has a lease out, no lease was taken
+        on any of them while the work ran, and none has gained a route or view.
         The authority's lock is held until the swap is done, so no lease is
         taken from the generation the swap replaces after this check.
         """
-        del publication
         assert isinstance(next, AuthoritySection)
         assert current is None or isinstance(current, AuthoritySection)
         with self._lock:
@@ -313,6 +380,18 @@ class RunAuthority:
                         raise Refused(
                             f"@{participant.address} has a lease out; a publication while the run executes goes through the runtime (D19)"
                         )
+            attempt = publication.attempt
+            if attempt is not None and attempt.mutation == Mutation.IN_PLACE:
+                held = self._in_place.pop(attempt.reference, None)
+                if held is None:
+                    raise Refused("in-place work publishes only from an attempt that registered its participants with the authority")
+                for reference, granted in held.items():
+                    before = current.participants.get(reference) if current is not None else None
+                    name = f"@{before.address}" if before is not None else str(reference)
+                    if self._outstanding.get(reference) or self._granted.get(reference, 0) != granted:
+                        raise Refused(f"{name} was leased while in-place work on it ran")
+                    if before is not None and (before.routes or before.views):
+                        raise Refused(f"{name} gained a route or view while in-place work on it ran")
             yield
 
     # The owner seam.
@@ -355,9 +434,10 @@ class RunAuthority:
         name = f"@{participant.address}"
         numeric = self._numeric.get(reference, 0)
         if use.mode == AccessMode.GRANT:
-            raise Unavailable(f"{name} is used through a grant; grants come with training's words (section 16)")
+            raise Unavailable(f"{name} is used through a grant; grants come with the second pass of section 16")
         if use.view is not None:
             raise Unavailable(f"{name} is used as its {use.view} view; views come with the second pass of section 15")
+        establish = None  # an update runs nothing through a route, so it establishes nothing per call
         if use.mode == AccessMode.OWNER_UPDATE:
             if reference in self._pinned or reference in pinning:
                 raise Unavailable(
@@ -376,12 +456,16 @@ class RunAuthority:
                         "which comes with the model definitions (section 18)"
                     )
                 pinning.add(reference)
-            handle = route.callable
+            handle, establish = route.callable, route.establish
         version = Version(use.resource, reference, binding.revision, numeric)
-        lease = AuthorityLease(self, reference, use, version, handle)
+        if establish is None:
+            lease = AuthorityLease(self, reference, use, version, handle)
+        else:
+            lease = EstablishingLease(self, reference, use, version, handle, establish)
         if use.mode == AccessMode.OWNER_UPDATE:
             self._writers[reference] = lease
         self._outstanding[reference] = self._outstanding.get(reference, 0) + 1
+        self._granted[reference] = self._granted.get(reference, 0) + 1
         return lease
 
     @staticmethod
@@ -438,4 +522,4 @@ def _invalidated(section: AuthoritySection) -> tuple[str, ...]:
     return tuple(stale)
 
 
-__all__ = ["AuthorityLease", "RunAuthority", "Unavailable"]
+__all__ = ["AuthorityLease", "EstablishingLease", "RunAuthority", "Unavailable"]

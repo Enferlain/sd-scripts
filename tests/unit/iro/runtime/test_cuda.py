@@ -36,7 +36,7 @@ def test_a_completion_is_done_only_when_the_device_has_finished() -> None:
     from library.iro.devices.cuda import Cuda
 
     device = Cuda(gpu_index())
-    with device.context(CallContext(), (), ()):
+    with device.context(CallContext(), ()):
         x = torch.randn(2048, 2048, device=device.device)
         busy(x)
         completion = device.completion()
@@ -49,12 +49,12 @@ def test_work_on_another_stream_follows_its_completion_on_the_device() -> None:
     from library.iro.devices.cuda import Cuda
 
     first, second = Cuda(gpu_index()), Cuda(gpu_index())
-    with first.context(CallContext(), (), ()):
+    with first.context(CallContext(), ()):
         x = torch.randn(2048, 2048, device=first.device)
         y = busy(x)
         y.fill_(7.0)
         handed = first.completion()
-    with second.context(CallContext(), (handed,), ()):
+    with second.context(CallContext(), (handed,)):
         total = y.sum()
         done = second.completion()
     done.wait()
@@ -131,27 +131,24 @@ def test_a_host_read_after_device_work_waits_for_its_completion_not_for_python_t
     assert not prepared.group_of(prepared.groups[0].calls[0]).sync, "the update's result stays on the device: no wait"
 
 
-def test_a_call_establishes_its_settings_on_the_device_and_restores_them() -> None:
+def test_a_call_establishes_its_settings_on_the_device() -> None:
     from library.iro.devices.cuda import Cuda
 
     device = Cuda(gpu_index(), seed=5)
-    module = torch.nn.Dropout(0.5).to(device.device)
-    module.train(False)
     seen = {}
     with torch.enable_grad():
-        with device.context(CallContext(grad=False, module_mode="train", precision="bfloat16", random="a"), (), (module,)):
+        with device.context(CallContext(grad=False, precision="bfloat16", random="a"), ()):
             seen["grad"] = torch.is_grad_enabled()
-            seen["training"] = module.training
             seen["dtype"] = (torch.ones(4, 4, device=device.device) @ torch.ones(4, 4, device=device.device)).dtype
             first = torch.rand(4, device=device.device)
-        assert torch.is_grad_enabled() and not module.training, "the previous settings are restored"
-    with device.context(CallContext(random="b"), (), ()):
+        assert torch.is_grad_enabled(), "the previous grad mode is restored"
+    with device.context(CallContext(random="b"), ()):
         other = torch.rand(4, device=device.device)
-    with device.context(CallContext(random="a"), (), ()):
+    with device.context(CallContext(random="a"), ()):
         second = torch.rand(4, device=device.device)
-    assert seen == {"grad": False, "training": True, "dtype": torch.bfloat16}
+    assert seen == {"grad": False, "dtype": torch.bfloat16}
     fresh = Cuda(gpu_index(), seed=5)
-    with fresh.context(CallContext(random="a"), (), ()):
+    with fresh.context(CallContext(random="a"), ()):
         again = torch.rand(4, device=device.device)
     assert torch.equal(first.cpu(), again.cpu()), "an owner's draws do not depend on other owners' draws in between"
     assert not torch.equal(first.cpu(), second.cpu()) and not torch.equal(first.cpu(), other.cpu())
@@ -236,7 +233,7 @@ def test_threads_entering_one_adapter_at_once_each_get_its_stream_and_restore_th
     def enter_many() -> None:
         own = torch.cuda.current_stream(device.device).stream_id
         for _ in range(300):
-            with device.context(CallContext(), (), ()):
+            with device.context(CallContext(), ()):
                 if torch.cuda.current_stream(device.device).stream_id != device.stream.stream_id:
                     wrong.append("not the adapter's stream inside")
             if torch.cuda.current_stream(device.device).stream_id != own:
@@ -379,7 +376,7 @@ def test_a_capture_copies_whole_storage_after_the_work_queued_and_before_later_w
     base.fill_(4.0)
     first, second = base[: 1 << 19], base[(1 << 19) + 7 :]  # two views of one storage, one with an offset
     copies, done = device.capture((first, second), ())
-    with device.context(CallContext(), (), ()):
+    with device.context(CallContext(), ()):
         base.fill_(9.0)  # the next update, queued on the device's stream after the copy
     done.wait()
     torch.cuda.synchronize(device.device)

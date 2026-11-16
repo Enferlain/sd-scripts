@@ -4,11 +4,14 @@ A group resolves its leases and retained results, waits for what it must
 follow, and runs its calls in order inside the device's context on a worker
 thread. Its results become slot values, owner updates and retained results.
 Calls not declared safe for concurrent use run one at a time per
-participant, and a group that reaches a participant's device storage waits
+participant. A lease that establishes what its state needs for each call
+(D15) does so on the worker thread before the group's calls, and the group
+then uses its resource alone, since what it establishes is state other calls
+would see. A group that reaches a participant's device storage waits
 until the snapshot copies already asked for of it are queued (D15).
 """
 
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Mapping
 from typing import Any
 
@@ -36,7 +39,9 @@ class CallRunner:
         self.kernel, self.devices = kernel, devices
         self.protections, self.storage, self.turns = protections, storage, turns
         self.request_of = request_of  # the request each invocation handles, which its calls' facts carry
-        self.busy: set[str] = set()
+        self.busy: set[str] = set()  # resources a group not declared safe for concurrent use is running on
+        self.alone: set[str] = set()  # resources a group whose lease establishes per-call state is running on, alone
+        self.running_on: Counter[str] = Counter()  # how many running groups use each resource
         self.call_counts: dict[str, int] = defaultdict(int)
 
     async def run(self, step: Calls, frame: list[object], identity: Identity) -> None:
@@ -86,27 +91,42 @@ class CallRunner:
             if kernel.explore is not None:
                 await kernel.jitter()
             storage = self.storage
-            busy: set[str] = set()
             touching = storage.touching(leased, borrowed)
-            if not step.safe and leased:
-                busy = {lease.resource for lease in leased}
-            if busy or (touching and storage.capturing):
+            resources = {lease.resource for lease in leased}
+            busy = resources if not step.safe else set()
+            establishing = [(lease.lease, lease.handle) for lease in leased if lease.establishes]
+            alone = {lease.resource for lease in leased if lease.establishes}
+            if busy or alone or (resources & self.alone) or (touching and storage.capturing):
                 capturing = storage.capturing
                 await kernel.until(
-                    lambda: kernel.closing or not (busy & self.busy or any(r in capturing for r in touching)),
-                    *(("resource", r) for r in busy.union(touching)),
+                    lambda: (
+                        kernel.closing
+                        or not (
+                            busy & self.busy
+                            or alone & self.running_on.keys()
+                            or resources & self.alone
+                            or any(r in capturing for r in touching)
+                        )
+                    ),
+                    *(("resource", r) for r in resources.union(touching)),
                 )
                 kernel.admission_point()
             protection = self.protections.by_resource
             after = [c for lease in leased for c in protection[lease.resource].pending]
             after += [p.completion for p in borrowed if p.completion is not None]
-            reaches = tuple(lease.handle for lease in leased)
             self.busy |= busy
+            self.alone |= alone
+            self.running_on.update(resources)
             storage.calls_started(touching)
             try:
-                reports, completions = await kernel.submit(run_group, device, step.group.context, after, reaches, program, step.wait)
+                reports, completions = await kernel.submit(run_group, device, step.group.context, after, establishing, program, step.wait)
             finally:
                 self.busy -= busy
+                self.alone -= alone
+                self.running_on.subtract(resources)
+                for resource in resources:
+                    if not self.running_on[resource]:
+                        del self.running_on[resource]
                 storage.calls_ended(touching)
             if not step.wait:
                 # Later work on these participants follows each call's completion (D15).
@@ -181,11 +201,15 @@ def run_group(
     device: Device,
     context: CallContext,
     after: list[Completion],
-    reaches: tuple[object, ...],
+    establishing: list[tuple[Any, object]],
     program: list[tuple[Implementation, list[object], tuple[tuple[int, int, int], ...], int]],
     wait: bool,
 ) -> tuple[list[Any], list[Completion | None]]:
     """Runs a group's calls in order inside the device's context for them, on a worker thread.
+
+    First each lease that establishes what its state needs for a call does
+    so, with the group's context and the handle its calls receive; one that
+    fails fails the group's first call.
 
     Each call's report is its results or what it raised, beside its
     completion; the group stops at the first call that fails or gives the
@@ -199,7 +223,9 @@ def run_group(
     reports: list[Any] = []
     completions: list[Completion | None] = []
     try:
-        with device.context(context, after, reaches):
+        with device.context(context, after):
+            for lease, handle in establishing:
+                lease.establish(context, handle)
             for implementation, given, passed, count in program:
                 if passed:
                     given = list(given)

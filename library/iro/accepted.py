@@ -83,8 +83,8 @@ class AcceptedRun:
     ``definitions`` pins each definition the strategy uses as name,
     definition version and digest; ``implementations`` pins each selected
     implementation as name, implementation version and declaration digest,
-    with an empty digest when none was installed at acceptance, which the
-    Trainer refuses. ``contract`` names the composition it was accepted
+    with an empty digest when none was installed at acceptance, which a
+    host refuses. ``contract`` names the composition it was accepted
     under, for reading only. ``replicated`` says it was accepted to run on
     several ranks, which adds rank agreement to its obligations.
     """
@@ -313,7 +313,7 @@ def _check_installed(problems: Problems, name: str, version: str, digest: str | 
 
 
 def check_implementations(run: AcceptedRun, installed: Mapping[str, Implementation]) -> None:
-    """The Trainer's check: every pinned implementation is installed at its version and declaration (D17).
+    """A host's check before it runs a run, as the Trainer's is: every pinned implementation is installed at its version and declaration (D17).
 
     A pin without a digest, from a run accepted without installed
     implementations, never passes.

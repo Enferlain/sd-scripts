@@ -15,7 +15,7 @@ from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.state import Held, Identity, Product, Protection, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
-from library.iro.seams import Capture, Owner, Use, Version
+from library.iro.seams import Capture, Establishes, Owner, Use, Version
 
 
 class Protections:
@@ -69,7 +69,7 @@ class Protections:
     def _acquire_each(self, step: Invoke, identity: Identity, request: Request | None, held: list[Held]) -> tuple[Held, ...]:
         for name, use in step.uses:
             if use.mode == AccessMode.GRANT:
-                raise RunFailure(f"{step.path}: grants come with training's words")
+                raise RunFailure(f"{step.path}: the runtime does not realize grants yet; they come with the second pass of section 16")
             if use.selection == VersionSelection.AT_REQUEST and request is None:
                 raise RunFailure(f"{step.path}: at_request outside requested work")
             if use.mode == AccessMode.SNAPSHOT and use.selection == VersionSelection.AT_REQUEST:
@@ -115,7 +115,7 @@ class Protections:
             except RunFailure:
                 granted.release()
                 raise
-        lease = Held(self._next_token, name, mode, granted, granted.version)
+        lease = Held(self._next_token, name, mode, granted, granted.version, establishes=isinstance(granted, Establishes))
         if built is not None:
             lease.built, lease.over_storage = built, True
         self._next_token += 1
@@ -128,8 +128,9 @@ class Protections:
     def release_product(self, product: Product, how: str) -> None:
         if self.products.get(product.key) is not product or not product.active:
             raise RunFailure(f"{product.key[0]}: a retained result is released twice")
-        if product.borrowers or any(any(p is product for p in other.parents) for other in self.products.values() if other.active):
-            raise RunFailure(f"{product.key[0]}: released while a dependent use is still running")
+        # A result that keeps this one holds its leases too, so it may outlive it; a call still using it may not (D16).
+        if product.borrowers:
+            raise RunFailure(f"{product.key[0]}: released while a call is still using it")
         product.active = False
         del self.products[product.key]
         self.kernel.fact(product.key[0], (), "product_released", product.key[1], how)

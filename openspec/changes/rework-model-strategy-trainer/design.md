@@ -3176,8 +3176,21 @@ and launch device work. Owners hold state.
   (D10).
 - **Physical calls.** Selected implementations run on worker threads, and the
   coordinator never blocks on them. Each call establishes its execution
-  context from its prepared call: grad mode, module mode, precision, device
-  stream and RNG. It never inherits ambient thread state.
+  context from its prepared call: grad mode, precision, device stream and
+  RNG. It never inherits ambient thread state. Preparation derives grad mode
+  from the dataflow: an implementation declares which inputs it
+  differentiates and which it differentiates through, and a call runs with
+  grad mode when one of its results reaches a differentiated input, such as
+  the loss the standard profile's `contribute` takes, through inputs
+  declared differentiable. An input declared not differentiable, such as a
+  detached one, stops the walk. The call's context also says where its
+  derivatives go: the resources the differentiating calls update. The IR
+  gives that no further meaning. What a participant's state needs for a
+  call, such as its modules' mode, is established by the lease the call
+  uses, on the worker before the call, with the call's context and the
+  handle it receives; a group that uses such a lease uses that resource
+  alone. Domains decide what their leases establish: training's routes set
+  module mode from trainability (D20).
 - **CPU/GPU hand-off.** A Python call returning means device work was queued,
   not finished. The physical layer obtains completion from the device through
   a backend adapter, using stream ordering and events rather than a CPU
@@ -3191,8 +3204,8 @@ and launch device work. Owners hold state.
 - **Device adapters.** There is one adapter per PyTorch backend, named by
   PyTorch's device type (`cuda`, `xpu`, `mps` and others), beside the host
   adapter. What does not depend on the vendor lives in one base that every
-  PyTorch adapter uses: each call's grad mode, module mode, precision and
-  random state, completion and ordering through PyTorch's `torch.Stream` and
+  PyTorch adapter uses: each call's grad mode, precision and random state,
+  completion and ordering through PyTorch's `torch.Stream` and
   `torch.Event`, and the copies of owners' device storage that the runtime
   queues. An adapter may use its vendor's own features, such as CUDA graphs,
   stream priorities, memory pools or direct copies between devices, and
@@ -3555,7 +3568,7 @@ through them and never select behavior by operation name, fixture or case.
 | Seam | What a domain supplies | Examples |
 | --- | --- | --- |
 | Definitions | Operations and types, each with region, flow, resource, realization and decision contracts (D14) | Training units, windows and advancement; data production and filtering; model invocation and views |
-| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence | The run authority for participants; Trainer optimization for units, whose advancement updates their members' weights through update leases on them; producers for their cursors and policies |
+| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence, and may establish what their state needs for each call that uses a lease | The run authority for participants, whose routes establish what preparation gave them, such as module mode; Trainer optimization for units, whose advancement updates their members' weights through update leases on them; producers for their cursors and policies |
 | Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion | Family conditioning and denoiser calls, objectives, codecs, serializers |
 | Devices | Execution context and physical completion for one backend, what it offers and knows of the device's capacity, and the copies of owners' device storage | Host execution; one adapter per PyTorch backend on a shared base, CUDA first; the project's own backend |
 
@@ -4869,7 +4882,28 @@ resolved against the loaded structure.
 #### Live state and progress
 
 A unit's optimizer state, progress and open gradient window are live state,
-and only Trainer optimization changes them. An ordinary advancement changes
+and only Trainer optimization changes them. A contribution's backward pass
+accumulates only into its unit's resolved parameters (autograd's `inputs`),
+so units that share a forward pass never accumulate into each other and
+trainability set at preparation stays fixed for the run; checkpointed
+segments use PyTorch's non-reentrant checkpointing, which honors that
+restriction. A unit whose members resolve to no parameters is refused at
+resolution, unless the strategy declares that it may be empty.
+
+Data parallelism is realized as DDP, or as FSDP2, which shards parameters,
+gradients and optimizer state across ranks. Both are backend coordination
+and change no unit's meaning (D8, D9), and under both each prepared unit
+keeps its own synchronization scope, because a contribution backpropagates
+only into its own unit. FSDP2's sharding replaces a module's parameters in
+place, so it is preparation before the participant's first route, or
+in-place work with withdrawal after it (D19). Unit resolution then resolves
+members against the sharded parameters, whose names sharding keeps, and
+builds the optimizer on them (G3.4). A shard group is an inseparable backend
+group (D8) and never mixes the parameters of units that advance
+independently. A window's deferred synchronization is FSDP2's gradient-sync
+switch, clipping takes the unit's norm across shards, and sharded optimizer
+state reaches the unit's cut state and products through rank-consistent
+gathers or sharded saves (D15). An ordinary advancement changes
 them and, through update leases on its members, its members' numeric
 versions, so protection keeps it from racing a protected read (D16, D17): the
 end of a window takes the unit's update lease and those leases in one access
@@ -4886,10 +4920,19 @@ invented shared clock.
 
 Module runtime mode is not unit state. Validation runs as its own activity
 alongside training (D17), so a run-wide switch into evaluation mode has no
-right moment. Each call's prepared execution context sets its module's mode
-on entry, as it sets grad mode, and changes it only when the previous call
-left a different mode (D15). The runtime serializes calls on one participant,
-so no activity sees another activity's mode. Optimizer-local transitions,
+right moment. Each route that training's preparation prepares establishes
+its participant's module mode for every call through it (D15), and changes
+it only where the previous call left a different mode. The mode follows
+trainability, not the flow of gradients: a call runs a module in train mode
+only where the module belongs to a unit the call's derivatives go to, and in
+evaluation mode otherwise. A frozen network on the gradient path between a
+trained module and the loss therefore keeps evaluation mode, and its dropout
+and normalization statistics stay as they are. The route names the trained
+modules by path, so the same rule holds on a snapshot's copy and after
+sharding. A call whose lease establishes a mode uses its participant alone,
+so no activity sees another activity's mode. The IR knows only where a
+call's derivatives go; the rule is training's, so the IR serves workflows
+without training unchanged. Optimizer-local transitions,
 such as a schedule-free optimizer's switch to its evaluation point, remain
 with the unit. They are owner updates at accepted lifecycle points, under
 protection. Parameter averaging such as EMA works the same way: the averaged
@@ -4931,7 +4974,7 @@ repeated mode query has exactly one replacement:
 | `Trainer._grad_sync_handle` and `accelerator.accumulate(...)` | The prepared unit's membership in its backend synchronization group; the window defers synchronization until its last member (D17). The handle itself is backend coordination state |
 | `Trainer._accumulation_counter` | The unit's window position, in its live state and its cut state |
 | `TrainingMode.get_trainable_params()`, for clipping | The prepared unit's resolved members within its clipping scope |
-| `TrainingMode.set_train()`, `set_eval()` | Module mode from each call's prepared context; optimizer-local transitions as unit owner updates |
+| `TrainingMode.set_train()`, `set_eval()` | Module mode established by each route for each call, from unit membership and where the call's derivatives go; optimizer-local transitions as unit owner updates |
 | `TrainingMode.on_epoch_start()`, `on_step_start()` | Repeats, windows and triggers in the accepted strategy. A method's own epoch or step behavior becomes a selected implementation call that the strategy makes at that point |
 | `TrainingMode.on_step_end()`, such as weight-norm regularization | Selected post-advancement behavior under its declared effect authority, reporting observations (G3.1) |
 | `TrainingMode.prepare_trainables()`: materialization and attachment | Materialization of declared participants including adapter state, and relationship transitions for attachment (D19) |
@@ -5199,7 +5242,7 @@ The authority holds the `Obligations` that the IR system's verifier defines.
 | --- | --- | --- |
 | `words/` | Training's words (unit, window, contribute, advance, zero, trigger and grant) and ownership profiles | New (D17, D18) |
 | `trainer.py` | The Trainer: its host sequence and the standard mechanics | New; checked against `runners/trainer.py` |
-| `optimization/` | Trainer optimization: D20's types, candidate resolution and grouping, and the owner protocol for training's words | New; checked against `library/optimization/grouping.py`, `phases/optimizer.py`, `phases/training_loop.py` and `modes/` |
+| `units/` | Trainer optimization: D20's types, candidate resolution and grouping, and the owner protocol for training's words; named for optimization units, apart from the `library/optimization` library of optimizers and schedulers | New; checked against `library/optimization/grouping.py`, `phases/optimizer.py`, `phases/training_loop.py` and `modes/` |
 | `preparation.py` | Training's preparation coordination, which contributes unit definitions and backend groups to D19's attempt | New; checked against `phases/model_prep.py`, `trainer_utils.py` and each mode's `prepare_with_accelerator` |
 | `backend.py` | Backend coordination: wrappers, inseparable groups, distributed state and their cut state | New; checked against `trainer_utils.py` and the modes' synchronization handles |
 | `observation.py` | The observation owner: metrics, validation history and traces, as facts | New; checked against the Trainer's metric fields and `training/metadata.py` |

@@ -92,11 +92,18 @@ def test_an_owner_that_refuses_its_next_section_stops_the_whole_publication() ->
     assert made.current.number == 1 and made.current.section("a").revision == 1, "no owner's section changed"
 
 
-def test_in_place_work_waits_for_withdrawal() -> None:
-    made, _ = generations("a")
-    attempt = made.attempt("o", Mutation.IN_PLACE)
-    with pytest.raises(Refused, match="withdraw"):
-        made.publish(Publication(attempt.basis, (Plain("a", 1),), attempt))
+def test_in_place_work_is_checked_by_every_owner_with_a_section() -> None:
+    made, owners = generations("a", "b")
+    made.publish(Publication(made.basis("o"), (Plain("a", 1), Plain("b", 1))))
+    owners["b"].seen.clear()
+    replacing = made.attempt("o")
+    made.publish(Publication(replacing.basis, (Plain("a", 2),), replacing))
+    assert owners["b"].seen == [], "work that replaces state is checked only by the owners it changes"
+    in_place = made.attempt("o", Mutation.IN_PLACE)
+    owners["b"].refuse = "its guarantees would need withdrawing"
+    with pytest.raises(Refused, match="withdrawing"):
+        made.publish(Publication(in_place.basis, (Plain("a", 3),), in_place))
+    assert owners["b"].seen == [(made.current.section("b"), made.current.section("b"))], "an unchanged owner sees its own section twice"
 
 
 def test_of_concurrent_publications_on_one_basis_exactly_one_installs() -> None:

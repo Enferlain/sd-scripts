@@ -17,8 +17,8 @@ views and each owner's part of a cut.
 | Module | Holds |
 | --- | --- |
 | `owners.py` | The owner pattern: `Reference` and its `Mint`, `Version`, `Dependencies`, `Evidence`, `Attempt` with its `Basis` and `Mutation`, and `Refused` |
-| `generation.py` | `Generation`, `Generations` (owner registration, attempts, the current generation) and `Publication` |
-| `targets.py` | `TargetRef`: component-qualified and participant-qualified selectors |
+| `generation.py` | `Generation`, `Generations` (owner registration, attempts, the current generation), `Publication`, and `ExecutableRun`: the prepared run, its owners and device adapters, and the readiness it was accepted with, run once |
+| `targets.py` | `TargetRef`: whole participants (`@unet`), component-qualified and participant-qualified selectors |
 | `authority/` | `RunAuthority`, its records (`Participant`, `Binding`, `Route`, `View`), its section, transitions with the evidence and evaluators that judge them, and `MaterializationAttempt` |
 | `preparation.py` | `PreparationAttempt`, its `PreparationRequest` and `PreparationResult`: one coherent job, published together or not at all |
 | `projections.py` | What consumers receive instead of the authority: `Execution`, the owner seam for the coordinator, and `Preparation`, the requested participants pinned to one generation |
@@ -35,8 +35,11 @@ views and each owner's part of a cut.
      |  PreparationAttempt         prepare routes off to the side; publish them
      |                             with every contributor's section, together
      |  readiness(CORE_EXECUTION)  every participant bound and every use's
-     |                             route prepared from its current binding
-  Execution(authority)             the coordinator's owner for participants
+     |                             route prepared from its current binding;
+     |                             each other owner judges its own resources
+  ExecutableRun                    the coordinator over Execution(authority),
+                                   the owner for participants, and the other
+                                   owners; it runs once
 ```
 
 ## Publication
@@ -47,8 +50,8 @@ publication since makes it stale), lets every changed owner refuse its next
 section, and installs the next generation as one store. Reading the current
 generation takes no lock, publications are serialized with each other, and
 published sections never change, so correctness does not depend on the GIL.
-In-place work, which first withdraws the guarantees it affects, is refused
-until withdrawal arrives.
+A publication of in-place work is checked by every owner with a section,
+since the work may affect any of them.
 
 ## Preparation
 
@@ -63,6 +66,19 @@ publication only while that generation is current; a stale, failed or
 refused result publishes nothing, and the routes it would have replaced stay
 usable. Publishing does not establish readiness: the host checks the
 checkpoint once every attempt it needs has published.
+
+In-place preparation changes the participants it requires in place, such as
+setting trainability or turning on gradient checkpointing. It is offered
+only where it has nothing to withdraw: before a participant's first route or
+view, and while no lease on it is out (D19). The authority registers the
+attempt's participants when it is derived, and at publication refuses it if
+any of them was leased meanwhile. In-place work that first withdraws routes,
+views and leases comes with the second pass.
+
+A prepared route may carry what it establishes for each call through it,
+such as training's module mode. A lease through that route establishes it
+on the worker before the call, with the call's context and the handle the
+call receives, and the call uses the participant alone (D15).
 
 ## The run authority
 
@@ -90,6 +106,6 @@ Limits of this pass, each failing with its reason:
   where the two uses would never run in one execution: such a snapshot
   needs a copy of the participant's device storage, which the model
   definitions supply in section 18.
-- Grants come with training's words (section 16).
+- Grants come with the second pass of section 16.
 - Views, and materializers that read another participant's view, come with
   the second pass.

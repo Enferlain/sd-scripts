@@ -152,6 +152,23 @@ class HoldsDeviceStorage(Protocol):
         ...
 
 
+@runtime_checkable
+class Establishes(Protocol):
+    """A lease that establishes what its state needs for each call that uses it (D15, D16).
+
+    The runtime calls :meth:`establish` on the worker thread, inside the
+    device's context, before the calls of each group that uses the lease,
+    with the group's context and the handle its calls receive. What it
+    establishes is the owner's business, such as the module mode a
+    participant's route sets from what the call's derivatives update. A
+    group that uses such a lease uses its resource alone, even when its calls
+    are declared safe for concurrent use, since what it establishes is state
+    other calls on the resource would see.
+    """
+
+    def establish(self, call: CallContext, handle: object) -> None: ...
+
+
 # Implementations.
 
 
@@ -180,6 +197,13 @@ class Declaration:
     device's completion of the call's work covers it (``device``) or the
     implementation returns a completion of its own (``own``), as one that
     uses streams of its own does.
+
+    ``differentiates`` and ``differentiable`` are input positions, from which
+    preparation derives each call's grad mode (D15). ``differentiates`` are
+    the inputs whose derivatives the implementation computes, such as the
+    loss a contribution takes; ``differentiable`` the inputs its results are
+    differentiable with respect to, such as a loss's prediction but not its
+    target. Both name values, never leases.
     """
 
     name: str
@@ -189,6 +213,8 @@ class Declaration:
     effects: frozenset[Effect] = frozenset()
     concurrency_safe: bool = False
     completion: str = "device"
+    differentiates: tuple[int, ...] = ()
+    differentiable: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.name or not self.version:
@@ -196,6 +222,16 @@ class Declaration:
         if self.completion not in ("device", "own"):
             raise ValueError(f"{self.name}: completion is 'device' or 'own', not {self.completion!r}")
         object.__setattr__(self, "effects", frozenset(Effect(effect) for effect in self.effects))
+        for field_name in ("differentiates", "differentiable"):
+            positions = tuple(getattr(self, field_name))
+            object.__setattr__(self, field_name, positions)
+            if len(set(positions)) != len(positions):
+                raise ValueError(f"{self.name}: {field_name} names an input twice")
+            for position in positions:
+                if not 0 <= position < len(self.inputs):
+                    raise ValueError(f"{self.name}: {field_name} names input {position}, and it declares {len(self.inputs)} inputs")
+                if self.inputs[position].endswith(" lease"):
+                    raise ValueError(f"{self.name}: {field_name} names input {position}, a lease; only values are differentiated")
 
     @property
     def reads(self) -> tuple[int, ...]:
@@ -229,6 +265,8 @@ class Declaration:
                 f"effects {', '.join(sorted(self.effects))}",
                 f"concurrency_safe {self.concurrency_safe}",
                 f"completion {self.completion}",
+                f"differentiates {', '.join(map(str, self.differentiates))}",
+                f"differentiable {', '.join(map(str, self.differentiable))}",
             )
         )
         return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
@@ -261,21 +299,25 @@ class Implementation(Protocol):
 class CallContext:
     """What a prepared call establishes on entry, so it never inherits a thread's ambient state (D15).
 
-    ``grad`` and ``module_mode`` are derived by preparation from what the
-    strategy does with the call's results; training's words set them for
-    differentiated work. ``precision`` names a reduced-precision dtype, such
-    as ``bfloat16``, or is None for full precision. ``random`` names whose
-    random state the call draws from, or is None for a call that draws none.
+    ``grad`` and ``derivatives_to`` are derived by preparation from the
+    dataflow: ``grad`` says a result of the call reaches a differentiated
+    input through inputs declared differentiable, and ``derivatives_to``
+    names where those derivatives go, the resources the differentiating
+    calls update. The IR gives them no further meaning; a lease that
+    establishes something per call reads them (:class:`Establishes`).
+    ``precision`` names a reduced-precision dtype, such as ``bfloat16``, or
+    is None for full precision. ``random`` names whose random state the call
+    draws from, or is None for a call that draws none.
     """
 
     grad: bool = False
-    module_mode: str | None = None
+    derivatives_to: tuple[str, ...] = ()
     precision: str | None = None
     random: str | None = None
 
     def __post_init__(self) -> None:
-        if self.module_mode not in (None, "train", "eval"):
-            raise ValueError(f"a module mode is train or eval, not {self.module_mode!r}")
+        if self.derivatives_to and not self.grad:
+            raise ValueError("a call's derivatives go somewhere only with grad mode")
 
 
 @runtime_checkable
@@ -295,13 +337,12 @@ class Device(Protocol):
         """What the adapter realizes (D15); the target records it, and a run's needs will be checked against it."""
         ...
 
-    def context(self, call: CallContext, after: Sequence[Completion], reaches: Sequence[object]) -> AbstractContextManager[object]:
+    def context(self, call: CallContext, after: Sequence[Completion]) -> AbstractContextManager[object]:
         """The context a call runs in: its settings, the device's stream, and the work it must follow.
 
         ``after`` is work that must complete before the call's work runs: the
         device orders it on the device where it can, and waits on the CPU
-        where it cannot. ``reaches`` are the objects the call's leases reach,
-        whose module mode the context sets and restores.
+        where it cannot.
         """
         ...
 
@@ -339,6 +380,7 @@ __all__ = [
     "Declaration",
     "Device",
     "Effect",
+    "Establishes",
     "HoldsDeviceStorage",
     "Implementation",
     "Lease",

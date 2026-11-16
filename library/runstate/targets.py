@@ -18,6 +18,8 @@ Selectors (``component-qualified-selectors``):
 - A participant's own structure without component provenance, such as a
   standalone learned loss-weight vector, is selected through its authored
   address, ``@loss_weights.vector``, so it never impersonates a component.
+- A whole participant is selected as its authored address, ``@unet``, as an
+  optimization unit names the participants it trains.
 """
 
 from dataclasses import dataclass
@@ -27,6 +29,7 @@ from library.runstate.authority.records import ParticipantRef
 
 
 class TargetKind(StrEnum):
+    PARTICIPANT = "participant"
     COMPONENT = "component"
     MODULE = "module"
     PARAMETER = "parameter"
@@ -37,7 +40,8 @@ class TargetRef:
     """A reference into one participant's structure, holding no live object.
 
     ``path`` is component-local with component provenance, and
-    participant-local without it; it is empty for a whole component.
+    participant-local without it; it is empty for a whole participant or a
+    whole component.
     ``component`` is the public component label and ``component_key`` the
     internal key, both present exactly when the target has genuine component
     provenance. ``catalog_path`` and ``structural_path`` are optional
@@ -60,6 +64,12 @@ class TargetRef:
     def __post_init__(self) -> None:
         if (self.component is None) != (self.component_key is None):
             raise ValueError("component provenance names both the public label and the internal key, or neither")
+        if self.kind == TargetKind.PARTICIPANT:
+            if self.component is not None or self.path or not self.selector.startswith("@") or "." in self.selector:
+                raise ValueError(f"a whole participant is selected as its address, such as '@unet', not {self.selector!r}")
+            if self.module_type or self.owner_module or self.owner_module_type:
+                raise ValueError("a whole participant names no module")
+            return
         if self.kind == TargetKind.COMPONENT:
             if self.component is None or self.path:
                 raise ValueError("a component target names its component and no path within it")
@@ -73,6 +83,11 @@ class TargetRef:
                 raise ValueError(f"a target in component {self.component} is selected as {expected!r}, not {self.selector!r}")
         elif not self.selector.startswith("@") or not self.selector.endswith(f".{self.path}"):
             raise ValueError(f"a target without component provenance is selected through its participant's address, not {self.selector!r}")
+
+
+def participant_target(participant: ParticipantRef, address: str) -> TargetRef:
+    """A whole participant, selected as its authored address."""
+    return TargetRef(participant, TargetKind.PARTICIPANT, f"@{address}")
 
 
 def component_target(participant: ParticipantRef, component: str, component_key: str) -> TargetRef:
@@ -134,4 +149,4 @@ def _selector(path: str, component: str | None, address: str | None) -> str:
     return f"@{address}.{path}"
 
 
-__all__ = ["TargetKind", "TargetRef", "component_target", "module_target", "parameter_target"]
+__all__ = ["TargetKind", "TargetRef", "component_target", "module_target", "parameter_target", "participant_target"]

@@ -1,4 +1,4 @@
-"""The Torch side of a call's context: grad mode, module mode, precision and random state (D15).
+"""The Torch side of a call's context: grad mode, precision and random state (D15).
 
 Device adapters use it for calls that run Torch code. It is imported only by
 an adapter that a prepared target selects, so the runtime core never loads
@@ -12,10 +12,14 @@ Calls that declare randomness swap one device's state one at a time, under a
 lock. Code that draws randomness without declaring it is not covered: on the
 host, where calls run side by side, it may draw from another owner's state
 (D18 qualifies declarations).
+
+Module mode is not set here: it is the state of a participant's modules, not
+of the thread, and the owner of the lease a call uses establishes it for the
+call where it matters (D15, D20).
 """
 
 import threading
-from collections.abc import Generator, Sequence
+from collections.abc import Generator
 from contextlib import ExitStack, contextmanager
 
 import torch
@@ -67,24 +71,15 @@ def _stable_hash(name: str) -> int:
 
 
 @contextmanager
-def entered(call: CallContext, reaches: Sequence[object], device: torch.device, random: RandomStates) -> Generator[None]:
-    """Establishes the call's settings for Torch code and restores the previous ones."""
-    modules = [m for m in reaches if isinstance(m, torch.nn.Module)]
-    modes = [(module, module.training) for m in modules for module in m.modules()]
+def entered(call: CallContext, device: torch.device, random: RandomStates) -> Generator[None]:
+    """Establishes the call's settings for Torch code, grad mode, precision and random state, and restores the previous ones."""
     with ExitStack() as stack:
         stack.enter_context(torch.set_grad_enabled(call.grad))
         if call.precision is not None:
             stack.enter_context(torch.autocast(device.type, dtype=getattr(torch, call.precision)))
         if call.random is not None:
             stack.enter_context(random.drawing(call.random))
-        if call.module_mode is not None:
-            for module in modules:
-                module.train(call.module_mode == "train")
-        try:
-            yield
-        finally:
-            for module, training in modes:
-                module.training = training
+        yield
 
 
 __all__ = ["RandomStates", "entered"]

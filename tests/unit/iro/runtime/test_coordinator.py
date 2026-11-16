@@ -1,6 +1,7 @@
 """The coordinator's own guarantees: worker threads, fused groups, failure and cancellation, device turns."""
 
 import asyncio
+import contextlib
 import threading
 import time
 from collections.abc import Callable
@@ -32,7 +33,7 @@ class FakeDevice:
     lock: threading.Lock = field(default_factory=threading.Lock)
 
     @contextmanager
-    def context(self, call, after, reaches):
+    def context(self, call, after):
         with self.lock:
             self.active += 1
             self.most = max(self.most, self.active)
@@ -450,9 +451,9 @@ def test_a_host_call_that_loads_torch_itself_fails_instead_of_running_under_the_
     torch = pytest.importorskip("torch")
     host = Host()
     monkeypatch.delitem(sys.modules, "torch")
-    with pytest.raises(RuntimeError, match="loaded Torch itself"), host.context(CallContext(), (), ()):
+    with pytest.raises(RuntimeError, match="loaded Torch itself"), host.context(CallContext(), ()):
         sys.modules["torch"] = torch  # what importing it inside the call does
-    with host.context(CallContext(grad=False), (), ()):
+    with host.context(CallContext(grad=False), ()):
         assert not torch.is_grad_enabled(), "once Torch is loaded, the host establishes the call's settings"
 
 
@@ -1053,3 +1054,140 @@ def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_resu
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "succeeded", outcome.error
     assert seen == [("snapshot", [0])], "the copy waited for the call the retained result's lease reaches the storage through"
+
+
+# A lease that establishes what its state needs for each call (D15).
+
+DIFFERENTIATING = """iro.strategy @s uses(@predict v1, @learn v1, @step v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %loss = iro.access %net protected_current {
+    ^(%n):
+      iro.call @predict(%n) -> retained loss
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
+    }
+    iro.access %w owner_update, %net owner_update {
+    ^(%u, %m):
+      iro.call @step(%u, %m)
+    }
+  }
+}
+"""
+
+
+@dataclass
+class Establishing(Memory):
+    """A memory owner whose leases on ``establishes`` establish something per call, recording what they were given."""
+
+    establishes: tuple[str, ...] = ()
+    seen: list = field(default_factory=list)
+
+    def lease(self, uses, reserved=None):
+        granted = super().lease(uses, reserved)
+        return [EstablishingGrant(lease, self.seen) if lease.use.resource in self.establishes else lease for lease in granted]
+
+
+class EstablishingGrant:
+    def __init__(self, lease, seen: list) -> None:
+        self._lease, self._seen = lease, seen
+
+    def __getattr__(self, name: str):
+        return getattr(self._lease, name)
+
+    def establish(self, call, handle) -> None:
+        self._seen.append((self._lease.use.resource, call.grad, call.derivatives_to, handle, threading.current_thread().name))
+
+
+def differentiating_installed(order: list[str] | None = None, *, safe: bool = False) -> dict:
+    def predict(n):
+        if order is not None:
+            order.append("predict")
+        return 1.0
+
+    return {
+        "predict": implementation(
+            version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict", concurrency_safe=safe
+        )(predict),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn", differentiates=(1,))(
+            lambda u, loss: None
+        ),
+        "step": implementation(version=1, inputs=("owner_update lease", "owner_update lease"), name="step")(lambda u, m: None),
+    }
+
+
+def test_a_lease_establishes_for_each_call_with_the_call_s_context_and_handle_on_the_worker() -> None:
+    installed = differentiating_installed()
+    run = accepted_run(DIFFERENTIATING, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    owner = Establishing({"net": 1, "w": 0}, establishes=("net",))
+    coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
+    outcome = asyncio.run(coordinator.run())
+    assert outcome.status == "succeeded", outcome.error
+    assert [(resource, grad, to) for resource, grad, to, _, _ in owner.seen] == [("net", True, ("w",)), ("net", False, ())], (
+        "the forward's derivatives go to @w; the update after it differentiates nothing"
+    )
+    assert all(thread != threading.main_thread().name for *_, thread in owner.seen), "it runs on the worker, as the calls do"
+
+
+TWO_READERS = """iro.strategy @s uses(@read v1) {
+  %net = iro.resource @net : participant
+  iro.parallel @both capture(%net) {
+    iro.sequence @left capture(%net) {
+      iro.access %net protected_current {
+      ^(%n):
+        %a = iro.call @read(%n) -> int
+      }
+    }
+    iro.sequence @right capture(%net) {
+      iro.access %net protected_current {
+      ^(%n):
+        %b = iro.call @read(%n) -> int
+      }
+    }
+  }
+}
+"""
+
+
+@dataclass
+class EstablishingOnce(Memory):
+    """A memory owner whose first lease establishes per-call state and whose others do not."""
+
+    establish: bool = True
+    seen: list = field(default_factory=list)
+    granted: int = 0
+
+    def lease(self, uses, reserved=None):
+        granted = super().lease(uses, reserved)
+        self.granted += 1
+        return [EstablishingGrant(granted[0], self.seen)] if self.establish and self.granted == 1 else granted
+
+
+@pytest.mark.parametrize("establish", [True, False])
+def test_a_group_that_establishes_runs_alone_even_beside_calls_safe_for_concurrent_use(establish: bool) -> None:
+    spans: list[tuple[float, float]] = []
+    both = threading.Barrier(2, timeout=0.5)
+
+    def read(n):
+        began = time.perf_counter()
+        with contextlib.suppress(threading.BrokenBarrierError):
+            both.wait()  # passes only when the two calls run at once
+        spans.append((began, time.perf_counter()))
+        return 1
+
+    installed = {
+        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read)
+    }
+    run = accepted_run(TWO_READERS, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4))
+    owner = EstablishingOnce({"net": 1}, establish=establish)
+    coordinator = Coordinator(prepared, {"net": owner}, installed, {"host": Host()}, checked=True)
+    assert asyncio.run(coordinator.run()).status == "succeeded"
+    (first, second) = sorted(spans)
+    overlapped = second[0] < first[1]
+    assert overlapped is not establish, "a group whose lease establishes runs alone; two safe calls otherwise run together"
+    assert len(owner.seen) == (1 if establish else 0)

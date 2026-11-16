@@ -3,7 +3,7 @@
 import pytest
 
 from library.runstate.authority import ParticipantRef
-from library.runstate.targets import TargetKind, TargetRef, component_target, module_target, parameter_target
+from library.runstate.targets import TargetKind, TargetRef, component_target, module_target, parameter_target, participant_target
 
 UNET = ParticipantRef("run1", 1)
 WEIGHTS = ParticipantRef("run1", 2)
@@ -44,3 +44,11 @@ def test_a_standalone_participant_is_selected_through_its_address_without_a_comp
 def test_a_target_cannot_claim_ancestry_it_does_not_have(build, message: str) -> None:
     with pytest.raises(ValueError, match=message):
         build()
+
+
+def test_a_whole_participant_is_selected_as_its_address() -> None:
+    target = participant_target(UNET, "unet")
+    assert (target.kind, target.selector, target.path, target.component) == (TargetKind.PARTICIPANT, "@unet", "", None)
+    for selector in ("unet", "@unet.conv"):
+        with pytest.raises(ValueError, match="selected as its address"):
+            TargetRef(UNET, TargetKind.PARTICIPANT, selector)

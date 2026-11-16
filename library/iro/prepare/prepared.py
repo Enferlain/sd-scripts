@@ -9,9 +9,15 @@ implementations and a target, and derives the prepared run:
 - **placement**: a call that declares device use goes to the device placed
   for its activity, or the target's device for device work; any other call
   runs on the host;
+- **call contexts** (D15): a call runs with grad mode when one of its
+  results reaches an input some implementation declares it differentiates,
+  through inputs declared differentiable, following values into bodies and
+  out of them; any other use stops the walk. Its derivatives go to the
+  resources the differentiating calls update;
 - **fusion**: consecutive calls in one body, on one device, whose completion
-  the device covers and that have no external effects and issue no
-  collectives, form one group, submitted as one piece of straight-line work.
+  the device covers, that have no external effects, issue no collectives and
+  establish the same context, form one group, submitted as one piece of
+  straight-line work.
   Every call belongs to exactly one group. Groups are numbered body by
   body in the order the strategy is walked, a body before the bodies nested
   in it;
@@ -144,7 +150,7 @@ class Prepared:
         for g in self.groups:
             names = ", ".join(f"@{name}" for name in g.implementations)
             settings = [f"grad {g.context.grad}"]
-            settings += [f"mode {g.context.module_mode}"] if g.context.module_mode else []
+            settings += [f"derivatives to {', '.join(f'@{r}' for r in g.context.derivatives_to)}"] if g.context.derivatives_to else []
             settings += [f"precision {g.context.precision}"] if g.context.precision else []
             settings += [f"random {g.context.random}"] if g.context.random else []
             settings += ["sync"] if g.sync else []
@@ -219,6 +225,7 @@ class _Preparation:
         self.loaded, self.installed, self.target = loaded, installed, target
         self.strategy: StrategyOp = loaded.normalized.strategy
         self.problems = Problems(Stage.PREPARE)
+        self._derived: dict[CallOp, tuple[bool, tuple[str, ...]]] = {}
         self.placement = dict(target.placement)
         activities = {sym_name(op) for op in self.strategy.walk() if _is_activity(op)}
         for activity, device in target.placement:
@@ -334,7 +341,12 @@ class _Preparation:
                             continue
                         self._match(item)
                         placed = self._device(item)
-                        if current and (placed != device or not self._fusable(item) or not self._fusable(current[-1])):
+                        if current and (
+                            placed != device
+                            or not self._fusable(item)
+                            or not self._fusable(current[-1])
+                            or self._differentiated(item) != self._differentiated(current[-1])
+                        ):
                             self._close(groups, current, device)
                             current = []
                         current.append(item)
@@ -346,7 +358,8 @@ class _Preparation:
         if not calls:
             return
         effects = set().union(*(self.installed[symbol(c.implementation)].declaration.effects for c in calls))
-        context = CallContext(random=_activity(calls[0]) if Effect.RANDOMNESS in effects else None)
+        grad, derivatives_to = self._differentiated(calls[0])
+        context = CallContext(grad, derivatives_to, random=_activity(calls[0]) if Effect.RANDOMNESS in effects else None)
         sync = device != HOST.name and not all(self._stays(r, device) for c in calls for r in c.results)
         groups.append(
             Group(
@@ -359,6 +372,41 @@ class _Preparation:
                 sync,
             )
         )
+
+    def _differentiated(self, call: CallOp) -> tuple[bool, tuple[str, ...]]:
+        """The call's grad mode and the resources its derivatives go to (D15)."""
+        found = self._derived.get(call)
+        if found is None:
+            reached: set[str] = set()
+            grad = False
+            seen: set[SSAValue] = set()
+            pending: list[SSAValue] = list(call.results)
+            while pending:
+                value = pending.pop()
+                if value in seen:
+                    continue
+                seen.add(value)
+                for use in value.uses:
+                    user, index = use.operation, use.index
+                    if isinstance(user, CallOp):
+                        declared = self.installed[symbol(user.implementation)].declaration
+                        if index in declared.differentiates:
+                            grad = True
+                            reached.update(r for p in declared.updates if (r := _leased(user.operands[p])) is not None)
+                        if index in declared.differentiable:
+                            pending.extend(user.results)
+                    elif isinstance(user, YieldOp):
+                        parent = user.parent_op()
+                        if parent is not None and index < len(parent.results):
+                            pending.append(parent.results[index])
+                        carried = _carried_entry(parent, user, index) if parent is not None else None
+                        if carried is not None:
+                            pending.append(carried)
+                    elif user.get_trait(RegionSemantics) is not None:
+                        pending.extend(_entries_fed(user, index))
+            found = (grad, tuple(sorted(reached)))
+            self._derived[call] = found
+        return found
 
     def _stays(self, value: SSAValue, device: str, seen: set[SSAValue] | None = None) -> bool:
         """Whether a result is only used by device work on the same device, or released.
@@ -597,6 +645,27 @@ def _carried_entry(parent: Operation, yielded: YieldOp, index: int) -> SSAValue 
     # The protocol supplies the iteration index, then the carried values in yield order.
     position = 1 + index
     return block.args[supplied[position]] if position < len(supplied) else None
+
+
+def _entries_fed(op: Operation, operand: int) -> list[SSAValue]:
+    """The body entries an operand of a structured operation becomes: a capture, a repeat's initial carried value or a choice's present value."""
+    semantics = op.get_trait(RegionSemantics)
+    assert semantics is not None
+    fed: list[SSAValue] = []
+    for role in semantics.describe(op).roles:
+        block = op.regions[role.index].block
+        fed += [block.args[c.argument] for c in role.captures if c.operand == operand]
+        captured = {c.argument for c in role.captures}
+        supplied = [i for i in range(len(role.entries)) if i not in captured]
+        if semantics.protocol == LifecycleProtocol.REPEAT:
+            carried = role.invocation_arguments.count("carried_value")
+            first = len(op.operands) - carried
+            # The protocol supplies the iteration index, then the carried values in order.
+            if operand >= first and 1 + operand - first < len(supplied):
+                fed.append(block.args[supplied[1 + operand - first]])
+        elif semantics.protocol == LifecycleProtocol.CHOICE and operand == 0 and "present_value" in role.invocation_arguments and supplied:
+            fed.append(block.args[supplied[0]])
+    return fed
 
 
 def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:

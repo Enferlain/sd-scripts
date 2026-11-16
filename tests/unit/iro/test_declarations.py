@@ -32,7 +32,7 @@ class Host:
     completed_inside: list = field(default_factory=list)
 
     @contextmanager
-    def context(self, call=None, after=(), reaches=()):
+    def context(self, call=None, after=()):
         self.entered += 1
         self.inside = True
         try:

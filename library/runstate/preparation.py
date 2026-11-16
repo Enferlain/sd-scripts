@@ -21,15 +21,23 @@ publishes nothing, and the routes it would have replaced stay usable.
 
 Publishing a result does not establish readiness: the host checks the
 readiness checkpoint once every attempt it needs has published (D17).
-In-place preparation, which first withdraws the guarantees it affects,
-comes with the second pass of section 15.
+
+In-place preparation changes the participants it requires in place, such as
+setting trainability or turning on gradient checkpointing. Before a
+participant's first route or view is published, and while no lease on it is
+out, it has nothing to withdraw, and only then is it offered: in-place work
+that first withdraws routes, views and leases comes with the second pass of
+section 15 (D19). The authority checks at publication that no lease was
+taken on those participants while the work ran. An attempt that fails after
+changing a participant in place leaves the change, which the next attempt
+makes again; nothing published relied on the participant yet.
 """
 
 from dataclasses import dataclass
 from types import MappingProxyType
 
 from library.runstate.authority.authority import RunAuthority
-from library.runstate.authority.records import ParticipantRef
+from library.runstate.authority.records import Establish, ParticipantRef
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import Prepared, Published, Rejected, RouteRebinding
 from library.runstate.generation import Publication, Section
@@ -60,11 +68,12 @@ class PreparationRequest:
 
 @dataclass(frozen=True)
 class PreparedRoute:
-    """A route's prepared callable, proposed for the authority."""
+    """A route's prepared callable, proposed for the authority, with what it establishes for each call, if anything (D15)."""
 
     participant: ParticipantRef
     route: str
     callable: object
+    establish: Establish | None = None
 
 
 @dataclass(frozen=True)
@@ -91,10 +100,6 @@ class PreparationAttempt:
     @classmethod
     def derive(cls, authority: RunAuthority, request: PreparationRequest) -> PreparationAttempt | Rejected:
         """An attempt for the request on the current generation, or why current facts already rule it out."""
-        if request.mutation == Mutation.IN_PLACE:
-            return Rejected(
-                ("in-place preparation first withdraws the guarantees it affects; withdrawal comes with the second pass of section 15",)
-            )
         if AUTHORITY in request.contributors:
             return Rejected(("the authority's routes are the attempt's own part, not a contribution",))
         if not request.routes and not request.contributors:
@@ -112,6 +117,10 @@ class PreparationAttempt:
         if reasons:
             return Rejected(tuple(reasons))
         attempt = authority.generations.attempt(authority.obligations.revision, request.mutation, generation)
+        if request.mutation == Mutation.IN_PLACE:
+            refused = authority.begin_in_place(attempt.reference, request.required)
+            if refused:
+                return Rejected(refused)
         projection = Preparation(
             generation.number,
             MappingProxyType({reference: section.participants[reference] for reference in request.required}),
@@ -120,7 +129,14 @@ class PreparationAttempt:
         return cls(authority, request, attempt, projection)
 
     def publish(self, result: PreparationResult) -> Published | Rejected:
-        """Publishes the result's parts together, or nothing, with why."""
+        """Publishes the result's parts together, or nothing, with why; an attempt publishes at most once."""
+        try:
+            return self._publish(result)
+        finally:
+            if self.attempt.mutation == Mutation.IN_PLACE:
+                self.authority.end_in_place(self.attempt.reference)
+
+    def _publish(self, result: PreparationResult) -> Published | Rejected:
         if result.attempt != self.attempt.reference:
             return Rejected(("the result belongs to another attempt",))
         if result.failures:
@@ -159,7 +175,9 @@ class PreparationAttempt:
             existing = participant.routes.get(route.route)
             evidence = Prepared(self.attempt.reference, self.attempt.basis, participant.binding.revision)
             transitions.append(
-                RouteRebinding(route.participant, route.route, route.callable, existing.revision if existing else None, evidence)
+                RouteRebinding(
+                    route.participant, route.route, route.callable, existing.revision if existing else None, evidence, route.establish
+                )
             )
         sections: tuple[Section, ...] = tuple(result.contributed)
         revision, invalidated = self.authority.section.revision, ()

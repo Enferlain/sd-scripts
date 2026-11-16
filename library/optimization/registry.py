@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
-from library.config.dataclasses.optimizer import OptimizerConfig
+if TYPE_CHECKING:
+    # Only the config-shaped name lookup below uses it; the registrations themselves never depend on config (D21).
+    from library.config.dataclasses.optimizer import OptimizerConfig
 
 
 OPT_CAP_TRAIN_EVAL_TOGGLE = "train_eval_toggle"
@@ -181,7 +183,9 @@ _OPTIMIZER_REGISTRATIONS = [
     OptimizerRegistration(name="lamb", target="library.optimization.optimizers.lamb.Lamb", backend="repo"),
     OptimizerRegistration(name="lpfadamw", target="library.optimization.optimizers.lpf_adamw.LPFAdamW", backend="repo"),
     OptimizerRegistration(name="mythical", target="library.optimization.optimizers.experimental.mythical.Mythical", backend="repo"),
-    OptimizerRegistration(name="momentuscaution", target="library.optimization.optimizers.experimental.momentus_caution.MomentusCaution", backend="repo"),
+    OptimizerRegistration(
+        name="momentuscaution", target="library.optimization.optimizers.experimental.momentus_caution.MomentusCaution", backend="repo"
+    ),
     OptimizerRegistration(name="oagopt", target="library.optimization.optimizers.experimental.oagopt.OAGOpt", backend="repo"),
     OptimizerRegistration(name="ocgopt", target="library.optimization.optimizers.experimental.ocgopt.OCGOpt", backend="repo"),
     OptimizerRegistration(name="projectiveadam", target="library.optimization.optimizers.projective_adam.ProjectiveAdam", backend="repo"),

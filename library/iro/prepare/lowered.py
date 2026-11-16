@@ -437,7 +437,7 @@ class _Lowering:
         elif protocol == LifecycleProtocol.REPEAT:
             limit = op.properties.get("limit")
             if not isinstance(limit, IntegerAttr):
-                problem = f"{where}: a repeat by policy is realized with training's words, not by the core runtime"
+                problem = f"{where}: the runtime does not realize a repeat until a policy yet"
             else:
                 extra["limit"] = limit.value.data
             extra["carried"] = contract.roles[0].invocation_arguments.count("carried_value")
