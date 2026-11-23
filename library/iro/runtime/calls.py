@@ -71,6 +71,7 @@ class CallRunner:
             arguments: list[list[object]] = []
             program = []
             for call in step.calls:
+                covering: list[tuple[CallSetup, object]] = []
                 values = [frame[s] for s in call.slots] if not call.locals else [frame[s] if s >= 0 else None for s in call.slots]
                 given = values
                 if call.leases or call.retained:
@@ -82,6 +83,11 @@ class CallRunner:
                             raise RunFailure(f"{call.path}: a lease is used after its release")
                         given[position] = held.handle
                         leased.append(held)
+                        for (
+                            setup
+                        ) in held.call_setups:  # a lease's call setups cover this call alone, entered once per setup and handle (D16)
+                            if not any(s is setup and h is held.handle for s, h in covering):
+                                covering.append((setup, held.handle))
                     for position in call.retained:
                         product = values[position]
                         assert isinstance(product, Product)
@@ -93,7 +99,7 @@ class CallRunner:
                 if kernel.checked:
                     self._check_arguments(call, values)
                 arguments.append(values)
-                program.append((call.implementation, given, call.locals, len(call.results)))
+                program.append((call.implementation, given, call.locals, len(call.results), covering))
             if len(leased) > 1:
                 leased = list(dict.fromkeys(leased))
             if kernel.explore is not None:
@@ -112,7 +118,11 @@ class CallRunner:
                     )
             # What realization state each resource needs, as its setups say; a group's key on a resource covers all its leases there.
             keys = {
-                r: frozenset((lease.setup.name, lease.setup.key(annotations)) for lease in holding if lease.resource == r and lease.setup)
+                r: frozenset(
+                    (lease.setup.name, lease.setup.version, lease.setup.key(annotations))
+                    for lease in holding
+                    if lease.resource == r and lease.setup
+                )
                 for r in {h.resource for h in holding}
             }
             alone = set(keys)
@@ -233,7 +243,7 @@ def run_group(
     annotations: Annotations,
     handles: list[object],
     held: list[tuple[HeldSetup, object]],
-    program: list[tuple[Implementation, list[object], tuple[tuple[int, int, int], ...], int]],
+    program: list[tuple[Implementation, list[object], tuple[tuple[int, int, int], ...], int, list[tuple[CallSetup, object]]]],
     wait: bool,
 ) -> tuple[list[Any], list[Completion | None]]:
     """Runs a group's calls in order inside the device's context for them, on a worker thread.
@@ -241,8 +251,10 @@ def run_group(
     Inside the device's context, the group's call setups are entered with its
     annotations and the handles its calls receive, and left when the calls
     return; then each held setup its leases carry is applied under the same
-    annotations to the handle the lease gives (D16). A setup that fails to
-    enter or apply fails the group's first call.
+    annotations to the handle the lease gives (D16). The call setups a
+    lease carries are entered around each call the lease is passed to, and
+    only those. A setup that fails to enter or apply fails the group's first
+    call, and one entered around a call fails that call.
 
     Each call's report is its results or what it raised, beside its
     completion; the group stops at the first call that fails or gives the
@@ -261,13 +273,16 @@ def run_group(
                 entered.enter_context(setup.entered(annotations, handles))
             for held_setup, handle in held:
                 held_setup.hold(annotations, handle)
-            for implementation, given, passed, count in program:
+            for implementation, given, passed, count, covering in program:
                 if passed:
                     given = list(given)
                     for position, earlier, result in passed:
                         given[position] = reports[earlier][result]
                 try:
-                    results, completion = implementation(device, *given)
+                    with ExitStack() as around:
+                        for call_setup, handle in covering:
+                            around.enter_context(call_setup.entered(annotations, (handle,)))
+                        results, completion = implementation(device, *given)
                 except Exception as failed:
                     reports.append(failed)
                     completions.append(None)

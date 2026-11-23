@@ -20,7 +20,12 @@ Training also checks what the core does not interpret. A call on such a path
 that holds a lease must pass on results declared retained, since its graph
 keeps the leased state alive. Every participant a unit trains must reach one
 of the unit's losses by such a path; otherwise training refuses the strategy
-and names what cut the path.
+and names what cut the path, or that no contribution offers the unit a loss.
+
+Its refusals: ``iro-train-001`` a contribution whose unit preparation cannot
+tell, ``iro-train-002`` a trained participant that reaches none of its unit's
+losses, ``iro-train-003`` a lease-holding call on a path that declares no
+retained result, ``iro-train-004`` a unit no contribution offers a loss.
 """
 
 from collections import defaultdict
@@ -87,6 +92,15 @@ class TrainingDerivation:
                 reads[value] = resource
                 for unit in trained_by[resource]:
                     sources[unit].add(value)
+        for unit, participants in sorted(self.trains.items()):
+            if participants and unit not in losses:
+                program.refuse(
+                    "iro-train-004",
+                    f"@{unit} trains {', '.join(f'@{p}' for p in sorted(participants))}, and no contribution offers @{unit} a loss, "
+                    "so it would never be trained",
+                    names=(f"@{unit}",),
+                    fix=f"contribute a loss to @{unit} with iro.train.contribute, or remove the unit",
+                )
         units: dict[CallOp, set[str]] = defaultdict(set)
         for unit, sinks in losses.items():
             reached = program.reach(DERIVATIVE, {unit: sinks}, sources[unit], within_activity=True)

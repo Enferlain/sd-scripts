@@ -21,13 +21,16 @@ would give (D20). Each contribution's loss comes with its mass, what the
 loss's own reduction divides by, as an object with ``value`` and ``mass``:
 the loss declares it, and a loss that declares none is refused, never taken
 as one sample's worth. The window divides the sum of loss times mass once,
-by the total mass. A window of no mass has nothing to optimize, so it steps
-nothing; a mass on the device the host cannot see without waiting, so a
-window whose device mass is zero steps with a zero gradient. A contribution scales its loss by its share of the total the
-window expects, the previous window's, so a window like the one before it
-pays one scalar multiply per contribution; a window whose total differs, or
-whose masses are on the device, divides once at its end, inside clipping's
-own multiply when clipping is on.
+by the total mass. A contribution of no mass contributes nothing, and a
+window of no mass has nothing to optimize, so it steps nothing, wherever its
+mass is held: a window whose masses are on the device reads its total on the
+host at its end, a wait that only runs whose losses report device masses
+pay, and a loss whose mass can be zero on the device keeps a finite value
+and derivative there, as a sum divided by its mass clamped to one does. A
+contribution scales its loss by its share of the total the window expects,
+the previous window's, so a window like the one before it pays one scalar
+multiply per contribution; a window whose total differs divides once at its
+end, inside clipping's own multiply when clipping is on.
 
 A window end with nothing contributed steps nothing: its optimizer call is
 not attempted and progress stays. Synchronization, unscaling and schedulers
@@ -134,7 +137,7 @@ class LiveUnit:
         self.progress = progress or Progress()
         self.last: Advancement | None = None
         self._expected: float | None = None  # the previous window's total mass, which the next window expects
-        self._basis: float = 1.0  # the total this window's contributions were scaled by
+        self._basis: float | None = None  # the total this window's contributions were scaled by, once one had mass
         self._mass: float | torch.Tensor = 0.0  # the open window's total mass
         self._window_loss: torch.Tensor | None = None  # the open window's losses, read for the check without clipping
         self._bad: torch.Tensor | None = None  # the first window whose value was not finite, or -1, on the device
@@ -143,16 +146,19 @@ class LiveUnit:
         """Backpropagates the loss, by its share of the window's mass, into the unit's own parameters only."""
         value, mass = _split(loss)
         if self.position == 0:
-            first = float(mass) if _number(mass) and mass > 0 else 1.0
-            self._basis = self._expected if self._expected is not None else first
-            self._mass, self._window_loss = 0.0, None
+            self._basis, self._mass, self._window_loss = self._expected, 0.0, None
+        if _number(mass) and mass == 0:  # a contribution of no mass contributes nothing, its value not even read
+            self.position += 1
+            return
+        if self._basis is None:  # the first contribution with mass: a host mass is the basis; a device one cannot be read here
+            self._basis = float(mass) if _number(mass) else 1.0
         share = mass / self._basis
         torch.autograd.backward(value if _number(share) and share == 1.0 else value * share, inputs=self._parameters)
+        self.position += 1
         self._mass = self._mass + mass
         if self.prepared.definition.max_grad_norm is None:
             detached = value.detach().float()
             self._window_loss = detached if self._window_loss is None else self._window_loss + detached
-        self.position += 1
 
     def advance(self, participants: Sequence[object]) -> Advancement:
         """Ends the window under the standard profile: normalize, clip, step, zero and count progress.
@@ -169,18 +175,16 @@ class LiveUnit:
             record = Advancement(prepared.reference, 0, False, None, Outcome.NOT_ATTEMPTED, False, self.progress)
             self.last = record
             return record
-        if _number(self._mass) and self._mass == 0:  # a window of no mass has nothing to optimize
+        if isinstance(self._mass, torch.Tensor):  # the host reads a device total, so a window of no mass steps nothing wherever its mass is
+            self._mass = float(self._mass)
+        if self._mass == 0:  # a window of no mass has nothing to optimize
             prepared.optimizer.zero_grad(set_to_none=True)
             record = Advancement(prepared.reference, self.position, False, None, Outcome.NOT_ATTEMPTED, True, self.progress, mass=0.0)
             self.position = 0
             self.last = record
             return record
-        # What turns the contributions' sum into the window's gradient; a zero mass on the device gives a zero gradient.
-        if isinstance(self._mass, torch.Tensor):
-            some = self._mass > 0
-            factor = some * (self._basis / torch.where(some, self._mass, torch.ones_like(self._mass)))
-        else:
-            factor = self._basis / self._mass
+        assert self._basis is not None, "a window with mass had a contribution with mass"
+        factor = self._basis / self._mass  # what turns the contributions' sum into the window's gradient
         exact = _number(factor) and factor == 1.0
         limit = prepared.definition.max_grad_norm
         grads = [p.grad for p in self._parameters if p.grad is not None]
@@ -188,8 +192,7 @@ class LiveUnit:
         if limit is not None and exact:
             norm = torch.nn.utils.clip_grad_norm_(self._parameters, limit)
         elif limit is not None:
-            total = torch.nn.utils.get_total_norm(grads)
-            norm = total * (factor.to(total.device) if isinstance(factor, torch.Tensor) else factor)
+            norm = torch.nn.utils.get_total_norm(grads) * factor
             _multiply(grads, torch.clamp(limit / (norm + 1e-6), max=1.0) * factor)  # clipping's own multiply carries the division
         elif not exact:
             _multiply(grads, factor)
@@ -202,7 +205,7 @@ class LiveUnit:
         record = Advancement(
             prepared.reference, self.position, limit is not None, norm, Outcome.RETURNED, True, self.progress, mass=self._mass
         )
-        self._expected = float(self._mass) if _number(self._mass) and self._mass > 0 else None
+        self._expected = float(self._mass)
         self.position = 0
         self.last = record
         return record
@@ -250,6 +253,8 @@ def _split(loss: object) -> tuple[torch.Tensor, float | torch.Tensor]:
             "a bare loss is not taken as one sample's worth (D20)"
         )
     if isinstance(mass, torch.Tensor):
+        if mass.numel() != 1:
+            raise ValueError(f"a contribution's mass is one number, and this one has {mass.numel()} elements")
         mass = mass.detach()  # a mass divides; no derivative goes into it
     value = getattr(loss, "value", None)  # duck-typed: a loss reports its value and its mass
     assert isinstance(value, torch.Tensor), "a loss with a mass has a value"

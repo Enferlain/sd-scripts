@@ -254,6 +254,11 @@ mass.
 - **THEN** the window's gradient MUST equal the gradient of one batch holding all of them under the loss's reduction
 - **AND** clipping, the non-finite check and the reported loss MUST read that normalized result
 
+#### Scenario: A window of no mass
+- **WHEN** a window's contributions add to no mass, whether their masses are on the host or on the device
+- **THEN** the unit MUST NOT step its optimizer or advance its progress for that window
+- **AND** a contribution of no mass MUST contribute nothing to its window's gradient
+
 #### Scenario: A weighted loss divides by its sample count
 - **WHEN** a loss weights its samples but divides by their count, as a min-SNR weighting does
 - **THEN** its mass MUST be the count its reduction divides by, as the loss declares it

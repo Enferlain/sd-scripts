@@ -178,7 +178,9 @@ class CallSetup(Protocol):
 
     The runtime enters it on the calls' worker, inside the device's context,
     with the calls' annotations and the handles they receive, and leaves it
-    when they return, however they end. It changes only its worker's own
+    when they return, however they end. One a domain derives covers its
+    group's calls; one a lease carries covers each call the lease is passed
+    to, entered with that lease's handle (:class:`Enters`). It changes only its worker's own
     context, such as PyTorch's grad mode or autocast, both kept per thread;
     a switch the whole process shares can never be a call setup. Its code is
     pinned by name and version, as an implementation's is.
@@ -202,8 +204,9 @@ class HeldSetup(Protocol):
     changes only state reachable through that handle, such as a
     participant's module mode. :meth:`key` says, for a call's annotations,
     which realization state the setup needs, as an opaque value the core
-    only compares: calls whose setups need the same state share the hold,
-    whichever setup object each lease carries, and a call that needs another
+    only compares, together with the setup's name and version: calls whose
+    setups need the same state share the hold, whichever setup object each
+    lease carries, and a call that needs another
     waits until the hold ends, when the last lease of the calls it covered is
     released, including those a retained result keeps. It changes no version.
 
@@ -228,10 +231,23 @@ class HeldSetup(Protocol):
 
 @runtime_checkable
 class Holds(Protocol):
-    """A lease its owner attached a held setup to, as a route's realization does (D16)."""
+    """A lease its owner attached a held setup to, as a route's realization does (D16); ``setup`` is None where it has none."""
 
     @property
-    def setup(self) -> HeldSetup: ...
+    def setup(self) -> HeldSetup | None: ...
+
+
+@runtime_checkable
+class Enters(Protocol):
+    """A lease its owner attached call setups to, as a route's realization does, such as autocast for its mixed precision (D15, D16).
+
+    They cover only the calls the lease is passed to: the runtime enters them
+    around each such call, never around the other calls of its group, as
+    today's trainer autocasts the model's forward and not its loss.
+    """
+
+    @property
+    def call_setups(self) -> tuple[CallSetup, ...]: ...
 
 
 # Implementations.
@@ -448,6 +464,7 @@ __all__ = [
     "Declaration",
     "Device",
     "Effect",
+    "Enters",
     "HeldSetup",
     "Holds",
     "HoldsDeviceStorage",

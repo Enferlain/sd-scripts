@@ -16,14 +16,14 @@ from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.state import Held, Identity, Product, Protection, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
-from library.iro.seams import Capture, Holds, Owner, Use, Version
+from library.iro.seams import Capture, Enters, Holds, Owner, Use, Version
 
 
 @dataclass
 class Hold:
     """A held setup in force on a resource: which setup, under which annotations, and the leases of the calls it covers (D16)."""
 
-    key: frozenset[tuple[str, Hashable]]
+    key: frozenset[tuple[str, str, Hashable]]
     leases: set[int] = field(default_factory=set)
 
 
@@ -125,7 +125,15 @@ class Protections:
             except RunFailure:
                 granted.release()
                 raise
-        lease = Held(self._next_token, name, mode, granted, granted.version, setup=granted.setup if isinstance(granted, Holds) else None)
+        lease = Held(
+            self._next_token,
+            name,
+            mode,
+            granted,
+            granted.version,
+            setup=granted.setup if isinstance(granted, Holds) else None,
+            call_setups=tuple(granted.call_setups) if isinstance(granted, Enters) else (),
+        )
         if built is not None:
             lease.built, lease.over_storage = built, True
         self._next_token += 1

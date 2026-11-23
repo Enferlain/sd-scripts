@@ -1442,3 +1442,135 @@ def test_a_held_setup_that_would_undo_its_change_is_refused_until_the_evaluation
     owner = Holding({"net": 1, "w": 0}, holding=("net",), setup=Undoing([]))
     outcome = asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
     assert outcome.status == "failed" and "come with the evaluation-point swap" in (outcome.error or "")
+
+
+FUSED = """iro.strategy @s uses(@forward v1, @score v1) {
+  %net = iro.resource @net : participant
+  iro.sequence @once capture(%net) {
+    %out = iro.access %net protected_current {
+    ^(%n):
+      %y = iro.call @forward(%n) -> int
+      iro.call @score(%y) -> int
+    }
+  }
+}
+"""
+
+_inside = threading.local()
+
+
+@dataclass(frozen=True)
+class Flagging:
+    """A call setup a route's realization carries, such as autocast: it marks the thread while it is entered."""
+
+    name: str = "test.flagging"
+    version: str = "1"
+
+    @contextmanager
+    def entered(self, annotations, handles):
+        _inside.flag = True
+        try:
+            yield
+        finally:
+            _inside.flag = False
+
+
+class CoveringGrant:
+    def __init__(self, lease) -> None:
+        self._lease = lease
+        self.call_setups = (Flagging(),)
+
+    def __getattr__(self, name: str):
+        return getattr(self._lease, name)
+
+
+@dataclass
+class Covering(Memory):
+    def lease(self, uses, reserved=None):
+        return [CoveringGrant(lease) for lease in super().lease(uses, reserved)]
+
+
+def test_a_route_s_call_setups_cover_the_calls_its_lease_is_passed_to_and_no_other_call_of_the_group() -> None:
+    seen: dict[str, bool] = {}
+
+    def forward(n):
+        seen["forward"] = getattr(_inside, "flag", False)
+        return 1
+
+    def score(y):
+        seen["score"] = getattr(_inside, "flag", False)
+        return 2
+
+    installed = {
+        "forward": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="forward")(forward),
+        "score": implementation(version=1, inputs=("int",), outputs=("int",), name="score")(score),
+    }
+    run = accepted_run(FUSED, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    assert any(g.implementations == ("forward", "score") for g in prepared.groups), "the two calls are one group"
+    outcome = asyncio.run(Coordinator(prepared, {"net": Covering({"net": 1})}, installed, {"host": Host()}, checked=True).run())
+    assert outcome.status == "succeeded", outcome.error
+    assert seen == {"forward": True, "score": False}, "the model's forward runs under its route's setup, and its loss does not (D15)"
+
+
+class Versioned(HeldRecording):
+    """A held setup needing the same state as another, at its own version."""
+
+    def __init__(self, seen: list, version: str) -> None:
+        super().__init__(seen)
+        self.version = version
+
+    def key(self, annotations):
+        return "train"
+
+
+HELD_ACROSS_VERSIONS = HELD_PAST_ITS_ACCESS.replace(
+    "iro.sequence @evaluation capture(%net) {\n      iro.access",
+    "iro.sequence @evaluation capture(%net) {\n      %p = iro.call @pause() -> int\n      iro.access",
+).replace("@read v1)", "@read v1, @pause v1)")
+
+
+def test_setups_of_different_versions_never_share_a_hold() -> None:
+    events: list = []
+
+    def learn(u, loss):
+        time.sleep(0.05)
+        events.append("learned")
+
+    installed = {
+        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
+            lambda n: 1.0
+        ),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(learn),
+        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
+        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.02) or 1),
+    }
+    run = accepted_run(HELD_ACROSS_VERSIONS, installed=installed)
+    prepared = prepare(
+        cold_load(run, installed=installed), installed, Target(workers=4), [Annotating({"predict": Derived(annotate({"units": ["w"]}))})]
+    )
+
+    @dataclass
+    class TwoVersions(Memory):
+        granted: int = 0
+
+        def lease(self, uses, reserved=None):
+            granted = Memory.lease(self, uses, reserved)
+            out = []
+            for lease in granted:
+                if lease.use.resource == "net" and lease.use.mode != "owner_update":
+                    self.granted += 1
+                    out.append(HoldingGrant(lease, Versioned(events, str(self.granted))))
+                else:
+                    out.append(lease)
+            return out
+
+    owner = TwoVersions({"net": 1, "w": 0})
+    assert (
+        asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run()).status
+        == "succeeded"
+    )
+    order = [e if isinstance(e, str) else ("train" if dict(e[1]).get("units") else "other") for e in events]
+    assert "other" not in order[order.index("train") : order.index("learned")], (
+        "the same state at another version is another setup: the evaluation waits until the training's hold ends"
+    )

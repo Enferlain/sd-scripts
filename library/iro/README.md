@@ -47,7 +47,7 @@ a fix. Codes by area:
 | `iro-life-` | A request outside its source, a stop of something that is not a producer, a producer nothing stops, a stop that does not cover a consumer, points that wait for each other |
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
-| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again |
+| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again; two derivers giving one call the same annotation, a name and version claimed by two derivers or setups |
 | `iro-run-` | A pinned definition missing, at another definition version or with another declaration; parts of a saved run that do not follow from its strategy; a pinned implementation not installed at its version and declaration |
 
 ## Modules

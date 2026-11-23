@@ -34,9 +34,9 @@ from types import MappingProxyType
 from library.iro.accepted import AcceptedRun
 from library.iro.operation_contracts import AccessMode
 from library.iro import seams
-from library.iro.seams import HeldSetup, Use
+from library.iro.seams import CallSetup, HeldSetup, Use
 from library.iro.verify import UPDATE_MODES, Checkpoint, ObligationKind, Obligations
-from library.runstate.authority.records import NORMAL, Binding, Lifecycle, Participant, ParticipantRef, Route
+from library.runstate.authority.records import NORMAL, Binding, Lifecycle, SetupPin, Participant, ParticipantRef, Route
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import (
     Declaration,
@@ -74,18 +74,31 @@ class AuthorityLease:
         return self._authority._advance(self)
 
 
-class HoldingLease(AuthorityLease):
-    """A lease through a route with a held setup, which the runtime holds for the calls that use the lease (D16)."""
+class RealizedLease(AuthorityLease):
+    """A lease through a route whose realization carries setups: a held setup the runtime holds, and call setups it enters around each call (D16)."""
 
-    __slots__ = ("_setup",)
+    __slots__ = ("_call_setups", "_setup")
 
-    def __init__(self, authority: RunAuthority, reference: ParticipantRef, use: Use, version: Version, handle: object, setup: HeldSetup):
+    def __init__(
+        self,
+        authority: RunAuthority,
+        reference: ParticipantRef,
+        use: Use,
+        version: Version,
+        handle: object,
+        setup: HeldSetup | None,
+        call_setups: tuple[CallSetup, ...],
+    ):
         super().__init__(authority, reference, use, version, handle)
-        self._setup = setup
+        self._setup, self._call_setups = setup, call_setups
 
     @property
-    def setup(self) -> HeldSetup:
+    def setup(self) -> HeldSetup | None:
         return self._setup
+
+    @property
+    def call_setups(self) -> tuple[CallSetup, ...]:
+        return self._call_setups
 
 
 class RunAuthority:
@@ -279,6 +292,8 @@ class RunAuthority:
             Dependencies(exact=((AUTHORITY, str(participant.reference), evidence.binding),)),
             evidence,
             transition.setup,
+            tuple(transition.call_setups),
+            tuple(SetupPin.of(s) for s in (*((transition.setup,) if transition.setup else ()), *transition.call_setups)),
         )
         routes = {**participant.routes, transition.route: route}
         participants[participant.reference] = replace(participant, routes=MappingProxyType(routes))
@@ -436,7 +451,7 @@ class RunAuthority:
             raise Unavailable(f"{name} is used through a grant; grants come with the second pass of section 16")
         if use.view is not None:
             raise Unavailable(f"{name} is used as its {use.view} view; views come with the second pass of section 15")
-        setup = None  # an update runs nothing through a route, so no route setup covers it
+        setup, call_setups = None, ()  # an update runs nothing through a route, so no route setup covers it
         if use.mode == AccessMode.OWNER_UPDATE:
             if reference in self._pinned or reference in pinning:
                 raise Unavailable(
@@ -455,12 +470,12 @@ class RunAuthority:
                         "which comes with the model definitions (section 18)"
                     )
                 pinning.add(reference)
-            handle, setup = route.callable, route.setup
+            handle, setup, call_setups = route.callable, route.setup, route.call_setups
         version = Version(use.resource, reference, binding.revision, numeric)
-        if setup is None:
+        if setup is None and not call_setups:
             lease = AuthorityLease(self, reference, use, version, handle)
         else:
-            lease = HoldingLease(self, reference, use, version, handle, setup)
+            lease = RealizedLease(self, reference, use, version, handle, setup, call_setups)
         if use.mode == AccessMode.OWNER_UPDATE:
             self._writers[reference] = lease
         self._outstanding[reference] = self._outstanding.get(reference, 0) + 1
@@ -521,4 +536,4 @@ def _invalidated(section: AuthoritySection) -> tuple[str, ...]:
     return tuple(stale)
 
 
-__all__ = ["AuthorityLease", "HoldingLease", "RunAuthority", "Unavailable"]
+__all__ = ["AuthorityLease", "RealizedLease", "RunAuthority", "Unavailable"]

@@ -215,6 +215,18 @@ def code_identity(implementation: object) -> str:
     return hashlib.blake2s(data, digest_size=8).hexdigest()
 
 
+def setup_identity(setup: object) -> str:
+    """The identity of a deriver's or setup's code: its module's source, as an implementation's, and its class's qualified name.
+
+    The class's name tells apart two setups defined in one module; what a
+    setup is configured with is pinned with the realization's settings, not
+    here (D16).
+    """
+    kind = type(setup)
+    named = f"{code_identity(setup)} {kind.__module__}.{kind.__qualname__}"
+    return hashlib.blake2s(named.encode(), digest_size=8).hexdigest()
+
+
 def prepare(loaded: Loaded, installed: Mapping[str, Implementation], target: Target, derivers: Sequence[Deriver] = ()) -> Prepared:
     """The prepared run, or a rejection naming every problem; ``derivers`` are the domains' derivations, run in order (D16)."""
     check_implementations(loaded.run, installed)
@@ -263,6 +275,7 @@ class _Preparation:
         placed = tuple(sorted((name, next(iter(devices))) for name, devices in used.items() if len(devices) == 1))
         updated = self._updated()
         leaving = self._leaving(used, updated)
+        derivation = self._derivation_manifest(groups)
         self.problems.reject_if_any()
         run = self.loaded.run
         manifest = tuple(
@@ -278,7 +291,7 @@ class _Preparation:
             placed,
             leaving,
             tuple(sorted(updated)),
-            self._derivation_manifest(groups),
+            derivation,
             self.loaded,
         )
 
@@ -286,9 +299,22 @@ class _Preparation:
 
     def _derivation_manifest(self, groups: tuple[Group, ...]) -> tuple[ManifestEntry, ...]:
         """Each deriver, then each call setup the groups use, with its version and code identity: their code is pinned as an implementation's is."""
-        setups = {(s.name, s.version): s for g in groups for s in g.setups}
-        entries = [ManifestEntry(d.name, d.version, "", code_identity(d)) for d in self.derivers]
-        entries += [ManifestEntry(name, version, "", code_identity(setups[name, version])) for name, version in sorted(setups)]
+        entries = [ManifestEntry(d.name, d.version, "", setup_identity(d)) for d in self.derivers]
+        found: dict[tuple[str, str], set[str]] = {}
+        for entry in entries:
+            found.setdefault((entry.name, entry.version), set()).add(entry.code)
+        for setup in (s for g in groups for s in g.setups):
+            found.setdefault((setup.name, setup.version), set()).add(setup_identity(setup))
+        for (name, version), codes in sorted(found.items()):
+            if len(codes) > 1 or len({id(d) for d in self.derivers if (d.name, d.version) == (name, version)}) > 1:
+                self.problems.add(
+                    "iro-prep-015",
+                    f"@{name} v{version} is claimed by more than one deriver or setup, and its code is pinned once",
+                    names=(f"@{name}",),
+                    fix="give each deriver and setup a name of its own, and changed code a new version",
+                )
+        setups = sorted({(s.name, s.version) for g in groups for s in g.setups} - {(d.name, d.version) for d in self.derivers})
+        entries += [ManifestEntry(name, version, "", next(iter(found[name, version]))) for name, version in setups]
         return tuple(entries)
 
     def _derive(self) -> None:
@@ -672,4 +698,4 @@ def _enclosing_access(op: Operation) -> AccessOp | None:
     return None
 
 
-__all__ = ["Admission", "Group", "ManifestEntry", "Prepared", "code_identity", "load_prepared", "prepare"]
+__all__ = ["Admission", "Group", "ManifestEntry", "Prepared", "code_identity", "load_prepared", "prepare", "setup_identity"]

@@ -3738,8 +3738,11 @@ knowing what it means:
   and that nothing carries for it, as module mode does, since checkpointing
   recomputes the forward inside the later backward. It is held while the
   leases of the calls it covers are out, including those a retained result
-  keeps; calls under the same setup share the hold, and a call that needs
-  another setup on one of those resources waits until it ends. A held setup
+  keeps. Each setup says, for a call's annotations, which realization state
+  it needs, as an opaque key the core only compares together with the
+  setup's name and version: calls whose setups need the same state share the
+  hold, whichever setup object each lease carries, and a call that needs
+  another state on one of those resources waits until it ends. A held setup
   that changes a resource's storage, as D20's evaluation-point swap does,
   declares so, and its hold also excludes the resource's other work, whose
   view of a version it would change: updates, uses through other routes and
@@ -3762,11 +3765,17 @@ Annotations and setups are derived on the normalized program before fusion,
 and calls fuse only where theirs are the same, compared and never merged.
 They are part of the prepared run: printed, and derived again when a saved
 prepared form is loaded, which refuses one that differs (D14). A setup's
-code is pinned as an implementation's is. So is the code that derives them:
+code is pinned as an implementation's is, by name, version and code
+identity, its module's source and its class's name: the call setups
+derivers attach in the prepared form, and the setups a route's realization
+carries in the route's record, and one name and version claimed with two
+codes anywhere in the run is refused. What a realization configures a setup
+with is pinned with the realization's settings in the strategy. So is the code that derives them:
 the domain code that names sources and sinks, asks reachability and attaches
-annotations and setups is covered by the version of the definitions it
-derives them for (below), since it shapes the prepared run as much as the
-declarations it reads.
+annotations and setups is pinned in the prepared form by its own name,
+version and code identity, and since what it derives can change while no
+declaration does, its outputs on small fixture strategies are recorded under
+its version, as a light implementation's results are (below).
 
 The core defines no numerics. An opaque call's numbers depend on what
 realizes it: the implementation, a route's realization, kernels,
@@ -3891,10 +3900,11 @@ rules say what one covers and what requires a new one.
   (signature and lease types, effects, results kept beyond the call,
   concurrency safety and completion) and the results and effects for the
   same inputs under the accepted numerical policy. A definition version
-  covers the operation contracts, the written form, for a derived word its
-  expansion, and what its domain derives from its uses at preparation, such
-  as training's grad mode and annotations. A refactor, a speed-up or logging
-  that changes neither needs no new version.
+  covers the operation contracts, the written form and, for a derived word,
+  its expansion. A deriver's version covers what it derives at preparation,
+  such as training's grad mode and annotations, and a setup's version what
+  it establishes. A refactor, a speed-up or logging that changes neither
+  needs no new version.
 - **What requires a new one.** Any change to the declaration or to the
   results. A pin records the version with a digest of the declaration,
   including the structure of the types it names. A repository test keeps the
@@ -5170,9 +5180,16 @@ Where the total is known on the host when the window starts, as a count
 from the batches' shapes is, each contribution scales its loss by its share
 before its backward pass, at the cost of one scalar multiply. Where it
 depends on the data, it is a device value that the window sums on the
-device, across ranks with its gradients, and divides by once at its end,
-inside clipping's own multiply when clipping is on; neither waits on the
-device. Terms whose masses differ and depend on the data need their totals
+device, across ranks with its gradients, and the host reads the total at
+the window's end, a wait that only runs whose losses report device masses
+pay, since the window's semantics cannot depend on where its mass is held:
+a contribution of no mass contributes nothing, and a window of no mass has
+nothing to optimize, so it steps nothing and its progress stays. A loss whose
+mass can be zero on the device keeps a finite value and derivative there, as
+a sum divided by its mass clamped to one does, since a contribution's share
+of zero cannot cancel a value that is not finite. The division happens once,
+inside clipping's own multiply when clipping is on. Terms whose masses
+differ and depend on the data need their totals
 before the backward pass, since a gradient that already holds both cannot
 be divided by two totals, so such a window takes its batches first.
 

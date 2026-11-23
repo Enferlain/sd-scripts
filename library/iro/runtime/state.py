@@ -15,7 +15,7 @@ from typing import NamedTuple
 
 from library.iro.operation_contracts import AccessMode, FlowContract
 from library.iro.prepare.lowered import Invoke
-from library.iro.seams import HeldSetup, Lease, Version
+from library.iro.seams import CallSetup, HeldSetup, Lease, Version
 
 Identity = tuple[tuple[str, int], ...]
 
@@ -92,6 +92,7 @@ class Held:
     over_storage: bool = False  # whether ``built`` is the handle the body's calls receive
     requested: bool = False  # a request's snapshot: the request holds it until it settles, not the access using it
     setup: HeldSetup | None = None  # the held setup the owner attached to the lease, as a route's realization does (D16)
+    call_setups: tuple[CallSetup, ...] = ()  # the call setups the owner attached, entered around each call the lease is passed to (D16)
 
     @property
     def handle(self) -> object:

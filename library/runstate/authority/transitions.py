@@ -20,7 +20,7 @@ from typing import ClassVar
 
 from library.iro.operation_contracts import AccessMode
 from library.iro.verify import Evaluator, Obligation, ObligationKind, Obligations
-from library.iro.seams import HeldSetup
+from library.iro.seams import CallSetup, HeldSetup
 from library.runstate.authority.records import NORMAL, Participant, ParticipantRef
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.owners import Evidence
@@ -163,7 +163,7 @@ class Materialization:
 
 @dataclass(frozen=True)
 class RouteRebinding:
-    """Installs a route's new prepared callable, with its held setup if it has one; ``expected`` is the route's current revision, or None for a new route."""
+    """Installs a route's new prepared callable, with the setups its realization carries; ``expected`` is the route's current revision, or None for a new route."""
 
     target: ParticipantRef
     route: str
@@ -171,6 +171,7 @@ class RouteRebinding:
     expected: int | None
     evidence: Prepared
     setup: HeldSetup | None = None
+    call_setups: tuple[CallSetup, ...] = ()
     kind: ClassVar[TransitionKind] = TransitionKind.ROUTE_REBINDING
 
 

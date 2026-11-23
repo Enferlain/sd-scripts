@@ -12,7 +12,8 @@ from enum import StrEnum
 from types import MappingProxyType
 
 from library.iro.accepted import DeclaredParticipant
-from library.iro.seams import HeldSetup
+from library.iro.prepare.prepared import setup_identity
+from library.iro.seams import CallSetup, HeldSetup
 from library.runstate.owners import Dependencies, Evidence, Reference
 
 NORMAL = "normal"
@@ -43,6 +44,23 @@ class Binding:
 
 
 @dataclass(frozen=True)
+class SetupPin:
+    """A setup pinned as an implementation is: its name, version and code identity (D16).
+
+    The identity is its module's source and its class's name; what a route's
+    realization configures it with is pinned with the realization's settings.
+    """
+
+    name: str
+    version: str
+    code: str
+
+    @classmethod
+    def of(cls, setup: CallSetup | HeldSetup) -> SetupPin:
+        return cls(setup.name, setup.version, setup_identity(setup))
+
+
+@dataclass(frozen=True)
 class Route:
     """A named way to call a participant: its current prepared callable, route revision and dependencies.
 
@@ -50,8 +68,10 @@ class Route:
     dependencies no longer hold is withdrawn until preparation publishes a
     replacement. ``setup``, where preparation gives one, is the route's held
     setup: what the participant's realization needs for the calls through
-    the route, such as its modules' mode, which every lease through the
-    route carries (D16, D20).
+    the route, such as its modules' mode; ``call_setups`` are what the calls
+    through it need while they run, such as autocast for its mixed
+    precision. Every lease through the route carries them, and ``pins``
+    records each with its version and code identity (D16, D20).
     """
 
     name: str
@@ -60,6 +80,8 @@ class Route:
     dependencies: Dependencies
     evidence: Evidence
     setup: HeldSetup | None = None
+    call_setups: tuple[CallSetup, ...] = ()
+    pins: tuple[SetupPin, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -90,4 +112,4 @@ class Participant:
     views: Mapping[str, View] = field(default_factory=lambda: MappingProxyType({}))
 
 
-__all__ = ["NORMAL", "Binding", "Lifecycle", "Participant", "ParticipantRef", "Route", "View"]
+__all__ = ["NORMAL", "Binding", "Lifecycle", "Participant", "ParticipantRef", "Route", "SetupPin", "View"]

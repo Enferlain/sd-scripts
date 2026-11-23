@@ -31,6 +31,7 @@ from library.iro.runtime import Observer, Outcome
 from library.iro.seams import Device, Implementation, Owner
 from library.iro.verify import ObligationKind
 from library.runstate.authority import AUTHORITY, NORMAL, MaterializationAttempt, Rejected, RunAuthority
+from library.runstate.authority.records import SetupPin
 from library.runstate.generation import ExecutableRun
 from library.runstate.owners import Refused
 from library.runstate.projections import Execution
@@ -91,7 +92,8 @@ class Trainer:
                 if o.kind == ObligationKind.LEASE and o.use is not None and o.use.resource in participants and o.use.view is None
             }
         )
-        published = prepare_training(authority, optimization, routes, self.preparations)
+        pinned = tuple(SetupPin(m.name, m.version, m.code) for m in prepared.derivers)
+        published = prepare_training(authority, optimization, routes, self.preparations, pinned)
         if isinstance(published, Rejected):
             raise Refused(_reasons("preparation", published))
         execution = Execution(authority)

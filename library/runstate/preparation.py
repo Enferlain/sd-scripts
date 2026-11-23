@@ -36,9 +36,9 @@ makes again; nothing published relied on the participant yet.
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from library.iro.seams import HeldSetup
+from library.iro.seams import CallSetup, HeldSetup
 from library.runstate.authority.authority import RunAuthority
-from library.runstate.authority.records import ParticipantRef
+from library.runstate.authority.records import ParticipantRef, SetupPin
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import Prepared, Published, Rejected, RouteRebinding
 from library.runstate.generation import Publication, Section
@@ -60,6 +60,7 @@ class PreparationRequest:
     participants: tuple[ParticipantRef, ...] = ()
     mutation: Mutation = Mutation.REPLACES
     contributors: tuple[str, ...] = ()
+    pinned: tuple[SetupPin, ...] = ()  # setups the run already pins elsewhere, such as the prepared form's (D16)
 
     @property
     def required(self) -> tuple[ParticipantRef, ...]:
@@ -69,12 +70,13 @@ class PreparationRequest:
 
 @dataclass(frozen=True)
 class PreparedRoute:
-    """A route's prepared callable, proposed for the authority, with its held setup if it has one (D16)."""
+    """A route's prepared callable, proposed for the authority, with the setups its realization carries (D16)."""
 
     participant: ParticipantRef
     route: str
     callable: object
     setup: HeldSetup | None = None
+    call_setups: tuple[CallSetup, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -137,6 +139,33 @@ class PreparationAttempt:
             if self.attempt.mutation == Mutation.IN_PLACE:
                 self.authority.end_in_place(self.attempt.reference)
 
+    def _conflicting_pins(self, result: PreparationResult) -> list[str]:
+        """Setups that claim one name and version with different code (D16).
+
+        It compares the routes this result prepares, the routes it keeps, and
+        the setups the run pins elsewhere, such as the prepared form's. Every
+        route in the record is live: withdrawal, which takes one out, comes
+        with the second pass of section 15.
+        """
+        replaced = {(route.participant, route.route) for route in result.routes}
+        codes: dict[tuple[str, str], set[str]] = {}
+        for pin in self.request.pinned:
+            codes.setdefault((pin.name, pin.version), set()).add(pin.code)
+        for reference, participant in self.authority.section.participants.items():
+            for name, route in participant.routes.items():
+                if (reference, name) not in replaced:
+                    for pin in route.pins:
+                        codes.setdefault((pin.name, pin.version), set()).add(pin.code)
+        for route in result.routes:
+            for setup in (*((route.setup,) if route.setup else ()), *route.call_setups):
+                pin = SetupPin.of(setup)
+                codes.setdefault((pin.name, pin.version), set()).add(pin.code)
+        return [
+            f"@{name} v{version} is claimed by setups with different code; give changed code a new version"
+            for (name, version), found in sorted(codes.items())
+            if len(found) > 1
+        ]
+
     def _publish(self, result: PreparationResult) -> Published | Rejected:
         if result.attempt != self.attempt.reference:
             return Rejected(("the result belongs to another attempt",))
@@ -167,6 +196,7 @@ class PreparationAttempt:
         ]
         contributed = {section.owner for section in result.contributed}
         reasons += [f"{owner} did not contribute its section" for owner in self.request.contributors if owner not in contributed]
+        reasons += self._conflicting_pins(result)
         if reasons:
             return Rejected(tuple(reasons))
         transitions = []
@@ -177,7 +207,13 @@ class PreparationAttempt:
             evidence = Prepared(self.attempt.reference, self.attempt.basis, participant.binding.revision)
             transitions.append(
                 RouteRebinding(
-                    route.participant, route.route, route.callable, existing.revision if existing else None, evidence, route.setup
+                    route.participant,
+                    route.route,
+                    route.callable,
+                    existing.revision if existing else None,
+                    evidence,
+                    route.setup,
+                    tuple(route.call_setups),
                 )
             )
         sections: tuple[Section, ...] = tuple(result.contributed)

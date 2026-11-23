@@ -673,3 +673,27 @@ def test_two_derivers_never_give_one_call_the_same_annotation() -> None:
     with pytest.raises(Rejection) as rejected:
         prepare(cold_load(run, installed=installed), installed, CUDA, derivers)
     assert rejected.value.codes == ("iro-prep-014",)
+
+
+def test_a_name_and_version_claimed_twice_is_refused_since_its_code_is_pinned_once() -> None:
+    installed = installed_for(LEARNING)
+    run = accepted_run(LEARNING, installed=installed)
+    loaded = cold_load(run, installed=installed)
+    twice = [Annotating({"predict": Derived(annotate({"a": ["x"]}))}), Annotating({"objective": Derived(annotate({"b": ["x"]}))})]
+    with pytest.raises(Rejection) as rejected:
+        prepare(loaded, installed, CUDA, twice)
+    assert rejected.value.codes == ("iro-prep-015",), "two derivers under one name and version"
+    elsewhere = type("Recording", (), {"name": "test.setup", "version": "1", "entered": lambda self, a, h: None, "__module__": "elsewhere"})
+    setups = Annotating({"predict": Derived((), (Setup(),)), "objective": Derived((("c", ("x",)),), (elsewhere(),))})  # ty: ignore[invalid-argument-type]
+    with pytest.raises(Rejection) as rejected:
+        prepare(loaded, installed, CUDA, [setups])
+    assert rejected.value.codes == ("iro-prep-015",), "two call setups claiming one name and version with different code"
+
+
+@dataclass(frozen=True)
+class Setup:
+    name: str = "test.setup"
+    version: str = "1"
+
+    def entered(self, annotations, handles):
+        return None
