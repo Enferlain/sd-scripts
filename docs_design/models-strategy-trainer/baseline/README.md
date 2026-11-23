@@ -22,7 +22,7 @@ for the sake of a baseline.
 
 | Section | Recorded here | Limit |
 | --- | --- | --- |
-| 16, minimal SDXL step | `steps/finetune/`: one step's batch, noise, timesteps, UNet call, loss and gradient summaries; the base model's hash | Gradients and updates are summaries, comparable as a whole and not element by element |
+| 16, minimal SDXL step | `steps/finetune/`: one step's batch, noise, timesteps, UNet call, loss and gradient summaries; the base model's hash. `reference/`: the same step made in this environment, with an exact digest of every gradient and update (Reference step, below) | The Windows recording's gradients and updates are summaries, comparable as a whole; the reference is exact, but only in this environment |
 | 18, SDXL fine-tune run and cost check | `runs/finetune-run1..3`: loss series, step time, memory, saved-product structure; `cost_probe/` and the `rmst-cost-probe` tag | The checkpoints' tensor values were not kept; a value comparison reruns the pinned revision |
 | 19, SDXL LoRA run | `runs/peft-run1..3`, `steps/peft/`, the saved LoRA files and the full initial LoRA weights on `D:` | Losses after the first step match only when the run starts from the stored initial weights |
 
@@ -322,6 +322,80 @@ v-prediction. In this environment the forward and the loss repeat bit for
 bit; the backward does too once `torch.use_deterministic_algorithms(True)`
 is set with `CUBLAS_WORKSPACE_CONFIG=:4096:8`, and otherwise differs at about
 1e-5. Forward and backward together peaked at 11.4 GB.
+
+### Reference step (2026-11-23)
+
+[reference_step.py](reference_step.py) makes the reference the new system's
+step must equal bit for bit. It runs today's training computation for
+fine-tune step 0 in this environment, with PyTorch's deterministic
+algorithms on, from the recording's batch, noise, timesteps and
+configuration. It calls today's functions in the order the trainer does:
+the DDPM schedule with zero-terminal SNR and its noising, the cached text
+conditioning, SDXL's size conditioning and the UNet call, the v-prediction
+target, the float64 l2 loss with the loss weights and min-SNR weighting,
+Accelerate's backward, clipping, and AdamW8bit's step. Two things differ
+from today's trainer, both on purpose: attention is SDPA, since xformers is
+not installed here, and gradient checkpointing is non-reentrant, the mode
+the new system uses. Before the step, the loaded weights are checked against
+the recording's initial summaries. The step runs twice from the same initial
+state, and the script writes only when both runs agree bit for bit; with
+`--check` it writes nothing and compares a run in a new process with the
+stored reference.
+
+`reference/finetune_step_000.safetensors` holds the UNet's inputs (noisy
+latents, timesteps, text context and vector conditioning), its output (bf16
+under autocast; today's trainer casts it to float32 through Accelerate's
+wrapper, an exact cast), the target, the SNR at each timestep, the per-sample
+squared error, the weighted per-sample loss, the loss and clipping's norm.
+For every trainable tensor, in the recording's order, which is the UNet's
+own parameter order, it keeps the recording's summaries (sum, L2 norm and 64
+strided samples) of the gradient after clipping and before the optimizer
+step, and of the value after the step. `reference/finetune_step_000.json`
+has the SHA-256 of each of those tensors' exact bytes (contiguous, in its own
+dtype, with shape and dtype listed beside it), the environment and the
+comparisons below.
+
+Made at `1faa2f55` on the RTX 3080 (torch 2.14.1+cu130, CPython 3.14.5t with
+the GIL on through Triton, bitsandbytes 0.50.2, diffusers 0.41.0). What it
+establishes:
+
+- **The starting weights are the recording's.** The loaded weights' samples
+  match the recording's initial summaries exactly, their sums are equal, and
+  their norms differ by at most 2.2e-16.
+- **It repeats bit for bit.** Two runs in one process agreed, and a run in a
+  new process matched the stored reference. The step peaked at 15.0 GiB.
+- **Clipping is not exercised.** Clipping's norm is 0.065 (in bf16, as torch
+  computes it from bf16 gradients), below the limit of 1.0, so clipping
+  multiplies every gradient by exactly 1. A step that clipped wrongly would
+  still match; clipping needs its own check.
+
+Against the Windows recording:
+
+| | Identical elements | Relative L2 |
+| --- | --- | --- |
+| Text context and vector conditioning | all | 0 |
+| Noisy latents | 99.994% | 3.5e-7 |
+| Target | 70.8% | 5.0e-8 |
+| Model output | 45.8% | 0.36% |
+| Per-sample loss and loss | none | 7.6e-5 and 7.1e-5 |
+| Global gradient norm | none | 1.4% |
+| Sampled gradients | 3.0% | 1.4% |
+| Sampled parameters after the step | 99.5% | 3.6e-6 |
+
+The conditioning reproduces exactly, and the loss agrees to 7e-5, which
+supports the forward computation. Noising and the target differ by single
+roundings; the likely cause, not tested here, is the schedule's values
+differing in the last bit between the two environments' library versions,
+so a formulation that is to match the reference should compute the schedule
+as this environment does. The model output differs as in the probe above,
+which also includes SDPA in place of xformers. The comparison cannot confirm
+the gradients: the recording's own repeat differs by up to 6% in a tensor's
+gradient norm (`steps/finetune/repeat_comparison.json`). That the reference's
+gradients are today's rests on the script calling today's code path, which a
+review checked line by line against the trainer. Rerun with
+`.venv-wsl/bin/python -I docs_design/models-strategy-trainer/baseline/reference_step.py --device cuda:1`
+(add `--check` to compare without writing); a run takes about a minute and a
+half, most of it loading the base model.
 
 ### GPU state
 
