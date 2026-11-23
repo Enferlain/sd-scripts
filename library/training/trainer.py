@@ -84,7 +84,7 @@ class Trainer:
         optimization = self.optimization = TrainerOptimization(authority.generations, plan, run.obligations)
         addresses = {authority.incarnation(name): name for name in participants}
         trains = {name: frozenset(addresses[m.participant] for m in unit.members) for name, unit in plan.units.items()}
-        prepared = prepare(loaded, self.installed, self.target, [TrainingDerivation(trains)])
+        prepared = prepare(loaded, self.installed, self.target, [TrainingDerivation(trains, frozenset(participants))])
         routes = sorted(
             {
                 (o.use.resource, o.use.route or NORMAL)

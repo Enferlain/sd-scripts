@@ -39,7 +39,7 @@ from xdsl.ir import SSAValue
 
 from library.iro.operation_contracts import AccessMode
 from library.iro.prepare.derive import Derived, Program
-from library.iro.seams import Annotations, annotate
+from library.iro.seams import Annotations, HoldNeed, annotate
 from library.iro.words.calls import CallOp
 from library.iro.words.types import LeaseType
 from library.training.words import CONTRIBUTE
@@ -70,11 +70,16 @@ class TrainingDerivation:
     """Training's deriver: grad mode and unit annotations for the calls on a path from trained state into a unit's loss.
 
     ``trains`` names, for each unit, the participants it trains, by address.
-    ``contributions`` names, for each implementation that contributes a loss
-    to a unit, the positions of the unit's lease and of the loss.
+    ``participants`` names every participant whose routes training prepares,
+    each with module mode's held setup: for every call that leases one, the
+    derivation declares the state that setup will need, the units the call
+    serves that train it (D16). ``contributions`` names, for each
+    implementation that contributes a loss to a unit, the positions of the
+    unit's lease and of the loss.
     """
 
     trains: Mapping[str, frozenset[str]]
+    participants: frozenset[str] = frozenset()
     contributions: Mapping[str, tuple[int, int]] = field(default_factory=lambda: MappingProxyType({CONTRIBUTE: (0, 1)}))
     name: str = "training.derive"
     version: str = "1"
@@ -109,7 +114,26 @@ class TrainingDerivation:
             self._check_reached(program, unit, sinks, sources[unit], reads, reached.sources.get(unit, frozenset()))
         for call in units:
             self._check_retained(program, call, sorted(units[call]))
-        return {call: Derived(annotate({UNITS: sorted(names)}), (GRAD_MODE,)) for call, names in units.items()}
+        derived: dict[CallOp, Derived] = {}
+        for call in program.calls():
+            served = sorted(units.get(call, ()))
+            holds = self._holds(program, call, served)
+            if served or holds:
+                derived[call] = Derived(annotate({UNITS: served}) if served else (), (GRAD_MODE,) if served else (), holds)
+        return derived
+
+    def _holds(self, program: Program, call: CallOp, served: list[str]) -> tuple[HoldNeed, ...]:
+        """The module-mode state each participant the call leases through a route will need: the units it serves that train that participant."""
+        needs = {}
+        for operand in call.operands:
+            leased = program.lease(operand) if isinstance(operand.type, LeaseType) else None
+            if leased is None:
+                continue
+            resource, use = leased
+            # A lease through a route carries its module mode; an update or a view runs nothing through one.
+            if resource in self.participants and use.view is None and use.mode not in (AccessMode.OWNER_UPDATE, AccessMode.GRANT):
+                needs[resource] = HoldNeed(resource, tuple(unit for unit in served if resource in self.trains.get(unit, ())))
+        return tuple(needs[r] for r in sorted(needs))
 
     def _losses(self, program: Program) -> dict[str, list[SSAValue]]:
         """Each unit's sinks: the losses its contributions take."""

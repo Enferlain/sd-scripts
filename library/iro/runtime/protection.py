@@ -7,7 +7,7 @@ request for each ``at_request`` use: a snapshot is taken at once, a live
 read reserved, and updates wait while a reservation stands.
 """
 
-from collections.abc import Hashable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from library.iro.operation_contracts import AccessMode, ResourceUse, VersionSelection
@@ -16,15 +16,46 @@ from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.state import Held, Identity, Product, Protection, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
-from library.iro.seams import Capture, Enters, Holds, Owner, Use, Version
+from library.iro.seams import Capture, Enters, HeldSetup, Holds, Owner, Use, Version
 
 
-@dataclass
+@dataclass(frozen=True, eq=False)
+class Applied:
+    """A held setup applied to a lease's handle on a device, which its undo receives on that device (D16)."""
+
+    resource: str
+    setup: HeldSetup
+    handle: object
+    device: str
+    lease: int
+
+
+@dataclass(eq=False)
 class Hold:
-    """A held setup in force on a resource: which setup, under which annotations, and the leases of the calls it covers (D16)."""
+    """A held setup in force on a resource (D16).
 
-    key: frozenset[tuple[str, str, Hashable]]
+    ``key`` is the state its setups need; ``applied`` the setups applied
+    under it, each to a lease's handle; ``leases`` the leases that carry its
+    setup which its calls used, ``routes`` their routes, and ``running`` how
+    many of its groups are running. It binds while a running group or a
+    retained result keeps one of its leases (:meth:`Protections.binding`),
+    read from the leases' own records.
+    """
+
+    key: frozenset[tuple[str, str, tuple[str, ...]]]
+    applied: list[Applied] = field(default_factory=list)
     leases: set[int] = field(default_factory=set)
+    routes: set[str | None] = field(default_factory=set)
+    running: int = 0
+    undoing: bool = False
+
+    @property
+    def undoes(self) -> bool:
+        return any(applied.setup.undoes for applied in self.applied)
+
+    @property
+    def changes_storage(self) -> bool:
+        return any(applied.setup.changes_storage for applied in self.applied)
 
 
 class Protections:
@@ -46,18 +77,43 @@ class Protections:
         self.leases: dict[int, Held] = {}
         self.products: dict[tuple[str, int], Product] = {}
         self.productions: dict[Identity, list[Version]] = {}  # versions observed by leases taken within each production
-        self.holds: dict[str, Hold] = {}  # each resource's live held setup and the leases its hold covers (D16)
+        self.holds: dict[str, Hold] = {}  # each resource's held setup in force (D16)
+        self.undo_hold: Callable[[str, Hold], None] | None = None  # starts a hold's undo off the coordinator, set by the call path
         self._next_token = 0
 
     # Taking leases.
 
+    def binding(self, hold: Hold) -> bool:
+        """Whether a hold binds: a running group, or a retained result, keeps one of the leases it covers (D16)."""
+        return hold.running > 0 or any(lease.token in hold.leases for product in self.products.values() for lease in product.leases)
+
     def can_lease(self, name: str, use: ResourceUse) -> bool:
+        hold = self.holds.get(name)
+        if hold is not None and hold.changes_storage and not self._through(hold, use):
+            # A storage change in place excludes other routes, updates and their snapshots; one that no longer binds is undone first.
+            if not hold.undoing and not self.binding(hold) and hold.undoes and self.undo_hold is not None:
+                self.undo_hold(name, hold)
+            return False
         protection = self.by_resource[name]
         if use.mode == AccessMode.SNAPSHOT and use.selection in (VersionSelection.PUBLISHED_INITIAL, VersionSelection.AT_REQUEST):
             return True
         if use.mode in (AccessMode.SNAPSHOT, AccessMode.PROTECTED_CURRENT):
             return protection.writer is None
         return protection.writer is None and not protection.readers and not protection.reservations
+
+    def end_if_done(self, resource: str, hold: Hold) -> None:
+        """Ends a hold whose last lease is released and that no longer binds: undone first where its setup undoes it (D16)."""
+        if self.holds.get(resource) is not hold or hold.leases or hold.undoing or self.binding(hold):
+            return
+        if hold.undoes and self.undo_hold is not None:
+            self.undo_hold(resource, hold)
+        else:
+            del self.holds[resource]
+
+    @staticmethod
+    def _through(hold: Hold, use: ResourceUse) -> bool:
+        """Whether a use reads the resource through a route the storage change was made for, which sees its storage as it is."""
+        return not hold.undoing and use.mode not in (AccessMode.OWNER_UPDATE, AccessMode.GRANT) and use.route in hold.routes
 
     def acquire(self, step: Invoke, identity: Identity, request: Request | None) -> tuple[Held, ...]:
         """The access's leases, taken together; if one cannot be taken, those already taken are released."""
@@ -154,6 +210,8 @@ class Protections:
         self.kernel.fact(product.key[0], (), "product_released", product.key[1], how)
         for lease in product.leases:
             self.release_lease_if_done(lease)
+        # A hold may stop binding without a lease being released: wake whatever waits on these resources (D16).
+        self.kernel.changed(*(("resource", lease.resource) for lease in product.leases))
         self.turns.released(product)
 
     def release_lease_if_done(self, lease: Held) -> None:
@@ -170,10 +228,11 @@ class Protections:
         del self.leases[lease.token]
         self.kernel.fact(lease.resource, (), "lease_released", lease.version)
         hold = self.holds.get(lease.resource)
-        if hold is not None:
+        if hold is not None and lease.token in hold.leases:
             hold.leases.discard(lease.token)
-            if not hold.leases:  # the last lease of the calls it covered is released, retained results' included (D16)
-                del self.holds[lease.resource]
+            # A change nothing undoes needs nothing of the handle once its lease is released, so the hold stops keeping it alive.
+            hold.applied[:] = [a for a in hold.applied if a.lease != lease.token or a.setup.undoes]
+            self.end_if_done(lease.resource, hold)
         self.kernel.changed(("resource", lease.resource))
         self.storage.released(lease.resource)
 

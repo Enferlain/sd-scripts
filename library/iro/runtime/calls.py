@@ -12,24 +12,32 @@ entered with its annotations and the handles its calls receive, and left
 when the calls return (D16). A lease its owner attached a held setup to, as
 a route's realization does, has the setup applied there too, under the
 group's annotations, and the group uses that resource alone while it
-applies it. The setup's hold on the resource lasts until the last lease of
-the calls it covered is released, retained results' included: groups with
-the same setup and annotations share it, and a group that needs another
-waits until it ends.
+applies it. The setup's hold covers the leases its calls use and binds while
+one of them is in use by a running group or kept by a retained result:
+groups needing the same state share it, and a group that needs another
+waits only while it binds. A hold that no longer binds leaves its change in
+place; one whose setup undoes its change has it undone first in the next
+group that needs another state, or on its own once its last lease is
+released, and at the run's end however the run ended.
 """
 
+import asyncio
 from collections import Counter, defaultdict
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from contextlib import ExitStack
 from typing import Any
 
 from library.iro.prepare.lowered import Call, Calls
 from library.iro.runtime.kernel import Kernel
-from library.iro.runtime.protection import Hold, Protections
+from library.iro.runtime.protection import Applied, Hold, Protections
 from library.iro.runtime.state import Held, Identity, Product, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
 from library.iro.seams import Annotations, CallContext, CallSetup, Completion, Device, HeldSetup, Implementation
+
+
+class SetupFailed(RuntimeError):
+    """A held setup failed to set its state before the group's calls ran (D16)."""
 
 
 class CallRunner:
@@ -51,6 +59,8 @@ class CallRunner:
         self.alone: set[str] = set()  # resources a group applying its lease's held setup is running on, alone
         self.running_on: Counter[str] = Counter()  # how many running groups use each resource
         self.call_counts: dict[str, int] = defaultdict(int)
+        self._undos: list[asyncio.Task] = []
+        protections.undo_hold = self.undo_at_end
 
     async def run(self, step: Calls, frame: list[object], identity: Identity) -> None:
         kernel = self.kernel
@@ -110,11 +120,14 @@ class CallRunner:
             busy = resources if not step.safe else set()
             annotations = step.group.annotations
             holding = [lease for lease in leased if lease.setup is not None]
+            declared = {need.resource: need.key for need in step.group.holds}
             for lease in holding:
-                if lease.setup is not None and (getattr(lease.setup, "changes_storage", False) or hasattr(lease.setup, "undo")):
+                assert lease.setup is not None
+                needed = lease.setup.key(annotations)
+                if lease.resource in declared and declared[lease.resource] != needed:
                     raise RunFailure(
-                        f"{step.path}: @{lease.setup.name} on @{lease.resource} undoes its change or changes storage, which held setups "
-                        "do not do yet; they come with the evaluation-point swap (D20)"
+                        f"{step.path}: @{lease.setup.name} needs ({', '.join(needed)}) on @{lease.resource}, and preparation was told "
+                        f"({', '.join(declared[lease.resource])}); the domain that attaches the setup declares what it needs (D16)"
                     )
             # What realization state each resource needs, as its setups say; a group's key on a resource covers all its leases there.
             keys = {
@@ -126,8 +139,8 @@ class CallRunner:
                 for r in {h.resource for h in holding}
             }
             alone = set(keys)
-            holds = self.protections.holds
-            if busy or alone or (resources & self.alone) or (touching and storage.capturing):
+            held_off = any(self._held_off(r, keys.get(r)) for r in resources)
+            if busy or alone or held_off or (resources & self.alone) or (touching and storage.capturing):
                 capturing = storage.capturing
                 await kernel.until(
                     lambda: (
@@ -137,28 +150,36 @@ class CallRunner:
                             or alone & self.running_on.keys()
                             or resources & self.alone
                             or any(r in capturing for r in touching)
-                            or any(r in holds and holds[r].key != key for r, key in keys.items())
+                            or any(self._held_off(r, keys.get(r)) for r in resources)
                         )
                     ),
                     *(("resource", r) for r in resources.union(touching)),
                 )
                 kernel.admission_point()
-            for lease in holding:  # the hold lasts until the last lease it covers is released (D16)
-                holds.setdefault(lease.resource, Hold(keys[lease.resource])).leases.add(lease.token)
-            held: list[tuple[HeldSetup, object]] = [(lease.setup, lease.handle) for lease in holding if lease.setup is not None]
             handles = [lease.handle for lease in leased]
             protection = self.protections.by_resource
-            after = [c for lease in leased for c in protection[lease.resource].pending]
-            after += [p.completion for p in borrowed if p.completion is not None]
+            joined: list[tuple[str, Hold]] = []
             self.busy |= busy
             self.alone |= alone
             self.running_on.update(resources)
             storage.calls_started(touching)
             try:
+                undo, apply = self._take_holds(step.group.device, resources, keys, holding, joined)
+                if undo:  # a displaced hold's change, undone on its own device before anything of this group runs (D16)
+                    await self._undo_now(undo)
+                after = [c for lease in leased for c in protection[lease.resource].pending]
+                after += [p.completion for p in borrowed if p.completion is not None]
+                held = [(a.setup, a.handle) for a in apply]
                 reports, completions = await kernel.submit(
                     run_group, device, step.group.context, after, step.group.setups, annotations, handles, held, program, step.wait
                 )
+                if apply and reports and isinstance(reports[0], SetupFailed):  # what failed to be set is not taken as in place
+                    for _, hold in joined:
+                        hold.applied[:] = [a for a in hold.applied if a not in apply]
             finally:
+                for resource, hold in joined:
+                    hold.running -= 1
+                    self.protections.end_if_done(resource, hold)
                 self.busy -= busy
                 self.alone -= alone
                 self.running_on.subtract(resources)
@@ -181,6 +202,110 @@ class CallRunner:
                 turns.work_ended(identity)
             if leased:
                 kernel.changed(*(("resource", lease.resource) for lease in leased))
+
+    # Held setups (D16).
+
+    def _held_off(self, resource: str, need: frozenset | None) -> bool:
+        """Whether work on the resource needing this state, or none, must wait for the hold in force: it binds, or its undo runs."""
+        hold = self.protections.holds.get(resource)
+        if hold is None:
+            return False
+        if hold.undoing:
+            return True
+        if need is not None and hold.key == need:
+            return False
+        if need is None and not hold.changes_storage:
+            return False
+        return self.protections.binding(hold)
+
+    def _take_holds(
+        self, device: str, resources: set[str], keys: dict[str, frozenset], holding: list[Held], joined: list[tuple[str, Hold]]
+    ) -> tuple[list[Applied], list[Applied]]:
+        """After the wait: the changes to undo first and the setups to apply; each hold the group joins goes into ``joined``.
+
+        A hold the group needs another state of, or no state while it holds a
+        storage change, no longer binds: it ends, its change undone first
+        where its setup undoes it. A setup is applied only to a handle no
+        setup of its name and version has been applied to under the hold.
+        """
+        holds = self.protections.holds
+        undo: list[Applied] = []
+        apply: list[Applied] = []
+        for lease in holding:
+            if lease.setup is not None and lease.setup.changes_storage and not lease.setup.undoes:
+                raise RunFailure(
+                    f"@{lease.setup.name} changes @{lease.resource}'s storage and does not undo it; a storage change is undone (D16)"
+                )
+        for resource in sorted(resources):
+            hold, need = holds.get(resource), keys.get(resource)
+            if hold is not None and ((need is None and hold.changes_storage) or (need is not None and hold.key != need)):
+                undo.extend(a for a in hold.applied if a.setup.undoes)
+                del holds[resource]
+                hold = None
+            if need is None:
+                continue
+            if hold is None:
+                hold = holds[resource] = Hold(need)
+            hold.running += 1
+            joined.append((resource, hold))
+            for lease in holding:
+                if lease.resource != resource or lease.setup is None:
+                    continue
+                hold.leases.add(lease.token)
+                hold.routes.add(lease.lease.use.route)
+                setup = lease.setup
+                if not any(
+                    (a.setup.name, a.setup.version) == (setup.name, setup.version) and a.handle is lease.handle for a in hold.applied
+                ):
+                    applied = Applied(resource, setup, lease.handle, device, lease.token)
+                    hold.applied.append(applied)
+                    apply.append(applied)
+        return undo, apply
+
+    async def _undo_now(self, undo: list[Applied]) -> None:
+        """Undoes changes on the devices they were made on, each after its resource's queued work; a failure fails the run (D16)."""
+        protection = self.protections.by_resource
+        by_place: dict[tuple[str, str], list[Applied]] = defaultdict(list)
+        for applied in undo:
+            by_place[applied.resource, applied.device].append(applied)
+        for (resource, device), items in by_place.items():
+            try:
+                completion = await self.kernel.submit(
+                    run_undo, self.devices[device], list(protection[resource].pending), [(a.setup, a.handle) for a in items]
+                )
+            except Exception as failed:
+                raise RunFailure(f"@{resource}: undoing a held setup failed, so its state is uncertain: {failed}") from failed
+            if completion is not None:
+                protection[resource].pending.append(completion)
+
+    def undo_at_end(self, resource: str, hold: Hold) -> None:
+        """Starts a hold's undo once its last lease is released, or a lease it excludes is wanted, off the coordinator (D16)."""
+        hold.undoing = True
+        self._undos.append(self.kernel.spawn(self._undo(resource, hold)))
+
+    async def _undo(self, resource: str, hold: Hold) -> None:
+        try:
+            await self._undo_now([a for a in hold.applied if a.setup.undoes])
+        except RunFailure as failed:
+            self.kernel.note_failure(failed)
+        finally:
+            if self.protections.holds.get(resource) is hold:
+                del self.protections.holds[resource]
+            self.kernel.changed(("resource", resource))
+
+    async def settle_holds(self) -> list[str]:
+        """At the run's end, however it ended: undo every change still in place, and wait for the undos under way (D16)."""
+        failures: list[str] = []
+        for task in list(self._undos):
+            await asyncio.gather(task, return_exceptions=True)
+        for resource, hold in list(self.protections.holds.items()):
+            if hold.undoes and not hold.undoing:
+                try:
+                    await self._undo_now([a for a in hold.applied if a.setup.undoes])
+                except RunFailure as failed:
+                    failures.append(f"at the run's end, {failed}")
+            del self.protections.holds[resource]
+        return failures
 
     def _results(
         self,
@@ -272,7 +397,10 @@ def run_group(
             for setup in setups:
                 entered.enter_context(setup.entered(annotations, handles))
             for held_setup, handle in held:
-                held_setup.hold(annotations, handle)
+                try:
+                    held_setup.hold(annotations, handle)
+                except Exception as failed:
+                    raise SetupFailed(f"@{held_setup.name} failed to set its state, so that state is uncertain: {failed}") from failed
             for implementation, given, passed, count, covering in program:
                 if passed:
                     given = list(given)
@@ -309,4 +437,13 @@ def run_group(
     return reports, completions
 
 
-__all__ = ["CallRunner", "run_group"]
+def run_undo(device: Device, after: list[Completion], applied: Sequence[tuple[HeldSetup, object]]) -> Completion | None:
+    """Undoes a hold's changes on a worker, inside the device's context and after the resource's work: their completion, if the device gives one."""
+    with device.context(CallContext(), after):
+        for setup, handle in applied:
+            if setup.undoes:
+                setup.undo(handle)
+        return device.completion()
+
+
+__all__ = ["CallRunner", "run_group", "run_undo"]

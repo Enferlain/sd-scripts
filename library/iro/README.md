@@ -47,7 +47,7 @@ a fix. Codes by area:
 | `iro-life-` | A request outside its source, a stop of something that is not a producer, a producer nothing stops, a stop that does not cover a consumer, points that wait for each other |
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
-| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again; two derivers giving one call the same annotation, a name and version claimed by two derivers or setups |
+| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again; two derivers giving one call the same annotation or held state, a name and version claimed by two derivers or setups, a call that would wait on a hold its own activity keeps binding |
 | `iro-run-` | A pinned definition missing, at another definition version or with another declaration; parts of a saved run that do not follow from its strategy; a pinned implementation not installed at its version and declaration |
 
 ## Modules
@@ -118,9 +118,12 @@ neutral baseline, grad mode and autocast off, and the group's call setups,
 entered on the worker inside it, turn on what a domain decided. A lease its
 owner attached a held setup to, as a route's realization does, has it
 applied on the worker under the group's annotations, the group using that
-resource alone meanwhile; the hold lasts until the last lease it covered is
-released, retained results' included, and a group that needs another setup
-on the resource waits until then (D16). A retained result keeps its leases until its
+resource alone meanwhile. The hold binds while a lease its calls use is in
+use by a running group or kept by a retained result; a group that needs
+another state waits only then, and a change a hold leaves in place is undone,
+where its setup undoes it, before another state is set, at its last lease's
+release, or at the run's end. A setup that changes storage excludes other
+routes and updates while its change is in place (D16). A retained result keeps its leases until its
 release, and a result computed from it keeps them too, so the earlier one may
 be released first, as a prediction is inside the access a loss leaves (D16).
 

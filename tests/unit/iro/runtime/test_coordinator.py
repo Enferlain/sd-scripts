@@ -17,7 +17,8 @@ from library.iro.frontend import implementation
 from library.iro.prepare import HOST, DeviceFacts, Target, prepare
 from library.iro.prepare.derive import Derived
 from library.iro.runtime import Coordinator, Fact
-from library.iro.seams import annotate
+from library.iro.diagnostics import Rejection
+from library.iro.seams import HoldNeed, annotate
 from tests.unit.iro.accepted_runs import accepted_run
 from tests.unit.iro.runtime.harness import Memory
 
@@ -1179,19 +1180,24 @@ class Annotating:
 
 
 class HeldRecording:
-    """A held setup that records what it is applied with."""
+    """A held setup that records what it is applied with; its state is the call's annotations, written out."""
 
     name = "test.held"
     version = "1"
+    undoes = False
+    changes_storage = False
 
     def __init__(self, seen: list) -> None:
         self.seen = seen
 
     def key(self, annotations):
-        return annotations
+        return tuple(f"{key}={','.join(values)}" for key, values in annotations)
 
     def hold(self, annotations, handle) -> None:
         self.seen.append(("hold", annotations, handle, threading.current_thread().name))
+
+    def undo(self, handle) -> None:
+        self.seen.append(("undo", (), handle, threading.current_thread().name))
 
 
 @dataclass
@@ -1378,7 +1384,7 @@ class SameState(HeldRecording):
     """A held setup object of its own that needs the same state as another."""
 
     def key(self, annotations):
-        return "train"
+        return ("train",)
 
 
 def test_separate_setup_objects_that_need_the_same_state_share_a_hold() -> None:
@@ -1430,147 +1436,350 @@ def test_separate_setup_objects_that_need_the_same_state_share_a_hold() -> None:
 
 
 class Undoing(HeldRecording):
-    """A held setup that would undo its change when its hold ends, which the runtime does not realize yet."""
+    """A held setup that undoes its change when its hold ends."""
 
-    def undo(self, handle) -> None: ...
-
-
-def test_a_held_setup_that_would_undo_its_change_is_refused_until_the_evaluation_point_swap_brings_it() -> None:
-    installed = differentiating_installed()
-    run = accepted_run(DIFFERENTIATING, installed=installed)
-    prepared = prepare(cold_load(run, installed=installed), installed, Target())
-    owner = Holding({"net": 1, "w": 0}, holding=("net",), setup=Undoing([]))
-    outcome = asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
-    assert outcome.status == "failed" and "come with the evaluation-point swap" in (outcome.error or "")
+    undoes = True
 
 
-FUSED = """iro.strategy @s uses(@forward v1, @score v1) {
+ONE_ACCESS_TWO_STATES = """iro.strategy @s uses(@measure v1, @predict v1, @learn v1) {
   %net = iro.resource @net : participant
-  iro.sequence @once capture(%net) {
-    %out = iro.access %net protected_current {
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %loss = iro.access %net protected_current {
     ^(%n):
-      %y = iro.call @forward(%n) -> int
-      iro.call @score(%y) -> int
+      %seen = iro.call @measure(%n) -> int
+      iro.call @predict(%n) -> retained loss
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
     }
   }
 }
 """
 
-_inside = threading.local()
+
+def two_states_installed(events: list, *, fail_predict: bool = False) -> dict:
+    def predict(n):
+        if fail_predict:
+            raise RuntimeError("the forward failed")
+        events.append("predicted")
+        return 1.0
+
+    return {
+        "measure": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="measure")(
+            lambda n: events.append("measured") or 1
+        ),
+        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(predict),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+    }
 
 
-@dataclass(frozen=True)
-class Flagging:
-    """A call setup a route's realization carries, such as autocast: it marks the thread while it is entered."""
-
-    name: str = "test.flagging"
-    version: str = "1"
-
-    @contextmanager
-    def entered(self, annotations, handles):
-        _inside.flag = True
-        try:
-            yield
-        finally:
-            _inside.flag = False
+def run_two_states(events: list, setup: HeldRecording, *, fail_predict: bool = False):
+    installed = two_states_installed(events, fail_predict=fail_predict)
+    run = accepted_run(ONE_ACCESS_TWO_STATES, installed=installed)
+    deriver = Annotating({"predict": Derived(annotate({"units": ["w"]}))})
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(), [deriver])
+    owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=events, setup=setup)
+    return asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
 
 
-class CoveringGrant:
-    def __init__(self, lease) -> None:
-        self._lease = lease
-        self.call_setups = (Flagging(),)
+def kinds(events: list) -> list[str]:
+    return [e if isinstance(e, str) else f"{e[0]} {dict(e[1]).get('units', ())}" for e in events]
 
-    def __getattr__(self, name: str):
-        return getattr(self._lease, name)
+
+def test_calls_in_one_access_that_need_different_states_take_turns() -> None:
+    """An open access keeps nothing that needs a state: only a running call or a retained result binds the hold (D16)."""
+    events: list = []
+    outcome = run_two_states(events, HeldRecording(events))
+    assert outcome.status == "succeeded", outcome.error
+    assert kinds(events) == ["hold ()", "measured", "hold ('w',)", "predicted"]
+
+
+def test_a_setup_that_undoes_its_change_undoes_it_before_another_state_and_when_its_last_lease_is_released() -> None:
+    events: list = []
+    outcome = run_two_states(events, Undoing(events))
+    assert outcome.status == "succeeded", outcome.error
+    assert kinds(events) == ["hold ()", "measured", "undo ()", "hold ('w',)", "predicted", "undo ()"], (
+        "the measurement's change is undone before the forward's state is set, and the forward's once the loss releases its lease"
+    )
+
+
+def test_a_change_still_in_place_is_undone_however_the_run_ends() -> None:
+    events: list = []
+    outcome = run_two_states(events, Undoing(events), fail_predict=True)
+    assert outcome.status == "failed" and "the forward failed" in (outcome.error or "")
+    assert kinds(events)[-1] == "undo ()", "the change the failed forward's setup made is undone at the run's end"
+
+
+class FailingUndo(Undoing):
+    def undo(self, handle) -> None:
+        raise RuntimeError("the device was lost")
+
+
+def test_an_undo_that_fails_fails_the_run_with_the_state_reported_uncertain() -> None:
+    events: list = []
+    outcome = run_two_states(events, FailingUndo(events))
+    assert outcome.status == "failed" and "its state is uncertain" in (outcome.error or "")
+
+
+def test_preparation_refuses_a_call_that_would_wait_on_a_hold_its_own_activity_keeps_binding() -> None:
+    text = """iro.strategy @s uses(@predict v1, @measure v1, @learn v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %loss = iro.access %net protected_current {
+    ^(%n):
+      %l = iro.call @predict(%n) -> retained loss
+      %seen = iro.call @measure(%n) -> int
+      iro.yield %l
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
+    }
+  }
+}
+"""
+    installed = two_states_installed([])
+    run = accepted_run(text, installed=installed)
+    deriver = Annotating(
+        {
+            "predict": Derived(annotate({"units": ["w"]}), (), (HoldNeed("net", ("units=w",)),)),
+            "measure": Derived((), (), (HoldNeed("net", ()),)),
+        }
+    )
+    with pytest.raises(Rejection) as rejected:
+        prepare(cold_load(run, installed=installed), installed, Target(), [deriver])
+    assert rejected.value.codes == ("iro-prep-016",) and "would wait on itself" in " ".join(str(rejected.value).split())
+
+
+def test_a_setup_needing_another_state_than_preparation_was_told_fails_the_call() -> None:
+    events: list = []
+    installed = two_states_installed(events)
+    run = accepted_run(ONE_ACCESS_TWO_STATES, installed=installed)
+    deriver = Annotating({"predict": Derived(annotate({"units": ["w"]}), (), (HoldNeed("net", ("something else",)),))})
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(), [deriver])
+    owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=events)
+    outcome = asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
+    assert outcome.status == "failed" and "preparation was told (something else)" in (outcome.error or "")
+
+
+class Swapping(Undoing):
+    """A held setup that changes the participant's storage, as an evaluation-point swap does."""
+
+    changes_storage = True
 
 
 @dataclass
-class Covering(Memory):
+class RouteHolding(Memory):
+    """A memory owner whose leases through route @eval carry a storage-changing setup."""
+
+    seen: list = field(default_factory=list)
+
     def lease(self, uses, reserved=None):
-        return [CoveringGrant(lease) for lease in super().lease(uses, reserved)]
+        granted = super().lease(uses, reserved)
+        return [HoldingGrant(lease, Swapping(self.seen)) if lease.use.route == "eval" else lease for lease in granted]
 
 
-def test_a_route_s_call_setups_cover_the_calls_its_lease_is_passed_to_and_no_other_call_of_the_group() -> None:
-    seen: dict[str, bool] = {}
+def test_a_storage_change_excludes_other_routes_until_its_undo() -> None:
+    events: list = []
+    text = """iro.strategy @s uses(@evaluate v1, @read v1) {
+  %net = iro.resource @net : participant
+  iro.parallel @both capture(%net) {
+    iro.sequence @evaluation capture(%net) {
+      iro.access %net route @eval protected_current {
+      ^(%n):
+        %a = iro.call @evaluate(%n) -> int
+      }
+    }
+    iro.sequence @other capture(%net) {
+      %p = iro.call @pause() -> int
+      iro.access %net protected_current {
+      ^(%n):
+        %b = iro.call @read(%n) -> int
+      }
+    }
+  }
+}
+""".replace("@read v1)", "@read v1, @pause v1)")
 
-    def forward(n):
-        seen["forward"] = getattr(_inside, "flag", False)
+    started = threading.Event()
+
+    def evaluate(n):
+        started.set()
+        time.sleep(0.05)  # the other route's read is asked for while the swap is in place
+        events.append("evaluated")
         return 1
 
-    def score(y):
-        seen["score"] = getattr(_inside, "flag", False)
-        return 2
-
     installed = {
-        "forward": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="forward")(forward),
-        "score": implementation(version=1, inputs=("int",), outputs=("int",), name="score")(score),
+        "evaluate": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="evaluate")(evaluate),
+        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(
+            lambda n: events.append("read") or 1
+        ),
+        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: started.wait(timeout=5) and 1),
     }
-    run = accepted_run(FUSED, installed=installed)
-    prepared = prepare(cold_load(run, installed=installed), installed, Target())
-    assert any(g.implementations == ("forward", "score") for g in prepared.groups), "the two calls are one group"
-    outcome = asyncio.run(Coordinator(prepared, {"net": Covering({"net": 1})}, installed, {"host": Host()}, checked=True).run())
+    run = accepted_run(text, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4))
+    owner = RouteHolding({"net": 1}, seen=events)
+    outcome = asyncio.run(Coordinator(prepared, {"net": owner}, installed, {"host": Host()}, checked=True).run())
     assert outcome.status == "succeeded", outcome.error
-    assert seen == {"forward": True, "score": False}, "the model's forward runs under its route's setup, and its loss does not (D15)"
+    assert kinds(events) == ["hold ()", "evaluated", "undo ()", "read"], "the read through the normal route waits for the swap's undo"
 
 
-class Versioned(HeldRecording):
-    """A held setup needing the same state as another, at its own version."""
-
-    def __init__(self, seen: list, version: str) -> None:
-        super().__init__(seen)
-        self.version = version
-
-    def key(self, annotations):
-        return "train"
-
-
-HELD_ACROSS_VERSIONS = HELD_PAST_ITS_ACCESS.replace(
-    "iro.sequence @evaluation capture(%net) {\n      iro.access",
-    "iro.sequence @evaluation capture(%net) {\n      %p = iro.call @pause() -> int\n      iro.access",
-).replace("@read v1)", "@read v1, @pause v1)")
-
-
-def test_setups_of_different_versions_never_share_a_hold() -> None:
+def test_a_change_a_retained_result_keeps_past_a_failure_is_undone_at_the_run_s_end() -> None:
+    """The loss is never released, so its lease never is: only the run's end undoes the forward's change (D16)."""
     events: list = []
+    installed = two_states_installed(events)
+    installed["learn"] = implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(
+        lambda u, loss: (_ for _ in ()).throw(RuntimeError("the backward failed"))
+    )
+    run = accepted_run(ONE_ACCESS_TWO_STATES, installed=installed)
+    prepared = prepare(
+        cold_load(run, installed=installed), installed, Target(), [Annotating({"predict": Derived(annotate({"units": ["w"]}))})]
+    )
+    owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=events, setup=Undoing(events))
+    outcome = asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
+    assert outcome.status == "failed" and "the backward failed" in (outcome.error or "")
+    assert kinds(events)[-2:] == ["predicted", "undo ()"], "the forward's change is undone though its loss was never released"
 
-    def learn(u, loss):
-        time.sleep(0.05)
-        events.append("learned")
+
+SHARED_STATE = """iro.strategy @s uses(@predict v1, @read v1, @learn v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %loss = iro.access %net protected_current {
+    ^(%n):
+      iro.call @predict(%n) -> retained loss
+    }
+    %again = iro.access %net protected_current {
+    ^(%n):
+      iro.call @read(%n) -> int
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
+    }
+  }
+}
+"""
+
+
+def test_setup_objects_of_one_name_and_version_on_one_handle_apply_the_state_once_and_undo_it_once() -> None:
+    events: list = []
+    shared = object()
+
+    class SharedHandle:
+        def __init__(self, lease, setup) -> None:
+            self._lease, self.setup = lease, setup
+
+        def __getattr__(self, name: str):
+            return getattr(self._lease, name)
+
+        @property
+        def handle(self):
+            return shared
+
+    @dataclass
+    class SameHandle(Memory):
+        def lease(self, uses, reserved=None):
+            granted = Memory.lease(self, uses, reserved)
+            return [
+                SharedHandle(lease, Undoing(events)) if lease.use.resource == "net" and lease.use.mode != "owner_update" else lease
+                for lease in granted
+            ]
 
     installed = {
         "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
             lambda n: 1.0
         ),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(learn),
         "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
-        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.02) or 1),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
     }
-    run = accepted_run(HELD_ACROSS_VERSIONS, installed=installed)
-    prepared = prepare(
-        cold_load(run, installed=installed), installed, Target(workers=4), [Annotating({"predict": Derived(annotate({"units": ["w"]}))})]
-    )
+    run = accepted_run(SHARED_STATE, installed=installed)
+    serving = Derived(annotate({"units": ["w"]}))
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(), [Annotating({"predict": serving, "read": serving})])
+    owner = SameHandle({"net": 1, "w": 0})
+    outcome = asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
+    assert outcome.status == "succeeded", outcome.error
+    assert kinds(events) == ["hold ('w',)", "undo ()"], "the second lease's own setup object finds the state already set on the handle"
 
-    @dataclass
-    class TwoVersions(Memory):
-        granted: int = 0
 
-        def lease(self, uses, reserved=None):
-            granted = Memory.lease(self, uses, reserved)
-            out = []
-            for lease in granted:
-                if lease.use.resource == "net" and lease.use.mode != "owner_update":
-                    self.granted += 1
-                    out.append(HoldingGrant(lease, Versioned(events, str(self.granted))))
-                else:
-                    out.append(lease)
-            return out
+class StorageWithoutUndo(HeldRecording):
+    changes_storage = True
 
-    owner = TwoVersions({"net": 1, "w": 0})
-    assert (
-        asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run()).status
-        == "succeeded"
+
+def test_a_storage_change_that_is_not_undone_is_refused() -> None:
+    events: list = []
+    outcome = run_two_states(events, StorageWithoutUndo(events))
+    assert outcome.status == "failed" and "a storage change is undone" in (outcome.error or "")
+
+
+def test_calls_in_two_alternatives_of_a_choice_never_wait_on_each_other() -> None:
+    text = """iro.strategy @s uses(@decide v1, @predict v1, @measure v1, @learn v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %go = iro.call @decide() -> bool
+    %loss = iro.access %net protected_current {
+    ^(%n):
+      %l = iro.choice %go {
+        iro.call @predict(%n) -> retained loss
+      } else {
+        %seen = iro.call @measure(%n) -> int
+        iro.call @predict(%n) -> retained loss
+      }
+      iro.yield %l
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
+    }
+  }
+}
+"""
+    installed = {**two_states_installed([]), "decide": implementation(version=1, outputs=("bool",), name="decide")(lambda: True)}
+    run = accepted_run(text, installed=installed)
+    deriver = Annotating(
+        {
+            "predict": Derived(annotate({"units": ["w"]}), (), (HoldNeed("net", ("units=w",)),)),
+            "measure": Derived((), (), (HoldNeed("net", ()),)),
+        }
     )
-    order = [e if isinstance(e, str) else ("train" if dict(e[1]).get("units") else "other") for e in events]
-    assert "other" not in order[order.index("train") : order.index("learned")], (
-        "the same state at another version is another setup: the evaluation waits until the training's hold ends"
-    )
+    prepare(
+        cold_load(run, installed=installed), installed, Target(), [deriver]
+    )  # the first arm's loss never lives while the second arm runs
+
+
+def test_preparation_refuses_an_access_a_binding_storage_change_excludes() -> None:
+    text = """iro.strategy @s uses(@evaluate v1, @read v1, @learn v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %kept = iro.access %net route @eval protected_current {
+    ^(%n):
+      iro.call @evaluate(%n) -> retained loss
+    }
+    %b = iro.access %net protected_current {
+    ^(%m):
+      iro.call @read(%m) -> int
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %kept)
+    }
+  }
+}
+"""
+    installed = {
+        "evaluate": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="evaluate")(
+            lambda n: 1.0
+        ),
+        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+    }
+    run = accepted_run(text, installed=installed)
+    deriver = Annotating({"evaluate": Derived((), (), (HoldNeed("net", ("eval",), changes_storage=True),))})
+    with pytest.raises(Rejection) as rejected:
+        prepare(cold_load(run, installed=installed), installed, Target(), [deriver])
+    assert rejected.value.codes == ("iro-prep-016",) and "through another route or for an update" in " ".join(str(rejected.value).split())

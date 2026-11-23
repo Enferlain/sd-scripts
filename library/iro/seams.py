@@ -25,7 +25,7 @@ composition (D2).
 """
 
 import hashlib
-from collections.abc import Callable, Hashable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -197,25 +197,27 @@ class CallSetup(Protocol):
 
 @runtime_checkable
 class HeldSetup(Protocol):
-    """What calls need of a resource's realization that later work relies on, held while their leases are out (D16).
+    """What calls need of a resource's realization that later work relies on (D16).
 
     The runtime applies it on the calls' worker, inside the device's context,
     with the calls' annotations and the handle the lease gives, and it
     changes only state reachable through that handle, such as a
     participant's module mode. :meth:`key` says, for a call's annotations,
-    which realization state the setup needs, as an opaque value the core
-    only compares, together with the setup's name and version: calls whose
-    setups need the same state share the hold, whichever setup object each
-    lease carries, and a call that needs another
-    waits until the hold ends, when the last lease of the calls it covered is
-    released, including those a retained result keeps. It changes no version.
+    which realization state the setup needs, as written data the core only
+    compares, together with the setup's name and version.
 
-    What D16 also gives a held setup is not realized yet: undoing its change
-    when the hold ends, and excluding the resource's other work while it
-    holds a change of storage. They come with D20's evaluation-point swap,
-    their first use. Until then a held setup changes only state the next
-    setup sets again, as module mode does, and the runtime refuses one that
-    declares ``changes_storage`` or an ``undo``.
+    Its hold on the resource covers the leases its calls use, and binds while
+    one of them is in use by a running call or kept by a retained result:
+    calls whose setups need the same state share the hold, whichever setup
+    object each lease carries, and a call that needs another state waits
+    while it binds. When it stops binding, the change stays in place. A
+    setup that ``undoes`` its change undoes it before work that needs another
+    state runs on the resource, and at the latest when the last lease the
+    hold covers is released, however the calls ended; it is undone on the
+    device it was made on. One that ``changes_storage`` undoes its change,
+    which the runtime requires, and also excludes the resource's other work
+    while the change is in place: updates, uses through other routes and
+    their snapshots' captures. It changes no version.
     """
 
     @property
@@ -224,9 +226,31 @@ class HeldSetup(Protocol):
     @property
     def version(self) -> str: ...
 
-    def key(self, annotations: Annotations) -> Hashable: ...
+    @property
+    def undoes(self) -> bool: ...
+
+    @property
+    def changes_storage(self) -> bool: ...
+
+    def key(self, annotations: Annotations) -> tuple[str, ...]: ...
 
     def hold(self, annotations: Annotations, handle: object) -> None: ...
+
+    def undo(self, handle: object) -> None: ...
+
+
+@dataclass(frozen=True)
+class HoldNeed:
+    """The state a call's held setup will need on a resource, as the domain that attaches the setup declares it at preparation (D16).
+
+    Preparation compares these to refuse a call that would wait on a hold its
+    own activity keeps binding; the runtime checks that the setup a lease
+    carries needs the declared state.
+    """
+
+    resource: str
+    key: tuple[str, ...]
+    changes_storage: bool = False
 
 
 @runtime_checkable
@@ -466,6 +490,7 @@ __all__ = [
     "Effect",
     "Enters",
     "HeldSetup",
+    "HoldNeed",
     "Holds",
     "HoldsDeviceStorage",
     "Implementation",

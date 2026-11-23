@@ -15,8 +15,9 @@ implementations and a target, and derives the prepared run:
   gives a call only its random state (D15);
 - **fusion**: consecutive calls in one body, on one device, whose completion
   the device covers, that have no external effects, issue no collectives and
-  have the same context, annotations and setups, form one group, submitted
-  as one piece of straight-line work.
+  have the same context, annotations and setups, and need no two states of
+  one resource, form one group, submitted as one piece of straight-line
+  work.
   Every call belongs to exactly one group. Groups are numbered body by
   body in the order the strategy is walked, a body before the bodies nested
   in it;
@@ -49,7 +50,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from xdsl.ir import Operation, SSAValue
+from xdsl.ir import BlockArgument, Operation, SSAValue
 
 from library.iro.accepted import Loaded, check_implementations
 from library.iro.diagnostics import Kind, Problems, Stage
@@ -59,6 +60,7 @@ from library.iro.operation_contracts import (
     RegionSemantics,
     ResourceSemantics,
     path,
+    provider,
     sym_name,
     symbol,
 )
@@ -66,11 +68,12 @@ from library.iro.prepare.derive import Derived, Deriver, Program
 from library.iro.prepare.flow import activity_of as _activity
 from library.iro.prepare.flow import carried_entry as _carried_entry
 from library.iro.prepare.flow import is_activity as _is_activity
+from library.iro.prepare.flow import lease_use
 from library.iro.prepare.flow import leased as _leased
 from library.iro.prepare.flow import resource_of as _resource_of
 from library.iro.prepare.flow import yielded_result as _yielded_result
 from library.iro.prepare.target import HOST, Target
-from library.iro.seams import Annotations, CallContext, CallSetup, Effect, Implementation
+from library.iro.seams import Annotations, CallContext, CallSetup, Effect, HoldNeed, Implementation
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import TakeOp
@@ -123,6 +126,7 @@ class Group:
     sync: bool = False
     annotations: Annotations = ()
     setups: tuple[CallSetup, ...] = ()
+    holds: tuple[HoldNeed, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -166,6 +170,7 @@ class Prepared:
             names = ", ".join(f"@{name}" for name in g.implementations)
             settings = [f"setups {', '.join(f'@{s.name} v{s.version}' for s in g.setups)}"] if g.setups else []
             settings += [f"{key} {', '.join(values)}" for key, values in g.annotations]
+            settings += [f"hold @{h.resource} ({', '.join(h.key)}){' storage' if h.changes_storage else ''}" for h in g.holds]
             settings += [f"random {g.context.random}"] if g.context.random else []
             settings += ["sync"] if g.sync else []
             shown = f" ({', '.join(settings)})" if settings else ""
@@ -336,9 +341,92 @@ class _Preparation:
                         fix="give each domain's annotations keys of its own",
                     )
                     continue
+                held = {need.resource for need in earlier.holds} & {need.resource for need in derived.holds}
+                if held:
+                    self.problems.add(
+                        "iro-prep-014",
+                        f"@{deriver.name} declares the held state of {', '.join(f'@{r}' for r in sorted(held))} for the call, "
+                        "which another deriver already declared",
+                        path=path(call),
+                        fix="let the domain whose owner attaches a held setup declare its states",
+                    )
+                    continue
                 self.derived[call] = Derived(
-                    tuple(sorted(earlier.annotations + derived.annotations)), earlier.setups + tuple(derived.setups)
+                    tuple(sorted(earlier.annotations + derived.annotations)),
+                    earlier.setups + tuple(derived.setups),
+                    tuple(sorted(earlier.holds + tuple(derived.holds), key=lambda need: need.resource)),
                 )
+        self._check_holds()
+
+    def _check_holds(self) -> None:
+        """Within one activity, no call waits on a hold that a retained result of an earlier call keeps binding (D16).
+
+        A call's held state binds from the call to the last release of its
+        retained results and of what is computed from them. A later call in
+        the same activity, before that release, that needs another state on
+        the resource, or that uses the resource at all while a storage
+        change binds, would wait on itself.
+        """
+        order = {op: i for i, op in enumerate(self.strategy.walk())}
+        calls = [op for op in order if isinstance(op, CallOp)]
+        accesses = [op for op in order if isinstance(op, AccessOp)]
+        for earlier in calls:
+            needs = self.derived.get(earlier, _NOTHING).holds
+            kept = [r for r in earlier.results if isinstance(r.type, RetainedType)]
+            if not needs or not kept:
+                continue
+            ends = [order[op] for op in _releases_of(kept)]
+            last = max(ends) if ends else len(order)
+            activity = _activity(earlier)
+
+            def binding_at(op: Operation, earlier: CallOp = earlier, last: int = last, activity: str = activity) -> bool:
+                return order[earlier] < order[op] < last and _activity(op) == activity and not _exclusive(earlier, op)
+
+            for need in (n for n in needs if n.changes_storage):
+                routes = {
+                    use.route
+                    for operand in earlier.operands
+                    if (use := lease_use(operand)) is not None and _resource_of(use.subject) == need.resource
+                }
+                for access in filter(binding_at, accesses):
+                    for use in ResourceSemantics().describe(access).uses:
+                        if _resource_of(use.subject) == need.resource and (
+                            use.route not in routes or use.mode in (AccessMode.OWNER_UPDATE, AccessMode.GRANT)
+                        ):
+                            self.problems.add(
+                                "iro-prep-016",
+                                f"this access takes @{need.resource} through another route or for an update while a retained result of "
+                                f"{path(earlier)} keeps its storage change binding in the same activity, so it would wait on itself",
+                                path=path(access),
+                                fix="take it after the retained result's release, or in another activity",
+                            )
+            for later in calls:
+                if not binding_at(later):
+                    continue
+                theirs = {need.resource: need for need in self.derived.get(later, _NOTHING).holds}
+                used = {name for operand in later.operands if isinstance(operand.type, LeaseType) and (name := _leased(operand))}
+                # A lease taken by an access inside the window was reported with that access.
+                outside = {
+                    name
+                    for operand in later.operands
+                    if isinstance(operand.type, LeaseType)
+                    and (name := _leased(operand))
+                    and not ((access := _lease_access(operand)) is not None and binding_at(access))
+                }
+                for need in needs:
+                    other = theirs.get(need.resource)
+                    conflict = (other is not None and other.key != need.key) or (
+                        need.changes_storage and need.resource in used & outside and (other is None or other.key != need.key)
+                    )
+                    if conflict:
+                        wanted = f"({', '.join(other.key)})" if other is not None else "no held state"
+                        self.problems.add(
+                            "iro-prep-016",
+                            f"this call needs {wanted} on @{need.resource} while a retained result of {path(earlier)} keeps its "
+                            f"hold on ({', '.join(need.key)}) binding in the same activity, so it would wait on itself",
+                            path=path(later),
+                            fix="call it after the retained result's release, or in another activity",
+                        )
 
     # Matching and placement.
 
@@ -420,10 +508,7 @@ class _Preparation:
                         self._match(item)
                         placed = self._device(item)
                         if current and (
-                            placed != device
-                            or not self._fusable(item)
-                            or not self._fusable(current[-1])
-                            or self.derived.get(item, _NOTHING) != self.derived.get(current[-1], _NOTHING)
+                            placed != device or not self._fusable(item) or not self._fusable(current[-1]) or not self._fuses(item, current)
                         ):
                             self._close(groups, current, device)
                             current = []
@@ -438,6 +523,7 @@ class _Preparation:
         effects = set().union(*(self.installed[symbol(c.implementation)].declaration.effects for c in calls))
         context = CallContext(random=_activity(calls[0]) if Effect.RANDOMNESS in effects else None)
         derived = self.derived.get(calls[0], _NOTHING)
+        holds = {need.resource: need for c in calls for need in self.derived.get(c, _NOTHING).holds}
         sync = device != HOST.name and not all(self._stays(r, device) for c in calls for r in c.results)
         groups.append(
             Group(
@@ -450,8 +536,18 @@ class _Preparation:
                 sync,
                 derived.annotations,
                 derived.setups,
+                tuple(holds[r] for r in sorted(holds)),
             )
         )
+
+    def _fuses(self, call: CallOp, group: list[CallOp]) -> bool:
+        """Whether what was derived for a call lets it join a group: the same annotations and setups, and no resource needing two states."""
+        mine = self.derived.get(call, _NOTHING)
+        first = self.derived.get(group[0], _NOTHING)
+        if (mine.annotations, mine.setups) != (first.annotations, first.setups):
+            return False
+        theirs = {need.resource: need for c in group for need in self.derived.get(c, _NOTHING).holds}
+        return all(theirs.get(need.resource, need) == need for need in mine.holds)
 
     def _stays(self, value: SSAValue, device: str, seen: set[SSAValue] | None = None) -> bool:
         """Whether a result is only used by device work on the same device, or released.
@@ -683,6 +779,54 @@ def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:
             elif isinstance(user, YieldOp) and (result := _yielded_result(user, use.index)) is not None:
                 pending.append(result)
     return tuple(sorted(found))
+
+
+def _lease_access(value: SSAValue) -> AccessOp | None:
+    """The access that took a lease."""
+    value = provider(value)
+    owner = value.owner.parent_op() if isinstance(value, BlockArgument) else None
+    return owner if isinstance(owner, AccessOp) else None
+
+
+def _exclusive(first: Operation, second: Operation) -> bool:
+    """Whether two ops lie in different alternatives of one choice, so they never both run."""
+    regions: dict[Operation, int] = {}
+    current: Operation | None = first
+    while current is not None and (parent := current.parent_op()) is not None:
+        region = current.parent_region()
+        if region is not None:
+            regions[parent] = parent.regions.index(region)
+        current = parent
+    current = second
+    while current is not None and (parent := current.parent_op()) is not None:
+        if parent in regions:
+            semantics = parent.get_trait(RegionSemantics)
+            region = current.parent_region()
+            index = parent.regions.index(region) if region is not None else -1
+            return semantics is not None and semantics.protocol == LifecycleProtocol.CHOICE and index != regions[parent]
+        current = parent
+    return False
+
+
+def _releases_of(results: Sequence[SSAValue]) -> list[Operation]:
+    """The releases of retained results and of the retained results computed from them, following values out of bodies."""
+    found: list[Operation] = []
+    seen: set[SSAValue] = set()
+    pending = list(results)
+    while pending:
+        value = pending.pop()
+        if value in seen:
+            continue
+        seen.add(value)
+        for use in value.uses:
+            user = use.operation
+            if isinstance(user, ReleaseOp):
+                found.append(user)
+            elif isinstance(user, CallOp):
+                pending.extend(r for r in user.results if isinstance(r.type, RetainedType))
+            elif isinstance(user, YieldOp) and (result := _yielded_result(user, use.index)) is not None:
+                pending.append(result)
+    return found
 
 
 def _enclosing_access(op: Operation) -> AccessOp | None:

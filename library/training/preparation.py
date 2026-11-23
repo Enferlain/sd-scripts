@@ -97,8 +97,14 @@ def _prepare(
         record = attempt.projection[participant]
         assert record.binding is not None
         preparation = preparations.get((record.address, route))
+        # Every unit the plan says trains the participant, as training's derivation declares them, with the modules it resolved to.
+        by_unit = {candidate.definition.name: candidate for candidate in resolved}
         modes = ModuleModes(
-            {candidate.definition.name: candidate.modules[record.address] for candidate in resolved if record.address in candidate.modules}
+            {
+                name: by_unit[name].modules.get(record.address, ()) if name in by_unit else ()
+                for name, definition in optimization.plan.units.items()
+                if any(target.participant == participant for target in definition.members)
+            }
         )
         try:
             callable_ = preparation(record.binding.value) if preparation else record.binding.value

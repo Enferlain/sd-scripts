@@ -207,6 +207,10 @@ class Coordinator:
                 await kernel.until(lambda: kernel.closing or not self.requests.pending_under(root), ("requests",))
                 self.requests.settle(root)
                 await self.storage.drain()
+                unsettled = await self.calls.settle_holds()  # held setups' changes undone however the run ended (D16)
+                if unsettled:  # a cancelled run stays cancelled; either way the uncertain state is reported
+                    outcome.status = "cancelled" if outcome.status == "cancelled" else "failed"
+                    outcome.error = "; ".join(([outcome.error] if outcome.error else []) + unsettled)
                 if self.checked and kernel.failed and not kernel.cancelled and outcome.status != "failed":
                     # A miss closes admission without raising where it was found, so the root saw only that.
                     outcome.status, outcome.error = "failed", "; ".join(kernel.errors)

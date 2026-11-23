@@ -110,7 +110,12 @@ def implementations(seen: dict[str, list]) -> dict:
     def objective(prediction, batch):
         return Massive(torch.nn.functional.mse_loss(prediction, batch[1]), float(batch[1].numel()))  # its mean divides by every element
 
-    return {"batch": batch, "encode": encode, "predict": predict, "objective": objective, **on_host()}
+    @implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="measure")
+    def measure(network):
+        seen.setdefault("measure", []).append((network.training, torch.is_grad_enabled()))
+        return 1
+
+    return {"batch": batch, "encode": encode, "predict": predict, "objective": objective, "measure": measure, **on_host()}
 
 
 def on_host() -> dict:
@@ -184,10 +189,9 @@ def test_the_unit_s_prepared_run_shows_what_training_derived() -> None:
     executable = made.realize()
     text = executable.prepared.text()
     assert re.search(r"derived by\n  @training\.derive v1 code \w+\n  @training\.grad_mode v1 code \w+\n", text)
-    assert "@predict, @objective (setups @training.grad_mode v1, units learner)" in text
-    assert re.search(r": @encode\n", text) and re.search(r": @batch\n", text), (
-        "no trained state reaches them, so nothing is derived for them"
-    )
+    assert "@predict, @objective (setups @training.grad_mode v1, units learner, hold @net (learner))" in text
+    assert re.search(r": @encode \(hold @enc \(\)\)\n", text), "the frozen encoder's route needs no unit's modules in train mode"
+    assert re.search(r": @batch\n", text), "it leases nothing and no trained state reaches it, so nothing is derived for it"
     assert executable.readiness.judges == ("run authority", TRAINER)
 
 
@@ -666,8 +670,10 @@ def test_a_trained_participant_whose_forward_reaches_the_loss_only_from_another_
 
 def test_the_trained_model_sampling_in_another_activity_runs_without_grad_mode_while_its_forward_in_the_window_has_it() -> None:
     text = realized(SAMPLED.replace("JUDGED", ALSO_SCORED), sampling(("protected_current lease", "prediction"))).prepared.text()
-    assert re.search(r"in @sampled/@all/@sampling: @sample\n", text), "sampling's outputs are data to the training activity"
-    assert "@judge (setups @training.grad_mode v1, units learner)" in text
+    assert re.search(r"in @sampled/@all/@sampling: @sample \(hold @net \(\)\)\n", text), (
+        "sampling's outputs are data to the training activity"
+    )
+    assert "@judge (setups @training.grad_mode v1, units learner, hold @net (learner))" in text
 
 
 def test_a_trained_participant_that_reaches_its_loss_by_no_path_is_refused() -> None:
@@ -812,3 +818,28 @@ def test_a_backward_that_fails_counts_no_contribution() -> None:
     with pytest.raises(RuntimeError):
         live.contribute(Massive(torch.tensor(1.0), 6.0))  # a loss that carries no graph cannot be differentiated
     assert live.position == 0 and live._mass == 0.0, "the window still holds nothing, so its end steps nothing rather than hide the failure"
+
+
+MEASURED_FIRST = STEP.replace("@objective v1,", "@objective v1, @measure v1,").replace(
+    "        %prediction = iro.call @predict(%n, %cond) -> retained prediction",
+    "        %seen = iro.call @measure(%n) -> int\n        %prediction = iro.call @predict(%n, %cond) -> retained prediction",
+)
+
+
+def test_a_measurement_before_the_forward_in_one_access_runs_in_evaluation_mode_and_the_forward_in_train_mode() -> None:
+    seen: dict[str, list] = {"encoder": [], "network": []}
+    outcome = trainer(MEASURED_FIRST, seen=seen).train()
+    assert outcome.status == "succeeded", outcome.error
+    assert seen["measure"] == [(False, False)] * 2 and seen["network"] == [(True, True)] * 2, (
+        "the open access keeps nothing that needs a mode, so the two calls take turns (D16)"
+    )
+
+
+def test_a_measurement_while_the_forward_s_result_is_retained_is_refused_since_it_would_wait_on_itself() -> None:
+    text = STEP.replace("@objective v1,", "@objective v1, @measure v1,").replace(
+        "        iro.call @objective(%prediction, %batch) -> retained loss",
+        "        %seen = iro.call @measure(%n) -> int\n        iro.call @objective(%prediction, %batch) -> retained loss",
+    )
+    with pytest.raises(Rejection) as rejected:
+        trainer(text).realize()
+    assert rejected.value.codes == ("iro-prep-016",) and "would wait on itself" in said(rejected.value)

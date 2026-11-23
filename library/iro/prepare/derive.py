@@ -23,7 +23,7 @@ from xdsl.ir import Operation, SSAValue
 from library.iro.diagnostics import Problems
 from library.iro.operation_contracts import ResourceUse, path, symbol
 from library.iro.prepare.flow import Reached, ValueFlow, activity_of, lease_use, resource_of
-from library.iro.seams import Annotations, CallSetup, Declaration
+from library.iro.seams import Annotations, CallSetup, Declaration, HoldNeed
 from library.iro.words.access import AccessOp
 from library.iro.words.calls import CallOp
 from library.iro.words.structure import StrategyOp
@@ -31,10 +31,11 @@ from library.iro.words.structure import StrategyOp
 
 @dataclass(frozen=True)
 class Derived:
-    """What a domain derived for one call."""
+    """What a domain derived for one call: its annotations, its call setups, and the states its held setups will need."""
 
     annotations: Annotations = ()
     setups: tuple[CallSetup, ...] = ()
+    holds: tuple[HoldNeed, ...] = ()
 
 
 class Program:

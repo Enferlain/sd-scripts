@@ -314,11 +314,15 @@ class Pinned:
 
     name = "test.mode"
     version = "1"
+    undoes = False
+    changes_storage = False
 
     def key(self, annotations):
         return ()
 
     def hold(self, annotations, handle) -> None: ...
+
+    def undo(self, handle) -> None: ...
 
 
 Elsewhere = type(
