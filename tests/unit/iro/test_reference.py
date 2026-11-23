@@ -240,6 +240,40 @@ def test_a_retained_result_keeps_its_lease_after_the_access_until_its_release() 
     assert kinds.index("updated") > released
 
 
+KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@objective v1, @derive v1, @report v1, @step v1) {
+  %m = iro.resource @m : participant
+  iro.sequence @train capture(%m) {
+    %loss = iro.access %m protected_current {
+    ^(%lease):
+      %pred = iro.call @objective(%lease) -> retained pred
+      iro.call @derive(%pred) -> retained loss
+    }
+    iro.call @report(%loss)
+    iro.access %m owner_update {
+    ^(%lease):
+      iro.call @step(%lease)
+    }
+  }
+}
+"""
+
+
+def test_a_result_that_leaves_its_access_keeps_the_lease_of_what_it_keeps_until_its_own_release() -> None:
+    standins = {
+        "objective": StandIn((LEASE,), ("retained pred",), lambda a: CallResult((float(str(a[0])),)), retains=(0,)),
+        "derive": StandIn(("retained pred",), ("retained loss",), lambda a: CallResult((a[0],)), retains=(0,)),
+        "report": StandIn(("retained loss",), (), returning()),
+        "step": StandIn(("owner_update lease",), (), increment, updates=(0,)),
+    }
+    run = reference(KEPT_PAST_ITS_ACCESS, {"m": 1}, standins)
+    run.run()
+    assert run.settled and run.errors == []
+    made = [f.owner for f in run.facts if f.kind == "product_retained"]
+    assert [f.owner for f in run.facts if f.kind == "product_released"] == made, "the prediction is released inside the access"
+    kinds = [f.kind for f in run.facts if f.kind in ("product_released", "lease_released", "updated")]
+    assert kinds[:4] == ["product_released", "product_released", "lease_released", "updated"], "the loss keeps the lease"
+
+
 # Failures, holds and cancellation.
 
 

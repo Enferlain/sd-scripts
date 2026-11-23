@@ -113,7 +113,9 @@ without blocking. A device sets each call's grad mode, precision and random
 state. A lease that establishes what its state needs for each call
 (`seams.Establishes`) does so on the worker before the group's calls, and
 the group then uses that resource alone, even when its calls are declared
-safe for concurrent use.
+safe for concurrent use. A retained result keeps its leases until its
+release, and a result computed from it keeps them too, so the earlier one may
+be released first, as a prediction is inside the access a loss leaves (D16).
 
 The coordinator executes the run's lowered form (`prepare.lower`), so a
 round never reads the strategy again: a body's values sit in numbered slots,

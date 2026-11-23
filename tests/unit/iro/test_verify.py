@@ -386,8 +386,8 @@ iro.parallel @outer capture(%c) {
     assert "iro-claim-005" in rejected(consuming(body)).codes
 
 
-def test_a_normalized_form_releasing_a_kept_result_first_is_rejected() -> None:
-    text = """iro.strategy @s uses(@objective v1, @derive v1, @report v1) {
+def test_a_result_kept_by_another_may_be_released_first_and_its_state_stays_protected() -> None:
+    text = """iro.strategy @s uses(@objective v1, @derive v1, @report v1, @step v1) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     %a = iro.access %m protected_current {
@@ -405,7 +405,35 @@ def test_a_normalized_form_releasing_a_kept_result_first_is_rejected() -> None:
     normalized = normalize(parse(text)).text()
     swapped = normalized.replace("    iro.release %b\n    iro.release %a\n", "    iro.release %a\n    iro.release %b\n")
     assert swapped != normalized
-    assert rejected(swapped).codes == ("iro-lease-003",)
+    verified(swapped)
+    update = "    iro.access %m owner_update {\n    ^(%u):\n      iro.call @step(%u)\n    }\n"
+    between = swapped.replace("    iro.release %a\n", "    iro.release %a\n" + update)
+    assert rejected(between).codes == ("iro-lease-004",), "%b keeps the lease %a kept"
+
+
+KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@objective v1, @derive v1, @report v1, @step v1) {
+  %m = iro.resource @m : participant
+  iro.sequence @train capture(%m) {
+    %loss = iro.access %m protected_current {
+    ^(%l):
+      %pred = iro.call @objective(%l) -> retained pred
+      iro.call @derive(%pred) -> retained loss
+    }
+BETWEEN    iro.call @report(%loss)
+AFTER  }
+}
+"""
+
+
+def test_a_result_may_leave_its_access_while_what_it_keeps_is_released_inside() -> None:
+    update = "    iro.access %m owner_update {\n    ^(%u):\n      iro.call @step(%u)\n    }\n"
+    after = KEPT_PAST_ITS_ACCESS.replace("BETWEEN", "").replace("AFTER", update)
+    normalized = normalize(parse(after)).text()
+    assert "      iro.release %pred\n      iro.yield %loss\n" in normalized
+    assert "    iro.call @report(%loss)\n    iro.release %loss\n" in normalized
+    verified(after)
+    between = KEPT_PAST_ITS_ACCESS.replace("BETWEEN", update).replace("AFTER", "")
+    assert rejected(between).codes == ("iro-lease-004",), "the loss keeps the lease its prediction kept"
 
 
 def test_a_producer_needs_a_stop_that_always_runs() -> None:

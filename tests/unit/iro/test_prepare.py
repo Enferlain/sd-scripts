@@ -520,7 +520,7 @@ def contexts(result) -> dict[str, tuple[bool, tuple[str, ...]]]:
 
 def test_grad_mode_follows_the_dataflow_into_a_differentiated_input() -> None:
     effects = {name: ["device"] for name in ("encode", "measure", "predict", "objective", "learn")}
-    result, _ = prepared(LEARNING, effects=effects, **DIFFERENTIATION)
+    result, _ = prepared(LEARNING, CUDA, effects, **DIFFERENTIATION)
     assert contexts(result) == {
         "batch": (False, ()),  # its value reaches only inputs not declared differentiable
         "encode": (True, ("w",)),  # through the prediction's conditioning, declared differentiable
@@ -538,7 +538,7 @@ def test_grad_mode_follows_the_dataflow_into_a_differentiated_input() -> None:
 
 def test_an_input_not_declared_differentiable_stops_the_walk() -> None:
     declared = DIFFERENTIATION | {"objective": {}}
-    result, _ = prepared(LEARNING, **declared)
+    result, _ = prepared(LEARNING, CUDA, None, **declared)
     assert contexts(result)["predict"] == (False, ()) and contexts(result)["objective"] == (True, ("w",))
 
 
@@ -568,6 +568,43 @@ CARRIED_INTO_LEARNING = """iro.strategy @s uses(@first v1, @step v1, @learn v1) 
   }
 }
 """
+
+
+FILTERED_INTO_LEARNING = """iro.strategy @s uses(@make v1, @keep v1, @predict v1, @learn v1) {
+  %w = iro.resource @w
+  %items = iro.stream @items : item bounds(outstanding 1, ready 1)
+  iro.parallel @all capture(%items, %w) {
+    iro.producer @source into %items {
+    ^(%index: int):
+      %item = iro.call @make(%index) -> item
+      iro.yield %item
+    }
+    iro.sequence @consume capture(%items, %w) {
+      %claim = iro.take %items
+      %kept = iro.filter %claim {
+      ^(%value: item):
+        %keep = iro.call @keep(%value) -> bool
+        iro.yield %keep
+      }
+      %loss = iro.call @predict(%kept) -> loss
+      iro.access %w owner_update {
+      ^(%u):
+        iro.call @learn(%u, %loss)
+      }
+    }
+    iro.stop @source after @consume
+  }
+}
+"""
+
+
+def test_a_filter_s_decision_is_no_result_so_it_carries_no_grad_mode_and_reaches_the_host() -> None:
+    effects = {"keep": ["device"], "predict": ["device"]}
+    result, _ = prepared(FILTERED_INTO_LEARNING, effects=effects, predict={"differentiable": (0,)}, learn={"differentiates": (1,)})
+    assert contexts(result)["keep"] == (False, ()), "the filter yields whether to keep its item, and its result is the item"
+    assert contexts(result)["predict"] == (True, ("w",))
+    (keep,) = [g for g in result.groups if "keep" in g.implementations]
+    assert keep.sync, "the filter reads the decision on the host, so the host waits for the keep call's work"
 
 
 def test_grad_mode_follows_a_value_into_a_repeat_as_its_carry_and_out_as_its_result() -> None:

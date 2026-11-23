@@ -220,7 +220,7 @@ Actual storage SHALL remain outside semantic IR.
 - **WHEN** a selected call produces a scoped retained product from declared leases or earlier retained products
 - **THEN** consumers MUST retain the actual dependencies and observed versions through physical settlement
 - **AND** read-only borrowing MUST NOT authorize mutation or an undeclared owner transfer
-- **AND** explicit release MUST follow every dependent use and derived retained product
+- **AND** explicit release MUST follow every dependent use, and a retained product derived from it MUST keep those dependencies and observed versions until its own release
 
 #### Scenario: A result that depends on a lease outlives the access body
 - **WHEN** a selected call's result is declared to depend on leased state and is used after that access body ends, within the same activity

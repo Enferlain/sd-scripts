@@ -3027,7 +3027,10 @@ actual leases or earlier retained products. Borrowers receive the actual
 payload, without cloning away storage aliases or autograd dependencies. They
 have read-only use; selected implementations remain trusted to honor that
 contract. The product retains its dependencies and observed versions until an
-explicit release after every borrower and derived product settles.
+explicit release after every borrower and derived product settles. D16
+extends this first profile: a product may leave its access body, and a
+derived product keeps the dependencies of what it was derived from, so a
+release waits only for borrowers.
 
 This first profile keeps products within their defining ordered body. A
 product cannot be yielded, captured into another region, published to a flow or
@@ -3614,10 +3617,16 @@ Two shared rules fix what a lease protects and for how long.
   use, which for a loss is the end of backward inside `contribute`, and the
   normalized form shows it. A contribution accumulates into the unit and
   does not update the leased state; advancement, which does, comes after the
-  release. Such a result may leave its access body but not
-  its activity; it is never yielded into a stream or captured by another
-  activity. The lease itself still never leaves its scope. This extends
-  D14's first retained-product profile by one step.
+  release. A result computed from a retained result, as a loss is from the
+  prediction, keeps every lease that result keeps, so the state stays
+  protected until the last of them is released, and the earlier one may be
+  released first. A loss computed inside the access may therefore leave it
+  while the prediction is released inside. Such a result may leave its
+  access body but not its activity; it is never yielded into a stream or
+  captured by another activity. The lease itself still never leaves its
+  scope. This extends D14's first retained-product profile by two steps: a
+  product may leave its access body, and its release no longer waits for the
+  products derived from it, since they keep its leases.
 - **Everything its route depends on.** An access to a participant goes
   through a route, the normal one unless another is named, and covers what
   that route depends on (D19). The lease protects all of it, the use records

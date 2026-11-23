@@ -7,8 +7,12 @@ trainability, not the flow of gradients.
 """
 
 import copy
+import dataclasses
 import re
+import threading
+import time
 from contextlib import contextmanager
+from types import MappingProxyType
 
 import pytest
 import torch
@@ -18,13 +22,14 @@ from library.iro.prepare import Target
 from library.iro.accepted import cold_load
 from library.iro.devices import Host
 from library.iro.diagnostics import Rejection
+from library.iro.operation_contracts import AccessMode, VersionSelection
 from library.iro.verify import CORE_EXECUTION
-from library.runstate.authority import RunAuthority
+from library.runstate.authority import RunAuthority, Unavailable
 from library.runstate.generation import ExecutableRun, Publication
 from library.runstate.owners import Refused, Stale
 from library.training.trainer import Trainer
-from library.iro.seams import CallContext
-from library.training.units import TRAINER, ModuleModes, OptimizationPlan, Outcome, Progress, TrainerOptimization
+from library.iro.seams import CallContext, Use
+from library.training.units import TRAINER, ModuleModes, OptimizationPlan, OptimizationSection, Outcome, Progress, TrainerOptimization
 from library.training.units.standard import installed as standard
 from library.training.words import contract
 from tests.unit.iro.accepted_runs import accepted_run
@@ -302,6 +307,90 @@ class Admits:
     @contextmanager
     def admit(self, publication, current, next):
         yield
+
+
+def republished(optimization: TrainerOptimization) -> Publication:
+    """A publication of the next optimization section, each prepared unit replaced by an equal new one."""
+    current = optimization.section
+    assert current is not None
+    units = MappingProxyType({name: dataclasses.replace(unit) for name, unit in current.units.items()})
+    return Publication(optimization.generations.basis("o"), (OptimizationSection(current.revision + 1, units),))
+
+
+def test_a_publication_changing_a_unit_is_refused_while_its_lease_is_out_and_installs_after() -> None:
+    made = trainer()
+    made.realize()
+    optimization = made.optimization
+    assert optimization is not None and optimization.section is not None
+    before = optimization.section.units["learner"]
+    use = Use("learner", AccessMode.OWNER_UPDATE, VersionSelection.CURRENT_AT_START)
+    (lease,) = optimization.lease([use])
+    lease.updated()
+    with pytest.raises(Refused, match="@learner has a lease out"):
+        optimization.generations.publish(republished(optimization))
+    assert optimization.section.units["learner"] is before
+    lease.release()
+    optimization.generations.publish(republished(optimization))
+    after = optimization.section.units["learner"]
+    assert after is not before
+    (lease,) = optimization.lease([use])
+    assert lease.handle.prepared is after, "a lease taken after the publication reaches the newly prepared unit"
+    assert lease.version.ordinal == 1, "the unit's update count carries over to the newly prepared unit"
+    lease.release()
+
+
+def test_a_prepared_unit_never_changes_under_a_lease_held_on_another_thread() -> None:
+    """Without the GIL: update leases taken on other threads and publications that replace the prepared unit never overlap."""
+    made = trainer()
+    made.realize()
+    optimization = made.optimization
+    assert optimization is not None
+    generations = optimization.generations
+    use = Use("learner", AccessMode.OWNER_UPDATE, VersionSelection.CURRENT_AT_START)
+    mismatches: list[str] = []
+    errors: list[BaseException] = []
+    held: list[int] = []
+    done = threading.Event()
+
+    def hold() -> None:
+        count = 0
+        try:
+            while not done.is_set():
+                try:
+                    (lease,) = optimization.lease([use])
+                except Unavailable:
+                    continue  # another thread holds the unit's one update lease
+                count += 1
+                for _ in range(3):
+                    section = optimization.section
+                    if section is None or section.units["learner"] is not lease.handle.prepared:
+                        mismatches.append("the prepared unit changed under a held lease")
+                    time.sleep(0.00005)
+                lease.release()
+                time.sleep(0.0001)  # a gap in which a publication can install
+        except BaseException as failed:
+            errors.append(failed)
+        held.append(count)
+
+    workers = [threading.Thread(target=hold) for _ in range(3)]
+    for worker in workers:
+        worker.start()
+    published = refused = attempts = 0
+    deadline = time.monotonic() + 10  # a slow machine takes longer; the outcomes do not change
+    while (attempts < 300 or not (published and refused)) and time.monotonic() < deadline:
+        attempts += 1
+        try:
+            generations.publish(republished(optimization))
+            published += 1
+        except Refused:
+            refused += 1
+        time.sleep(0.0001)
+    done.set()
+    for worker in workers:
+        worker.join()
+    assert errors == [] and mismatches == []
+    assert published > 0 and refused > 0 and sum(held) > 0, (published, refused, held)
+    assert not optimization._outstanding and not optimization._writers
 
 
 def test_an_executable_run_never_executes_after_its_generation_moves_on() -> None:

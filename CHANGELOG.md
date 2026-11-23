@@ -10,6 +10,22 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-23]
+
+### Added
+
+- **Tests for Trainer optimization's owner** — a publication that changes a unit is refused while the unit's update lease is out and installs after its release, and leases taken on other threads never see their prepared unit change.
+
+### Changed
+
+- **The retained-result release rule, written down** — the 2026-11-16 fix changed only the runtime and the reference semantics. D16 and the `workflow-composition` spec now state it: a result computed from a retained result keeps every lease that result keeps, so the earlier one may be released first. The verifier no longer refuses a normalized form that releases a kept result first, and still refuses an update between the two releases (`iro-lease-004`). Runtime, reference and verifier tests cover a loss that leaves its access while the prediction is released inside. D14's first retained-product profile points to D16's extension.
+
+### Fixed
+
+- **Grad mode and device residence at a filter** — preparation treated a filter body's keep decision as the filter's result. The deciding call got grad mode when the kept item reached a differentiated input, and the host did not wait for a decision computed on the device, which the filter reads on the host. A filter's yield is no longer treated as a result.
+- **ty on the new system's tests** — three errors from 2026-11-16 and three from section 14; ty now passes on the new system with its tests.
+- **A flaky run-state test** — `test_a_route_never_changes_under_a_lease_held_on_another_thread` failed when its workers finished before the publishing loop started, which then attempted nothing. The workers now lease until the publications are done.
+
 ## [2026-11-16]
 
 ### Added

@@ -302,6 +302,76 @@ def test_an_access_never_waits_for_the_device_while_holding_its_leases() -> None
         assert not coordinator.turns.admissions and all(t.holder is None for t in coordinator.turns.by_device.values())
 
 
+KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict v1, @derive v1, @report v1, @hold v1, @bump v1) {
+  %m = iro.resource @m : participant
+  iro.parallel @both capture(%m) {
+    iro.sequence @trainer capture(%m) {
+      %loss = iro.access %m protected_current {
+      ^(%lease):
+        %pred = iro.call @predict(%lease) -> retained int
+        iro.call @derive(%pred) -> retained int
+      }
+      %r = iro.call @report(%loss) -> int
+    }
+    iro.sequence @writer capture(%m) {
+      %h = iro.call @hold() -> int
+      iro.access %m owner_update {
+      ^(%lease):
+        %b = iro.call @bump(%lease) -> int
+      }
+    }
+  }
+}
+"""
+
+
+def test_a_result_that_leaves_its_access_keeps_the_state_protected_after_what_it_keeps_is_released() -> None:
+    derived = threading.Event()
+
+    holder: list[Coordinator] = []
+
+    def derive(pred):
+        derived.set()
+        return pred + 1
+
+    def report(loss):
+        # The loss is still alive here: hold it until the writer's access waits for @m.
+        deadline = time.monotonic() + 5
+        while not holder[0].kernel._waiters.get(("resource", "m")):
+            assert time.monotonic() < deadline, "the writer's update waits for @m while the loss is alive"
+            time.sleep(0.001)
+        return loss
+
+    def hold():
+        assert derived.wait(5), "the trainer derives its loss before the writer asks for its update"
+        return 0
+
+    def bump(cell):
+        cell.update(cell.value + 1)
+        return cell.value
+
+    installed = {
+        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), name="predict")(
+            lambda lease: lease.value
+        ),
+        "derive": implementation(version=1, inputs=("retained int",), outputs=("retained int",), name="derive")(derive),
+        "report": implementation(version=1, inputs=("retained int",), outputs=("int",), name="report")(report),
+        "hold": implementation(version=1, outputs=("int",), name="hold")(hold),
+        "bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(bump),
+    }
+    outcome, facts, coordinator = execute(
+        KEPT_PAST_ITS_ACCESS, installed, resources={"m": 0}, target=Target(workers=4), before=holder.append
+    )
+    assert outcome.status == "succeeded", outcome.error
+    made = [f.owner for f in facts if f.kind == "product_retained"]
+    released = [i for i, f in enumerate(facts) if f.kind == "product_released"]
+    assert [facts[i].owner for i in released] == made, "the prediction is released inside the access, before the loss"
+    protected = next(i for i, f in enumerate(facts) if f.kind == "lease_released")
+    updated = next(i for i, f in enumerate(facts) if f.kind == "updated")
+    assert released[1] < protected < updated, "the loss keeps the prediction's lease, and the update waits for its release"
+    assert not coordinator.protections.leases and not coordinator.protections.products
+
+
 def test_cancellation_while_queued_for_a_turn_leaves_no_turn_behind() -> None:
     holder: list[Coordinator] = []
 
@@ -432,11 +502,11 @@ def test_checked_mode_fails_a_run_that_loses_a_wake() -> None:
     def losing(self, *keys):
         return original(self, *(key for key in keys if key != ("resource", "m")))
 
-    Kernel.changed = losing  # ty: ignore[invalid-assignment]
+    Kernel.changed = losing
     try:
         outcome, _, coordinator = execute(TWO_WRITERS, installed, resources={"m": 0})
     finally:
-        Kernel.changed = original  # ty: ignore[invalid-assignment]
+        Kernel.changed = original
     assert outcome.status == "failed"
     assert any("without a change on the keys it waits on" in error for error in coordinator.errors), coordinator.errors
 
@@ -555,7 +625,8 @@ class OnDevice:
     """An owner of one participant whose state is device storage: a snapshot lease asks the runtime to copy it."""
 
     def __init__(self, log: list, name: str = "m"):
-        self.box, self.ordinal, self.log, self.name = [0], 0, log, name
+        self.box: list[object] = [0]  # the storage, which a call may move within its use
+        self.ordinal, self.log, self.name = 0, log, name
 
     def resources(self):
         return (self.name,)

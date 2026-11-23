@@ -397,8 +397,8 @@ class _Preparation:
                             pending.extend(user.results)
                     elif isinstance(user, YieldOp):
                         parent = user.parent_op()
-                        if parent is not None and index < len(parent.results):
-                            pending.append(parent.results[index])
+                        if (result := _yielded_result(user, index)) is not None:
+                            pending.append(result)
                         carried = _carried_entry(parent, user, index) if parent is not None else None
                         if carried is not None:
                             pending.append(carried)
@@ -412,7 +412,9 @@ class _Preparation:
         """Whether a result is only used by device work on the same device, or released.
 
         A value a body yields goes on as its operation's result and, from a
-        repeat's body, also as the carried entry of the next iteration.
+        repeat's body, also as the carried entry of the next iteration. A
+        filter's decision and a producer's item are no result: the protocol
+        reads them on the host.
         """
         seen = set() if seen is None else seen
         if value in seen:
@@ -428,7 +430,8 @@ class _Preparation:
                 continue
             if isinstance(user, YieldOp):
                 parent = user.parent_op()
-                if parent is None or use.index >= len(parent.results) or not self._stays(parent.results[use.index], device, seen):
+                result = _yielded_result(user, use.index)
+                if parent is None or result is None or not self._stays(result, device, seen):
                     return False
                 carried = _carried_entry(parent, user, use.index)
                 if carried is not None and not self._stays(carried, device, seen):
@@ -633,6 +636,22 @@ def _activity(op: Operation) -> str:
     return ""
 
 
+def _yielded_result(yielded: YieldOp, index: int) -> SSAValue | None:
+    """The result of its operation that a body's yielded value becomes, if any.
+
+    An access, a choice, a repeat or an activity hands a yielded value out as
+    its result in the same position. A filter yields whether to keep its item,
+    and its result is the item; a producer yields into its stream.
+    """
+    parent = yielded.parent_op()
+    if parent is None or index >= len(parent.results):
+        return None
+    semantics = parent.get_trait(RegionSemantics)
+    if semantics is not None and semantics.protocol == LifecycleProtocol.FILTER:
+        return None
+    return parent.results[index]
+
+
 def _carried_entry(parent: Operation, yielded: YieldOp, index: int) -> SSAValue | None:
     """The entry of a repeat's next iteration that a yielded value becomes, if the body is a repeat's."""
     semantics = parent.get_trait(RegionSemantics)
@@ -682,8 +701,8 @@ def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:
             user = use.operation
             if isinstance(user, ReleaseOp):
                 found.add(path(user))
-            elif isinstance(user, YieldOp) and (parent := user.parent_op()) is not None and use.index < len(parent.results):
-                pending.append(parent.results[use.index])
+            elif isinstance(user, YieldOp) and (result := _yielded_result(user, use.index)) is not None:
+                pending.append(result)
     return tuple(sorted(found))
 
 

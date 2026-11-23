@@ -13,7 +13,7 @@ from library.runstate.authority.records import ParticipantRef
 from library.runstate.generation import Publication
 from library.runstate.owners import Mutation, Refused
 from library.runstate.preparation import PreparationAttempt, PreparationRequest, PreparationResult, PreparedRoute
-from tests.unit.runstate.test_authority import materialized, routed, seeded
+from tests.unit.runstate.test_authority import Box, materialized, routed, seeded
 
 OPTIMIZATION = "trainer optimization"
 
@@ -221,20 +221,30 @@ def test_a_route_never_changes_under_a_lease_held_on_another_thread() -> None:
     (m,) = refs(authority, "m")
     use = Use("m", AccessMode.PROTECTED_CURRENT, VersionSelection.CURRENT_AT_START)
     mismatches: list[str] = []
+    errors: list[BaseException] = []
+    held: list[int] = []
+    done = threading.Event()
 
     def hold() -> None:
-        for _ in range(300):
-            (lease,) = authority.lease([use])
-            for _ in range(3):
-                if authority.section.at("m").routes[NORMAL].callable is not lease.handle:
-                    mismatches.append("the route changed under a held lease")
-            lease.release()
+        count = 0
+        try:
+            # Lease until the publications are done, so the two always overlap however late either thread starts.
+            while not done.is_set() or count < 300:
+                (lease,) = authority.lease([use])
+                count += 1
+                for _ in range(3):
+                    if authority.section.at("m").routes[NORMAL].callable is not lease.handle:
+                        mismatches.append("the route changed under a held lease")
+                lease.release()
+        except BaseException as failed:
+            errors.append(failed)
+        held.append(count)
 
     workers = [threading.Thread(target=hold) for _ in range(4)]
     for worker in workers:
         worker.start()
     published = refused = 0
-    while any(worker.is_alive() for worker in workers):
+    for _ in range(300):
         attempt = PreparationAttempt.derive(authority, PreparationRequest(routes=((m, NORMAL),)))
         if not isinstance(attempt, PreparationAttempt):
             continue
@@ -243,10 +253,11 @@ def test_a_route_never_changes_under_a_lease_held_on_another_thread() -> None:
             published += 1
         else:
             refused += 1
+    done.set()
     for worker in workers:
         worker.join()
-    assert mismatches == []
-    assert published + refused > 0
+    assert errors == [] and mismatches == []
+    assert published + refused > 0 and sum(held) >= 1200
     assert not authority._outstanding
 
 
@@ -261,7 +272,7 @@ def test_in_place_work_before_the_first_route_has_nothing_to_withdraw_and_publis
     authority = materialized()
     attempt = in_place(authority, "m")
     binding = attempt.projection[refs(authority, "m")[0]].binding
-    assert binding is not None
+    assert binding is not None and isinstance(binding.value, Box)
     binding.value.value += 1  # the work changes the bound object in place, as setting trainability does
     result = attempt.publish(PreparationResult(attempt.attempt.reference, prepared_routes(attempt)))
     assert isinstance(result, Published), result

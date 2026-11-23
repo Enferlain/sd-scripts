@@ -13,7 +13,7 @@ import torch
 from library.iro.accepted import cold_load
 from library.iro.devices import Host
 from library.iro.frontend import implementation
-from library.iro.prepare import HOST, DeviceFacts, Target, prepare
+from library.iro.prepare import HOST, DeviceFacts, Prepared, Target, prepare
 from library.iro.runtime import Coordinator, Fact
 from library.iro.seams import CallContext
 from tests.unit.iro.accepted_runs import accepted_run
@@ -301,7 +301,7 @@ def test_a_frozen_participant_leaves_the_device_between_uses_and_comes_back_exac
             moves.append("return")
             return super().fill(storage)
 
-    def run(text: str, tensor: torch.Tensor, device) -> tuple[list[object], object]:
+    def run(text: str, tensor: torch.Tensor, device) -> tuple[list[tuple[object, ...]], Prepared]:
         installed = {
             "encode": implementation(version=1, inputs=("protected_current lease",), outputs=("float",), effects=["device"], name="encode")(
                 lambda weights: float(weights.sum().item())
@@ -317,7 +317,7 @@ def test_a_frozen_participant_leaves_the_device_between_uses_and_comes_back_exac
         )
         outcome = asyncio.run(coordinator.run())
         assert outcome.status == "succeeded", outcome.error
-        encoded = [f.values[1] for f in facts if f.kind == "call_completed" and isinstance(f.values[1][0], float)]
+        encoded = [v for f in facts if f.kind == "call_completed" and isinstance(v := f.values[1], tuple) and isinstance(v[0], float)]
         return encoded, prepared
 
     device = Counting(gpu_index())

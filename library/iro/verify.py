@@ -22,7 +22,7 @@ from xdsl.ir import Block, BlockArgument, Operation, OpResult, SSAValue
 from xdsl.traits import IsTerminator
 
 from library.iro.diagnostics import Problems, Stage
-from library.iro.normalize import Normalized, dependents
+from library.iro.normalize import Normalized
 from library.iro.operation_contracts import (
     AccessMode,
     Admission,
@@ -478,26 +478,14 @@ class Analysis:
             return
         release = positions[releases[0]]
         last = max((positions[self._statement_in(user, block)] for user in others), default=-1)
-        kept_by = [
-            use.operation
-            for dependent in dependents(value, self.retained)
-            for use in dependent.uses
-            if use.operation.has_trait(ProductSemantics) and use.operation.parent_block() is block
-        ]
+        # A result that keeps this one keeps its leases too, so it may outlive this release (D16).
         if last > release:
             self.problem("iro-lease-003", releases[0], "a retained result is used after its release")
-        elif any(positions[other] > release for other in kept_by):
-            self.problem(
-                "iro-lease-003",
-                releases[0],
-                "a retained result is released before a result that keeps it",
-                fix="normalize the accepted form again instead of editing the normalized one",
-            )
         else:
             self.owe(
                 releases[0],
                 ObligationKind.PROTECTED_UNTIL_RELEASE,
-                "the leased state stays protected until this release",
+                "the leased state stays protected until this release, or later while a result that keeps it lives",
                 Evaluator.IR_RUNTIME,
                 names=tuple(sorted(f"@{name}" for name in self.held(value))),
             )
