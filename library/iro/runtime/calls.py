@@ -104,9 +104,15 @@ class CallRunner:
             busy = resources if not step.safe else set()
             annotations = step.group.annotations
             holding = [lease for lease in leased if lease.setup is not None]
-            # A group may hold several leases on one resource, through routes with different setups: its key on the resource covers all.
+            for lease in holding:
+                if lease.setup is not None and (getattr(lease.setup, "changes_storage", False) or hasattr(lease.setup, "undo")):
+                    raise RunFailure(
+                        f"{step.path}: @{lease.setup.name} on @{lease.resource} undoes its change or changes storage, which held setups "
+                        "do not do yet; they come with the evaluation-point swap (D20)"
+                    )
+            # What realization state each resource needs, as its setups say; a group's key on a resource covers all its leases there.
             keys = {
-                r: frozenset((id(lease.setup), annotations) for lease in holding if lease.resource == r)
+                r: frozenset((lease.setup.name, lease.setup.key(annotations)) for lease in holding if lease.resource == r and lease.setup)
                 for r in {h.resource for h in holding}
             }
             alone = set(keys)

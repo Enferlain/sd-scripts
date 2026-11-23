@@ -108,7 +108,7 @@ def implementations(seen: dict[str, list]) -> dict:
         version=1, inputs=("retained prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]}
     )
     def objective(prediction, batch):
-        return torch.nn.functional.mse_loss(prediction, batch[1])
+        return Massive(torch.nn.functional.mse_loss(prediction, batch[1]), float(batch[1].numel()))  # its mean divides by every element
 
     return {"batch": batch, "encode": encode, "predict": predict, "objective": objective, **on_host()}
 
@@ -146,7 +146,7 @@ def by_hand(net: torch.nn.Module, enc: torch.nn.Module) -> torch.nn.Module:
         torch.nn.functional.mse_loss(net(enc(x)), y).backward()
     for parameter in net.parameters():
         assert parameter.grad is not None
-        parameter.grad.mul_(0.5)  # one batch of both: each bare loss has mass 1 (D20)
+        parameter.grad.mul_(0.5)  # one batch of both: the two losses have the same mass (D20)
     torch.nn.utils.clip_grad_norm_(list(net.parameters()), 0.5)
     optimizer.step()
     return net
@@ -172,7 +172,7 @@ def test_one_window_through_the_trainer_matches_the_same_step_by_hand() -> None:
     live = optimization.live("learner")
     assert live.progress == Progress(1, 1) and live.position == 0
     assert live.last is not None and live.last.contributions == 2 and live.last.optimizer == Outcome.RETURNED
-    assert live.last.mass == 2.0, "two bare losses, each of mass 1"
+    assert live.last.mass == 12.0, "two losses, each a mean over six elements"
     assert optimization.current("learner").ordinal == 3, "two contributions and one window end each updated the unit"
     assert made.authority.current("net").ordinal == 1 and made.authority.current("enc").ordinal == 0, (
         "only the trained participant advanced"
@@ -183,7 +183,7 @@ def test_the_unit_s_prepared_run_shows_what_training_derived() -> None:
     made = trainer()
     executable = made.realize()
     text = executable.prepared.text()
-    assert "derived by\n  @training.derive v1" in text
+    assert re.search(r"derived by\n  @training\.derive v1 code \w+\n  @training\.grad_mode v1 code \w+\n", text)
     assert "@predict, @objective (setups @training.grad_mode v1, units learner)" in text
     assert re.search(r": @encode\n", text) and re.search(r": @batch\n", text), (
         "no trained state reaches them, so nothing is derived for them"
@@ -269,12 +269,12 @@ def test_a_value_that_is_not_finite_is_kept_on_the_device_and_read_only_where_th
     live = made.optimization.live("learner")
     for parameter in net.parameters():
         parameter.grad = torch.full_like(parameter, float("nan"))
-    live.position = 1
+    live.position, live._mass = 1, 1.0  # as one contribution of mass 1 leaves it
     first = live.advance((net,))
     assert first.optimizer == Outcome.RETURNED and first.progress == Progress(1, 1), "the window end reads nothing, so it steps"
     for parameter in net.parameters():
         parameter.grad = torch.ones_like(parameter)
-    live.position = 1
+    live.position, live._mass = 1, 1.0  # as one contribution of mass 1 leaves it
     second = live.advance((net,))
     assert second.optimizer == Outcome.RETURNED, "nor does the next: the host reads only where it reads the device already"
     assert live.check() == (
@@ -305,7 +305,7 @@ def test_a_newly_prepared_unit_takes_over_the_record() -> None:
     live = optimization.live("learner")
     for parameter in net.parameters():
         parameter.grad = torch.full_like(parameter, float("nan"))
-    live.position = 1
+    live.position, live._mass = 1, 1.0  # as one contribution of mass 1 leaves it
     live.advance((net,))
     optimization.generations.publish(republished(optimization))
     replaced = optimization.live("learner")
@@ -701,9 +701,26 @@ def test_a_window_of_no_mass_steps_nothing_wrong_and_leaves_the_next_window_its_
     assert made.optimization is not None
     live = made.optimization.live("learner")
     x, y = BATCHES[0]
-    live.contribute(Massive(torch.nn.functional.mse_loss(net(x), y) * 0, 0.0))  # a batch whose loss keeps nothing, such as a fully masked one
-    live.advance((net,))
-    assert live._expected is None, "a window of no mass sets no expectation"
+    before = [p.detach().clone() for p in net.parameters()]
+    live.contribute(
+        Massive(torch.nn.functional.mse_loss(net(x), y) * 0, 0.0)
+    )  # a batch whose loss keeps nothing, such as a fully masked one
+    empty = live.advance((net,))
+    assert empty.optimizer == Outcome.NOT_ATTEMPTED and empty.progress == Progress(0, 0) and empty.mass == 0.0, "nothing to optimize"
+    assert all(torch.equal(a, b) for a, b in zip(before, net.parameters(), strict=True)), "not even weight decay moved anything"
+    assert all(p.grad is None for p in net.parameters()) and live._expected is None, (
+        "its zero gradients are cleared, and it sets no expectation"
+    )
     live.contribute(Massive(torch.nn.functional.mse_loss(net(x), y), 3.0))
     record = live.advance((net,))
-    assert record.mass == 3.0 and all(torch.isfinite(p).all() for p in net.parameters())
+    assert record.mass == 3.0 and record.progress == Progress(1, 1) and all(torch.isfinite(p).all() for p in net.parameters())
+
+
+def test_a_loss_that_declares_no_mass_is_refused() -> None:
+    net, enc = networks()
+    made = trainer(net=net, enc=enc)
+    made.realize()
+    assert made.optimization is not None
+    x, y = BATCHES[0]
+    with pytest.raises(TypeError, match="declares its mass"):
+        made.optimization.live("learner").contribute(torch.nn.functional.mse_loss(net(x), y))

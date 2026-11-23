@@ -18,9 +18,12 @@ update lease hands the standard profile's calls (D17, D20):
 
 A window's gradient is the one a single batch of everything it accumulated
 would give (D20). Each contribution's loss comes with its mass, what the
-loss's own reduction divides by, as an object with ``value`` and ``mass``; a
-bare loss has mass 1. The window divides the sum of loss times mass once, by
-the total mass. A contribution scales its loss by its share of the total the
+loss's own reduction divides by, as an object with ``value`` and ``mass``:
+the loss declares it, and a loss that declares none is refused, never taken
+as one sample's worth. The window divides the sum of loss times mass once,
+by the total mass. A window of no mass has nothing to optimize, so it steps
+nothing; a mass on the device the host cannot see without waiting, so a
+window whose device mass is zero steps with a zero gradient. A contribution scales its loss by its share of the total the
 window expects, the previous window's, so a window like the one before it
 pays one scalar multiply per contribution; a window whose total differs, or
 whose masses are on the device, divides once at its end, inside clipping's
@@ -34,9 +37,11 @@ counts as returned and advanced. Whether a step a backend skips may report
 that it changed nothing is settled with advancement outcomes in that second
 pass.
 
-A gradient that is not finite fails the run (D20). The check reads only what
-a window computes anyway: the gradient norm where clipping measures it, and
-otherwise the window's loss. Each window end folds that value into a record
+A window whose gradient norm, or loss where nothing measures the norm, is not
+finite fails the run (D20). The check reads only what a window computes
+anyway: the gradient norm where clipping measures it, and otherwise the
+window's loss, which misses a gradient that is not finite behind a finite
+loss. Each window end folds that value into a record
 kept on the device, which keeps the first window whose value was not finite,
 and the host reads it only where it reads the device already
 (:meth:`LiveUnit.check`): when the run's work ends (:meth:`LiveUnit.settle`),
@@ -164,8 +169,18 @@ class LiveUnit:
             record = Advancement(prepared.reference, 0, False, None, Outcome.NOT_ATTEMPTED, False, self.progress)
             self.last = record
             return record
-        # What turns the contributions' sum into the window's gradient; a window of no mass has nothing to divide.
-        factor = 1.0 if _number(self._mass) and self._mass == 0 else self._basis / self._mass
+        if _number(self._mass) and self._mass == 0:  # a window of no mass has nothing to optimize
+            prepared.optimizer.zero_grad(set_to_none=True)
+            record = Advancement(prepared.reference, self.position, False, None, Outcome.NOT_ATTEMPTED, True, self.progress, mass=0.0)
+            self.position = 0
+            self.last = record
+            return record
+        # What turns the contributions' sum into the window's gradient; a zero mass on the device gives a zero gradient.
+        if isinstance(self._mass, torch.Tensor):
+            some = self._mass > 0
+            factor = some * (self._basis / torch.where(some, self._mass, torch.ones_like(self._mass)))
+        else:
+            factor = self._basis / self._mass
         exact = _number(factor) and factor == 1.0
         limit = prepared.definition.max_grad_norm
         grads = [p.grad for p in self._parameters if p.grad is not None]
@@ -227,11 +242,13 @@ class LiveUnit:
 
 
 def _split(loss: object) -> tuple[torch.Tensor, float | torch.Tensor]:
-    """A contribution's loss and its mass: an object with ``value`` and ``mass``, or a bare loss of mass 1."""
+    """A contribution's loss and its mass, from an object with ``value`` and ``mass`` (D20)."""
     mass = getattr(loss, "mass", None)
     if mass is None:
-        assert isinstance(loss, torch.Tensor)
-        return loss, 1.0
+        raise TypeError(
+            "a contribution's loss declares its mass, what its reduction divides by, as an object with value and mass; "
+            "a bare loss is not taken as one sample's worth (D20)"
+        )
     if isinstance(mass, torch.Tensor):
         mass = mass.detach()  # a mass divides; no derivative goes into it
     value = getattr(loss, "value", None)  # duck-typed: a loss reports its value and its mass

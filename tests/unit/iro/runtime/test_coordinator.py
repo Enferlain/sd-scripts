@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import re
 import threading
 import time
 from collections.abc import Callable
@@ -1186,6 +1187,9 @@ class HeldRecording:
     def __init__(self, seen: list) -> None:
         self.seen = seen
 
+    def key(self, annotations):
+        return annotations
+
     def hold(self, annotations, handle) -> None:
         self.seen.append(("hold", annotations, handle, threading.current_thread().name))
 
@@ -1239,7 +1243,9 @@ def test_setups_are_entered_on_the_worker_with_the_call_s_annotations_and_handle
     annotated = Derived(annotate({"units": ["w"]}), (Recording(seen),))
     prepared = prepare(cold_load(run, installed=installed), installed, Target(), [Annotating({"predict": annotated})])
     assert "@predict (setups @test.recording v1, units w)" in prepared.text()
-    assert "derived by\n  @test.annotating v1" in prepared.text()
+    assert re.search(r"derived by\n  @test\.annotating v1 code \w+\n  @test\.recording v1 code \w+\n", prepared.text()), (
+        "the deriver and the call setup are pinned by version and code identity"
+    )
     owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=seen)
     coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
     outcome = asyncio.run(coordinator.run())
@@ -1366,3 +1372,73 @@ def test_a_held_setup_holds_until_the_retained_result_releases_the_lease_and_ano
     assert "hold ()" not in order[order.index("hold ('w',)") : order.index("learned")], (
         "the evaluation's setup waits until the loss, which keeps the forward's lease, is released"
     )
+
+
+class SameState(HeldRecording):
+    """A held setup object of its own that needs the same state as another."""
+
+    def key(self, annotations):
+        return "train"
+
+
+def test_separate_setup_objects_that_need_the_same_state_share_a_hold() -> None:
+    """Two routes' setups on one participant: a retained result of the first must not make the second wait on itself (D16)."""
+    events: list = []
+    installed = {
+        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
+            lambda n: 1.0
+        ),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
+    }
+    text = """iro.strategy @s uses(@predict v1, @read v1, @learn v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.sequence @once capture(%net, %w) {
+    %loss = iro.access %net protected_current {
+    ^(%n):
+      iro.call @predict(%n) -> retained loss
+    }
+    %again = iro.access %net protected_current {
+    ^(%n):
+      iro.call @read(%n) -> int
+    }
+    iro.access %w owner_update {
+    ^(%u):
+      iro.call @learn(%u, %loss)
+    }
+  }
+}
+"""
+    run = accepted_run(text, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+
+    @dataclass
+    class TwoRoutes(Memory):
+        granted: int = 0
+
+        def lease(self, uses, reserved=None):
+            granted = Memory.lease(self, uses, reserved)
+            self.granted += 1
+            return [HoldingGrant(lease, SameState(events)) if lease.use.resource == "net" else lease for lease in granted]
+
+    owner = TwoRoutes({"net": 1, "w": 0})
+    coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
+    outcome = asyncio.run(asyncio.wait_for(coordinator.run(), timeout=10))
+    assert outcome.status == "succeeded", outcome.error
+    assert len(events) == 2, "each lease's own setup object applied the state, under one hold"
+
+
+class Undoing(HeldRecording):
+    """A held setup that would undo its change when its hold ends, which the runtime does not realize yet."""
+
+    def undo(self, handle) -> None: ...
+
+
+def test_a_held_setup_that_would_undo_its_change_is_refused_until_the_evaluation_point_swap_brings_it() -> None:
+    installed = differentiating_installed()
+    run = accepted_run(DIFFERENTIATING, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    owner = Holding({"net": 1, "w": 0}, holding=("net",), setup=Undoing([]))
+    outcome = asyncio.run(Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True).run())
+    assert outcome.status == "failed" and "come with the evaluation-point swap" in (outcome.error or "")

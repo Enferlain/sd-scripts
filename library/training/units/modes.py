@@ -51,11 +51,14 @@ class ModuleModes:
     def __init__(self, trains: Mapping[str, tuple[str, ...]]):
         self.trains = dict(trains)
 
+    def key(self, annotations: Annotations) -> frozenset[str]:
+        """The modules a call runs in train mode: calls needing the same share a hold, whichever route's setup they come through."""
+        return frozenset(path for unit in dict(annotations).get(UNITS, ()) for path in self.trains.get(unit, ()))
+
     def hold(self, annotations: Annotations, handle: object) -> None:
         if not isinstance(handle, torch.nn.Module):
             return
-        units = dict(annotations).get(UNITS, ())
-        paths = frozenset(path for unit in units for path in self.trains.get(unit, ()))
+        paths = self.key(annotations)
         whole = "" in paths
         with _lock:
             if handle.training == whole and _applied.get(handle) == paths:

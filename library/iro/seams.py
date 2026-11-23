@@ -25,7 +25,7 @@ composition (D2).
 """
 
 import hashlib
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Hashable, Mapping, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from enum import StrEnum
@@ -200,10 +200,19 @@ class HeldSetup(Protocol):
     The runtime applies it on the calls' worker, inside the device's context,
     with the calls' annotations and the handle the lease gives, and it
     changes only state reachable through that handle, such as a
-    participant's module mode. Calls with the same setup and annotations
-    share its hold; a call that needs another waits until the hold ends,
-    when the last lease of the calls it covered is released, including those
-    a retained result keeps. It changes no version.
+    participant's module mode. :meth:`key` says, for a call's annotations,
+    which realization state the setup needs, as an opaque value the core
+    only compares: calls whose setups need the same state share the hold,
+    whichever setup object each lease carries, and a call that needs another
+    waits until the hold ends, when the last lease of the calls it covered is
+    released, including those a retained result keeps. It changes no version.
+
+    What D16 also gives a held setup is not realized yet: undoing its change
+    when the hold ends, and excluding the resource's other work while it
+    holds a change of storage. They come with D20's evaluation-point swap,
+    their first use. Until then a held setup changes only state the next
+    setup sets again, as module mode does, and the runtime refuses one that
+    declares ``changes_storage`` or an ``undo``.
     """
 
     @property
@@ -211,6 +220,8 @@ class HeldSetup(Protocol):
 
     @property
     def version(self) -> str: ...
+
+    def key(self, annotations: Annotations) -> Hashable: ...
 
     def hold(self, annotations: Annotations, handle: object) -> None: ...
 

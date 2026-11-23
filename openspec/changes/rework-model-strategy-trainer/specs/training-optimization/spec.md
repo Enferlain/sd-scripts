@@ -288,7 +288,7 @@ imply atomic advancement, automatic rollback, or safe replay.
 - **THEN** reporting MUST preserve the known optimizer outcome separately from the scheduler or zeroing failure
 - **AND** missing overall completion MUST NOT erase reached effects or certify gradients safe for reuse
 
-### Requirement: A non-finite gradient fails the run unless an accepted policy skips its step
+### Requirement: A non-finite gradient norm or loss fails the run unless an accepted policy skips its step
 Under the standard profile, a unit's window whose gradient norm or loss is
 not finite SHALL fail the run, unless an accepted policy skips that step
 without applying it and reports the skip. The check SHALL read only values

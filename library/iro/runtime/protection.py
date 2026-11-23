@@ -7,7 +7,7 @@ request for each ``at_request`` use: a snapshot is taken at once, a live
 read reserved, and updates wait while a reservation stands.
 """
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Hashable, Mapping, Sequence
 from dataclasses import dataclass, field
 
 from library.iro.operation_contracts import AccessMode, ResourceUse, VersionSelection
@@ -16,14 +16,14 @@ from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.state import Held, Identity, Product, Protection, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
-from library.iro.seams import Annotations, Capture, Holds, Owner, Use, Version
+from library.iro.seams import Capture, Holds, Owner, Use, Version
 
 
 @dataclass
 class Hold:
     """A held setup in force on a resource: which setup, under which annotations, and the leases of the calls it covers (D16)."""
 
-    key: frozenset[tuple[int, Annotations]]
+    key: frozenset[tuple[str, Hashable]]
     leases: set[int] = field(default_factory=set)
 
 

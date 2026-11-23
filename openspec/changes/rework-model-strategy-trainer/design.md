@@ -5183,11 +5183,14 @@ whose progress they follow, a unit or a producer (D17), and today's `global_step
 progress. A one-unit run reads as before, and a multi-unit run gets no
 invented shared clock.
 
-A gradient that is not finite fails the run rather than let it train on,
-and the check adds no pass over the gradients and no host wait of its own.
-It reads only what a window computes anyway: the gradient norm where
-clipping measures it, and otherwise the window's loss, which catches a loss
-that is not finite but not a non-finite gradient behind a finite one. Each
+A window whose gradient norm is not finite fails the run rather than let it
+train on, and so does one whose loss is not finite where nothing measures
+the norm. The check adds no pass over the gradients and no host wait of its
+own: it reads only what a window computes anyway, the gradient norm where
+clipping measures it, and otherwise the window's loss. Without clipping it is
+therefore a check of the loss, not of the gradient: it misses a gradient
+that is not finite behind a finite loss, as the derivative of a square root
+at zero is. Each
 window end folds that value into a record kept on the device, a small
 operation that keeps the first window whose value was not finite, and the
 host reads the record only where it reads the device already: with the loss

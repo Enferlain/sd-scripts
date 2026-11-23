@@ -148,7 +148,7 @@ class Prepared:
     placed: tuple[tuple[str, str], ...]  # (participant, the one device whose work uses it, where its device storage lives)
     leaving: tuple[tuple[str, str], ...]  # (participant, the device its storage leaves from)
     updated: tuple[str, ...]  # the resources some access updates or grants; the others never change in the run
-    derivers: tuple[tuple[str, str], ...]  # (name, version) of each domain's deriver, in the order they ran (D16)
+    derivers: tuple[ManifestEntry, ...]  # each domain's deriver, in the order they ran, and each call setup derived (D16)
     loaded: Loaded = field(compare=False, repr=False)
 
     def group_of(self, call: str) -> Group:
@@ -160,7 +160,7 @@ class Prepared:
         lines += [f"  @{m.name} v{m.version} digest {m.digest} code {m.code}" for m in self.manifest]
         if self.derivers:
             lines.append("derived by")
-            lines += [f"  @{name} v{version}" for name, version in self.derivers]
+            lines += [f"  @{m.name} v{m.version} code {m.code}" for m in self.derivers]
         lines.append("groups")
         for g in self.groups:
             names = ", ".join(f"@{name}" for name in g.implementations)
@@ -278,11 +278,18 @@ class _Preparation:
             placed,
             leaving,
             tuple(sorted(updated)),
-            tuple((d.name, d.version) for d in self.derivers),
+            self._derivation_manifest(groups),
             self.loaded,
         )
 
     # Derivation (D16).
+
+    def _derivation_manifest(self, groups: tuple[Group, ...]) -> tuple[ManifestEntry, ...]:
+        """Each deriver, then each call setup the groups use, with its version and code identity: their code is pinned as an implementation's is."""
+        setups = {(s.name, s.version): s for g in groups for s in g.setups}
+        entries = [ManifestEntry(d.name, d.version, "", code_identity(d)) for d in self.derivers]
+        entries += [ManifestEntry(name, version, "", code_identity(setups[name, version])) for name, version in sorted(setups)]
+        return tuple(entries)
 
     def _derive(self) -> None:
         """Runs each domain's deriver on the normalized program; what two derive for one call is joined, annotations by key."""
