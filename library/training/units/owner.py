@@ -13,7 +13,7 @@ Its section of each generation holds the prepared units, built off to the
 side by a preparation attempt and published with it (D8). It refuses a
 publication that changes a prepared unit while a lease on that unit is out,
 judges the obligations on its units at a readiness checkpoint, and settles
-the gradient norms its window ends read late once the run's work has ended.
+the record of its windows that were not finite once the run's work has ended.
 """
 
 import threading
@@ -104,7 +104,7 @@ class TrainerOptimization:
             carried = live.progress if live is not None and live.prepared.reference == prepared.reference else None
             replaced, live = live, LiveUnit(prepared, carried)
             if replaced is not None:
-                live.adopt(replaced)  # gradient norms still on their way are checked all the same (D20)
+                live.adopt(replaced)  # the record of windows that were not finite carries over (D20)
             self._live[name] = live
         return live
 
@@ -176,7 +176,7 @@ class TrainerOptimization:
     # The run's end.
 
     def settle(self) -> tuple[str, ...]:
-        """Once the run's work has ended: why its units' last windows were unsound, such as a gradient norm that was not finite (D17, D20)."""
+        """Once the run's work has ended: why its units' last windows were unsound, such as a gradient or loss that was not finite (D17, D20)."""
         with self._lock:
             live = list(self._live.values())
         return tuple(reason for unit in live for reason in unit.settle())

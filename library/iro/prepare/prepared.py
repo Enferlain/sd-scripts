@@ -9,15 +9,14 @@ implementations and a target, and derives the prepared run:
 - **placement**: a call that declares device use goes to the device placed
   for its activity, or the target's device for device work; any other call
   runs on the host;
-- **call contexts** (D15): a call runs with grad mode when one of its
-  results reaches an input some implementation declares it differentiates,
-  through inputs declared differentiable, following values into bodies and
-  out of them; any other use stops the walk. Its derivatives go to the
-  resources the differentiating calls update;
+- **derivation** (D16): each domain's deriver reads the normalized program,
+  asks the core's reachability over the relations it names, and attaches
+  annotations and call setups to calls, or refuses the program; the core
+  gives a call only its random state (D15);
 - **fusion**: consecutive calls in one body, on one device, whose completion
   the device covers, that have no external effects, issue no collectives and
-  establish the same context, form one group, submitted as one piece of
-  straight-line work.
+  have the same context, annotations and setups, form one group, submitted
+  as one piece of straight-line work.
   Every call belongs to exactly one group. Groups are numbered body by
   body in the order the strategy is walked, a body before the bodies nested
   in it;
@@ -50,7 +49,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from xdsl.ir import BlockArgument, Operation, SSAValue
+from xdsl.ir import Operation, SSAValue
 
 from library.iro.accepted import Loaded, check_implementations
 from library.iro.diagnostics import Kind, Problems, Stage
@@ -60,12 +59,18 @@ from library.iro.operation_contracts import (
     RegionSemantics,
     ResourceSemantics,
     path,
-    provider,
     sym_name,
     symbol,
 )
+from library.iro.prepare.derive import Derived, Deriver, Program
+from library.iro.prepare.flow import activity_of as _activity
+from library.iro.prepare.flow import carried_entry as _carried_entry
+from library.iro.prepare.flow import is_activity as _is_activity
+from library.iro.prepare.flow import leased as _leased
+from library.iro.prepare.flow import resource_of as _resource_of
+from library.iro.prepare.flow import yielded_result as _yielded_result
 from library.iro.prepare.target import HOST, Target
-from library.iro.seams import CallContext, Effect, Implementation
+from library.iro.seams import Annotations, CallContext, CallSetup, Effect, Implementation
 from library.iro.words.access import AccessOp, ReleaseOp
 from library.iro.words.calls import CallOp, ConstantOp, YieldOp
 from library.iro.words.data import TakeOp
@@ -73,6 +78,8 @@ from library.iro.words.lifetimes import RequestOp
 from library.iro.words.model import ResourceOp
 from library.iro.words.structure import StrategyOp
 from library.iro.words.types import LeaseType, RetainedType, written
+
+_NOTHING = Derived()
 
 # Activities with lifetimes of their own: an access body's admission never reaches past them.
 _OWN_LIFETIME = frozenset(
@@ -99,10 +106,12 @@ class ManifestEntry:
 class Group:
     """Consecutive calls submitted as one piece of work on one device.
 
-    ``context`` is what the calls establish on entry (D15). ``sync`` says a
-    result of device work is used by something other than device work on
-    the same device, so the work is waited for once before the result is
-    handed on; otherwise later work follows it in the device's own order.
+    ``context`` is the core's own part of what the calls establish on entry
+    (D15); ``annotations`` and ``setups`` are what domains derived for them
+    (D16). ``sync`` says a result of device work is used by something other
+    than device work on the same device, so the work is waited for once
+    before the result is handed on; otherwise later work follows it in the
+    device's own order.
     """
 
     index: int
@@ -112,6 +121,8 @@ class Group:
     implementations: tuple[str, ...]
     context: CallContext = field(default_factory=CallContext)
     sync: bool = False
+    annotations: Annotations = ()
+    setups: tuple[CallSetup, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -137,6 +148,7 @@ class Prepared:
     placed: tuple[tuple[str, str], ...]  # (participant, the one device whose work uses it, where its device storage lives)
     leaving: tuple[tuple[str, str], ...]  # (participant, the device its storage leaves from)
     updated: tuple[str, ...]  # the resources some access updates or grants; the others never change in the run
+    derivers: tuple[tuple[str, str], ...]  # (name, version) of each domain's deriver, in the order they ran (D16)
     loaded: Loaded = field(compare=False, repr=False)
 
     def group_of(self, call: str) -> Group:
@@ -146,15 +158,18 @@ class Prepared:
         """The readable prepared form, saved with the run for inspection."""
         lines = [f"prepared @{self.strategy}", f"  run {self.run}", f"  target {self.target.describe()}", "implementations"]
         lines += [f"  @{m.name} v{m.version} digest {m.digest} code {m.code}" for m in self.manifest]
+        if self.derivers:
+            lines.append("derived by")
+            lines += [f"  @{name} v{version}" for name, version in self.derivers]
         lines.append("groups")
         for g in self.groups:
             names = ", ".join(f"@{name}" for name in g.implementations)
-            settings = [f"grad {g.context.grad}"]
-            settings += [f"derivatives to {', '.join(f'@{r}' for r in g.context.derivatives_to)}"] if g.context.derivatives_to else []
-            settings += [f"precision {g.context.precision}"] if g.context.precision else []
+            settings = [f"setups {', '.join(f'@{s.name} v{s.version}' for s in g.setups)}"] if g.setups else []
+            settings += [f"{key} {', '.join(values)}" for key, values in g.annotations]
             settings += [f"random {g.context.random}"] if g.context.random else []
             settings += ["sync"] if g.sync else []
-            lines.append(f"  {g.index} on {g.device} in {g.activity}: {names} ({', '.join(settings)})")
+            shown = f" ({', '.join(settings)})" if settings else ""
+            lines.append(f"  {g.index} on {g.device} in {g.activity}: {names}{shown}")
             lines += [f"      {call}" for call in g.calls]
         lines.append("admissions")
         for a in self.admissions:
@@ -200,15 +215,17 @@ def code_identity(implementation: object) -> str:
     return hashlib.blake2s(data, digest_size=8).hexdigest()
 
 
-def prepare(loaded: Loaded, installed: Mapping[str, Implementation], target: Target) -> Prepared:
-    """The prepared run, or a rejection naming every problem."""
+def prepare(loaded: Loaded, installed: Mapping[str, Implementation], target: Target, derivers: Sequence[Deriver] = ()) -> Prepared:
+    """The prepared run, or a rejection naming every problem; ``derivers`` are the domains' derivations, run in order (D16)."""
     check_implementations(loaded.run, installed)
-    return _Preparation(loaded, installed, target).derive()
+    return _Preparation(loaded, installed, target, derivers).derive()
 
 
-def load_prepared(saved: str, loaded: Loaded, installed: Mapping[str, Implementation], target: Target) -> Prepared:
-    """A saved prepared form, accepted only when preparing the run again gives exactly the same form."""
-    prepared = prepare(loaded, installed, target)
+def load_prepared(
+    saved: str, loaded: Loaded, installed: Mapping[str, Implementation], target: Target, derivers: Sequence[Deriver] = ()
+) -> Prepared:
+    """A saved prepared form, accepted only when preparing the run again, derivations included, gives exactly the same form."""
+    prepared = prepare(loaded, installed, target, derivers)
     if prepared.text() != saved:
         problems = Problems(Stage.PREPARE)
         problems.add(
@@ -221,11 +238,12 @@ def load_prepared(saved: str, loaded: Loaded, installed: Mapping[str, Implementa
 
 
 class _Preparation:
-    def __init__(self, loaded: Loaded, installed: Mapping[str, Implementation], target: Target):
+    def __init__(self, loaded: Loaded, installed: Mapping[str, Implementation], target: Target, derivers: Sequence[Deriver] = ()):
         self.loaded, self.installed, self.target = loaded, installed, target
+        self.derivers = tuple(derivers)
         self.strategy: StrategyOp = loaded.normalized.strategy
         self.problems = Problems(Stage.PREPARE)
-        self._derived: dict[CallOp, tuple[bool, tuple[str, ...]]] = {}
+        self.derived: dict[CallOp, Derived] = {}
         self.placement = dict(target.placement)
         activities = {sym_name(op) for op in self.strategy.walk() if _is_activity(op)}
         for activity, device in target.placement:
@@ -238,6 +256,7 @@ class _Preparation:
                 )
 
     def derive(self) -> Prepared:
+        self._derive()
         groups = self._groups()
         admissions = self._admissions(groups)
         used = self._used_on()
@@ -259,8 +278,34 @@ class _Preparation:
             placed,
             leaving,
             tuple(sorted(updated)),
+            tuple((d.name, d.version) for d in self.derivers),
             self.loaded,
         )
+
+    # Derivation (D16).
+
+    def _derive(self) -> None:
+        """Runs each domain's deriver on the normalized program; what two derive for one call is joined, annotations by key."""
+
+        def declaration(call: CallOp):
+            return self.installed[symbol(call.implementation)].declaration
+
+        for deriver in self.derivers:
+            program = Program(self.strategy, declaration, self.problems, f"@{deriver.name}")
+            for call, derived in deriver.derive(program).items():
+                earlier = self.derived.get(call, _NOTHING)
+                shared = {key for key, _ in earlier.annotations} & {key for key, _ in derived.annotations}
+                if shared:
+                    self.problems.add(
+                        "iro-prep-014",
+                        f"@{deriver.name} annotates the call with {', '.join(sorted(shared))}, which another deriver already gave it",
+                        path=path(call),
+                        fix="give each domain's annotations keys of its own",
+                    )
+                    continue
+                self.derived[call] = Derived(
+                    tuple(sorted(earlier.annotations + derived.annotations)), earlier.setups + tuple(derived.setups)
+                )
 
     # Matching and placement.
 
@@ -345,7 +390,7 @@ class _Preparation:
                             placed != device
                             or not self._fusable(item)
                             or not self._fusable(current[-1])
-                            or self._differentiated(item) != self._differentiated(current[-1])
+                            or self.derived.get(item, _NOTHING) != self.derived.get(current[-1], _NOTHING)
                         ):
                             self._close(groups, current, device)
                             current = []
@@ -358,8 +403,8 @@ class _Preparation:
         if not calls:
             return
         effects = set().union(*(self.installed[symbol(c.implementation)].declaration.effects for c in calls))
-        grad, derivatives_to = self._differentiated(calls[0])
-        context = CallContext(grad, derivatives_to, random=_activity(calls[0]) if Effect.RANDOMNESS in effects else None)
+        context = CallContext(random=_activity(calls[0]) if Effect.RANDOMNESS in effects else None)
+        derived = self.derived.get(calls[0], _NOTHING)
         sync = device != HOST.name and not all(self._stays(r, device) for c in calls for r in c.results)
         groups.append(
             Group(
@@ -370,43 +415,10 @@ class _Preparation:
                 tuple(symbol(c.implementation) for c in calls),
                 context,
                 sync,
+                derived.annotations,
+                derived.setups,
             )
         )
-
-    def _differentiated(self, call: CallOp) -> tuple[bool, tuple[str, ...]]:
-        """The call's grad mode and the resources its derivatives go to (D15)."""
-        found = self._derived.get(call)
-        if found is None:
-            reached: set[str] = set()
-            grad = False
-            seen: set[SSAValue] = set()
-            pending: list[SSAValue] = list(call.results)
-            while pending:
-                value = pending.pop()
-                if value in seen:
-                    continue
-                seen.add(value)
-                for use in value.uses:
-                    user, index = use.operation, use.index
-                    if isinstance(user, CallOp):
-                        declared = self.installed[symbol(user.implementation)].declaration
-                        if index in declared.differentiates:
-                            grad = True
-                            reached.update(r for p in declared.updates if (r := _leased(user.operands[p])) is not None)
-                        if index in declared.differentiable:
-                            pending.extend(user.results)
-                    elif isinstance(user, YieldOp):
-                        parent = user.parent_op()
-                        if (result := _yielded_result(user, index)) is not None:
-                            pending.append(result)
-                        carried = _carried_entry(parent, user, index) if parent is not None else None
-                        if carried is not None:
-                            pending.append(carried)
-                    elif user.get_trait(RegionSemantics) is not None:
-                        pending.extend(_entries_fed(user, index))
-            found = (grad, tuple(sorted(reached)))
-            self._derived[call] = found
-        return found
 
     def _stays(self, value: SSAValue, device: str, seen: set[SSAValue] | None = None) -> bool:
         """Whether a result is only used by device work on the same device, or released.
@@ -621,72 +633,6 @@ class _Preparation:
                 )
 
 
-def _is_activity(op: Operation) -> bool:
-    """A named operation with a lifecycle protocol: what a target can place."""
-    return sym_name(op) is not None and op.get_trait(RegionSemantics) is not None
-
-
-def _activity(op: Operation) -> str:
-    """The path of the nearest enclosing named activity, or of the strategy."""
-    current = op.parent_op()
-    while current is not None:
-        if _is_activity(current) or isinstance(current, StrategyOp):
-            return path(current)
-        current = current.parent_op()
-    return ""
-
-
-def _yielded_result(yielded: YieldOp, index: int) -> SSAValue | None:
-    """The result of its operation that a body's yielded value becomes, if any.
-
-    An access, a choice, a repeat or an activity hands a yielded value out as
-    its result in the same position. A filter yields whether to keep its item,
-    and its result is the item; a producer yields into its stream.
-    """
-    parent = yielded.parent_op()
-    if parent is None or index >= len(parent.results):
-        return None
-    semantics = parent.get_trait(RegionSemantics)
-    if semantics is not None and semantics.protocol == LifecycleProtocol.FILTER:
-        return None
-    return parent.results[index]
-
-
-def _carried_entry(parent: Operation, yielded: YieldOp, index: int) -> SSAValue | None:
-    """The entry of a repeat's next iteration that a yielded value becomes, if the body is a repeat's."""
-    semantics = parent.get_trait(RegionSemantics)
-    block = yielded.parent_block()
-    if semantics is None or semantics.protocol != LifecycleProtocol.REPEAT or block is None:
-        return None
-    role = semantics.describe(parent).roles[0]
-    captured = {capture.argument for capture in role.captures}
-    supplied = [i for i in range(len(role.entries)) if i not in captured]
-    # The protocol supplies the iteration index, then the carried values in yield order.
-    position = 1 + index
-    return block.args[supplied[position]] if position < len(supplied) else None
-
-
-def _entries_fed(op: Operation, operand: int) -> list[SSAValue]:
-    """The body entries an operand of a structured operation becomes: a capture, a repeat's initial carried value or a choice's present value."""
-    semantics = op.get_trait(RegionSemantics)
-    assert semantics is not None
-    fed: list[SSAValue] = []
-    for role in semantics.describe(op).roles:
-        block = op.regions[role.index].block
-        fed += [block.args[c.argument] for c in role.captures if c.operand == operand]
-        captured = {c.argument for c in role.captures}
-        supplied = [i for i in range(len(role.entries)) if i not in captured]
-        if semantics.protocol == LifecycleProtocol.REPEAT:
-            carried = role.invocation_arguments.count("carried_value")
-            first = len(op.operands) - carried
-            # The protocol supplies the iteration index, then the carried values in order.
-            if operand >= first and 1 + operand - first < len(supplied):
-                fed.append(block.args[supplied[1 + operand - first]])
-        elif semantics.protocol == LifecycleProtocol.CHOICE and operand == 0 and "present_value" in role.invocation_arguments and supplied:
-            fed.append(block.args[supplied[0]])
-    return fed
-
-
 def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:
     """Where retained results are released, following results a body yields out to its operation.
 
@@ -704,24 +650,6 @@ def _releases(results: Sequence[SSAValue]) -> tuple[str, ...]:
             elif isinstance(user, YieldOp) and (result := _yielded_result(user, use.index)) is not None:
                 pending.append(result)
     return tuple(sorted(found))
-
-
-def _resource_of(subject: SSAValue) -> str | None:
-    """The resource an access names, following captures outward."""
-    owner = provider(subject).owner
-    return owner.sym_name.data if isinstance(owner, ResourceOp) else None
-
-
-def _leased(value: SSAValue) -> str | None:
-    """The resource a lease reaches: its access's use at the lease's position."""
-    value = provider(value)
-    if not isinstance(value, BlockArgument):
-        return None
-    access = value.owner.parent_op()
-    if not isinstance(access, AccessOp):
-        return None
-    uses = ResourceSemantics().describe(access).uses
-    return _resource_of(uses[value.index].subject) if value.index < len(uses) else None
 
 
 def _enclosing_access(op: Operation) -> AccessOp | None:

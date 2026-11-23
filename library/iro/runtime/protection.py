@@ -8,6 +8,7 @@ read reserved, and updates wait while a reservation stands.
 """
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field
 
 from library.iro.operation_contracts import AccessMode, ResourceUse, VersionSelection
 from library.iro.prepare.lowered import Call, HandlerInfo, Invoke
@@ -15,7 +16,15 @@ from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.state import Held, Identity, Product, Protection, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
-from library.iro.seams import Capture, Establishes, Owner, Use, Version
+from library.iro.seams import Annotations, Capture, Holds, Owner, Use, Version
+
+
+@dataclass
+class Hold:
+    """A held setup in force on a resource: which setup, under which annotations, and the leases of the calls it covers (D16)."""
+
+    key: frozenset[tuple[int, Annotations]]
+    leases: set[int] = field(default_factory=set)
 
 
 class Protections:
@@ -37,6 +46,7 @@ class Protections:
         self.leases: dict[int, Held] = {}
         self.products: dict[tuple[str, int], Product] = {}
         self.productions: dict[Identity, list[Version]] = {}  # versions observed by leases taken within each production
+        self.holds: dict[str, Hold] = {}  # each resource's live held setup and the leases its hold covers (D16)
         self._next_token = 0
 
     # Taking leases.
@@ -115,7 +125,7 @@ class Protections:
             except RunFailure:
                 granted.release()
                 raise
-        lease = Held(self._next_token, name, mode, granted, granted.version, establishes=isinstance(granted, Establishes))
+        lease = Held(self._next_token, name, mode, granted, granted.version, setup=granted.setup if isinstance(granted, Holds) else None)
         if built is not None:
             lease.built, lease.over_storage = built, True
         self._next_token += 1
@@ -151,6 +161,11 @@ class Protections:
         lease.lease.release()
         del self.leases[lease.token]
         self.kernel.fact(lease.resource, (), "lease_released", lease.version)
+        hold = self.holds.get(lease.resource)
+        if hold is not None:
+            hold.leases.discard(lease.token)
+            if not hold.leases:  # the last lease of the calls it covered is released, retained results' included (D16)
+                del self.holds[lease.resource]
         self.kernel.changed(("resource", lease.resource))
         self.storage.released(lease.resource)
 

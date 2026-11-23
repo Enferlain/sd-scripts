@@ -11,8 +11,8 @@ together or nothing. Inside it, off to the side:
 - each route is prepared from its participant's bound object, by the
   route's preparation where one is given, such as model code turning on
   gradient checkpointing, and otherwise as the bound object itself; and
-  each establishes its participant's module mode for every call through it,
-  from the units that train it (D20);
+  each carries a held setup that sets its participant's module mode for
+  every call through it, from the units that train it (D16, D20);
 - Trainer optimization builds each unit's optimizer on its final
   parameters.
 
@@ -94,7 +94,7 @@ def _prepare(
         )
         try:
             callable_ = preparation(record.binding.value) if preparation else record.binding.value
-            prepared.append(PreparedRoute(participant, route, callable_, modes.establish))
+            prepared.append(PreparedRoute(participant, route, callable_, modes))
         except Exception as failed:
             failures.append(f"@{record.address}'s {route} route could not be prepared: {failed}")
     if failures:

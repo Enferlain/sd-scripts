@@ -14,7 +14,9 @@ from library.iro.accepted import cold_load
 from library.iro.devices import Host, Returned
 from library.iro.frontend import implementation
 from library.iro.prepare import HOST, DeviceFacts, Target, prepare
+from library.iro.prepare.derive import Derived
 from library.iro.runtime import Coordinator, Fact
+from library.iro.seams import annotate
 from tests.unit.iro.accepted_runs import accepted_run
 from tests.unit.iro.runtime.harness import Memory
 
@@ -523,8 +525,8 @@ def test_a_host_call_that_loads_torch_itself_fails_instead_of_running_under_the_
     monkeypatch.delitem(sys.modules, "torch")
     with pytest.raises(RuntimeError, match="loaded Torch itself"), host.context(CallContext(), ()):
         sys.modules["torch"] = torch  # what importing it inside the call does
-    with host.context(CallContext(grad=False), ()):
-        assert not torch.is_grad_enabled(), "once Torch is loaded, the host establishes the call's settings"
+    with torch.enable_grad(), host.context(CallContext(), ()):
+        assert not torch.is_grad_enabled(), "once Torch is loaded, the host establishes the call's baseline"
 
 
 def test_the_coordinator_refuses_adapters_that_differ_from_what_the_run_was_prepared_for() -> None:
@@ -1127,7 +1129,7 @@ def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_resu
     assert seen == [("snapshot", [0])], "the copy waited for the call the retained result's lease reaches the storage through"
 
 
-# A lease that establishes what its state needs for each call (D15).
+# Setups and annotations (D16).
 
 DIFFERENTIATING = """iro.strategy @s uses(@predict v1, @learn v1, @step v1) {
   %net = iro.resource @net : participant
@@ -1150,27 +1152,69 @@ DIFFERENTIATING = """iro.strategy @s uses(@predict v1, @learn v1, @step v1) {
 """
 
 
-@dataclass
-class Establishing(Memory):
-    """A memory owner whose leases on ``establishes`` establish something per call, recording what they were given."""
+@dataclass(frozen=True)
+class Recording:
+    """A call setup that records the annotations and handles it is entered with, and on which thread."""
 
-    establishes: tuple[str, ...] = ()
+    seen: list
+    name: str = "test.recording"
+    version: str = "1"
+
+    def entered(self, annotations, handles):
+        self.seen.append(("entered", annotations, tuple(handles), threading.current_thread().name))
+        return contextlib.nullcontext()
+
+
+@dataclass(frozen=True)
+class Annotating:
+    """A deriver that gives the calls of the named implementations the annotations and setups listed for them."""
+
+    given: dict
+    name: str = "test.annotating"
+    version: str = "1"
+
+    def derive(self, program):
+        return {call: self.given[program.implementation(call)] for call in program.calls() if program.implementation(call) in self.given}
+
+
+class HeldRecording:
+    """A held setup that records what it is applied with."""
+
+    name = "test.held"
+    version = "1"
+
+    def __init__(self, seen: list) -> None:
+        self.seen = seen
+
+    def hold(self, annotations, handle) -> None:
+        self.seen.append(("hold", annotations, handle, threading.current_thread().name))
+
+
+@dataclass
+class Holding(Memory):
+    """A memory owner whose leases on ``holding`` carry one held setup, as a route's realization does."""
+
+    holding: tuple[str, ...] = ()
     seen: list = field(default_factory=list)
+    setup: HeldRecording | None = None
 
     def lease(self, uses, reserved=None):
         granted = super().lease(uses, reserved)
-        return [EstablishingGrant(lease, self.seen) if lease.use.resource in self.establishes else lease for lease in granted]
+        if self.setup is None:
+            self.setup = HeldRecording(self.seen)
+        # As the run authority's routes do: an update runs nothing through a route, so no route setup covers it.
+        return [
+            HoldingGrant(lease, self.setup) if lease.use.resource in self.holding and lease.use.mode != "owner_update" else lease
+            for lease in granted
+        ]
 
 
-class EstablishingGrant:
-    def __init__(self, lease, seen: list) -> None:
-        self._lease, self._seen = lease, seen
+class HoldingGrant:
+    def __init__(self, lease, setup) -> None:
+        self._lease, self.setup = lease, setup
 
     def __getattr__(self, name: str):
         return getattr(self._lease, name)
-
-    def establish(self, call, handle) -> None:
-        self._seen.append((self._lease.use.resource, call.grad, call.derivatives_to, handle, threading.current_thread().name))
 
 
 def differentiating_installed(order: list[str] | None = None, *, safe: bool = False) -> dict:
@@ -1183,25 +1227,28 @@ def differentiating_installed(order: list[str] | None = None, *, safe: bool = Fa
         "predict": implementation(
             version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict", concurrency_safe=safe
         )(predict),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn", differentiates=(1,))(
-            lambda u, loss: None
-        ),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
         "step": implementation(version=1, inputs=("owner_update lease", "owner_update lease"), name="step")(lambda u, m: None),
     }
 
 
-def test_a_lease_establishes_for_each_call_with_the_call_s_context_and_handle_on_the_worker() -> None:
+def test_setups_are_entered_on_the_worker_with_the_call_s_annotations_and_handles() -> None:
     installed = differentiating_installed()
     run = accepted_run(DIFFERENTIATING, installed=installed)
-    prepared = prepare(cold_load(run, installed=installed), installed, Target())
-    owner = Establishing({"net": 1, "w": 0}, establishes=("net",))
+    seen: list = []
+    annotated = Derived(annotate({"units": ["w"]}), (Recording(seen),))
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(), [Annotating({"predict": annotated})])
+    assert "@predict (setups @test.recording v1, units w)" in prepared.text()
+    assert "derived by\n  @test.annotating v1" in prepared.text()
+    owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=seen)
     coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
     outcome = asyncio.run(coordinator.run())
     assert outcome.status == "succeeded", outcome.error
-    assert [(resource, grad, to) for resource, grad, to, _, _ in owner.seen] == [("net", True, ("w",)), ("net", False, ())], (
-        "the forward's derivatives go to @w; the update after it differentiates nothing"
+    assert [(kind, annotations) for kind, annotations, *_ in seen] == [("entered", (("units", ("w",)),)), ("hold", (("units", ("w",)),))], (
+        "the forward enters its call setup and applies its lease's held setup under its annotations; the update's lease carries none"
     )
-    assert all(thread != threading.main_thread().name for *_, thread in owner.seen), "it runs on the worker, as the calls do"
+    assert seen[0][2] == (seen[1][2],), "a setup receives the handles the calls receive"
+    assert all(thread != threading.main_thread().name for *_, thread in seen), "it runs on the worker, as the calls do"
 
 
 TWO_READERS = """iro.strategy @s uses(@read v1) {
@@ -1225,21 +1272,22 @@ TWO_READERS = """iro.strategy @s uses(@read v1) {
 
 
 @dataclass
-class EstablishingOnce(Memory):
-    """A memory owner whose first lease establishes per-call state and whose others do not."""
+class HoldingOnce(Holding):
+    """A memory owner whose first lease carries a held setup and whose others do not."""
 
-    establish: bool = True
-    seen: list = field(default_factory=list)
+    hold: bool = True
     granted: int = 0
 
     def lease(self, uses, reserved=None):
-        granted = super().lease(uses, reserved)
+        granted = Memory.lease(self, uses, reserved)
         self.granted += 1
-        return [EstablishingGrant(granted[0], self.seen)] if self.establish and self.granted == 1 else granted
+        if self.setup is None:
+            self.setup = HeldRecording(self.seen)
+        return [HoldingGrant(granted[0], self.setup)] if self.hold and self.granted == 1 else granted
 
 
-@pytest.mark.parametrize("establish", [True, False])
-def test_a_group_that_establishes_runs_alone_even_beside_calls_safe_for_concurrent_use(establish: bool) -> None:
+@pytest.mark.parametrize("hold", [True, False])
+def test_a_group_that_applies_a_held_setup_runs_alone_even_beside_calls_safe_for_concurrent_use(hold: bool) -> None:
     spans: list[tuple[float, float]] = []
     both = threading.Barrier(2, timeout=0.5)
 
@@ -1255,10 +1303,66 @@ def test_a_group_that_establishes_runs_alone_even_beside_calls_safe_for_concurre
     }
     run = accepted_run(TWO_READERS, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4))
-    owner = EstablishingOnce({"net": 1}, establish=establish)
+    owner = HoldingOnce({"net": 1}, hold=hold)
     coordinator = Coordinator(prepared, {"net": owner}, installed, {"host": Host()}, checked=True)
     assert asyncio.run(coordinator.run()).status == "succeeded"
     (first, second) = sorted(spans)
     overlapped = second[0] < first[1]
-    assert overlapped is not establish, "a group whose lease establishes runs alone; two safe calls otherwise run together"
-    assert len(owner.seen) == (1 if establish else 0)
+    assert overlapped is not hold, "a group applying a held setup runs alone; two safe calls otherwise run together"
+    assert len(owner.seen) == (1 if hold else 0)
+
+
+HELD_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict v1, @learn v1, @read v1) {
+  %net = iro.resource @net : participant
+  %w = iro.resource @w
+  iro.parallel @both capture(%net, %w) {
+    iro.sequence @training capture(%net, %w) {
+      %loss = iro.access %net protected_current {
+      ^(%n):
+        iro.call @predict(%n) -> retained loss
+      }
+      iro.access %w owner_update {
+      ^(%u):
+        iro.call @learn(%u, %loss)
+      }
+    }
+    iro.sequence @evaluation capture(%net) {
+      iro.access %net protected_current {
+      ^(%n):
+        %b = iro.call @read(%n) -> int
+      }
+    }
+  }
+}
+"""
+
+
+def test_a_held_setup_holds_until_the_retained_result_releases_the_lease_and_another_waits() -> None:
+    events: list = []
+
+    def learn(u, loss):
+        time.sleep(0.05)  # gives the other activity every chance to apply its setup in between
+        events.append("learned")
+
+    def read(n):
+        events.append("read")
+        return 1
+
+    installed = {
+        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
+            lambda n: events.append("predicted") or 1.0
+        ),
+        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(learn),
+        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read),
+    }
+    run = accepted_run(HELD_PAST_ITS_ACCESS, installed=installed)
+    deriver = Annotating({"predict": Derived(annotate({"units": ["w"]}))})
+    prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4), [deriver])
+    owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=events)
+    coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
+    assert asyncio.run(coordinator.run()).status == "succeeded"
+    order = [event if isinstance(event, str) else f"hold {dict(event[1]).get('units', ())}" for event in events]
+    assert order.count("read") == 1 and order.count("learned") == 1
+    assert "hold ()" not in order[order.index("hold ('w',)") : order.index("learned")], (
+        "the evaluation's setup waits until the loss, which keeps the forward's lease, is released"
+    )

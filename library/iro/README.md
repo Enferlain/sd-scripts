@@ -62,12 +62,12 @@ a fix. Codes by area:
 | `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report. Each obligation names its kind and its evaluator: the run authority for participants, a resource's own owner for its other resources, or the IR runtime for lifecycles; a lease obligation carries the use its owner must realize |
 | `diagnostics.py` | The shared diagnostic |
 | `accepted.py` | The accepted run, its authority seed (each participant with its materializer and the settings the strategy gives it) and cold loading |
-| `seams.py` | The owner, implementation and device interfaces the runtime calls, an implementation's `Declaration` (with the inputs it differentiates and is differentiable through), and `Establishes`, a lease that sets up what its state needs for each call |
+| `seams.py` | The owner, implementation and device interfaces the runtime calls; an implementation's `Declaration`, with the named relations its inputs propagate into its outputs; annotations, and the call and held setups that establish what calls need beyond the core's own context (D16) |
 | `frontend/` | The `iro` namespace authors import; so far the `@implementation` declaration |
 | `reference/` | The reference semantics and declared stand-ins |
 | `runtime/` | The coordinator and its control state, one component per concern: `kernel.py` (facts, failure, waits and wakes, tasks, the one handoff to workers), `turns.py` (device turns and admissions), `storage.py` (snapshot copies and leaving the device), `protection.py` (leases, protection, retained results, reservations), `requests.py` (requests, handlers, stops), `flow.py` (streams, claims, producers, filters), `calls.py` (the call path); `coordinator.py` runs the strategy: lifecycles, bodies and the structural protocols |
 | `devices/` | Device adapters: the host, and one per PyTorch backend on the shared base in `pytorch.py` (per-call settings, one stream per device, completion as events); so far `cuda.py`. Each reports what it offers, the target records it, and the coordinator refuses adapters that differ from what the run was prepared for. Other backends are untested until someone runs them |
-| `prepare/` | Preparation for a `Target`: matching, placement, fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form; lowering to the form the coordinator executes |
+| `prepare/` | Preparation for a `Target`: matching, placement, the domains' derivations (`derive.py`) over the core's reachability (`flow.py`), fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form; lowering to the form the coordinator executes |
 
 ## Pins
 
@@ -86,17 +86,21 @@ declaration that changes under a recorded version fails it, and
 
 ## Preparation
 
-`prepare.prepare(loaded, installed, target)` derives the prepared run. A
-call that declares device use goes to its activity's placed device or the
-target's device for device work; other calls run on the host. A call runs
-with grad mode when one of its results reaches an input an implementation
-declares it differentiates, through inputs declared differentiable, and its
-context names where those derivatives go: the resources the differentiating
-calls update. The IR gives that no further meaning; what a domain makes of
-it, such as module mode, its leases establish (D15). Consecutive calls in
-one body on one device, whose completion the device covers, that have no
-external effects or collectives and establish the same context, form one
-group, submitted as one piece of work. Each access body with device work is one device admission,
+`prepare.prepare(loaded, installed, target, derivers)` derives the prepared
+run. A call that declares device use goes to its activity's placed device or
+the target's device for device work; other calls run on the host. The core
+knows a concept only if it needs it for its own promises (D16), so grad
+mode, precision and module mode are not its own. Each domain's deriver reads
+the normalized program, asks the core's reachability over relations it names
+(`prepare.flow`: implementations declare which inputs propagate a relation
+into which outputs, and a path follows those edges and the core's own value
+flow, streams and requests included, never cut by a construct of the core),
+and attaches annotations and call setups to calls, or refuses the program;
+training derives grad mode and the units each call serves this way.
+Consecutive calls in one body on one device, whose completion the device
+covers, that have no external effects or collectives and have the same
+context, annotations and setups, form one group, submitted as one piece of
+work. Each access body with device work is one device admission,
 from after its takes to the release of the last retained result it produced
 (D15). The printout is saved for inspection only: `load_prepared` prepares
 again and refuses a saved form that differs, so a forged fusion or admission
@@ -109,11 +113,14 @@ executes a prepared run on one event loop and reports the same owner-visible
 facts as the reference semantics, to the observer as they happen. Selected
 calls run on worker threads through the implementation and device seams; a
 fused group is one submission, and the coordinator waits for completion
-without blocking. A device sets each call's grad mode, precision and random
-state. A lease that establishes what its state needs for each call
-(`seams.Establishes`) does so on the worker before the group's calls, and
-the group then uses that resource alone, even when its calls are declared
-safe for concurrent use. A retained result keeps its leases until its
+without blocking. A device establishes each call's random state from a
+neutral baseline, grad mode and autocast off, and the group's call setups,
+entered on the worker inside it, turn on what a domain decided. A lease its
+owner attached a held setup to, as a route's realization does, has it
+applied on the worker under the group's annotations, the group using that
+resource alone meanwhile; the hold lasts until the last lease it covered is
+released, retained results' included, and a group that needs another setup
+on the resource waits until then (D16). A retained result keeps its leases until its
 release, and a result computed from it keeps them too, so the earlier one may
 be released first, as a prediction is inside the access a loss leaves (D16).
 

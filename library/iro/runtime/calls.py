@@ -4,24 +4,32 @@ A group resolves its leases and retained results, waits for what it must
 follow, and runs its calls in order inside the device's context on a worker
 thread. Its results become slot values, owner updates and retained results.
 Calls not declared safe for concurrent use run one at a time per
-participant. A lease that establishes what its state needs for each call
-(D15) does so on the worker thread before the group's calls, and the group
-then uses its resource alone, since what it establishes is state other calls
-would see. A group that reaches a participant's device storage waits
-until the snapshot copies already asked for of it are queued (D15).
+participant. A group waits until the snapshot copies already asked for of a
+participant's device storage it reaches are queued (D15).
+
+On the worker, inside the device's context, the group's call setups are
+entered with its annotations and the handles its calls receive, and left
+when the calls return (D16). A lease its owner attached a held setup to, as
+a route's realization does, has the setup applied there too, under the
+group's annotations, and the group uses that resource alone while it
+applies it. The setup's hold on the resource lasts until the last lease of
+the calls it covered is released, retained results' included: groups with
+the same setup and annotations share it, and a group that needs another
+waits until it ends.
 """
 
 from collections import Counter, defaultdict
 from collections.abc import Mapping
+from contextlib import ExitStack
 from typing import Any
 
 from library.iro.prepare.lowered import Call, Calls
 from library.iro.runtime.kernel import Kernel
-from library.iro.runtime.protection import Protections
+from library.iro.runtime.protection import Hold, Protections
 from library.iro.runtime.state import Held, Identity, Product, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
-from library.iro.seams import CallContext, Completion, Device, Implementation
+from library.iro.seams import Annotations, CallContext, CallSetup, Completion, Device, HeldSetup, Implementation
 
 
 class CallRunner:
@@ -40,7 +48,7 @@ class CallRunner:
         self.protections, self.storage, self.turns = protections, storage, turns
         self.request_of = request_of  # the request each invocation handles, which its calls' facts carry
         self.busy: set[str] = set()  # resources a group not declared safe for concurrent use is running on
-        self.alone: set[str] = set()  # resources a group whose lease establishes per-call state is running on, alone
+        self.alone: set[str] = set()  # resources a group applying its lease's held setup is running on, alone
         self.running_on: Counter[str] = Counter()  # how many running groups use each resource
         self.call_counts: dict[str, int] = defaultdict(int)
 
@@ -94,8 +102,15 @@ class CallRunner:
             touching = storage.touching(leased, borrowed)
             resources = {lease.resource for lease in leased}
             busy = resources if not step.safe else set()
-            establishing = [(lease.lease, lease.handle) for lease in leased if lease.establishes]
-            alone = {lease.resource for lease in leased if lease.establishes}
+            annotations = step.group.annotations
+            holding = [lease for lease in leased if lease.setup is not None]
+            # A group may hold several leases on one resource, through routes with different setups: its key on the resource covers all.
+            keys = {
+                r: frozenset((id(lease.setup), annotations) for lease in holding if lease.resource == r)
+                for r in {h.resource for h in holding}
+            }
+            alone = set(keys)
+            holds = self.protections.holds
             if busy or alone or (resources & self.alone) or (touching and storage.capturing):
                 capturing = storage.capturing
                 await kernel.until(
@@ -106,11 +121,16 @@ class CallRunner:
                             or alone & self.running_on.keys()
                             or resources & self.alone
                             or any(r in capturing for r in touching)
+                            or any(r in holds and holds[r].key != key for r, key in keys.items())
                         )
                     ),
                     *(("resource", r) for r in resources.union(touching)),
                 )
                 kernel.admission_point()
+            for lease in holding:  # the hold lasts until the last lease it covers is released (D16)
+                holds.setdefault(lease.resource, Hold(keys[lease.resource])).leases.add(lease.token)
+            held: list[tuple[HeldSetup, object]] = [(lease.setup, lease.handle) for lease in holding if lease.setup is not None]
+            handles = [lease.handle for lease in leased]
             protection = self.protections.by_resource
             after = [c for lease in leased for c in protection[lease.resource].pending]
             after += [p.completion for p in borrowed if p.completion is not None]
@@ -119,7 +139,9 @@ class CallRunner:
             self.running_on.update(resources)
             storage.calls_started(touching)
             try:
-                reports, completions = await kernel.submit(run_group, device, step.group.context, after, establishing, program, step.wait)
+                reports, completions = await kernel.submit(
+                    run_group, device, step.group.context, after, step.group.setups, annotations, handles, held, program, step.wait
+                )
             finally:
                 self.busy -= busy
                 self.alone -= alone
@@ -201,15 +223,20 @@ def run_group(
     device: Device,
     context: CallContext,
     after: list[Completion],
-    establishing: list[tuple[Any, object]],
+    setups: tuple[CallSetup, ...],
+    annotations: Annotations,
+    handles: list[object],
+    held: list[tuple[HeldSetup, object]],
     program: list[tuple[Implementation, list[object], tuple[tuple[int, int, int], ...], int]],
     wait: bool,
 ) -> tuple[list[Any], list[Completion | None]]:
     """Runs a group's calls in order inside the device's context for them, on a worker thread.
 
-    First each lease that establishes what its state needs for a call does
-    so, with the group's context and the handle its calls receive; one that
-    fails fails the group's first call.
+    Inside the device's context, the group's call setups are entered with its
+    annotations and the handles its calls receive, and left when the calls
+    return; then each held setup its leases carry is applied under the same
+    annotations to the handle the lease gives (D16). A setup that fails to
+    enter or apply fails the group's first call.
 
     Each call's report is its results or what it raised, beside its
     completion; the group stops at the first call that fails or gives the
@@ -223,9 +250,11 @@ def run_group(
     reports: list[Any] = []
     completions: list[Completion | None] = []
     try:
-        with device.context(context, after):
-            for lease, handle in establishing:
-                lease.establish(context, handle)
+        with device.context(context, after), ExitStack() as entered:
+            for setup in setups:
+                entered.enter_context(setup.entered(annotations, handles))
+            for held_setup, handle in held:
+                held_setup.hold(annotations, handle)
             for implementation, given, passed, count in program:
                 if passed:
                     given = list(given)

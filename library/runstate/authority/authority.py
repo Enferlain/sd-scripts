@@ -34,9 +34,9 @@ from types import MappingProxyType
 from library.iro.accepted import AcceptedRun
 from library.iro.operation_contracts import AccessMode
 from library.iro import seams
-from library.iro.seams import CallContext, Use
+from library.iro.seams import HeldSetup, Use
 from library.iro.verify import UPDATE_MODES, Checkpoint, ObligationKind, Obligations
-from library.runstate.authority.records import NORMAL, Binding, Establish, Lifecycle, Participant, ParticipantRef, Route
+from library.runstate.authority.records import NORMAL, Binding, Lifecycle, Participant, ParticipantRef, Route
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import (
     Declaration,
@@ -74,19 +74,18 @@ class AuthorityLease:
         return self._authority._advance(self)
 
 
-class EstablishingLease(AuthorityLease):
-    """A lease through a route that establishes what the participant needs for each call (D15)."""
+class HoldingLease(AuthorityLease):
+    """A lease through a route with a held setup, which the runtime holds for the calls that use the lease (D16)."""
 
-    __slots__ = ("_establish",)
+    __slots__ = ("_setup",)
 
-    def __init__(
-        self, authority: RunAuthority, reference: ParticipantRef, use: Use, version: Version, handle: object, establish: Establish
-    ):
+    def __init__(self, authority: RunAuthority, reference: ParticipantRef, use: Use, version: Version, handle: object, setup: HeldSetup):
         super().__init__(authority, reference, use, version, handle)
-        self._establish = establish
+        self._setup = setup
 
-    def establish(self, call: CallContext, handle: object) -> None:
-        self._establish(call, handle)
+    @property
+    def setup(self) -> HeldSetup:
+        return self._setup
 
 
 class RunAuthority:
@@ -279,7 +278,7 @@ class RunAuthority:
             existing.revision + 1 if existing is not None else 1,
             Dependencies(exact=((AUTHORITY, str(participant.reference), evidence.binding),)),
             evidence,
-            transition.establish,
+            transition.setup,
         )
         routes = {**participant.routes, transition.route: route}
         participants[participant.reference] = replace(participant, routes=MappingProxyType(routes))
@@ -437,7 +436,7 @@ class RunAuthority:
             raise Unavailable(f"{name} is used through a grant; grants come with the second pass of section 16")
         if use.view is not None:
             raise Unavailable(f"{name} is used as its {use.view} view; views come with the second pass of section 15")
-        establish = None  # an update runs nothing through a route, so it establishes nothing per call
+        setup = None  # an update runs nothing through a route, so no route setup covers it
         if use.mode == AccessMode.OWNER_UPDATE:
             if reference in self._pinned or reference in pinning:
                 raise Unavailable(
@@ -456,12 +455,12 @@ class RunAuthority:
                         "which comes with the model definitions (section 18)"
                     )
                 pinning.add(reference)
-            handle, establish = route.callable, route.establish
+            handle, setup = route.callable, route.setup
         version = Version(use.resource, reference, binding.revision, numeric)
-        if establish is None:
+        if setup is None:
             lease = AuthorityLease(self, reference, use, version, handle)
         else:
-            lease = EstablishingLease(self, reference, use, version, handle, establish)
+            lease = HoldingLease(self, reference, use, version, handle, setup)
         if use.mode == AccessMode.OWNER_UPDATE:
             self._writers[reference] = lease
         self._outstanding[reference] = self._outstanding.get(reference, 0) + 1
@@ -522,4 +521,4 @@ def _invalidated(section: AuthoritySection) -> tuple[str, ...]:
     return tuple(stale)
 
 
-__all__ = ["AuthorityLease", "EstablishingLease", "RunAuthority", "Unavailable"]
+__all__ = ["AuthorityLease", "HoldingLease", "RunAuthority", "Unavailable"]

@@ -131,22 +131,22 @@ def test_a_host_read_after_device_work_waits_for_its_completion_not_for_python_t
     assert not prepared.group_of(prepared.groups[0].calls[0]).sync, "the update's result stays on the device: no wait"
 
 
-def test_a_call_establishes_its_settings_on_the_device() -> None:
+def test_a_call_starts_from_a_neutral_baseline_and_its_own_random_state_on_the_device() -> None:
     from library.iro.devices.cuda import Cuda
 
     device = Cuda(gpu_index(), seed=5)
     seen = {}
-    with torch.enable_grad():
-        with device.context(CallContext(grad=False, precision="bfloat16", random="a"), ()):
+    with torch.enable_grad(), torch.autocast("cuda", dtype=torch.bfloat16):
+        with device.context(CallContext(random="a"), ()):
             seen["grad"] = torch.is_grad_enabled()
             seen["dtype"] = (torch.ones(4, 4, device=device.device) @ torch.ones(4, 4, device=device.device)).dtype
             first = torch.rand(4, device=device.device)
-        assert torch.is_grad_enabled(), "the previous grad mode is restored"
+        assert torch.is_grad_enabled() and torch.is_autocast_enabled("cuda"), "the thread's previous settings are restored"
     with device.context(CallContext(random="b"), ()):
         other = torch.rand(4, device=device.device)
     with device.context(CallContext(random="a"), ()):
         second = torch.rand(4, device=device.device)
-    assert seen == {"grad": False, "dtype": torch.bfloat16}
+    assert seen == {"grad": False, "dtype": torch.float32}, "a call never inherits the thread's grad mode or autocast (D16)"
     fresh = Cuda(gpu_index(), seed=5)
     with fresh.context(CallContext(random="a"), ()):
         again = torch.rand(4, device=device.device)

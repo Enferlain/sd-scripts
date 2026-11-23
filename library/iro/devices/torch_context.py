@@ -1,10 +1,13 @@
-"""The Torch side of a call's context: grad mode, precision and random state (D15).
+"""The Torch side of a call's context: a neutral baseline and the random state (D15, D16).
 
 Device adapters use it for calls that run Torch code. It is imported only by
 an adapter that a prepared target selects, so the runtime core never loads
-Torch. A call's settings are established on entry and the previous ones
-restored on exit, so a worker thread never carries one call's state into the
-next.
+Torch. A call never inherits a thread's ambient state: on entry grad mode is
+off and any autocast the thread has on is turned off, and the call's setups,
+entered inside this context, turn on what a domain or an owner decided for
+it, such as grad mode for the calls training differentiates or autocast for
+a route's mixed precision (D16). The previous settings are restored on exit,
+so a worker thread never carries one call's state into the next.
 
 Random state is kept per owner: each owner that draws randomness has its own
 generator state per device, swapped in for its call and saved back after.
@@ -14,8 +17,8 @@ host, where calls run side by side, it may draw from another owner's state
 (D18 qualifies declarations).
 
 Module mode is not set here: it is the state of a participant's modules, not
-of the thread, and the owner of the lease a call uses establishes it for the
-call where it matters (D15, D20).
+of the thread, and the held setup of the route a call's lease goes through
+sets it (D16, D20).
 """
 
 import threading
@@ -72,11 +75,11 @@ def _stable_hash(name: str) -> int:
 
 @contextmanager
 def entered(call: CallContext, device: torch.device, random: RandomStates) -> Generator[None]:
-    """Establishes the call's settings for Torch code, grad mode, precision and random state, and restores the previous ones."""
+    """Establishes a neutral baseline and the call's random state for Torch code, and restores the previous settings."""
     with ExitStack() as stack:
-        stack.enter_context(torch.set_grad_enabled(call.grad))
-        if call.precision is not None:
-            stack.enter_context(torch.autocast(device.type, dtype=getattr(torch, call.precision)))
+        stack.enter_context(torch.set_grad_enabled(False))
+        if torch.is_autocast_enabled(device.type):
+            stack.enter_context(torch.autocast(device.type, enabled=False))
         if call.random is not None:
             stack.enter_context(random.drawing(call.random))
         yield

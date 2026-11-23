@@ -13,6 +13,10 @@ the interfaces here, which a domain fills in and the IR runtime calls:
 - a **device** supplies the execution context and physical completion for
   one backend, and what it knows of the device's capacity.
 
+Setups establish what calls need beyond the core's own context: a domain
+attaches call setups and annotations to calls at preparation, and an owner
+attaches a held setup to the leases it grants (D16).
+
 The IR never holds live objects (D15). It refers to state by resource name
 and observes versions, which access and admission compare. The run state
 imports the IR system, never the reverse, so its owners satisfy these
@@ -152,21 +156,71 @@ class HoldsDeviceStorage(Protocol):
         ...
 
 
-@runtime_checkable
-class Establishes(Protocol):
-    """A lease that establishes what its state needs for each call that uses it (D15, D16).
+# Setups and annotations (D16).
 
-    The runtime calls :meth:`establish` on the worker thread, inside the
-    device's context, before the calls of each group that uses the lease,
-    with the group's context and the handle its calls receive. What it
-    establishes is the owner's business, such as the module mode a
-    participant's route sets from what the call's derivatives update. A
-    group that uses such a lease uses its resource alone, even when its calls
-    are declared safe for concurrent use, since what it establishes is state
-    other calls on the resource would see.
+Annotations = tuple[tuple[str, tuple[str, ...]], ...]
+"""Values a domain attaches to calls at preparation, each a key with written values, sorted by key (D16).
+
+They are written data, such as unit names, references and module paths, never
+live objects. The core carries them to the calls' setups unread and compares
+them only for equality.
+"""
+
+
+def annotate(values: Mapping[str, Sequence[str]]) -> Annotations:
+    """Annotations in their one written order: keys sorted, each key's values sorted and without repeats."""
+    return tuple((key, tuple(sorted(set(values[key])))) for key in sorted(values) if values[key])
+
+
+@runtime_checkable
+class CallSetup(Protocol):
+    """What calls need beyond the core's own context that lasts only while they run (D16).
+
+    The runtime enters it on the calls' worker, inside the device's context,
+    with the calls' annotations and the handles they receive, and leaves it
+    when they return, however they end. It changes only its worker's own
+    context, such as PyTorch's grad mode or autocast, both kept per thread;
+    a switch the whole process shares can never be a call setup. Its code is
+    pinned by name and version, as an implementation's is.
     """
 
-    def establish(self, call: CallContext, handle: object) -> None: ...
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def version(self) -> str: ...
+
+    def entered(self, annotations: Annotations, handles: Sequence[object]) -> AbstractContextManager[object]: ...
+
+
+@runtime_checkable
+class HeldSetup(Protocol):
+    """What calls need of a resource's realization that later work relies on, held while their leases are out (D16).
+
+    The runtime applies it on the calls' worker, inside the device's context,
+    with the calls' annotations and the handle the lease gives, and it
+    changes only state reachable through that handle, such as a
+    participant's module mode. Calls with the same setup and annotations
+    share its hold; a call that needs another waits until the hold ends,
+    when the last lease of the calls it covered is released, including those
+    a retained result keeps. It changes no version.
+    """
+
+    @property
+    def name(self) -> str: ...
+
+    @property
+    def version(self) -> str: ...
+
+    def hold(self, annotations: Annotations, handle: object) -> None: ...
+
+
+@runtime_checkable
+class Holds(Protocol):
+    """A lease its owner attached a held setup to, as a route's realization does (D16)."""
+
+    @property
+    def setup(self) -> HeldSetup: ...
 
 
 # Implementations.
@@ -198,12 +252,12 @@ class Declaration:
     implementation returns a completion of its own (``own``), as one that
     uses streams of its own does.
 
-    ``differentiates`` and ``differentiable`` are input positions, from which
-    preparation derives each call's grad mode (D15). ``differentiates`` are
-    the inputs whose derivatives the implementation computes, such as the
-    loss a contribution takes; ``differentiable`` the inputs its results are
-    differentiable with respect to, such as a loss's prediction but not its
-    target. Both name values, never leases.
+    ``relations`` says, for each named relation, which inputs propagate into
+    which outputs, as ``(input, output)`` positions, such as a denoiser's
+    weights and latents into its prediction for ``derivative``. The core
+    compares relation names and never interprets them; the domain that asks
+    gives a name its meaning (D16). An input with no edge for a relation
+    propagates nothing, as a loss's target does for ``derivative``.
     """
 
     name: str
@@ -213,8 +267,7 @@ class Declaration:
     effects: frozenset[Effect] = frozenset()
     concurrency_safe: bool = False
     completion: str = "device"
-    differentiates: tuple[int, ...] = ()
-    differentiable: tuple[int, ...] = ()
+    relations: tuple[tuple[str, tuple[tuple[int, int], ...]], ...] = ()
 
     def __post_init__(self) -> None:
         if not self.name or not self.version:
@@ -222,16 +275,28 @@ class Declaration:
         if self.completion not in ("device", "own"):
             raise ValueError(f"{self.name}: completion is 'device' or 'own', not {self.completion!r}")
         object.__setattr__(self, "effects", frozenset(Effect(effect) for effect in self.effects))
-        for field_name in ("differentiates", "differentiable"):
-            positions = tuple(getattr(self, field_name))
-            object.__setattr__(self, field_name, positions)
-            if len(set(positions)) != len(positions):
-                raise ValueError(f"{self.name}: {field_name} names an input twice")
-            for position in positions:
-                if not 0 <= position < len(self.inputs):
-                    raise ValueError(f"{self.name}: {field_name} names input {position}, and it declares {len(self.inputs)} inputs")
-                if self.inputs[position].endswith(" lease"):
-                    raise ValueError(f"{self.name}: {field_name} names input {position}, a lease; only values are differentiated")
+        given = self.relations.items() if isinstance(self.relations, Mapping) else self.relations
+        relations: dict[str, tuple[tuple[int, int], ...]] = {}
+        for relation, edges in given:
+            if not relation:
+                raise ValueError(f"{self.name}: a relation has a name")
+            if relation in relations:
+                raise ValueError(f"{self.name}: relation {relation!r} is declared twice")
+            normalized = tuple(sorted({(int(source), int(target)) for source, target in edges}))
+            for source, target in normalized:
+                if not 0 <= source < len(self.inputs):
+                    raise ValueError(f"{self.name}: relation {relation!r} names input {source}, and it declares {len(self.inputs)} inputs")
+                if not 0 <= target < len(self.outputs):
+                    raise ValueError(
+                        f"{self.name}: relation {relation!r} names output {target}, and it declares {len(self.outputs)} outputs"
+                    )
+            if normalized:
+                relations[relation] = normalized
+        object.__setattr__(self, "relations", tuple(sorted(relations.items())))
+
+    def edges(self, relation: str) -> tuple[tuple[int, int], ...]:
+        """The ``(input, output)`` positions through which the relation propagates; none when it is not declared."""
+        return dict(self.relations).get(relation, ())
 
     @property
     def reads(self) -> tuple[int, ...]:
@@ -265,8 +330,7 @@ class Declaration:
                 f"effects {', '.join(sorted(self.effects))}",
                 f"concurrency_safe {self.concurrency_safe}",
                 f"completion {self.completion}",
-                f"differentiates {', '.join(map(str, self.differentiates))}",
-                f"differentiable {', '.join(map(str, self.differentiable))}",
+                *(f"relation {relation} {', '.join(f'{s}>{t}' for s, t in edges)}" for relation, edges in self.relations),
             )
         )
         return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
@@ -297,27 +361,18 @@ class Implementation(Protocol):
 
 @dataclass(frozen=True)
 class CallContext:
-    """What a prepared call establishes on entry, so it never inherits a thread's ambient state (D15).
+    """The core's own part of a call's context (D15, D16).
 
-    ``grad`` and ``derivatives_to`` are derived by preparation from the
-    dataflow: ``grad`` says a result of the call reaches a differentiated
-    input through inputs declared differentiable, and ``derivatives_to``
-    names where those derivatives go, the resources the differentiating
-    calls update. The IR gives them no further meaning; a lease that
-    establishes something per call reads them (:class:`Establishes`).
-    ``precision`` names a reduced-precision dtype, such as ``bfloat16``, or
-    is None for full precision. ``random`` names whose random state the call
-    draws from, or is None for a call that draws none.
+    The device establishes it on entry with the device's stream and the work
+    the call follows, so a call never inherits a thread's ambient state.
+    ``random`` names whose random state the call draws from, or is None for a
+    call that draws none. Whatever a domain or an owner decides for the
+    call, such as grad mode, a route's precision or a participant's module
+    mode, the setups that cover it establish (:class:`CallSetup`,
+    :class:`HeldSetup`).
     """
 
-    grad: bool = False
-    derivatives_to: tuple[str, ...] = ()
-    precision: str | None = None
     random: str | None = None
-
-    def __post_init__(self) -> None:
-        if self.derivatives_to and not self.grad:
-            raise ValueError("a call's derivatives go somewhere only with grad mode")
 
 
 @runtime_checkable
@@ -373,18 +428,22 @@ class CopiesStorage(Protocol):
 
 
 __all__ = [
+    "Annotations",
     "CallContext",
+    "CallSetup",
     "Capture",
     "Completion",
     "CopiesStorage",
     "Declaration",
     "Device",
     "Effect",
-    "Establishes",
+    "HeldSetup",
+    "Holds",
     "HoldsDeviceStorage",
     "Implementation",
     "Lease",
     "Owner",
     "Use",
     "Version",
+    "annotate",
 ]

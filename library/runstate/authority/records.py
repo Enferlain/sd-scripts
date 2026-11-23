@@ -6,13 +6,13 @@ from it (realization), and, outside the record, its numeric version (live
 state), which changes every step without changing a record.
 """
 
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from types import MappingProxyType
 
 from library.iro.accepted import DeclaredParticipant
-from library.iro.seams import CallContext
+from library.iro.seams import HeldSetup
 from library.runstate.owners import Dependencies, Evidence, Reference
 
 NORMAL = "normal"
@@ -42,19 +42,16 @@ class Binding:
     evidence: Evidence
 
 
-Establish = Callable[[CallContext, object], None]
-"""What a route establishes for each call that uses it, given the call's context and the handle the call receives (D15)."""
-
-
 @dataclass(frozen=True)
 class Route:
     """A named way to call a participant: its current prepared callable, route revision and dependencies.
 
     The dependencies include the binding it was prepared from; a route whose
     dependencies no longer hold is withdrawn until preparation publishes a
-    replacement. ``establish``, where preparation gives one, sets up what
-    the participant needs for each call through the route, such as its
-    modules' mode; a lease through the route runs it (D15, D20).
+    replacement. ``setup``, where preparation gives one, is the route's held
+    setup: what the participant's realization needs for the calls through
+    the route, such as its modules' mode, which every lease through the
+    route carries (D16, D20).
     """
 
     name: str
@@ -62,7 +59,7 @@ class Route:
     revision: int
     dependencies: Dependencies
     evidence: Evidence
-    establish: Establish | None = None
+    setup: HeldSetup | None = None
 
 
 @dataclass(frozen=True)
@@ -93,4 +90,4 @@ class Participant:
     views: Mapping[str, View] = field(default_factory=lambda: MappingProxyType({}))
 
 
-__all__ = ["NORMAL", "Binding", "Establish", "Lifecycle", "Participant", "ParticipantRef", "Route", "View"]
+__all__ = ["NORMAL", "Binding", "Lifecycle", "Participant", "ParticipantRef", "Route", "View"]

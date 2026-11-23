@@ -1,15 +1,18 @@
 """Preparation: matching, placement, fusion, device admissions, the manifest and loading a saved prepared form."""
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import pytest
 
 from library.iro.accepted import cold_load
-from library.iro.diagnostics import Rejection
+from library.iro.diagnostics import Problems, Rejection, Stage
 from library.iro.frontend import implementation
 from library.iro.operation_contracts import symbol
 from library.iro.prepare import HOST, DeviceFacts, Target, load_prepared, prepare
+from library.iro.prepare.derive import Derived, Program
+from library.iro.seams import annotate
 from library.iro.words.calls import CallOp
 from library.iro.words.types import written
 from tests.unit.iro.accepted_runs import accepted_run
@@ -481,7 +484,7 @@ def test_a_permission_to_leave_the_device_that_cannot_be_realized_is_a_target_li
     assert rejected.value.codes == (code,) and rejected.value.target_limits_only
 
 
-# Call contexts (D15, D20).
+# Reachability over named relations, and what domains derive (D16).
 
 LEARNING = """iro.strategy @s uses(@batch v1, @encode v1, @measure v1, @predict v1, @objective v1, @learn v1) {
   %net = iro.resource @net : participant
@@ -507,49 +510,66 @@ LEARNING = """iro.strategy @s uses(@batch v1, @encode v1, @measure v1, @predict 
 }
 """
 
-DIFFERENTIATION = {
-    "predict": {"differentiable": (1,)},
-    "objective": {"differentiable": (0,)},
-    "learn": {"differentiates": (1,)},
+# A relation name the core has never heard of: it compares names and never interprets them.
+FLOWS = {
+    "encode": {"relations": {"flows": [(0, 0)]}},  # the encoder's weights into its conditioning
+    "predict": {"relations": {"flows": [(0, 0), (1, 0)]}},  # the network's weights and the conditioning, not the batch
+    "objective": {"relations": {"flows": [(0, 0)]}},  # the prediction, not the batch
 }
 
 
-def contexts(result) -> dict[str, tuple[bool, tuple[str, ...]]]:
-    return {name: (g.context.grad, g.context.derivatives_to) for g in result.groups for name in g.implementations}
+def program_of(text: str, **declared):
+    installed = installed_for(text, None, **declared)
+    loaded = cold_load(accepted_run(text, installed=installed), installed=installed)
+    problems = Problems(Stage.PREPARE)
+    program = Program(loaded.normalized.strategy, lambda call: installed[symbol(call.implementation)].declaration, problems)
+    return program, problems
 
 
-def test_grad_mode_follows_the_dataflow_into_a_differentiated_input() -> None:
-    effects = {name: ["device"] for name in ("encode", "measure", "predict", "objective", "learn")}
-    result, _ = prepared(LEARNING, CUDA, effects, **DIFFERENTIATION)
-    assert contexts(result) == {
-        "batch": (False, ()),  # its value reaches only inputs not declared differentiable
-        "encode": (True, ("w",)),  # through the prediction's conditioning, declared differentiable
-        "measure": (False, ()),  # its result reaches nothing
-        "predict": (True, ("w",)),
-        "objective": (True, ("w",)),
-        "learn": (False, ()),  # it differentiates its input, and its own results reach nothing
-    }
-    (measure,) = [g for g in result.groups if "measure" in g.implementations]
-    (predict,) = [g for g in result.groups if "predict" in g.implementations]
-    assert measure.index != predict.index, "calls with different contexts are not fused"
-    assert predict.implementations == ("predict", "objective"), "calls with the same context still are"
-    assert "grad True, derivatives to @w" in result.text()
+def call_named(program: Program, name: str) -> CallOp:
+    return next(call for call in program.calls() if program.implementation(call) == name)
 
 
-def test_an_input_not_declared_differentiable_stops_the_walk() -> None:
-    declared = DIFFERENTIATION | {"objective": {}}
-    result, _ = prepared(LEARNING, CUDA, None, **declared)
-    assert contexts(result)["predict"] == (False, ()) and contexts(result)["objective"] == (True, ("w",))
+def reached_names(program: Program, reached) -> dict[str, set[str]]:
+    return {program.implementation(call): set(keys) for call, keys in reached.calls.items()}
 
 
-def test_a_differentiation_declaration_names_value_inputs_that_exist() -> None:
-    with pytest.raises(ValueError, match="a lease"):
-        implementation(version=1, inputs=("owner_update lease", "retained loss"), differentiates=(0,))(lambda *a: None)
+def learning_sink(program: Program) -> dict[str, list]:
+    return {"w": [call_named(program, "learn").operands[1]]}
+
+
+def test_reach_follows_declared_edges_into_a_sink_through_bodies() -> None:
+    program, _ = program_of(LEARNING, **FLOWS)
+    reached = program.reach("flows", learning_sink(program))
+    assert reached_names(program, reached) == {"encode": {"w"}, "predict": {"w"}, "objective": {"w"}}, (
+        "the batch reaches only inputs with no edge, the measurement reaches nothing, and the learner's own results reach nothing"
+    )
+    assert program.reach("other", learning_sink(program)).calls == {}, "a relation no implementation declares reaches nothing"
+
+
+def test_reach_from_sources_keeps_only_the_calls_a_source_leads_into() -> None:
+    program, _ = program_of(LEARNING, **FLOWS)
+    leases = {resource: value for value, resource, _ in program.leases()}
+    reached = program.reach("flows", learning_sink(program), [leases["net"]])
+    assert reached_names(program, reached) == {"predict": {"w"}, "objective": {"w"}}, "the encoder lies on no path from the network"
+    assert reached.sources == {"w": frozenset({leases["net"]})}
+    assert program.reach("flows", learning_sink(program), [leases["enc"], leases["net"]]).sources["w"] == {leases["enc"], leases["net"]}
+
+
+def test_an_input_with_no_edge_stops_the_path() -> None:
+    program, _ = program_of(LEARNING, **(FLOWS | {"objective": {}}))
+    assert program.reach("flows", learning_sink(program)).calls == {}, "without the objective's edge nothing reaches the loss"
+
+
+def test_a_relation_declaration_names_positions_that_exist_and_its_digest_covers_it() -> None:
     with pytest.raises(ValueError, match="declares 1 inputs"):
-        implementation(version=1, inputs=("retained loss",), differentiable=(1,))(lambda *a: None)
-    plain = implementation(version=1, inputs=("retained loss",))(lambda *a: None).declaration
-    marked = implementation(version=1, inputs=("retained loss",), differentiable=(0,))(lambda *a: None).declaration
-    assert plain.digest != marked.digest, "the declaration's digest covers what it differentiates"
+        implementation(version=1, inputs=("retained loss",), outputs=("loss",), relations={"flows": [(1, 0)]})(lambda *a: None)
+    with pytest.raises(ValueError, match="declares 1 outputs"):
+        implementation(version=1, inputs=("owner_update lease",), outputs=("loss",), relations={"flows": [(0, 1)]})(lambda *a: None)
+    plain = implementation(version=1, inputs=("retained loss",), outputs=("loss",))(lambda *a: None).declaration
+    marked = implementation(version=1, inputs=("retained loss",), outputs=("loss",), relations={"flows": [(0, 0)]})(lambda *a: None)
+    assert plain.digest != marked.declaration.digest, "the declaration's digest covers its relations"
+    assert marked.declaration.edges("flows") == ((0, 0),) and marked.declaration.edges("other") == ()
 
 
 CARRIED_INTO_LEARNING = """iro.strategy @s uses(@first v1, @step v1, @learn v1) {
@@ -568,6 +588,16 @@ CARRIED_INTO_LEARNING = """iro.strategy @s uses(@first v1, @step v1, @learn v1) 
   }
 }
 """
+
+
+def test_reach_follows_a_value_into_a_repeat_as_its_carry_and_out_as_its_result() -> None:
+    program, _ = program_of(CARRIED_INTO_LEARNING, step={"relations": {"flows": [(0, 0)]}})
+    sinks = learning_sink(program)
+    assert reached_names(program, program.reach("flows", sinks)) == {"step": {"w"}}
+    first = call_named(program, "first").results[0]
+    assert program.reach("flows", sinks, [first]).sources == {"w": frozenset({first})}, (
+        "the initial carry reaches the loss through the repeat"
+    )
 
 
 FILTERED_INTO_LEARNING = """iro.strategy @s uses(@make v1, @keep v1, @predict v1, @learn v1) {
@@ -597,17 +627,49 @@ FILTERED_INTO_LEARNING = """iro.strategy @s uses(@make v1, @keep v1, @predict v1
 }
 """
 
-
-def test_a_filter_s_decision_is_no_result_so_it_carries_no_grad_mode_and_reaches_the_host() -> None:
-    effects = {"keep": ["device"], "predict": ["device"]}
-    result, _ = prepared(FILTERED_INTO_LEARNING, effects=effects, predict={"differentiable": (0,)}, learn={"differentiates": (1,)})
-    assert contexts(result)["keep"] == (False, ()), "the filter yields whether to keep its item, and its result is the item"
-    assert contexts(result)["predict"] == (True, ("w",))
-    (keep,) = [g for g in result.groups if "keep" in g.implementations]
-    assert keep.sync, "the filter reads the decision on the host, so the host waits for the keep call's work"
+THROUGH_A_STREAM = {name: {"relations": {"flows": [(0, 0)]}} for name in ("make", "keep", "predict")}
 
 
-def test_grad_mode_follows_a_value_into_a_repeat_as_its_carry_and_out_as_its_result() -> None:
-    result, _ = prepared(CARRIED_INTO_LEARNING, step={"differentiable": (0,)}, learn={"differentiates": (1,)})
-    assert contexts(result)["first"] == (True, ("w",)), "the initial carry reaches the learning through the repeat"
-    assert contexts(result)["step"] == (True, ("w",))
+def test_reach_crosses_a_stream_unless_the_query_keeps_to_one_activity() -> None:
+    program, _ = program_of(FILTERED_INTO_LEARNING, **THROUGH_A_STREAM)
+    sinks = learning_sink(program)
+    assert reached_names(program, program.reach("flows", sinks)) == {"make": {"w"}, "predict": {"w"}}, (
+        "the core cuts no relation at a stream; the filter's decision is no result, so the keep call reaches nothing"
+    )
+    assert reached_names(program, program.reach("flows", sinks, within_activity=True)) == {"predict": {"w"}}, (
+        "a query that keeps to one activity follows no value out of the producer"
+    )
+
+
+@dataclass(frozen=True)
+class Annotating:
+    given: dict
+    name: str = "test.annotating"
+    version: str = "1"
+
+    def derive(self, program):
+        return {call: self.given[program.implementation(call)] for call in program.calls() if program.implementation(call) in self.given}
+
+
+def test_calls_fuse_only_where_what_was_derived_for_them_is_the_same() -> None:
+    effects = {name: ["device"] for name in ("encode", "measure", "predict", "objective", "learn")}
+    installed = installed_for(LEARNING, effects)
+    run = accepted_run(LEARNING, installed=installed)
+    serving = Derived(annotate({"units": ["w"]}))
+    deriver = Annotating({"predict": serving, "objective": serving})
+    result = prepare(cold_load(run, installed=installed), installed, CUDA, [deriver])
+    (measure,) = [g for g in result.groups if "measure" in g.implementations]
+    (predict,) = [g for g in result.groups if "predict" in g.implementations]
+    assert measure.index != predict.index, "calls with different annotations are not fused"
+    assert predict.implementations == ("predict", "objective") and predict.annotations == (("units", ("w",)),)
+    assert "@predict, @objective (units w, sync)" in result.text() and "@test.annotating v1" in result.text()
+
+
+def test_two_derivers_never_give_one_call_the_same_annotation() -> None:
+    installed = installed_for(LEARNING)
+    run = accepted_run(LEARNING, installed=installed)
+    serving = Derived(annotate({"units": ["w"]}))
+    derivers = [Annotating({"predict": serving}), Annotating({"predict": serving}, name="test.again")]
+    with pytest.raises(Rejection) as rejected:
+        prepare(cold_load(run, installed=installed), installed, CUDA, derivers)
+    assert rejected.value.codes == ("iro-prep-014",)

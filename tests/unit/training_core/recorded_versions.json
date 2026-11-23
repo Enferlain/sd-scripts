@@ -15,10 +15,12 @@
  },
  "implementations": {
   "standard.advance": {
-   "1": "57796287f96349d4"
+   "1": "57796287f96349d4",
+   "2": "329170f66a0a9160"
   },
   "standard.contribute": {
-   "1": "774e608412b9b5ff"
+   "1": "774e608412b9b5ff",
+   "2": "2a22b875d328d13d"
   }
  }
 }

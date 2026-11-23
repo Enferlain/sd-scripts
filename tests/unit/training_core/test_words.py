@@ -16,7 +16,7 @@ from library.iro.words.structure import RepeatOp
 from library.training.words import ADVANCE, CONTRIBUTE, UnitOp, contract
 from tests.unit.iro.accepted_runs import accepted_run
 
-STEP = """iro.strategy @step uses(@batch v1, @predict v1, @objective v1, @standard.contribute v1, @standard.advance v1) {
+STEP = """iro.strategy @step uses(@batch v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {
   %unet = iro.resource @unet : participant
   %unit = iro.train.unit @denoiser of %unet optimizer @adamw8bit(lr 1e-05, eps 1e-08) max_grad_norm 1.0
   iro.sequence @once capture(%unet, %unit) {
@@ -36,7 +36,8 @@ STEP = """iro.strategy @step uses(@batch v1, @predict v1, @objective v1, @standa
 
 def installed() -> dict:
     def declared(name: str, inputs=(), outputs=()):
-        return implementation(version=1, inputs=inputs, outputs=outputs, name=name)(lambda *args: None)
+        version = 2 if name.startswith("standard.") else 1  # the standard profile's implementations are at version 2
+        return implementation(version=version, inputs=inputs, outputs=outputs, name=name)(lambda *args: None)
 
     return {
         "batch": declared("batch", outputs=("batch",)),
@@ -136,7 +137,7 @@ def test_verification_of_the_expanded_strategy_owes_the_unit_to_its_owner() -> N
     assert unit.evaluator == "the resource's owner"
 
 
-TWO_WINDOWS = """iro.strategy @s uses(@batch v1, @predict v1, @objective v1, @standard.contribute v1, @standard.advance v1) {
+TWO_WINDOWS = """iro.strategy @s uses(@batch v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {
   %unet = iro.resource @unet : participant
   %unit = iro.train.unit @denoiser of %unet optimizer @sgd
   iro.sequence @first capture(%unet, %unit) {

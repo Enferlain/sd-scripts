@@ -11,7 +11,7 @@ are written as written-form types, such as ``protected_current lease`` or
 value types instead, so they are never stated twice.
 """
 
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Mapping
 from dataclasses import dataclass
 
 from library.iro.seams import Completion, Declaration, Device, Effect
@@ -70,14 +70,14 @@ def implementation(
     concurrency_safe: bool = False,
     completion: str = "device",
     name: str | None = None,
-    differentiates: Iterable[int] = (),
-    differentiable: Iterable[int] = (),
+    relations: Mapping[str, Iterable[tuple[int, int]]] | None = None,
 ) -> Callable[[Callable[..., object]], Declared]:
     """Declares the decorated function as an implementation at one implementation version.
 
     D16 says what a version covers: change it whenever the declaration or the
-    results change. ``differentiates`` and ``differentiable`` are input
-    positions (:class:`~library.iro.seams.Declaration`).
+    results change. ``relations`` maps a relation's name to the
+    ``(input, output)`` positions it propagates through
+    (:class:`~library.iro.seams.Declaration`).
     """
 
     def declare(function: Callable[..., object]) -> Declared:
@@ -89,8 +89,7 @@ def implementation(
             frozenset(Effect(e) for e in effects),
             concurrency_safe,
             completion,
-            tuple(differentiates),
-            tuple(differentiable),
+            tuple((relation, tuple(edges)) for relation, edges in (relations or {}).items()),
         )
         return Declared(declaration, function)
 

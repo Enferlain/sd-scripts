@@ -9,7 +9,8 @@ accepted under, which launch composes (D17, D18). Its host sequence:
 2. **seed** the run authority from the strategy's declarations;
 3. **materialize** every declared participant as one governed job;
 4. **plan**: Trainer optimization derives its units from the strategy;
-5. **prepare**: the IR prepares the strategy for the target, and one
+5. **prepare**: the IR prepares the strategy for the target, with training's
+   derivation of grad mode and the units each call serves (D16), and one
    training preparation attempt prepares the routes the run's leases need
    and realizes the units, publishing both together;
 6. **check readiness**: the run authority and Trainer optimization each
@@ -35,6 +36,7 @@ from library.runstate.owners import Refused
 from library.runstate.projections import Execution
 from library.training.preparation import RoutePreparation, prepare_training
 from library.training.units import TRAINER, OptimizationPlan, TrainerOptimization
+from library.training.units.derivation import TrainingDerivation
 
 
 class Trainer:
@@ -79,7 +81,9 @@ class Trainer:
             raise Refused(_reasons("materialization", bound))
         plan = OptimizationPlan.derive(loaded.strategy, authority.incarnation)
         optimization = self.optimization = TrainerOptimization(authority.generations, plan, run.obligations)
-        prepared = prepare(loaded, self.installed, self.target)
+        addresses = {authority.incarnation(name): name for name in participants}
+        trains = {name: frozenset(addresses[m.participant] for m in unit.members) for name, unit in plan.units.items()}
+        prepared = prepare(loaded, self.installed, self.target, [TrainingDerivation(trains)])
         routes = sorted(
             {
                 (o.use.resource, o.use.route or NORMAL)

@@ -1,4 +1,4 @@
-"""A call's settings on the host, through the shared Torch context (14.1): no GPU needed.
+"""A call's baseline and random state on the host, through the shared Torch context (14.1, D16): no GPU needed.
 
 The CUDA adapter's own test (``test_cuda.py``) covers the same settings on a
 device; this one keeps them covered where no GPU is present.
@@ -10,22 +10,24 @@ from library.iro.devices import Host
 from library.iro.seams import CallContext
 
 
-def test_a_host_call_establishes_its_settings() -> None:
+def test_a_host_call_starts_from_a_neutral_baseline_and_its_own_random_state() -> None:
     host = Host(seed=5)
     seen = {}
-    with torch.enable_grad():
-        with host.context(CallContext(grad=False, precision="bfloat16", random="a"), ()):
+    with torch.enable_grad(), torch.autocast("cpu", dtype=torch.bfloat16):
+        with host.context(CallContext(random="a"), ()):
             seen["grad"] = torch.is_grad_enabled()
             seen["dtype"] = (torch.ones(4, 4) @ torch.ones(4, 4)).dtype
             first = torch.rand(4)
-        assert torch.is_grad_enabled(), "the previous grad mode is restored"
+        assert torch.is_grad_enabled() and torch.is_autocast_enabled("cpu"), "the thread's previous settings are restored"
     outside = torch.get_rng_state()
     with host.context(CallContext(random="b"), ()):
         torch.rand(4)
     assert torch.equal(torch.get_rng_state(), outside), "a call's draws leave the thread's own random state alone"
     with host.context(CallContext(random="a"), ()):
         second = torch.rand(4)
-    assert seen == {"grad": False, "dtype": torch.bfloat16}
+    assert seen == {"grad": False, "dtype": torch.float32}, (
+        "a call never inherits the thread's grad mode or autocast; its setups turn them on (D16)"
+    )
     with Host(seed=5).context(CallContext(random="a"), ()):
         again = torch.rand(4)
     assert torch.equal(first, again), "a caller's random state starts from the seed and its name"

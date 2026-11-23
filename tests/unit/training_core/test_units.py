@@ -2,8 +2,9 @@
 
 A small Torch network is trained for one window of two members, through the
 whole host sequence, and compared exactly with the same step written by
-hand. A frozen encoder on the gradient path shows that module mode follows
-trainability, not the flow of gradients.
+hand. A frozen encoder before the trained network runs without grad mode,
+since no trained state reaches it, and in evaluation mode, since module mode
+follows trainability (D15, D20).
 """
 
 import copy
@@ -28,22 +29,22 @@ from library.runstate.authority import RunAuthority, Unavailable
 from library.runstate.generation import ExecutableRun, Publication
 from library.runstate.owners import Refused, Stale
 from library.training.trainer import Trainer
-from library.iro.seams import CallContext, Use
+from library.iro.seams import Use, annotate
 from library.training.units import (
     TRAINER,
     ModuleModes,
-    NonFiniteGradient,
     OptimizationPlan,
     OptimizationSection,
     Outcome,
     Progress,
     TrainerOptimization,
 )
+from library.training.units import DERIVATIVE, UNITS
 from library.training.units.standard import installed as standard
 from library.training.words import contract
 from tests.unit.iro.accepted_runs import accepted_run
 
-STEP = """iro.strategy @step uses(@batch v1, @encode v1, @predict v1, @objective v1, @standard.contribute v1, @standard.advance v1) {
+STEP = """iro.strategy @step uses(@batch v1, @encode v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {
   %net = iro.resource @net : participant
   %enc = iro.resource @enc : participant
   %unit = iro.train.unit @learner of %net optimizer @adamw(lr 0.1, weight_decay 0.0) max_grad_norm 0.5
@@ -85,7 +86,9 @@ def implementations(seen: dict[str, list]) -> dict:
     def batch():
         return next(taken)
 
-    @implementation(version=1, inputs=("protected_current lease", "batch"), outputs=("retained cond",), name="encode")
+    @implementation(
+        version=1, inputs=("protected_current lease", "batch"), outputs=("retained cond",), name="encode", relations={DERIVATIVE: [(0, 0)]}
+    )
     def encode(encoder, batch):
         seen["encoder"].append((encoder.training, torch.is_grad_enabled()))
         return encoder(batch[0])
@@ -95,13 +98,15 @@ def implementations(seen: dict[str, list]) -> dict:
         inputs=("protected_current lease", "retained cond"),
         outputs=("retained prediction",),
         name="predict",
-        differentiable=(1,),
+        relations={DERIVATIVE: [(0, 0), (1, 0)]},
     )
     def predict(network, cond):
         seen["network"].append((network.training, torch.is_grad_enabled()))
         return network(cond)
 
-    @implementation(version=1, inputs=("retained prediction", "batch"), outputs=("retained loss",), name="objective", differentiable=(0,))
+    @implementation(
+        version=1, inputs=("retained prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]}
+    )
     def objective(prediction, batch):
         return torch.nn.functional.mse_loss(prediction, batch[1])
 
@@ -118,8 +123,7 @@ def on_host() -> dict:
             inputs=declared.inputs,
             outputs=declared.outputs,
             name=name,
-            differentiates=declared.differentiates,
-            differentiable=declared.differentiable,
+            relations=dict(declared.relations),
         )(made.function)
     return found
 
@@ -134,12 +138,15 @@ def trainer(text: str = STEP, net: torch.nn.Module | None = None, enc: torch.nn.
 
 
 def by_hand(net: torch.nn.Module, enc: torch.nn.Module) -> torch.nn.Module:
-    """The same window written directly: two accumulated losses, clipping, one AdamW step."""
+    """The same window written directly: two accumulated losses of equal mass divided once by the window's, clipping, one AdamW step."""
     for parameter in enc.parameters():
         parameter.requires_grad_(False)
     optimizer = torch.optim.AdamW(list(net.parameters()), lr=0.1, weight_decay=0.0)
     for x, y in BATCHES:
         torch.nn.functional.mse_loss(net(enc(x)), y).backward()
+    for parameter in net.parameters():
+        assert parameter.grad is not None
+        parameter.grad.mul_(0.5)  # one batch of both: each bare loss has mass 1 (D20)
     torch.nn.utils.clip_grad_norm_(list(net.parameters()), 0.5)
     optimizer.step()
     return net
@@ -157,23 +164,30 @@ def test_one_window_through_the_trainer_matches_the_same_step_by_hand() -> None:
     assert all(p.grad is None for p in net.parameters()), "the window end zeroes the gradients"
     assert all(not p.requires_grad for p in enc.parameters()) and all(p.requires_grad for p in net.parameters())
     assert seen["network"] == [(True, True)] * 2, "the trained network runs in train mode, with grad mode"
-    assert seen["encoder"] == [(False, True)] * 2, "a frozen network on the gradient path keeps evaluation mode (D20)"
+    assert seen["encoder"] == [(False, False)] * 2, (
+        "a frozen encoder that no trained state reaches runs without grad mode, and keeps evaluation mode (D15, D20)"
+    )
     optimization = made.optimization
     assert optimization is not None and made.authority is not None
     live = optimization.live("learner")
     assert live.progress == Progress(1, 1) and live.position == 0
     assert live.last is not None and live.last.contributions == 2 and live.last.optimizer == Outcome.RETURNED
+    assert live.last.mass == 2.0, "two bare losses, each of mass 1"
     assert optimization.current("learner").ordinal == 3, "two contributions and one window end each updated the unit"
     assert made.authority.current("net").ordinal == 1 and made.authority.current("enc").ordinal == 0, (
         "only the trained participant advanced"
     )
 
 
-def test_the_unit_s_prepared_run_shows_grad_mode_and_contribution() -> None:
+def test_the_unit_s_prepared_run_shows_what_training_derived() -> None:
     made = trainer()
     executable = made.realize()
     text = executable.prepared.text()
-    assert "@encode (grad True, derivatives to @learner)" in text and "@batch (grad False)" in text
+    assert "derived by\n  @training.derive v1" in text
+    assert "@predict, @objective (setups @training.grad_mode v1, units learner)" in text
+    assert re.search(r": @encode\n", text) and re.search(r": @batch\n", text), (
+        "no trained state reaches them, so nothing is derived for them"
+    )
     assert executable.readiness.judges == ("run authority", TRAINER)
 
 
@@ -247,7 +261,7 @@ def test_a_window_end_with_nothing_contributed_steps_nothing() -> None:
     assert all(torch.equal(a, b) for a, b in zip(before, net.parameters(), strict=True))
 
 
-def test_a_gradient_norm_that_is_not_finite_fails_the_next_window_end_before_it_steps() -> None:
+def test_a_value_that_is_not_finite_is_kept_on_the_device_and_read_only_where_the_host_reads() -> None:
     net, enc = networks()
     made = trainer(net=net, enc=enc)
     made.realize()
@@ -257,27 +271,32 @@ def test_a_gradient_norm_that_is_not_finite_fails_the_next_window_end_before_it_
         parameter.grad = torch.full_like(parameter, float("nan"))
     live.position = 1
     first = live.advance((net,))
-    assert first.optimizer == Outcome.RETURNED and first.progress == Progress(1, 1), "its norm is read later, so this window steps"
+    assert first.optimizer == Outcome.RETURNED and first.progress == Progress(1, 1), "the window end reads nothing, so it steps"
     for parameter in net.parameters():
         parameter.grad = torch.ones_like(parameter)
     live.position = 1
-    with pytest.raises(NonFiniteGradient, match=r"@learner: the gradient norm of window 1 was nan; its step was taken"):
-        live.advance((net,))
-    assert live.progress == Progress(1, 1), "the window end that finds it steps nothing"
-    assert live.settle() == (), "a norm once reported is not reported again"
+    second = live.advance((net,))
+    assert second.optimizer == Outcome.RETURNED, "nor does the next: the host reads only where it reads the device already"
+    assert live.check() == (
+        "@learner: the gradient norm of window 1 was not finite; its step was taken, so the unit's parameters may no longer be finite",
+    ), "the record keeps the first window that was not finite"
 
 
-@pytest.mark.parametrize("text", [STEP, STEP.replace(" max_grad_norm 0.5", "")], ids=["clipped", "unclipped"])
-def test_a_run_whose_last_gradient_norm_is_not_finite_fails_once_its_work_has_ended(text: str) -> None:
+@pytest.mark.parametrize(
+    ("text", "what"), [(STEP, "gradient norm"), (STEP.replace(" max_grad_norm 0.5", ""), "loss")], ids=["clipped", "unclipped"]
+)
+def test_a_run_whose_gradient_is_not_finite_fails_once_its_work_has_ended(text: str, what: str) -> None:
     net, enc = networks()
     with torch.no_grad():
         next(net.parameters()).view(-1)[0] = float("nan")  # the network's output, its loss and its gradients are no longer finite
     outcome = trainer(text, net=net, enc=enc).train()
     assert outcome.status == "failed"
-    assert "trainer optimization: @learner: the gradient norm of window 1 was nan" in (outcome.error or "")
+    assert f"trainer optimization: @learner: the {what} of window 1 was not finite" in (outcome.error or ""), (
+        "without clipping the check reads the window's loss rather than add a pass over the gradients"
+    )
 
 
-def test_a_newly_prepared_unit_takes_over_the_norms_still_on_their_way() -> None:
+def test_a_newly_prepared_unit_takes_over_the_record() -> None:
     net, enc = networks()
     made = trainer(net=net, enc=enc)
     made.realize()
@@ -292,7 +311,7 @@ def test_a_newly_prepared_unit_takes_over_the_norms_still_on_their_way() -> None
     replaced = optimization.live("learner")
     assert replaced is not live and replaced.progress == Progress(1, 1)
     (reason,) = optimization.settle()
-    assert reason.startswith("@learner: the gradient norm of window 1 was nan")
+    assert reason.startswith("@learner: the gradient norm of window 1 was not finite")
 
 
 def test_settling_is_reported_after_the_run_s_facts_and_a_settle_that_raises_fails_the_run() -> None:
@@ -304,7 +323,7 @@ def test_settling_is_reported_after_the_run_s_facts_and_a_settle_that_raises_fai
     kinds = [f.kind for f in executable.facts]
     assert outcome.status == "failed" and kinds[-1] == "settle_failed", "execution reported its own end; the settle comes after"
     (settled,) = [f for f in executable.facts if f.kind == "settle_failed"]
-    assert settled.owner == TRAINER and "the gradient norm of window 1 was nan" in str(settled.values)
+    assert settled.owner == TRAINER and "the gradient norm of window 1 was not finite" in str(settled.values)
     made = trainer()
     executable = made.realize()
     assert made.optimization is not None
@@ -320,24 +339,58 @@ def test_settling_is_reported_after_the_run_s_facts_and_a_settle_that_raises_fai
 
 @pytest.mark.requires_gpu
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA device")
-def test_a_norm_on_a_device_goes_to_the_host_without_waiting_and_is_read_once_its_work_has_ended() -> None:
+def test_the_record_on_a_device_waits_for_nothing_and_is_read_once_its_work_has_ended() -> None:
     made = trainer()
     made.realize()
     assert made.optimization is not None
     live = made.optimization.live("learner")
     device = torch.device("cuda", 1 if torch.cuda.device_count() > 1 else 0)
     with torch.cuda.device(device):
-        nan, two = torch.tensor(float("nan"), device=device), torch.tensor(2.0, device=device, dtype=torch.bfloat16)
-        (nan * 1).cpu(), (two * 1).float().cpu()  # load these kernels now: CUDA loads a kernel lazily, waiting for the device
+        nan, two = torch.tensor(float("nan"), device=device), torch.tensor(2.0, device=device)
+        live._fold(0, two * 1)  # load these kernels now: CUDA loads a kernel lazily, waiting for the device
+        torch.cuda.synchronize(device)
+        live._bad = None
         torch.cuda._sleep(500_000_000)  # one kernel that keeps the device busy for a noticeable time
-        live._send(1, nan * 1)
-        assert not live._norms[-1].arrived(), "the copy follows the queued work, and nothing waited for it"
-        live._send(2, two * 1)
-    assert all(norm.event is not None and norm.host.is_pinned() for norm in live._norms)
+        live._fold(1, nan * 1)
+        live._fold(2, two * 1)
+        assert not torch.cuda.current_stream(device).query(), "folding queued its work after the busy kernel, and nothing waited for it"
     assert made.optimization.settle() == (
-        "@learner: the gradient norm of window 1 was nan; its step was taken, so the unit's parameters may no longer be finite",
+        "@learner: the gradient norm of window 1 was not finite; its step was taken, so the unit's parameters may no longer be finite",
     )
-    assert len(live._spare) == 2, "the host buffers are kept for later windows"
+
+
+class Massive:
+    """A loss with its mass, as a loss whose reduction divides by its sample count reports it (D20)."""
+
+    def __init__(self, value: torch.Tensor, mass: float) -> None:
+        self.value, self.mass = value, mass
+
+
+def test_a_window_s_gradient_is_one_batch_of_its_contributions_whatever_their_masses() -> None:
+    """Three windows: unequal masses, then one like it (scaled before backward), then a shorter one (divided at its end)."""
+    net, enc = networks()
+    made = trainer(net=net, enc=enc)
+    made.realize()
+    assert made.optimization is not None
+    live = made.optimization.live("learner")
+    samples = torch.randn(6, 4, generator=torch.Generator().manual_seed(3))
+    targets = torch.randn(6, 2, generator=torch.Generator().manual_seed(4))
+    reference = copy.deepcopy(net)
+    windows = [[(0, 2), (2, 6)], [(0, 1), (1, 6)], [(0, 3)]]
+    for window in windows:
+        for start, end in window:
+            loss = torch.nn.functional.mse_loss(net(samples[start:end]), targets[start:end], reduction="none").mean(dim=1).mean()
+            live.contribute(Massive(loss, float(end - start)))
+        whole = [s for start, end in window for s in range(start, end)]
+        batch_loss = torch.nn.functional.mse_loss(reference(samples[whole]), targets[whole], reduction="none").mean(dim=1).mean()
+        expected = torch.autograd.grad(batch_loss, list(reference.parameters()))
+        got = [p.grad.clone() for p in net.parameters()]  # before the window end: the grads are the contributions' sum
+        factor = live._basis / live._mass
+        for g, e in zip(got, expected, strict=True):
+            torch.testing.assert_close(g * factor, e, rtol=1e-5, atol=1e-6)
+        live.advance((net,))
+        reference.load_state_dict(net.state_dict())
+    assert live._expected == 3.0, "the next window expects the last one's total"
 
 
 def test_preparation_that_stops_partway_leaves_no_in_place_registration() -> None:
@@ -365,32 +418,28 @@ class Counted(torch.nn.Module):
         return super().train(mode)
 
 
-def test_module_mode_follows_the_units_a_call_s_derivatives_go_to_and_changes_only_where_it_differs() -> None:
+def test_module_mode_follows_the_units_a_call_is_annotated_with_and_changes_only_where_it_differs() -> None:
     whole, part = ModuleModes({"learner": ("",)}), ModuleModes({"learner": ("block",)})
     model = Counted()
     model.sets = 0
-    evaluating, learning, elsewhere = (
-        CallContext(),
-        CallContext(grad=True, derivatives_to=("learner",)),
-        CallContext(grad=True, derivatives_to=("other",)),
-    )
-    whole.establish(evaluating, model)
-    assert not model.training and not model.block.training, "a call whose derivatives go nowhere runs the participant in evaluation mode"
-    whole.establish(evaluating, model)
+    evaluating, learning, elsewhere = (), annotate({UNITS: ["learner"]}), annotate({UNITS: ["other"]})
+    whole.hold(evaluating, model)
+    assert not model.training and not model.block.training, "a call that serves no unit runs the participant in evaluation mode"
+    whole.hold(evaluating, model)
     assert model.sets == 1, "the mode is set only where the previous call left a different one"
-    whole.establish(learning, model)
+    whole.hold(learning, model)
     assert model.training and model.block[1].training and model.head.training, "a participant its unit trains whole runs in train mode"
-    whole.establish(elsewhere, model)
-    assert not model.training, "derivatives going to another unit leave this participant in evaluation mode"
-    part.establish(learning, model)
+    whole.hold(elsewhere, model)
+    assert not model.training, "a call serving another unit leaves this participant in evaluation mode"
+    part.hold(learning, model)
     assert model.block.training and model.block[1].training, "the part the unit trains runs in train mode"
     assert not model.training and not model.head.training, "and the rest of the participant in evaluation mode"
-    whole.establish(evaluating, model)
+    whole.hold(evaluating, model)
     assert not model.block.training, "another route's call finds what this one left and sets it back"
     model.train(True)
-    whole.establish(evaluating, model)
+    whole.hold(evaluating, model)
     assert not model.training, "a mode changed outside a call is set again"
-    whole.establish(learning, object())  # a handle that is no module has no mode
+    whole.hold(learning, object())  # a handle that is no module has no mode
 
 
 class Plain:
@@ -516,3 +565,145 @@ def test_a_run_whose_owners_are_not_ready_is_refused_with_every_reason() -> None
     with pytest.raises(Refused) as refused:
         ExecutableRun(executable.generations, executable.prepared, {}, {}, {"host": Host()}, {"later": NotReady()})
     assert "@net has no owner to serve it" in str(refused.value) and "later: @learner has no prepared unit" in str(refused.value)
+
+
+# What training derives, and what it refuses (D15, D16).
+
+
+def realized(text: str, extra: dict) -> ExecutableRun:
+    installed = {**extra, **on_host()}
+    run = accepted_run(text, contract(), installed=installed)
+    net, _ = networks()
+    return Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net}).realize()
+
+
+def said(rejection: Rejection) -> str:
+    """A rejection's text with its line wrapping undone."""
+    return " ".join(str(rejection).split())
+
+
+SAMPLED = """iro.strategy @sampled uses(@sample v1, @judge v1, @standard.contribute v2, @standard.advance v2) {
+  %net = iro.resource @net : participant
+  %unit = iro.train.unit @learner of %net optimizer @adamw(lr 0.1)
+  %items = iro.stream @items : prediction
+             bounds(outstanding 1, ready 1)
+
+  iro.parallel @all capture(%items, %net, %unit) {
+    iro.producer @sampling into %items capture(%net) {
+    ^(%index: int):
+      %p = iro.access %net protected_current {
+      ^(%n):
+        iro.call @sample(%n, %index) -> prediction
+      }
+      iro.yield %p
+    }
+
+    iro.sequence @training capture(%items, %net, %unit) {
+      iro.train.window %unit members 1 {
+        %c = iro.take %items
+        %p = iro.borrow %c
+        JUDGED
+        iro.train.contribute %loss to %unit
+        iro.dispose %c consumed
+      }
+    }
+
+    iro.stop @sampling after @training
+  }
+}
+"""
+
+ONLY_SAMPLED = "%loss = iro.call @judge(%p) -> retained loss"
+ALSO_SCORED = """%loss = iro.access %net protected_current {
+        ^(%n):
+          iro.call @judge(%n, %p) -> retained loss
+        }"""
+
+
+def sampling(judge_inputs: tuple[str, ...]) -> dict:
+    sample = implementation(
+        version=1, inputs=("protected_current lease", "int"), outputs=("prediction",), name="sample", relations={DERIVATIVE: [(0, 0)]}
+    )(lambda n, index: None)
+    judge = implementation(
+        version=1,
+        inputs=judge_inputs,
+        outputs=("retained loss",),
+        name="judge",
+        relations={DERIVATIVE: [(i, 0) for i in range(len(judge_inputs))]},
+    )(lambda *args: None)
+    return {"sample": sample, "judge": judge}
+
+
+def test_a_trained_participant_whose_forward_reaches_the_loss_only_from_another_activity_is_refused() -> None:
+    with pytest.raises(Rejection) as rejected:
+        realized(SAMPLED.replace("JUDGED", ONLY_SAMPLED), sampling(("prediction",)))
+    assert rejected.value.codes == ("iro-train-002",)
+    assert "reaches @learner's loss only from another activity" in said(rejected.value)
+    assert "run @net's forward in the activity that contributes to @learner" in said(rejected.value)
+
+
+def test_the_trained_model_sampling_in_another_activity_runs_without_grad_mode_while_its_forward_in_the_window_has_it() -> None:
+    text = realized(SAMPLED.replace("JUDGED", ALSO_SCORED), sampling(("protected_current lease", "prediction"))).prepared.text()
+    assert re.search(r"in @sampled/@all/@sampling: @sample\n", text), "sampling's outputs are data to the training activity"
+    assert "@judge (setups @training.grad_mode v1, units learner)" in text
+
+
+def test_a_trained_participant_that_reaches_its_loss_by_no_path_is_refused() -> None:
+    def without_weights(seen):
+        found = implementations(seen)
+        declared = found["predict"].declaration
+        found["predict"] = implementation(
+            version=1, inputs=declared.inputs, outputs=declared.outputs, name="predict", relations={DERIVATIVE: [(1, 0)]}
+        )(found["predict"].function)
+        return found
+
+    installed = without_weights({"encoder": [], "network": []})
+    run = accepted_run(STEP, contract(), installed=installed)
+    net, enc = networks()
+    made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc})
+    with pytest.raises(Rejection) as rejected:
+        made.realize()
+    assert rejected.value.codes == ("iro-train-002",) and "reaches @learner's loss by no path" in said(rejected.value)
+
+
+def test_a_call_on_a_path_from_trained_state_that_holds_a_lease_must_declare_its_result_retained() -> None:
+    text = STEP.replace("iro.call @predict(%n, %cond) -> retained prediction", "iro.call @predict(%n, %cond) -> prediction").replace(
+        "iro.call @objective(%prediction, %batch) -> retained loss", "iro.call @objective(%prediction, %batch) -> retained loss"
+    )
+
+    def plain(seen):
+        found = implementations(seen)
+        found["predict"] = implementation(
+            version=1,
+            inputs=("protected_current lease", "retained cond"),
+            outputs=("prediction",),
+            name="predict",
+            relations={DERIVATIVE: [(0, 0), (1, 0)]},
+        )(found["predict"].function)
+        found["objective"] = implementation(
+            version=1, inputs=("prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]}
+        )(found["objective"].function)
+        return found
+
+    installed = plain({"encoder": [], "network": []})
+    run = accepted_run(text, contract(), installed=installed)
+    net, enc = networks()
+    made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc})
+    with pytest.raises(Rejection) as rejected:
+        made.realize()
+    assert rejected.value.codes == ("iro-train-003",) and "while holding a lease on @net" in said(rejected.value)
+
+
+def test_a_window_of_no_mass_steps_nothing_wrong_and_leaves_the_next_window_its_own_basis() -> None:
+    net, enc = networks()
+    made = trainer(net=net, enc=enc)
+    made.realize()
+    assert made.optimization is not None
+    live = made.optimization.live("learner")
+    x, y = BATCHES[0]
+    live.contribute(Massive(torch.nn.functional.mse_loss(net(x), y) * 0, 0.0))  # a batch whose loss keeps nothing, such as a fully masked one
+    live.advance((net,))
+    assert live._expected is None, "a window of no mass sets no expectation"
+    live.contribute(Massive(torch.nn.functional.mse_loss(net(x), y), 3.0))
+    record = live.advance((net,))
+    assert record.mass == 3.0 and all(torch.isfinite(p).all() for p in net.parameters())

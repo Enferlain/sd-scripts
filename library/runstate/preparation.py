@@ -36,8 +36,9 @@ makes again; nothing published relied on the participant yet.
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from library.iro.seams import HeldSetup
 from library.runstate.authority.authority import RunAuthority
-from library.runstate.authority.records import Establish, ParticipantRef
+from library.runstate.authority.records import ParticipantRef
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import Prepared, Published, Rejected, RouteRebinding
 from library.runstate.generation import Publication, Section
@@ -68,12 +69,12 @@ class PreparationRequest:
 
 @dataclass(frozen=True)
 class PreparedRoute:
-    """A route's prepared callable, proposed for the authority, with what it establishes for each call, if anything (D15)."""
+    """A route's prepared callable, proposed for the authority, with its held setup if it has one (D16)."""
 
     participant: ParticipantRef
     route: str
     callable: object
-    establish: Establish | None = None
+    setup: HeldSetup | None = None
 
 
 @dataclass(frozen=True)
@@ -176,7 +177,7 @@ class PreparationAttempt:
             evidence = Prepared(self.attempt.reference, self.attempt.basis, participant.binding.revision)
             transitions.append(
                 RouteRebinding(
-                    route.participant, route.route, route.callable, existing.revision if existing else None, evidence, route.establish
+                    route.participant, route.route, route.callable, existing.revision if existing else None, evidence, route.setup
                 )
             )
         sections: tuple[Section, ...] = tuple(result.contributed)

@@ -16,6 +16,16 @@ update lease hands the standard profile's calls (D17, D20):
   gradient norm to ``max_grad_norm``, steps the optimizer, zeroes the
   gradients and records the unit's progress in an :class:`Advancement`.
 
+A window's gradient is the one a single batch of everything it accumulated
+would give (D20). Each contribution's loss comes with its mass, what the
+loss's own reduction divides by, as an object with ``value`` and ``mass``; a
+bare loss has mass 1. The window divides the sum of loss times mass once, by
+the total mass. A contribution scales its loss by its share of the total the
+window expects, the previous window's, so a window like the one before it
+pays one scalar multiply per contribution; a window whose total differs, or
+whose masses are on the device, divides once at its end, inside clipping's
+own multiply when clipping is on.
+
 A window end with nothing contributed steps nothing: its optimizer call is
 not attempted and progress stays. Synchronization, unscaling and schedulers
 come with the second pass of section 16, and data parallelism with section
@@ -24,15 +34,17 @@ counts as returned and advanced. Whether a step a backend skips may report
 that it changed nothing is settled with advancement outcomes in that second
 pass.
 
-A gradient norm that is not finite fails the run (D20). The host never waits
-for it: each window end copies its norm to host memory and a later window
-end reads it once it has arrived, before stepping; the run's end settles the
-last ones (:meth:`LiveUnit.settle`). The step of the window whose norm was
-not finite has been taken by then.
+A gradient that is not finite fails the run (D20). The check reads only what
+a window computes anyway: the gradient norm where clipping measures it, and
+otherwise the window's loss. Each window end folds that value into a record
+kept on the device, which keeps the first window whose value was not finite,
+and the host reads it only where it reads the device already
+(:meth:`LiveUnit.check`): when the run's work ends (:meth:`LiveUnit.settle`),
+and later before a save and with the loss the run reports. The steps up to
+that read have been taken by then.
 """
 
-import math
-from collections import deque
+from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import StrEnum
@@ -68,8 +80,8 @@ class Progress:
 class Advancement:
     """One window's record: what it included, each mechanic reached with its outcome and performer, and the progress after.
 
-    ``norm`` is the unit's gradient norm, which clipping measures and the
-    finiteness check needs without clipping, left on the device: the record
+    ``norm`` is the unit's gradient norm where clipping measured it, and
+    ``mass`` the window's total mass, both possibly on the device: the record
     never waits for the device.
     """
 
@@ -81,6 +93,7 @@ class Advancement:
     zeroed: bool
     progress: Progress
     performer: str = TRAINER
+    mass: object = field(default=None, repr=False, compare=False)
 
 
 @dataclass(frozen=True)
@@ -101,29 +114,13 @@ class PreparedUnit:
         return [member.parameter for member in self.members]
 
 
-class NonFiniteGradient(RuntimeError):
-    """A unit's gradient norm was not finite; the run fails rather than train on (D20)."""
-
-
-@dataclass(frozen=True)
-class _Norm:
-    """One window's gradient norm on its way to host memory: the host copy and, on a device, the event after the copy."""
-
-    window: int
-    host: torch.Tensor
-    event: torch.Event | None
-
-    def arrived(self) -> bool:
-        return self.event is None or self.event.query()
-
-
 class LiveUnit:
     """A unit's live state and the update interface its update lease hands the standard profile's calls.
 
     It never leaves the access that holds the lease (D16).
     """
 
-    __slots__ = ("_norms", "_parameters", "_spare", "last", "position", "prepared", "progress")
+    __slots__ = ("_bad", "_basis", "_expected", "_mass", "_parameters", "_window_loss", "last", "position", "prepared", "progress")
 
     def __init__(self, prepared: PreparedUnit, progress: Progress | None = None):
         self.prepared = prepared
@@ -131,16 +128,29 @@ class LiveUnit:
         self.position = 0  # contributions in the open window
         self.progress = progress or Progress()
         self.last: Advancement | None = None
-        self._norms: deque[_Norm] = deque()  # gradient norms on their way to the host, oldest first
-        self._spare: list[torch.Tensor] = []  # pinned host buffers whose norm has been read
+        self._expected: float | None = None  # the previous window's total mass, which the next window expects
+        self._basis: float = 1.0  # the total this window's contributions were scaled by
+        self._mass: float | torch.Tensor = 0.0  # the open window's total mass
+        self._window_loss: torch.Tensor | None = None  # the open window's losses, read for the check without clipping
+        self._bad: torch.Tensor | None = None  # the first window whose value was not finite, or -1, on the device
 
-    def contribute(self, loss: torch.Tensor) -> None:
-        """Backpropagates the loss into the unit's own parameters only, accumulating into its open window."""
-        torch.autograd.backward(loss, inputs=self._parameters)
+    def contribute(self, loss: object) -> None:
+        """Backpropagates the loss, by its share of the window's mass, into the unit's own parameters only."""
+        value, mass = _split(loss)
+        if self.position == 0:
+            first = float(mass) if _number(mass) and mass > 0 else 1.0
+            self._basis = self._expected if self._expected is not None else first
+            self._mass, self._window_loss = 0.0, None
+        share = mass / self._basis
+        torch.autograd.backward(value if _number(share) and share == 1.0 else value * share, inputs=self._parameters)
+        self._mass = self._mass + mass
+        if self.prepared.definition.max_grad_norm is None:
+            detached = value.detach().float()
+            self._window_loss = detached if self._window_loss is None else self._window_loss + detached
         self.position += 1
 
     def advance(self, participants: Sequence[object]) -> Advancement:
-        """Ends the window under the standard profile: clip, step, zero and count progress.
+        """Ends the window under the standard profile: normalize, clip, step, zero and count progress.
 
         ``participants`` are what the members' update leases reach, in the
         order the window takes them, and must be exactly the participants the
@@ -154,62 +164,92 @@ class LiveUnit:
             record = Advancement(prepared.reference, 0, False, None, Outcome.NOT_ATTEMPTED, False, self.progress)
             self.last = record
             return record
-        reasons = self._read(wait=False)
-        if reasons:
-            raise NonFiniteGradient("\n".join(reasons))
+        # What turns the contributions' sum into the window's gradient; a window of no mass has nothing to divide.
+        factor = 1.0 if _number(self._mass) and self._mass == 0 else self._basis / self._mass
+        exact = _number(factor) and factor == 1.0
         limit = prepared.definition.max_grad_norm
-        if limit is not None:
+        grads = [p.grad for p in self._parameters if p.grad is not None]
+        norm: torch.Tensor | None = None
+        if limit is not None and exact:
             norm = torch.nn.utils.clip_grad_norm_(self._parameters, limit)
-        else:
-            norm = torch.nn.utils.get_total_norm([p.grad for p in self._parameters if p.grad is not None])
-        self._send(self.progress.attempted + 1, norm)
+        elif limit is not None:
+            total = torch.nn.utils.get_total_norm(grads)
+            norm = total * (factor.to(total.device) if isinstance(factor, torch.Tensor) else factor)
+            _multiply(grads, torch.clamp(limit / (norm + 1e-6), max=1.0) * factor)  # clipping's own multiply carries the division
+        elif not exact:
+            _multiply(grads, factor)
+        checked = norm if norm is not None else self._window_loss
+        if checked is not None:
+            self._fold(self.progress.attempted + 1, checked)
         prepared.optimizer.step()
         prepared.optimizer.zero_grad(set_to_none=True)
         self.progress = Progress(self.progress.attempted + 1, self.progress.advanced + 1)
-        record = Advancement(prepared.reference, self.position, limit is not None, norm, Outcome.RETURNED, True, self.progress)
+        record = Advancement(
+            prepared.reference, self.position, limit is not None, norm, Outcome.RETURNED, True, self.progress, mass=self._mass
+        )
+        self._expected = float(self._mass) if _number(self._mass) and self._mass > 0 else None
         self.position = 0
         self.last = record
         return record
 
+    def check(self) -> tuple[str, ...]:
+        """Reads the record, waiting for the device: why the unit's windows were not finite, if any were.
+
+        Called only where the host reads the device already.
+        """
+        if self._bad is None:
+            return ()
+        window = int(self._bad)
+        if window < 0:
+            return ()
+        what = "gradient norm" if self.prepared.definition.max_grad_norm is not None else "loss"
+        return (
+            f"@{self.prepared.definition.name}: the {what} of window {window} was not finite; "
+            "its step was taken, so the unit's parameters may no longer be finite",
+        )
+
     def settle(self) -> tuple[str, ...]:
-        """Once the run's work has ended: the windows whose gradient norm was not finite, waiting for the norms still on their way."""
-        return self._read(wait=True)
+        """Once the run's work has ended: the windows whose value was not finite."""
+        return self.check()
 
     def adopt(self, previous: LiveUnit) -> None:
-        """Takes over the norms the live state this one replaces still has on their way, and its host buffers."""
-        self._norms.extend(previous._norms)
-        previous._norms.clear()
-        self._spare.extend(previous._spare)
-        previous._spare.clear()
+        """Takes over the record of the live state this one replaces, and what its next window expects."""
+        if previous._bad is not None:
+            self._bad = previous._bad if self._bad is None else torch.where(previous._bad >= 0, previous._bad, self._bad)
+        previous._bad = None
+        self._expected = previous._expected
 
-    def _send(self, window: int, norm: torch.Tensor) -> None:
-        """Starts the norm's copy to host memory, after the work that computes it, without waiting for it."""
-        value = norm.detach().to(torch.float32)
-        if value.device.type == "cpu":
-            self._norms.append(_Norm(window, value, None))
-            return
-        host = self._spare.pop() if self._spare else torch.empty((), dtype=torch.float32, pin_memory=True)
-        host.copy_(value, non_blocking=True)  # on the current stream of the norm's device
-        event = torch.Event(device=value.device)
-        event.record(torch.accelerator.current_stream(value.device))
-        self._norms.append(_Norm(window, host, event))
-
-    def _read(self, *, wait: bool) -> tuple[str, ...]:
-        """Reads the norms that have arrived, or all of them when waiting; why any was not finite."""
-        reasons: list[str] = []
-        while self._norms and (wait or self._norms[0].arrived()):
-            norm = self._norms.popleft()
-            if norm.event is not None:
-                norm.event.synchronize()
-            value = float(norm.host)
-            if norm.event is not None:
-                self._spare.append(norm.host)
-            if not math.isfinite(value):
-                reasons.append(
-                    f"@{self.prepared.definition.name}: the gradient norm of window {norm.window} was {value}; "
-                    "its step was taken, so the unit's parameters may no longer be finite"
-                )
-        return tuple(reasons)
+    def _fold(self, window: int, value: torch.Tensor) -> None:
+        """Folds a window's value into the record on the device: a few small operations, no copy and no wait."""
+        if self._bad is None:
+            self._bad = torch.full((), -1, dtype=torch.int64, device=value.device)
+        self._bad = torch.where(torch.isfinite(value) | (self._bad >= 0), self._bad, window)
 
 
-__all__ = ["TRAINER", "Advancement", "LiveUnit", "NonFiniteGradient", "Outcome", "PreparedUnit", "Progress"]
+def _split(loss: object) -> tuple[torch.Tensor, float | torch.Tensor]:
+    """A contribution's loss and its mass: an object with ``value`` and ``mass``, or a bare loss of mass 1."""
+    mass = getattr(loss, "mass", None)
+    if mass is None:
+        assert isinstance(loss, torch.Tensor)
+        return loss, 1.0
+    if isinstance(mass, torch.Tensor):
+        mass = mass.detach()  # a mass divides; no derivative goes into it
+    value = getattr(loss, "value", None)  # duck-typed: a loss reports its value and its mass
+    assert isinstance(value, torch.Tensor), "a loss with a mass has a value"
+    return value, mass
+
+
+def _number(value: object) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool)
+
+
+def _multiply(grads: list[torch.Tensor], factor: float | torch.Tensor) -> None:
+    """Multiplies the gradients in place, one fused multiply per device."""
+    by_device: dict[torch.device, list[torch.Tensor]] = defaultdict(list)
+    for grad in grads:
+        by_device[grad.device].append(grad)
+    for device, group in by_device.items():
+        torch._foreach_mul_(group, factor.to(device) if isinstance(factor, torch.Tensor) else factor)
+
+
+__all__ = ["TRAINER", "Advancement", "LiveUnit", "Outcome", "PreparedUnit", "Progress"]

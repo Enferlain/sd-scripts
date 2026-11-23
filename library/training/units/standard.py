@@ -3,9 +3,10 @@
 Training's words call them, and a strategy pins them in its uses like any
 other implementation. Each delegates to the unit's live state, which its
 update lease hands it; Trainer optimization performs the mechanics. A
-contribution differentiates its loss, so the calls whose results reach that
-loss through inputs declared differentiable run with grad mode, and the
-modules the unit trains run in train mode in them (D15, D20).
+contribution's loss is a sink of training's ``derivative`` relation: the
+calls on a path from the unit's trained state into it run with grad mode,
+and the modules the unit trains run in train mode in them (D15, D16, D20).
+The loss may come with its mass, which the window divides by (D20).
 
 The window end takes the unit's update lease and one update lease on each
 participant it trains, so it is declared for a unit of one participant;
@@ -20,18 +21,12 @@ from library.training.units.prepared import LiveUnit
 from library.training.words import ADVANCE, CONTRIBUTE
 
 
-@implementation(
-    version=1,
-    name=CONTRIBUTE,
-    inputs=("owner_update lease", "retained loss"),
-    effects=[Effect.DEVICE],
-    differentiates=(1,),
-)
+@implementation(version=2, name=CONTRIBUTE, inputs=("owner_update lease", "retained loss"), effects=[Effect.DEVICE])
 def contribute(unit: LiveUnit, loss: object) -> None:
-    unit.contribute(loss)  # ty: ignore[invalid-argument-type]
+    unit.contribute(loss)
 
 
-@implementation(version=1, name=ADVANCE, inputs=("owner_update lease", "owner_update lease"), effects=[Effect.DEVICE])
+@implementation(version=2, name=ADVANCE, inputs=("owner_update lease", "owner_update lease"), effects=[Effect.DEVICE])
 def advance(unit: LiveUnit, participant: object) -> None:
     unit.advance((participant,))
 
