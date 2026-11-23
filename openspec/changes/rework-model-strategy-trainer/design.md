@@ -3736,33 +3736,51 @@ knowing what it means:
   the shared switch. A **held setup** changes only state reachable through
   the handles of the resources it names, state that later work relies on
   and that nothing carries for it, as module mode does, since checkpointing
-  recomputes the forward inside the later backward. It is held while the
-  leases of the calls it covers are out, including those a retained result
-  keeps. Each setup says, for a call's annotations, which realization state
-  it needs, as an opaque key the core only compares together with the
+  recomputes the forward inside the later backward. Its hold covers the
+  leases its calls use, and binds while one of those leases is in use by a
+  running call or kept by a retained result, which is the work that relies
+  on the state. A lease that is only still out, because its access body has
+  not ended, keeps nothing that needs the state, so calls in one access that
+  need different states take turns. The hold's extent is read from the same
+  records that decide when its leases are released, not kept as a second
+  lifetime. Each setup says, for a call's annotations, which realization
+  state it needs, as an opaque key the core only compares together with the
   setup's name and version: calls whose setups need the same state share the
-  hold, whichever setup object each lease carries, and a call that needs
-  another state on one of those resources waits until it ends. A held setup
-  that changes a resource's storage, as D20's evaluation-point swap does,
-  declares so, and its hold also excludes the resource's other work, whose
-  view of a version it would change: updates, uses through other routes and
-  the captures of their snapshots wait as well (D20). The state a held setup
-  changes is realization state, which no version covers. No setup changes a
-  version,
-  takes a lease, waits on another activity or issues collectives. When a
-  hold ends, its setup undoes its change, as D20's evaluation-point swap
-  does, or leaves it for the next setup to set, as module mode does. A
-  setup's undo runs however the calls end,
-  failure and cancellation included, and a setup or undo that fails fails
-  the run with the state it changed reported uncertain
-  (`training-capability-coordination`). The hold adds no wait of its own
-  across activities: a device's work runs in turn, and a hold ends with the
-  results that keep its admission (D15). Within one activity, preparation
-  refuses work that a live hold excludes, which would wait on itself, as it
-  refuses an update while a retained result keeps the state protected.
+  hold,
+  whichever setup object each lease carries, and a call that needs another
+  state on one of those resources waits while the hold binds. When the hold
+  stops binding, its change stays in place, so the next call needing the
+  same state finds it set. A setup that leaves its change for the next
+  setup, as module mode does, has nothing more to do; one that undoes its
+  change, as D20's evaluation-point swap does, undoes it before work that
+  needs another state runs on the resource, and at the latest when the last
+  lease the hold covers is released. A held setup that changes a resource's
+  storage, as the swap does, declares so, and while its change is in place
+  it also excludes the resource's other work, whose view of a version it
+  would change: updates, uses through other routes and the captures of their
+  snapshots wait while the hold binds and, after that, until the undo,
+  which their arrival starts (D20). The state a held setup changes is
+  realization state, which no version covers. No setup changes a version,
+  takes a lease, waits on another activity or issues collectives. A setup's
+  undo runs however the calls end, failure and cancellation included, and a
+  setup or undo that fails fails the run with the state it changed reported
+  uncertain (`training-capability-coordination`). The hold adds no wait of
+  its own across activities: a device's work runs in turn, and a hold binds
+  no longer than the results that keep its admission (D15). Within one
+  activity, preparation refuses a call that needs another state on a
+  resource, or work a storage change excludes, while a hold on that resource
+  binds, which would wait on itself, as it refuses an update while a
+  retained result keeps the state protected. It knows the states calls need
+  from what the domain that attaches the held setups declares at
+  preparation (below).
 
 Annotations and setups are derived on the normalized program before fusion,
-and calls fuse only where theirs are the same, compared and never merged.
+and calls fuse only where theirs are the same, compared and never merged. A
+domain whose owners attach held setups also declares, for each call, the
+state its setups will need on each resource it leases, as written data:
+preparation compares these declarations to refuse waits within one
+activity, and the runtime checks that the setup a lease carries needs the
+state declared for the call, so the two never disagree silently.
 They are part of the prepared run: printed, and derived again when a saved
 prepared form is loaded, which refuses one that differs (D14). A setup's
 code is pinned as an implementation's is, by name, version and code
@@ -5265,8 +5283,9 @@ realization and never a competing update: it changes no version. Like any
 change of device storage outside a call, it is device work the runtime
 queues on the device's stream (D15). Trainer optimization supplies the swap
 and its undo as implementations and never runs them itself; the runtime
-runs the swap before the first use through the route and the undo after the
-route's last lease ends, each in order with the participant's other work.
+runs the swap before the first use through the route and the undo before
+other work needs the participant or, at the latest, after the route's last
+lease ends, each in order with the participant's other work (D16).
 The undo runs however that lease ends, failure and cancellation included,
 and a swap or undo that fails fails the run with the participant's state
 reported uncertain (D14). While the swap is in place the participant's
