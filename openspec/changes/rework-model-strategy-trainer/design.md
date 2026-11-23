@@ -3179,8 +3179,8 @@ and launch device work. Owners hold state.
   (D10).
 - **Physical calls.** Selected implementations run on worker threads, and the
   coordinator never blocks on them. Each call establishes its execution
-  context from its prepared call: grad mode, precision, device stream and
-  RNG. It never inherits ambient thread state. Preparation derives grad mode
+  context from its prepared call: grad mode, autocast dtype, device stream
+  and RNG. It never inherits ambient thread state. Preparation derives grad mode
   from the dataflow: an implementation declares which inputs it
   differentiates and which it differentiates through, and a call runs with
   grad mode when one of its results reaches a differentiated input, such as
@@ -3194,6 +3194,23 @@ and launch device work. Owners hold state.
   handle it receives; a group that uses such a lease uses that resource
   alone. Domains decide what their leases establish: training's routes set
   module mode from trainability (D20).
+- **Precision.** Precision is not one property of a model or a run: weight
+  storage, forward and backward compute, gradients, optimizer state and a
+  saved product may each have their own format, and low-precision formats
+  carry state of their own, such as scales and amax history
+  (`research/precision-and-quantization-training.md`). Each choice has its
+  owner. Autocast's dtype is meaning: the strategy states it on an activity,
+  its calls inherit it, an inner activity or access may override it, and
+  preparation puts it in each call's context. Weight storage is the
+  participant's materialization. A quantized base and low-precision compute,
+  such as FP8 or FP4 matmuls with their scaling state, are a route's
+  realization, declared as a choice on the participant (D21), and a device
+  that does not offer what the choice needs is a target limit. Optimizer
+  numerics, such as 8-bit state or stochastic rounding, are the unit's
+  optimizer policy, and loss scaling is its unscaling mechanic (D20). TF32
+  is one run-wide choice the device adapter sets, since PyTorch's switch is
+  process-wide: the one setting a call inherits rather than establishes. Quantization-aware training changes what is trained, so it is
+  strategy structure. A product's precision is its serializer's (D11).
 - **CPU/GPU hand-off.** A Python call returning means device work was queued,
   not finished. The physical layer obtains completion from the device through
   a backend adapter, using stream ordering and events rather than a CPU
@@ -3337,7 +3354,14 @@ and launch device work. Owners hold state.
   realization and to backend coordination. Trainable state kept on the host
   is placement, chosen in preparation. A quantized base, or replaced modules
   that stream their weights to the device as RamTorch's do, is a realization
-  of a route. The runtime itself moves only a participant's device storage
+  of a route. Recomputing or offloading activations changes no meaning:
+  non-reentrant checkpointing replays the random and autocast state, and only
+  bit-level agreement depends on whether a route does it, which is why the
+  reference step uses the same mode. Whether a route does it is therefore a
+  preparation choice made at launch, never part of the strategy's meaning. The component declares where it can
+  checkpoint, `library/performance` holds the rules that read it, and a route
+  checkpoints only in calls with grad mode, since only they run a backward.
+  The runtime itself moves only a participant's device storage
   off the device between uses:
   - A strategy may permit a participant to leave the device between uses.
     Like overlap, it is a permission: moving changes no result, so
@@ -3391,8 +3415,14 @@ and launch device work. Owners hold state.
   claims. A selected implementation is presumed unsafe for concurrent use of
   the same participant unless its declaration says otherwise, and the runtime
   serializes such uses. Imports that would re-enable the GIL stay off the
-  default path and load only when a selected implementation needs them; a
-  run reports its actual GIL state. The
+  default path and load only when a selected implementation needs them. A
+  selection that needs the GIL, such as an optimizer whose library loads
+  Triton, costs the run that selected it, and the system never slows its
+  own paths to suit it. A run reports its actual GIL state and, when the GIL
+  is on, the first selection whose loading turned it on, which the host
+  observes around each piece it loads: materializers, optimizers and
+  installed implementations. No backend or numerical compiler is required;
+  each integration serves the work it can realize. The
   [blockers report](../../../docs_design/archive/cpython-314t-blockers-report.md) records the
   current Triton, OpenCV and gRPC limits.
 - **Input production.** Producers run as activities in the same process, in
@@ -4107,6 +4137,11 @@ An executable run exists only after publication. It holds:
   obligation and preparation-attempt revisions they came from;
 - the selected device adapters;
 - the evidence accepted for its readiness checkpoints.
+
+When its work has ended, the executable run asks each owner that checks the
+run's work late to settle, such as Trainer optimization reading its units'
+last gradient norms (D20), and a reason fails the run, after any failure it
+already had.
 
 An executable run is single-use:
 
@@ -4925,6 +4960,25 @@ whose progress they follow, a unit or a producer (D17), and today's `global_step
 progress. A one-unit run reads as before, and a multi-unit run gets no
 invented shared clock.
 
+A gradient norm that is not finite fails the run rather than let it train
+on. Clipping measures the norm anyway; without clipping, the check takes one
+more pass over the gradients. The host never waits for the norm: each window
+end copies it to host memory, a later window end reads it once it has
+arrived, before stepping, and the run's end settles the last ones (D17). A
+product saved mid-run settles the norms of the units it saves first (built
+with persistence, task 18.5). The window whose norm was not finite has
+stepped by then, so that run's parameters are lost and nothing is saved from
+them. Reading the norm before the step would keep them, but the host would
+wait for the backward at every window end. Skipping such a step and going on
+is an advancement outcome for the second pass of section 16. Measured on the
+SDXL fine-tune step (one unit, one contribution per window, RTX 3080,
+2026-11-23): the extra pass without clipping takes 10.6 ms. Reading before
+the step made the host wait about 105 ms at each window end, with no
+step-time difference beyond the noise of the measurement, consistent with
+bitsandbytes' AdamW8bit step being bound by its host launches (about 360 ms
+to launch, the GPU finishing 0.1 ms after the last launch); a faster
+optimizer step would likely expose that wait.
+
 #### Train and evaluation modes
 
 Module runtime mode is not unit state. Validation runs as its own activity
@@ -5048,6 +5102,18 @@ code is.
   The model that introduced a component does not own it, and anyone may pair
   it differently. An **assembly** records a model as released: the
   components it uses and the conventions they were trained with.
+- **One component, several releases.** Where releases are configurations of
+  one architecture, the component is that architecture as its reference
+  implementation defines it, and each assembly ships its configuration. SD
+  1.x, 2.x and SDXL are all configurations of one UNet (`openaimodel`'s
+  `UNetModel` in the CompVis and Stability code, `UNet2DConditionModel` in
+  Diffusers), so `library/models/denoisers/` holds that UNet with the
+  reference's parameters, and the SD and SDXL assemblies ship their values.
+  Its native state layout is the released checkpoints' own; other layouts,
+  such as Diffusers', go through conversion. A configuration's values are
+  implemented when its release is written, and the others are refused with
+  the reason until then. Designing architectures beyond the released ones
+  is a different matter, closer to strategies.
 - **Model code** is a component's or an assembly's intrinsic meaning and
   canonical interface, whatever a strategy does with it: its modules, its
   weights and their canonical formats, and the conventions it was trained
@@ -5060,7 +5126,23 @@ code is.
   `library/objectives`, a loss weighting in `library/losses`, an adapter
   method in `library/adapters`. Each feature declares itself, and the
   repository's features are listed in a generated listing in
-  `strategies/features/`. Reusable strategy-level
+  `strategies/features/`. A training loss is composed in the strategy from
+  calls cut where the choices vary independently: an elementwise loss, the
+  per-sample reduction where masking applies, a weighting from the
+  formulation, and the weighted mean. A formulation in `library/objectives`
+  defines its signal-to-noise ratio, a weighting in `library/losses`, such as
+  min-SNR, turns it into weights, and a learned weighting such as EDM2's is a
+  participant with its own unit. A formulation's noise schedule is a value
+  the strategy hands it, cut the same way: the assembly records the schedule
+  its model was trained with, a technique that changes it, such as
+  zero-terminal SNR, is a transform on that value in `library/objectives`,
+  and noising, the target and the signal-to-noise ratio all read the one
+  result. The schedule is distinct from how training draws its timesteps
+  (`library/timesteps`) and from the steps a sampler visits (`library/pipelines`);
+  a sampler takes the same schedule value, so a model is sampled with the
+  schedule it was trained with.
+  A reusable piece in `strategies/features/`
+  packages a standard composition, so an author still writes one call. Reusable strategy-level
   pieces that more than one strategy uses, such as the shared
   sample/validate/save rhythm, the EDM2
   learned-weight setup or adapter use, are written like strategies and live

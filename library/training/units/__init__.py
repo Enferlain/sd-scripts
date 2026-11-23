@@ -12,7 +12,7 @@ from library.training.units.candidates import Member, UnitCandidate, resolve
 from library.training.units.modes import ModuleModes
 from library.training.units.owner import OptimizationSection, TrainerOptimization, UnitLease
 from library.training.units.plan import OptimizationPlan, OptimizerPolicy, UnitDefinition, UnitRef
-from library.training.units.prepared import TRAINER, Advancement, LiveUnit, Outcome, PreparedUnit, Progress
+from library.training.units.prepared import TRAINER, Advancement, LiveUnit, NonFiniteGradient, Outcome, PreparedUnit, Progress
 
 __all__ = [
     "TRAINER",
@@ -20,6 +20,7 @@ __all__ = [
     "LiveUnit",
     "Member",
     "ModuleModes",
+    "NonFiniteGradient",
     "OptimizationPlan",
     "OptimizationSection",
     "OptimizerPolicy",

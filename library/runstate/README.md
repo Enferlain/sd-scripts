@@ -39,7 +39,9 @@ views and each owner's part of a cut.
      |                             each other owner judges its own resources
   ExecutableRun                    the coordinator over Execution(authority),
                                    the owner for participants, and the other
-                                   owners; it runs once
+                                   owners; it runs once, then each owner that
+                                   checks late settles (`Settles`), and a
+                                   reason fails the run
 ```
 
 ## Publication

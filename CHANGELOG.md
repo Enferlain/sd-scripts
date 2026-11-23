@@ -14,10 +14,12 @@ Rules:
 
 ### Added
 
+- **A gradient norm that is not finite fails the run** — the window end reads each unit's gradient norm (clipping measures it; without clipping one more pass does) without the host waiting: the norm is copied to host memory and read at a later window end, before stepping. When its work has ended, an executable run asks each owner that checks late to settle (`runstate.generation.Settles`), so the last windows' norms are read too; a reason is reported as a `settle_failed` fact and fails a run that succeeded, and a run that failed or was cancelled keeps that outcome. A newly prepared unit takes over the norms still on their way. Reading the norm before the step instead was measured on the SDXL step: no step-time difference beyond noise, consistent with bitsandbytes' AdamW8bit step being bound by its host launches (about 360 ms per step, `sd-scripts-syv.70`).
 - **Tests for Trainer optimization's owner** — a publication that changes a unit is refused while the unit's update lease is out and installs after its release, and leases taken on other threads never see their prepared unit change.
 
 ### Changed
 
+- **Chunk C's decisions in the rework design** — D15: precision is per role, and autocast's dtype is stated in the strategy on an activity, inherited and overridable; checkpointing is a preparation choice at launch, gated on grad mode; a selection that needs the GIL costs only its run, which reports the first selection that turned it on. D21: SD 1.x, 2.x and SDXL are one UNet component with the reference's parameters, each assembly shipping its configuration; a training loss is composed from calls cut where the choices vary independently, and a formulation takes its noise schedule as a value, so zero-terminal SNR is a transform on the schedule (decided 2026-11-23). D17 and D20: the late gradient-norm check and the run's end settle.
 - **The retained-result release rule, written down** — the 2026-11-16 fix changed only the runtime and the reference semantics. D16 and the `workflow-composition` spec now state it: a result computed from a retained result keeps every lease that result keeps, so the earlier one may be released first. The verifier no longer refuses a normalized form that releases a kept result first, and still refuses an update between the two releases (`iro-lease-004`). Runtime, reference and verifier tests cover a loss that leaves its access while the prediction is released inside. D14's first retained-product profile points to D16's extension.
 
 ### Fixed

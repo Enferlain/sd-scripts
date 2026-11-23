@@ -12,7 +12,8 @@ its evaluation point, come with the second pass of section 16.
 Its section of each generation holds the prepared units, built off to the
 side by a preparation attempt and published with it (D8). It refuses a
 publication that changes a prepared unit while a lease on that unit is out,
-and judges the obligations on its units at a readiness checkpoint.
+judges the obligations on its units at a readiness checkpoint, and settles
+the gradient norms its window ends read late once the run's work has ended.
 """
 
 import threading
@@ -101,7 +102,10 @@ class TrainerOptimization:
         live = self._live.get(name)
         if live is None or live.prepared is not prepared:
             carried = live.progress if live is not None and live.prepared.reference == prepared.reference else None
-            live = self._live[name] = LiveUnit(prepared, carried)
+            replaced, live = live, LiveUnit(prepared, carried)
+            if replaced is not None:
+                live.adopt(replaced)  # gradient norms still on their way are checked all the same (D20)
+            self._live[name] = live
         return live
 
     # Preparation.
@@ -168,6 +172,14 @@ class TrainerOptimization:
         if changed:
             return f"@{unit} was prepared from bindings that have changed since ({', '.join(changed)})"
         return None
+
+    # The run's end.
+
+    def settle(self) -> tuple[str, ...]:
+        """Once the run's work has ended: why its units' last windows were unsound, such as a gradient norm that was not finite (D17, D20)."""
+        with self._lock:
+            live = list(self._live.values())
+        return tuple(reason for unit in live for reason in unit.settle())
 
     # Publication checks.
 

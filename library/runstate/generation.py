@@ -19,7 +19,8 @@ comes with multi-process runs (D15).
 
 An executable run exists only after publication, once every owner that
 judges obligations finds its readiness checkpoint met (D17). It reads
-through the generation it was realized on and runs once.
+through the generation it was realized on and runs once. When its work has
+ended, it asks each judge that checks late to settle, and a reason fails it.
 """
 
 import asyncio
@@ -28,7 +29,7 @@ from collections.abc import Iterable, Mapping
 from contextlib import AbstractContextManager, ExitStack
 from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 from library.iro.prepare import Prepared
 from library.iro.runtime import Coordinator, Fact, Observer, Outcome
@@ -158,6 +159,15 @@ class Judges(Protocol):
         ...
 
 
+@runtime_checkable
+class Settles(Protocol):
+    """A judge whose checks on the run's work finish after that work, such as a gradient norm read late (D17)."""
+
+    def settle(self) -> tuple[str, ...]:
+        """Once the run's work has ended: why it was unsound; empty when it was sound."""
+        ...
+
+
 @dataclass(frozen=True)
 class Readiness:
     """The evidence an executable run was accepted with: who judged which checkpoint, at which generation."""
@@ -203,8 +213,10 @@ class ExecutableRun:
         self.attempts = attempts
         self.devices = dict(devices)
         self.readiness = Readiness(CORE_EXECUTION, generation.number, tuple(judges))
+        self._judges = dict(judges)
         self.facts: list[Fact] = []
-        self.coordinator = Coordinator(prepared, owners, installed, self.devices, observe=observe or self.facts.append)
+        self._observe = observe or self.facts.append
+        self.coordinator = Coordinator(prepared, owners, installed, self.devices, observe=self._observe)
         self._executed = False
         self._lock = threading.Lock()
 
@@ -214,7 +226,14 @@ class ExecutableRun:
         return self.readiness.generation
 
     def execute(self) -> Outcome:
-        """Runs the strategy once, while the generation it was realized on is still current."""
+        """Runs the strategy once, while the generation it was realized on is still current.
+
+        Once its work has ended, each judge that checks late settles. A reason
+        is reported as a ``settle_failed`` fact after the run's own facts and
+        fails a run that succeeded; a run that failed or was cancelled keeps
+        that outcome, with the reasons added to its error. A judge whose
+        settling raises gives that as its reason.
+        """
         with self._lock:
             if self._executed:
                 raise Refused("an executable run is single-use; realize a new one")
@@ -222,7 +241,23 @@ class ExecutableRun:
         current = self.generations.current.number
         if current != self.generation:
             raise Stale(f"realized on generation {self.generation}, and generation {current} is current")
-        return asyncio.run(self.coordinator.run())
+        outcome = asyncio.run(self.coordinator.run())
+        reasons: list[str] = []
+        for name, judge in self._judges.items():
+            if not isinstance(judge, Settles):
+                continue
+            try:
+                found = [f"{name}: {reason}" for reason in judge.settle()]
+            except Exception as failed:
+                found = [f"{name}: settling raised {type(failed).__name__}: {failed}"]
+            if found:
+                self._observe(Fact(name, (), "settle_failed", tuple(found)))
+            reasons += found
+        if reasons:
+            if outcome.status == "succeeded":
+                outcome.status = "failed"
+            outcome.error = "\n".join([*([outcome.error] if outcome.error else []), *reasons])
+        return outcome
 
 
 def _changed(sections: Iterable[Section], current: Generation) -> dict[str, Section]:
@@ -237,4 +272,4 @@ def _changed(sections: Iterable[Section], current: Generation) -> dict[str, Sect
     return changed
 
 
-__all__ = ["ExecutableRun", "Generation", "Generations", "Judges", "Publication", "Publishes", "Readiness", "Section"]
+__all__ = ["ExecutableRun", "Generation", "Generations", "Judges", "Publication", "Publishes", "Readiness", "Section", "Settles"]

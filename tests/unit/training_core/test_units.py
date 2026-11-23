@@ -29,7 +29,16 @@ from library.runstate.generation import ExecutableRun, Publication
 from library.runstate.owners import Refused, Stale
 from library.training.trainer import Trainer
 from library.iro.seams import CallContext, Use
-from library.training.units import TRAINER, ModuleModes, OptimizationPlan, OptimizationSection, Outcome, Progress, TrainerOptimization
+from library.training.units import (
+    TRAINER,
+    ModuleModes,
+    NonFiniteGradient,
+    OptimizationPlan,
+    OptimizationSection,
+    Outcome,
+    Progress,
+    TrainerOptimization,
+)
 from library.training.units.standard import installed as standard
 from library.training.words import contract
 from tests.unit.iro.accepted_runs import accepted_run
@@ -236,6 +245,99 @@ def test_a_window_end_with_nothing_contributed_steps_nothing() -> None:
     record = made.optimization.live("learner").advance((net,))
     assert record.optimizer == Outcome.NOT_ATTEMPTED and record.progress == Progress(0, 0)
     assert all(torch.equal(a, b) for a, b in zip(before, net.parameters(), strict=True))
+
+
+def test_a_gradient_norm_that_is_not_finite_fails_the_next_window_end_before_it_steps() -> None:
+    net, enc = networks()
+    made = trainer(net=net, enc=enc)
+    made.realize()
+    assert made.optimization is not None
+    live = made.optimization.live("learner")
+    for parameter in net.parameters():
+        parameter.grad = torch.full_like(parameter, float("nan"))
+    live.position = 1
+    first = live.advance((net,))
+    assert first.optimizer == Outcome.RETURNED and first.progress == Progress(1, 1), "its norm is read later, so this window steps"
+    for parameter in net.parameters():
+        parameter.grad = torch.ones_like(parameter)
+    live.position = 1
+    with pytest.raises(NonFiniteGradient, match=r"@learner: the gradient norm of window 1 was nan; its step was taken"):
+        live.advance((net,))
+    assert live.progress == Progress(1, 1), "the window end that finds it steps nothing"
+    assert live.settle() == (), "a norm once reported is not reported again"
+
+
+@pytest.mark.parametrize("text", [STEP, STEP.replace(" max_grad_norm 0.5", "")], ids=["clipped", "unclipped"])
+def test_a_run_whose_last_gradient_norm_is_not_finite_fails_once_its_work_has_ended(text: str) -> None:
+    net, enc = networks()
+    with torch.no_grad():
+        next(net.parameters()).view(-1)[0] = float("nan")  # the network's output, its loss and its gradients are no longer finite
+    outcome = trainer(text, net=net, enc=enc).train()
+    assert outcome.status == "failed"
+    assert "trainer optimization: @learner: the gradient norm of window 1 was nan" in (outcome.error or "")
+
+
+def test_a_newly_prepared_unit_takes_over_the_norms_still_on_their_way() -> None:
+    net, enc = networks()
+    made = trainer(net=net, enc=enc)
+    made.realize()
+    optimization = made.optimization
+    assert optimization is not None
+    live = optimization.live("learner")
+    for parameter in net.parameters():
+        parameter.grad = torch.full_like(parameter, float("nan"))
+    live.position = 1
+    live.advance((net,))
+    optimization.generations.publish(republished(optimization))
+    replaced = optimization.live("learner")
+    assert replaced is not live and replaced.progress == Progress(1, 1)
+    (reason,) = optimization.settle()
+    assert reason.startswith("@learner: the gradient norm of window 1 was nan")
+
+
+def test_settling_is_reported_after_the_run_s_facts_and_a_settle_that_raises_fails_the_run() -> None:
+    net, enc = networks()
+    with torch.no_grad():
+        next(net.parameters()).view(-1)[0] = float("nan")
+    executable = trainer(net=net, enc=enc).realize()
+    outcome = executable.execute()
+    kinds = [f.kind for f in executable.facts]
+    assert outcome.status == "failed" and kinds[-1] == "settle_failed", "execution reported its own end; the settle comes after"
+    (settled,) = [f for f in executable.facts if f.kind == "settle_failed"]
+    assert settled.owner == TRAINER and "the gradient norm of window 1 was nan" in str(settled.values)
+    made = trainer()
+    executable = made.realize()
+    assert made.optimization is not None
+
+    def raising() -> tuple[str, ...]:
+        raise RuntimeError("the device was lost")
+
+    made.optimization.settle = raising  # ty: ignore[invalid-assignment]
+    outcome = executable.execute()
+    assert outcome.status == "failed"
+    assert "trainer optimization: settling raised RuntimeError: the device was lost" in (outcome.error or "")
+
+
+@pytest.mark.requires_gpu
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA device")
+def test_a_norm_on_a_device_goes_to_the_host_without_waiting_and_is_read_once_its_work_has_ended() -> None:
+    made = trainer()
+    made.realize()
+    assert made.optimization is not None
+    live = made.optimization.live("learner")
+    device = torch.device("cuda", 1 if torch.cuda.device_count() > 1 else 0)
+    with torch.cuda.device(device):
+        nan, two = torch.tensor(float("nan"), device=device), torch.tensor(2.0, device=device, dtype=torch.bfloat16)
+        (nan * 1).cpu(), (two * 1).float().cpu()  # load these kernels now: CUDA loads a kernel lazily, waiting for the device
+        torch.cuda._sleep(500_000_000)  # one kernel that keeps the device busy for a noticeable time
+        live._send(1, nan * 1)
+        assert not live._norms[-1].arrived(), "the copy follows the queued work, and nothing waited for it"
+        live._send(2, two * 1)
+    assert all(norm.event is not None and norm.host.is_pinned() for norm in live._norms)
+    assert made.optimization.settle() == (
+        "@learner: the gradient norm of window 1 was nan; its step was taken, so the unit's parameters may no longer be finite",
+    )
+    assert len(live._spare) == 2, "the host buffers are kept for later windows"
 
 
 def test_preparation_that_stops_partway_leaves_no_in_place_registration() -> None:
