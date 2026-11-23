@@ -151,6 +151,11 @@ reference SHALL NOT by itself prove stability.
 - **WHEN** export borrows tensors that can be updated before its required reads complete
 - **THEN** readiness MUST remain unsatisfied unless the accepted capture mechanism prevents an incoherent product
 
+#### Scenario: A unit's gradient norms are still being read
+- **WHEN** a product captures a unit's state while gradient norms of that unit's earlier windows have not yet been read
+- **THEN** the capture MUST first read them
+- **AND** a norm that is not finite MUST prevent the product rather than let it capture state trained on that gradient
+
 ### Requirement: A capture stays authoritative for its product
 The captured state, topology, relationships, dependencies, state variant, and
 lineage SHALL remain authoritative for the product through later

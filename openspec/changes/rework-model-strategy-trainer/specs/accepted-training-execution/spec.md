@@ -374,6 +374,11 @@ work ran.
 - **THEN** its production completion MUST remain meaningful independently of action or optimization completion
 - **AND** readiness MUST NOT imply admission, consumption, or update contribution
 
+#### Scenario: An owner checks the run's work late
+- **WHEN** an owner checks the run's work after that work has ended, such as reading a gradient norm the host did not wait for
+- **THEN** the run's outcome MUST include the check: a failed check, or one that cannot complete, MUST fail a run that otherwise succeeded, and a run that already failed or was cancelled MUST keep that outcome with the check's reasons added
+- **AND** the check's failure MUST be reported after the run's own facts, without rewriting what execution reported
+
 ### Requirement: Started work reports its effects separately from uncertainty
 Once selected or backend work begins, the responsible owner SHALL report known
 effects and outcomes separately from uncertainty; dependent unsafe work SHALL

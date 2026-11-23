@@ -260,6 +260,24 @@ imply atomic advancement, automatic rollback, or safe replay.
 - **THEN** reporting MUST preserve the known optimizer outcome separately from the scheduler or zeroing failure
 - **AND** missing overall completion MUST NOT erase reached effects or certify gradients safe for reuse
 
+### Requirement: A non-finite gradient fails the run unless an accepted policy skips its step
+Under the standard profile, a unit's gradient norm that is not finite SHALL
+fail the run, unless an accepted policy skips that step without applying it
+and reports the skip. The check MAY lag the advancement that used that
+gradient, so that the host need not wait for the norm; the run SHALL fail at
+the latest when its work ends, and the unit SHALL NOT advance once the
+failure is found.
+
+#### Scenario: A window's gradient norm is not finite
+- **WHEN** a unit's window ends with a gradient norm that is not finite and no accepted policy skips that step
+- **THEN** the run MUST fail, at the latest when its work ends, naming the unit and the window
+- **AND** that window's step, and those of later windows that ended before the norm was read, MAY already have been taken, and reporting MUST keep their known outcomes
+- **AND** the unit MUST NOT advance after the failure is found
+
+#### Scenario: The run's work ends before the last norms are read
+- **WHEN** the run's work ends while a unit's gradient norm has not yet been read
+- **THEN** the run's end MUST read it before the run reports its outcome
+
 ### Requirement: Exact restoration preserves unit state only within the same run
 Exact restoration SHALL restore accepted unit identities, revisions, mutable
 optimizer/scheduler state, and advancement coordinates when continuing the
