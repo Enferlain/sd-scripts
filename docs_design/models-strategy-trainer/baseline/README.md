@@ -364,6 +364,16 @@ establishes:
   their norms differ by at most 2.2e-16.
 - **It repeats bit for bit.** Two runs in one process agreed, and a run in a
   new process matched the stored reference. The step peaked at 15.0 GiB.
+- **Its bits belong to the RTX 3080.** The same step on the RTX 3090 gives
+  a different model output, so the new system's exact check runs on the
+  3080 (`cuda:1`).
+- **Checkpointing changes none of its bits.** With checkpointing on and off,
+  and with the noisy latents and text conditioning requiring gradients or
+  not, the output, loss, gradient norm and all 1,680 gradients agree bit for
+  bit (2026-11-23: on and off on the 3090, where the step without
+  checkpointing fits at 21.2 GiB; both input variants on the 3080, each
+  equal to the stored reference). The new system's step, whose inputs come
+  from data and need no gradients, is therefore held to the same digests.
 - **Clipping is not exercised.** Clipping's norm is 0.065 (in bf16, as torch
   computes it from bf16 gradients), below the limit of 1.0, so clipping
   multiplies every gradient by exactly 1. A step that clipped wrongly would

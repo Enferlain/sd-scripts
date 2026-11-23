@@ -3178,38 +3178,56 @@ and launch device work. Owners hold state.
   per-operation dispatch. Static choices are resolved before the hot path
   (D10).
 - **Physical calls.** Selected implementations run on worker threads, and the
-  coordinator never blocks on them. Each call establishes its execution
-  context from its prepared call: grad mode, autocast dtype, device stream
-  and RNG. It never inherits ambient thread state. Preparation derives grad mode
-  from the dataflow: an implementation declares which inputs it
-  differentiates and which it differentiates through, and a call runs with
-  grad mode when one of its results reaches a differentiated input, such as
-  the loss the standard profile's `contribute` takes, through inputs
-  declared differentiable. An input declared not differentiable, such as a
-  detached one, stops the walk. The call's context also says where its
-  derivatives go: the resources the differentiating calls update. The IR
-  gives that no further meaning. What a participant's state needs for a
-  call, such as its modules' mode, is established by the lease the call
-  uses, on the worker before the call, with the call's context and the
-  handle it receives; a group that uses such a lease uses that resource
-  alone. Domains decide what their leases establish: training's routes set
-  module mode from trainability (D20).
+  coordinator never blocks on them. Each call runs in a context established
+  from its prepared call, never in a thread's ambient state. The core
+  establishes the device's stream, the work the call must follow and its
+  owner's random state; whatever a domain or owner decides for the call,
+  such as grad mode, a route's precision or a participant's module mode, the
+  setups that cover it establish (D16). Training decides grad mode from the
+  strategy's dataflow through the core's reachability: implementations
+  declare which inputs propagate the `derivative` relation into which
+  outputs, the sources are the leases that read the live state its units
+  train, not a snapshot's copy of it, and the sinks are its contributions'
+  losses keyed by unit. A derivative of trained state never crosses an
+  activity: it travels in results that keep that state's lease, which are
+  retained and never leave their activity (D16). Training therefore counts
+  only paths inside the activity that contributes. A call on a path from a
+  source to a sink runs with grad mode, annotated with the units whose
+  sinks it reaches (D20). Any other call runs without it, such as a frozen
+  encoder whose output reaches a loss but carries no derivative of trained
+  state, or the trained model sampling in another activity whose outputs
+  the training activity takes as data. Inside an activity, a strategy cuts
+  a path with a call whose implementation declares no edge, such as a
+  stop-gradient. Training also checks what the core does not interpret. A
+  call on such a path that holds a lease must pass on results declared
+  retained, since its graph keeps the leased state alive. Every participant
+  whose state a unit trains must reach one of the unit's losses by such a
+  path, so no detached value replaces a derivative path the strategy
+  requires (G3.6). Otherwise training refuses the strategy and names what
+  cut the path: an input declared without an edge, or an activity boundary,
+  in which case the participant's forward has to run in the activity that
+  contributes.
 - **Precision.** Precision is not one property of a model or a run: weight
   storage, forward and backward compute, gradients, optimizer state and a
   saved product may each have their own format, and low-precision formats
   carry state of their own, such as scales and amax history
   (`research/precision-and-quantization-training.md`). Each choice has its
-  owner. Autocast's dtype is meaning: the strategy states it on an activity,
-  its calls inherit it, an inner activity or access may override it, and
-  preparation puts it in each call's context. Weight storage is the
-  participant's materialization. A quantized base and low-precision compute,
+  owner, and none is the core's (D16). Mixed precision, which runs the
+  operations its backend deems safe in a reduced-precision dtype, is a
+  route's realization, as FP8 or FP4 compute is: the participant declares it
+  as a pinned realization with its settings, `realize(@mixed_precision,
+  "bfloat16")`, and the route's call setup enters its backend's mechanism for
+  the calls through it, PyTorch's autocast for the PyTorch adapters. Only
+  those calls run in it, as today's trainer autocasts only the model's
+  forward. Weight storage is the participant's materialization. A quantized base and low-precision compute,
   such as FP8 or FP4 matmuls with their scaling state, are a route's
   realization, declared as a choice on the participant (D21), and a device
   that does not offer what the choice needs is a target limit. Optimizer
   numerics, such as 8-bit state or stochastic rounding, are the unit's
   optimizer policy, and loss scaling is its unscaling mechanic (D20). TF32
-  is one run-wide choice the device adapter sets, since PyTorch's switch is
-  process-wide: the one setting a call inherits rather than establishes. Quantization-aware training changes what is trained, so it is
+  is a device setting, one run-wide choice the device adapter applies, since
+  PyTorch's switch is process-wide, so a call inherits it rather than
+  establishing it; it is pinned like any choice that changes numbers (D16). Quantization-aware training changes what is trained, so it is
   strategy structure. A product's precision is its serializer's (D11).
 - **CPU/GPU hand-off.** A Python call returning means device work was queued,
   not finished. The physical layer obtains completion from the device through
@@ -3224,8 +3242,8 @@ and launch device work. Owners hold state.
 - **Device adapters.** There is one adapter per PyTorch backend, named by
   PyTorch's device type (`cuda`, `xpu`, `mps` and others), beside the host
   adapter. What does not depend on the vendor lives in one base that every
-  PyTorch adapter uses: each call's grad mode, precision and random state,
-  completion and ordering through PyTorch's `torch.Stream` and
+  PyTorch adapter uses: each call's random state and the setups that cover
+  it, completion and ordering through PyTorch's `torch.Stream` and
   `torch.Event`, and the copies of owners' device storage that the runtime
   queues. An adapter may use its vendor's own features, such as CUDA graphs,
   stream priorities, memory pools or direct copies between devices, and
@@ -3354,13 +3372,20 @@ and launch device work. Owners hold state.
   realization and to backend coordination. Trainable state kept on the host
   is placement, chosen in preparation. A quantized base, or replaced modules
   that stream their weights to the device as RamTorch's do, is a realization
-  of a route. Recomputing or offloading activations changes no meaning:
-  non-reentrant checkpointing replays the random and autocast state, and only
-  bit-level agreement depends on whether a route does it, which is why the
-  reference step uses the same mode. Whether a route does it is therefore a
-  preparation choice made at launch, never part of the strategy's meaning. The component declares where it can
-  checkpoint, `library/performance` holds the rules that read it, and a route
-  checkpoints only in calls with grad mode, since only they run a backward.
+  of a route. Recomputing or offloading activations changes no result with
+  the same kernels: non-reentrant checkpointing replays the random state and
+  the precision context. On the SDXL fine-tune step, the model output, loss,
+  gradient norm and all 1,680 gradients agree bit for bit with checkpointing
+  on and off (RTX 3090), and whether the inputs require gradients changes
+  nothing either (RTX 3090 and 3080, 2026-11-23): an observation on one step,
+  not a guarantee. A library may still pick another kernel when less memory
+  is free, so an exact comparison fixes the choice, as the reference step
+  does. Whether a route does it is therefore a
+  preparation choice made at launch, never part of the strategy's meaning.
+  The component declares where it can checkpoint, `library/performance`
+  holds the rules that read it, and a route checkpoints only in calls that
+  run with grad mode, as the setup training attaches establishes it, since
+  only they run a backward.
   The runtime itself moves only a participant's device storage
   off the device between uses:
   - A strategy may permit a participant to leave the device between uses.
@@ -3601,8 +3626,8 @@ through them and never select behavior by operation name, fixture or case.
 | Seam | What a domain supplies | Examples |
 | --- | --- | --- |
 | Definitions | Operations and types, each with region, flow, resource, realization and decision contracts (D14) | Training units, windows and advancement; data production and filtering; model invocation and views |
-| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence, and may establish what their state needs for each call that uses a lease | The run authority for participants, whose routes establish what preparation gave them, such as module mode; Trainer optimization for units, whose advancement updates their members' weights through update leases on them; producers for their cursors and policies |
-| Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion | Family conditioning and denoiser calls, objectives, codecs, serializers |
+| Owners | Resource owners that realize the access modes (snapshot, protected live read, owner update, grant) with versions and evidence, and may attach setups to the leases they grant (below) | The run authority for participants, whose routes carry their realizations' setups, such as precision and module mode; Trainer optimization for units, whose advancement updates their members' weights through update leases on them; producers for their cursors and policies |
+| Implementations | Selected code, each piece declaring its inputs, outputs, effects, concurrency safety and completion, and which inputs propagate a named relation into which outputs (below) | Family conditioning and denoiser calls, objectives, codecs, serializers |
 | Devices | Execution context and physical completion for one backend, what it offers and knows of the device's capacity, and the copies of owners' device storage | Host execution; one adapter per PyTorch backend on a shared base, CUDA first; the project's own backend |
 
 An owner's versions advance through the runtime. After each call whose
@@ -3616,6 +3641,160 @@ change, never the reverse. The notice replaces asking the owner for its
 current version after the call, so it adds no work per update.
 
 Registration through every seam is explicit composition (D2).
+
+#### What the core knows
+
+The core is the part of the layer that every run shares: its semantics,
+verification, preparation and runtime. Domain words, such as training's
+`iro.train.*`, are Kuroiro too, but they extend the language from outside
+the core and reach it as core words and through the seams; the core never
+knows them.
+
+The core knows something only if it needs it to keep one of its own
+promises: when work may run, which owned state it may touch and at which
+version, how long results and leases stay alive and protected, when work is
+complete, how work is admitted to devices and ranks, and which outcomes the
+schedule can change. The test is whether the core would answer one of its
+own questions wrongly without it: may this run now, which version does this
+see, is this still protected, is this done, do all ranks agree, can the
+schedule change this. The last is the reproducibility class (D14): whether,
+given the same inputs, seeds and configuration, a composition's observable
+outcomes, such as the versions its calls see, what is admitted and how
+inputs associate, are the same however the schedule orders its work. It
+promises nothing about the bits a call computes, which belong to what
+realizes the call (below). Everything else belongs to the domain, owner or
+realization that gives it meaning, however many domains share it. Failing
+the test keeps a concept out of the core, never out of the run. Grad mode
+fails it: whether a call records a tape changes none of those answers, and
+the one consequence of differentiation the core needs, that a loss keeps the
+forward's leased state protected until its backward has run, is already a
+retained result (below).
+A cut taken at a quiescent boundary passes. Recomputation fails wherever it
+happens. Inside one kernel, as FlashAttention recomputes attention scores in
+its backward, it is the implementation's own business. Across calls, as
+gradient checkpointing recomputes the forward inside the later backward,
+what the core needs is that the state the recomputation reads stays
+protected and in the same mode until then, which a retained result and a
+held setup give (below); recomputation that reached across calls without
+them would be an undeclared retention, which training's checks refuse (D15).
+
+The core may carry information it does not interpret, where a promise needs
+it carried. An implementation, materializer or route realization that a
+strategy selects is pinned with its settings, checked as installed, compared
+for identity where calls are grouped and recorded with the run; what its
+settings mean stays with the code that reads them. The core interprets such
+information only where interpreting it is itself needed for a promise.
+
+Three facilities let a domain use the program's structure without the core
+knowing what it means:
+
+- **Reachability.** An implementation declares, for a named relation such as
+  `derivative`, which of its inputs propagate into which of its outputs. A
+  relation's name is agreed between the code that declares it and the code
+  that asks; the core compares names and never interprets them. A domain
+  asks, for one relation, which calls lie on a path into sinks it names by
+  keys of its own, starting from sources it names where it needs them. A
+  path follows declared edges and every value the core's own constructs
+  pass on: into and out of bodies through captures, yields and repeat
+  carries, into every alternative of a choice, and between activities
+  wherever the core carries a value, as a stream does from its producer to
+  the items its consumer takes and a request does to its handler. The core
+  cuts no relation at a construct of its own. A path stops only at an input
+  whose implementation declares no edge, so a teacher's output taken as a
+  fixed target reaches nothing, since the loss declares no edge from its
+  target. What a path between activities means for a relation is for the
+  asking domain to decide; for training, a derivative never crosses one
+  (D15). A declaration is its implementation's promise, pinned with its
+  version, and a wrong one is the implementation's error, as any wrong
+  declaration is (D18). Training names as sources the leases that read the
+  live state its units train and as sinks its contributions' losses, keyed
+  by unit (D15, D20).
+- **Annotations.** At preparation, a domain attaches values to calls, such
+  as the units whose losses a call reaches and the paths of the modules to
+  run in train mode. An annotation is written data, such as names,
+  references and paths, which prints and compares; it is never a live
+  object. The core carries annotations to the calls' setups unread, and a
+  setup resolves them against the handles it receives.
+- **Setups.** A setup establishes what calls need beyond the core's own
+  context, which is the device's stream, the work the calls follow and their
+  owner's random state (D15). A domain attaches setups to calls at
+  preparation, and an owner attaches them to the leases it grants, as a
+  route's realization does. The runtime enters a setup once for the calls it
+  covers, which may be one fused group, on their worker, inside the device's
+  context, with their annotations and the handles they receive. What a
+  setup may change depends on its kind. A **call setup** changes only its
+  worker's own context, which shapes how the calls' work is built and
+  submitted, as grad mode and autocast do, both kept per thread by PyTorch,
+  and undoes it when the calls return. Work that runs the calls again later
+  sees that context only if it carries it, as PyTorch's checkpointing
+  carries grad mode and autocast into its recompute inside the backward. A
+  switch the whole process shares, such as PyTorch's TF32 setting or its
+  attention-backend selection, cannot be a call setup, since changing it
+  would change other workers' calls: it is a device setting chosen at
+  launch, as TF32 is (D15), or a choice an implementation makes for each
+  call, such as calling one attention kernel directly, never by changing
+  the shared switch. A **held setup** changes only state reachable through
+  the handles of the resources it names, state that later work relies on
+  and that nothing carries for it, as module mode does, since checkpointing
+  recomputes the forward inside the later backward. It is held while the
+  leases of the calls it covers are out, including those a retained result
+  keeps; calls under the same setup share the hold, and a call that needs
+  another setup on one of those resources waits until it ends. A held setup
+  that changes a resource's storage, as D20's evaluation-point swap does,
+  declares so, and its hold also excludes the resource's other work, whose
+  view of a version it would change: updates, uses through other routes and
+  the captures of their snapshots wait as well (D20). The state a held setup
+  changes is realization state, which no version covers. No setup changes a
+  version,
+  takes a lease, waits on another activity or issues collectives. When a
+  hold ends, its setup undoes its change, as D20's evaluation-point swap
+  does, or leaves it for the next setup to set, as module mode does. A
+  setup's undo runs however the calls end,
+  failure and cancellation included, and a setup or undo that fails fails
+  the run with the state it changed reported uncertain
+  (`training-capability-coordination`). The hold adds no wait of its own
+  across activities: a device's work runs in turn, and a hold ends with the
+  results that keep its admission (D15). Within one activity, preparation
+  refuses work that a live hold excludes, which would wait on itself, as it
+  refuses an update while a retained result keeps the state protected.
+
+Annotations and setups are derived on the normalized program before fusion,
+and calls fuse only where theirs are the same, compared and never merged.
+They are part of the prepared run: printed, and derived again when a saved
+prepared form is loaded, which refuses one that differs (D14). A setup's
+code is pinned as an implementation's is. So is the code that derives them:
+the domain code that names sources and sinks, asks reachability and attaches
+annotations and setups is covered by the version of the definitions it
+derives them for (below), since it shapes the prepared run as much as the
+declarations it reads.
+
+The core defines no numerics. An opaque call's numbers depend on what
+realizes it: the implementation, a route's realization, kernels,
+compilation, the device and its libraries. Changing them may change a
+result's bits without changing the program the core runs; the reference
+step's bits differ between an RTX 3080 and a 3090. Choices a run applies,
+such as an implementation, a route's realization or a device setting such as
+TF32, are pinned: the strategy states those it relies on, and those it
+leaves open are chosen at launch and recorded with the run, which applies
+the same ones when it resumes. Facts a run observes, such as the GPU model,
+driver and library versions, come from the devices and implementations that
+know them, as records the core keeps with the run and never reads. Exact
+reproduction may depend on any of these, and the same choices and facts do
+not guarantee it while a kernel is nondeterministic. Which facts must match,
+and how nondeterminism is ruled out, is a reproducibility policy, a later
+decision (`sd-scripts-sxu`). The core compares only the records a policy
+names, so a fact first recorded later never refuses a run saved before it.
+
+A scheduler that keeps the core's promises can be written knowing nothing of
+any domain: not gradients, precision, models, optimizers or checkpointing. It
+knows which activity may run and which waits, which resource is protected
+and which version is pinned, which result keeps which lease alive, where
+work is submitted and which completion unblocks what, and which setup covers
+which calls and holds which resources, treating every setup and annotation
+as opaque. A concept such a scheduler would need to understand is core;
+any other the core carries without reading, or leaves to a domain. The
+core's own names follow the same rule: its operations, fields and
+diagnostics use no domain's vocabulary.
 
 #### Extending the language
 
@@ -3712,9 +3891,10 @@ rules say what one covers and what requires a new one.
   (signature and lease types, effects, results kept beyond the call,
   concurrency safety and completion) and the results and effects for the
   same inputs under the accepted numerical policy. A definition version
-  covers the operation contracts, the written form and, for a derived word,
-  its expansion. A refactor, a speed-up or logging that changes neither
-  needs no new version.
+  covers the operation contracts, the written form, for a derived word its
+  expansion, and what its domain derives from its uses at preparation, such
+  as training's grad mode and annotations. A refactor, a speed-up or logging
+  that changes neither needs no new version.
 - **What requires a new one.** Any change to the declaration or to the
   results. A pin records the version with a digest of the declaration,
   including the structure of the types it names. A repository test keeps the
@@ -3823,7 +4003,7 @@ Applying the one-word rule turned up four collisions:
 | Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its release, placed by normalization after the last use and shown in the normalized form | `retained`, `release_product` | Exists |
 | Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
 | Calls | `uses` | The strategy header that pins each implementation's version | Per-call version | Exists, moved to the header |
-| Model | `resource`, `materialize`, `may_leave_device` | Declare something an owner holds, such as a participant; name the implementation that materializes it; permit a participant's device storage to leave the device between uses (D15) | `lang.resource` | Exists; `materialize` and `may_leave_device` planned |
+| Model | `resource`, `materialize`, `realize`, `may_leave_device` | Declare something an owner holds, such as a participant; name the implementation that materializes it and those that realize its routes; permit a participant's device storage to leave the device between uses (D15) | `lang.resource` | Exists; `materialize` and `may_leave_device` planned; `realize` planned |
 | Model | `participant`, `view`, `route` | A model resource with identity; its typed projections and its execution routes (D6). An access names a view, or a route other than the normal one; a call reaches the route through its lease | — | Planned |
 | Model | `relationship` | A declared relation between participants, such as an attachment, with its own identity and state (D6) | — | Planned |
 | Training | `unit`, `window`, `contribute` | An independently advanced optimization responsibility (D9), whose attributes include its members, optimizer policy, joint windows and clipping scope (D20); contributions advanced together; offer an addressed input to a unit | — | Planned |
@@ -3912,6 +4092,12 @@ Conventions for the written form:
   fulfillment (D18), so they are part of the accepted strategy and its
   content identity. The materialization evidence records what was actually
   loaded, such as the file's hash (D19).
+- A participant's route realization follows its materializer as a pinned
+  implementation with settings, the way a materializer is:
+  `realize(@mixed_precision, "bfloat16")` realizes the normal route, and
+  another route is named first, `realize(route @sample, @mixed_precision,
+  "float16")`, a form added when a strategy first needs it. The core carries
+  it unread (D16).
 
 For example, latents read from a cache and encoded live on a miss, then
 conditioning from two text encoders taken in one access:
@@ -4534,7 +4720,7 @@ one of these groups:
 | Something the strategy or contract does not declare | A product, capability, change or runtime choice outside what was accepted |
 | State the work was not based on | A stale proposal or result, a superseded revision, a value outside its stream's admission policy |
 | Two owners of one thing | Parameters claimed by two units, or component ancestry that the provenance does not establish |
-| A silent substitution | A cached value standing in for a different computation, a detached gradient path, another access mode than the one selected |
+| A silent substitution | A cached value standing in for a different computation, a detached gradient path (training's check, D15), another access mode than the one selected |
 | A target that cannot realize a valid strategy | A backend that cannot report or protect what the strategy needs, or ranks that cannot agree; reported as a target limit |
 | A combined effect nobody defined | Several adapter methods on overlapping targets with no declared way to compose |
 
@@ -4895,7 +5081,7 @@ backend objects remain realizations (D9).
 | `OptimizationPlan` | The accepted strategy's units as typed definitions, plus what spans units: joint windows with their advancement order, joint clipping scopes and the standard rule that ownership does not overlap. It derives from the strategy and is never a second definition |
 | `UnitCandidate` | Provisional resolution inside one preparation attempt: resolved parameters with provenance, tied aliases consolidated, execution groups mapped to logical groups, trainability, clipping and synchronization membership, the optimizer and scheduler (built or as a recipe), and correspondence evidence after backend transformations (G3.4) |
 | `PreparedUnit` | The runtime that a preparation result carries for one unit and that a generation publishes: its reference and definition revision, resolved members, optimizer, scheduler, execution groups, membership in a backend synchronization group, optimizer-local lifecycle transitions and dependencies |
-| `Advancement` | One window's record: the contributions it included; each mechanic reached, namely synchronization, unscaling, clipping, the optimizer call (returned, skipped, uncertain or not attempted), the scheduler and zeroing; which owner performed each; and the unit's progress afterwards |
+| `Advancement` | One window's record: the contributions it included and their total mass; each mechanic reached, namely synchronization, unscaling, clipping, the optimizer call (returned, skipped, uncertain or not attempted), the scheduler and zeroing; which owner performed each; and the unit's progress afterwards |
 | Unit cut state | The unit's part of a cut: reference, definition revision, member correspondence, optimizer and scheduler state, averaged weights, progress and window position. Pending gradients appear only when the cut is not taken at a quiescent boundary (G3.1). Backend scaling and synchronization state belongs to the backend coordination owner's cut state, together with its correspondence to the unit (G4.4) |
 
 The strategy's structure decides where contributions come from and when
@@ -4953,6 +5139,43 @@ versions, so protection keeps it from racing a protected read (D16, D17): the
 end of a window takes the unit's update lease and those leases in one access
 (D17). It publishes nothing and triggers no re-preparation (D9, G3.5).
 
+A window's gradient is the one a single batch of everything it accumulated
+would give, however its contributions split that batch, so how a strategy
+splits its work into contributions is a choice of memory and throughput
+that changes no result. Each contribution's loss comes with its mass: what
+the loss's own final reduction divides by, which the loss declares and
+nothing infers from its inputs. The SDXL step's loss weights its samples by
+the dataset's loss weights and by min-SNR but divides by their count, so
+its mass is the sample count. A language model's cross-entropy divides by
+its non-ignored tokens, a loss over a mask by the elements it keeps, and a
+weighted average by its weights' sum. Masses add only within one kind: a
+loss whose terms divide by different masses reports one per term, and each
+term is divided by its own total. The window's gradient, across every rank,
+is
+
+```text
+g = Σ_ranks Σ_contributions ∇(loss × mass)  /  Σ_ranks Σ_contributions mass
+```
+
+where a contribution's loss times its mass is the sum its reduction
+divided. There is one division, by the whole window's mass. Synchronization
+across ranks sums gradients and masses: an all-reduce that averages, as
+DDP's does by dividing by the rank count, is compensated rather than
+stacked on that division, and the ranks' own averages are never averaged,
+which would weight them wrongly whenever their masses differ. Clipping, the
+non-finite check and the reported loss, the same ratio over the losses
+rather than their gradients, read the normalized result, so a clipping
+threshold means the same at any accumulation count, split or rank count.
+Where the total is known on the host when the window starts, as a count
+from the batches' shapes is, each contribution scales its loss by its share
+before its backward pass, at the cost of one scalar multiply. Where it
+depends on the data, it is a device value that the window sums on the
+device, across ranks with its gradients, and divides by once at its end,
+inside clipping's own multiply when clipping is on; neither waits on the
+device. Terms whose masses differ and depend on the data need their totals
+before the backward pass, since a gradient that already holds both cannot
+be divided by two totals, so such a window takes its batches first.
+
 Each unit counts its own progress. Attempted optimizer calls and
 backend-confirmed non-skipped advancements are counted apart, because a
 scheduler policy may follow either (G3.1). Triggers and reports name the owner
@@ -4960,21 +5183,31 @@ whose progress they follow, a unit or a producer (D17), and today's `global_step
 progress. A one-unit run reads as before, and a multi-unit run gets no
 invented shared clock.
 
-A gradient norm that is not finite fails the run rather than let it train
-on. Clipping measures the norm anyway; without clipping, the check takes one
-more pass over the gradients. The host never waits for the norm: each window
-end copies it to host memory, a later window end reads it once it has
-arrived, before stepping, and the run's end settles the last ones (D17). A
-product saved mid-run settles the norms of the units it saves first (built
-with persistence, task 18.5). The window whose norm was not finite has
-stepped by then, so that run's parameters are lost and nothing is saved from
-them. Reading the norm before the step would keep them, but the host would
-wait for the backward at every window end. Skipping such a step and going on
-is an advancement outcome for the second pass of section 16. Measured on the
-SDXL fine-tune step (one unit, one contribution per window, RTX 3080,
-2026-11-23): the extra pass without clipping takes 10.6 ms. Reading before
-the step made the host wait about 105 ms at each window end, with no
-step-time difference beyond the noise of the measurement, consistent with
+A gradient that is not finite fails the run rather than let it train on,
+and the check adds no pass over the gradients and no host wait of its own.
+It reads only what a window computes anyway: the gradient norm where
+clipping measures it, and otherwise the window's loss, which catches a loss
+that is not finite but not a non-finite gradient behind a finite one. Each
+window end folds that value into a record kept on the device, a small
+operation that keeps the first window whose value was not finite, and the
+host reads the record only where it reads the device already: with the loss
+the run reports, before a product of the unit is saved (built with
+persistence, task 18.5), and when the run's work ends, which settles the
+last windows (D17). The windows up to that read have stepped by then, so
+once one was not finite, that run's parameters are lost and nothing is
+saved from them. Reading the norm before each step would keep them, but the
+host would wait for the backward at every window end. An optimizer that
+reported non-finite gradients from its own step, which reads every gradient
+anyway, would complete the check without clipping at no cost; none the run
+uses can yet, since bitsandbytes has no such report. Skipping such a step
+and going on is an advancement outcome for the second pass of section 16.
+Measured on the SDXL fine-tune step (one unit, one contribution per window,
+RTX 3080, 2026-11-23), which is why the check does neither of these: a norm
+pass of its own without clipping took 10.6 ms per window, and copying each
+window's norm to the host and reading it there took about 87 µs of host
+time. Reading before the step made the host wait about 105 ms at each
+window end, with no step-time difference beyond the noise of the
+measurement, consistent with
 bitsandbytes' AdamW8bit step being bound by its host launches (about 360 ms
 to launch, the GPU finishing 0.1 ms after the last launch); a faster
 optimizer step would likely expose that wait.
@@ -4983,19 +5216,23 @@ optimizer step would likely expose that wait.
 
 Module runtime mode is not unit state. Validation runs as its own activity
 alongside training (D17), so a run-wide switch into evaluation mode has no
-right moment. Each route that training's preparation prepares establishes
-its participant's module mode for every call through it (D15), and changes
-it only where the previous call left a different mode. The mode follows
-trainability, not the flow of gradients: a call runs a module in train mode
-only where the module belongs to a unit the call's derivatives go to, and in
-evaluation mode otherwise. A frozen network on the gradient path between a
-trained module and the loss therefore keeps evaluation mode, and its dropout
-and normalization statistics stay as they are. The route names the trained
-modules by path, so the same rule holds on a snapshot's copy and after
-sharding. A call whose lease establishes a mode uses its participant alone,
-so no activity sees another activity's mode. The IR knows only where a
-call's derivatives go; the rule is training's, so the IR serves workflows
-without training unchanged. Optimizer-local transitions,
+right moment. Module mode is the participant's realization: the setup of
+each route that runs it sets its modules' mode for every call through it,
+evaluation mode unless the call's annotations ask for train mode in named
+modules, and changes it only where the previous call left a different mode.
+The setup is held (D16): checkpointing recomputes the forward inside the
+later backward, so the mode holds while the call's leases are out, including
+those its retained results keep, until they are released, and a call that needs another mode waits until then. Training
+supplies the annotations, since it resolved which modules each unit trains,
+and the mode follows trainability, not the flow of gradients: a call runs a
+module in train mode only where the module belongs to a unit whose loss the
+call reaches (D15), and in evaluation mode otherwise. A frozen network on the gradient path between a trained module
+and the loss therefore keeps evaluation mode, and its dropout and
+normalization statistics stay as they are. Modules are named by path, so the
+same holds on a snapshot's copy and after sharding. Another domain may
+supply annotations of its own, as Monte Carlo dropout keeps dropout on at
+inference. The core knows none of this, so it serves workflows without
+training unchanged. Optimizer-local transitions,
 such as a schedule-free optimizer's switch to its evaluation point, remain
 with the unit. They are owner updates at accepted lifecycle points, under
 protection. Parameter averaging such as EMA works the same way: the averaged
@@ -5030,14 +5267,14 @@ repeated mode query has exactly one replacement:
 | Today | Replacement |
 | --- | --- |
 | `Trainer._train_denoiser`, `_train_text_encoder`, `FineTuneMode._te_train_flags`, `should_train_text_encoder()` | Unit membership in the accepted plan. Config only filters the strategy's declared parameters (D18) |
-| `train_text_encoder=` and `train_denoiser=` passed through conditioning, validation and batch processing | Grad mode from each call's prepared context (D15). Live versus cached encoding is strategy structure, and verification rejects a detached path through a trained encoder (G3.6) |
+| `train_text_encoder=` and `train_denoiser=` passed through conditioning, validation and batch processing | Grad mode that training decides for each call from the strategy's dataflow (D15). Live versus cached encoding is strategy structure, and training's verification, through the core's reachability, rejects a detached path through a trained encoder (G3.6) |
 | `Trainer._primary_trainable`, through `trainable_model`, when saving | Product persistence over a persistence projection (D11) |
 | `trainable_model` passed into `process_batch` and `calculate_val_loss` | Leases for the participants each call declares (D16) |
 | `all_reduce_trainable(accelerator, trainable_model)` | Synchronization in the window, through the unit's backend synchronization group |
 | `Trainer._grad_sync_handle` and `accelerator.accumulate(...)` | The prepared unit's membership in its backend synchronization group; the window defers synchronization until its last member (D17). The handle itself is backend coordination state |
 | `Trainer._accumulation_counter` | The unit's window position, in its live state and its cut state |
 | `TrainingMode.get_trainable_params()`, for clipping | The prepared unit's resolved members within its clipping scope |
-| `TrainingMode.set_train()`, `set_eval()` | Module mode established by each route for each call, from unit membership and where the call's derivatives go; optimizer-local transitions as unit owner updates |
+| `TrainingMode.set_train()`, `set_eval()` | Module mode set by each route's realization for each call, from the annotations training supplies; optimizer-local transitions as unit owner updates |
 | `TrainingMode.on_epoch_start()`, `on_step_start()` | Repeats, windows and triggers in the accepted strategy. A method's own epoch or step behavior becomes a selected implementation call that the strategy makes at that point |
 | `TrainingMode.on_step_end()`, such as weight-norm regularization | Selected post-advancement behavior under its declared effect authority, reporting observations (G3.1) |
 | `TrainingMode.prepare_trainables()`: materialization and attachment | Materialization of declared participants including adapter state, and relationship transitions for attachment (D19) |

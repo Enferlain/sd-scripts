@@ -241,6 +241,34 @@ failure and continuation ownership.
 - **THEN** runtime MUST use the required backend-supported distinction
 - **AND** readiness MUST reject a policy whose required distinction the backend cannot report
 
+### Requirement: A window's gradient is that of one batch of its contributions
+Under the standard profile, a unit's window SHALL produce the gradient that
+one batch of all its contributions would give under the loss's own
+reduction, however the contributions split that batch and across every
+rank. Each contribution's loss SHALL come with its mass, what that loss's
+own reduction divides by, and the window SHALL divide once, by the total
+mass.
+
+#### Scenario: Contributions carry different masses
+- **WHEN** a window's contributions carry different masses, such as a short final batch
+- **THEN** the window's gradient MUST equal the gradient of one batch holding all of them under the loss's reduction
+- **AND** clipping, the non-finite check and the reported loss MUST read that normalized result
+
+#### Scenario: A weighted loss divides by its sample count
+- **WHEN** a loss weights its samples but divides by their count, as a min-SNR weighting does
+- **THEN** its mass MUST be the count its reduction divides by, as the loss declares it
+- **AND** the mass MUST NOT be inferred from the loss's weights, mask or inputs
+
+#### Scenario: A window spans several ranks
+- **WHEN** a unit's window is synchronized across ranks
+- **THEN** synchronization MUST sum the gradients and the masses and divide once, by the total mass
+- **AND** an averaging all-reduce MUST be compensated rather than stacked on that division, and per-rank averages MUST NOT be averaged
+
+#### Scenario: A loss's terms divide by different masses
+- **WHEN** a contribution's loss adds terms whose reductions divide by different kinds of mass
+- **THEN** each term MUST be divided by its own window total, and masses of different kinds MUST NOT be added
+- **AND** a window whose terms' masses depend on the data MUST know those totals before the backward pass
+
 ### Requirement: Optimization reports contributions and reached mechanics separately
 The optimization owner SHALL report addressed unit incarnations and definition
 revisions, contribution/window and gradient readiness, reached mechanics,
@@ -261,22 +289,29 @@ imply atomic advancement, automatic rollback, or safe replay.
 - **AND** missing overall completion MUST NOT erase reached effects or certify gradients safe for reuse
 
 ### Requirement: A non-finite gradient fails the run unless an accepted policy skips its step
-Under the standard profile, a unit's gradient norm that is not finite SHALL
-fail the run, unless an accepted policy skips that step without applying it
-and reports the skip. The check MAY lag the advancement that used that
-gradient, so that the host need not wait for the norm; the run SHALL fail at
-the latest when its work ends, and the unit SHALL NOT advance once the
-failure is found.
+Under the standard profile, a unit's window whose gradient norm or loss is
+not finite SHALL fail the run, unless an accepted policy skips that step
+without applying it and reports the skip. The check SHALL read only values
+the window computes anyway and SHALL add no host wait. It MAY lag the
+advancement that used the gradient, SHALL be read before a product of the
+unit is saved and when the run's work ends, and the unit SHALL NOT advance
+once the failure is found.
 
 #### Scenario: A window's gradient norm is not finite
 - **WHEN** a unit's window ends with a gradient norm that is not finite and no accepted policy skips that step
-- **THEN** the run MUST fail, at the latest when its work ends, naming the unit and the window
-- **AND** that window's step, and those of later windows that ended before the norm was read, MAY already have been taken, and reporting MUST keep their known outcomes
+- **THEN** the run MUST fail, at the latest when its work ends, naming the unit and the first window whose value was not finite
+- **AND** that window's step, and those of later windows that ended before the check was read, MAY already have been taken, and reporting MUST keep their known outcomes
 - **AND** the unit MUST NOT advance after the failure is found
 
-#### Scenario: The run's work ends before the last norms are read
-- **WHEN** the run's work ends while a unit's gradient norm has not yet been read
-- **THEN** the run's end MUST read it before the run reports its outcome
+#### Scenario: A unit does not clip
+- **WHEN** nothing in a unit's window measures its gradient norm, because its policy does not clip
+- **THEN** the check MUST read the window's loss rather than add a pass over the gradients
+- **AND** a gradient that is not finite behind a finite loss MAY go undetected
+
+#### Scenario: A save or the run's end comes before the check is read
+- **WHEN** a product of the unit is about to be saved, or the run's work ends, while the unit's check has not been read
+- **THEN** the check MUST be read first
+- **AND** a failed check MUST fail the run before the product is written or the run reports its outcome
 
 ### Requirement: Exact restoration preserves unit state only within the same run
 Exact restoration SHALL restore accepted unit identities, revisions, mutable
