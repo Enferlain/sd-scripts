@@ -334,7 +334,7 @@ stays normative.
 | Term | Meaning | Defined in |
 | --- | --- | --- |
 | Accepted arrangement | The specs' name for what fulfillment accepts: the strategy's meaning with its obligations and authority seed. The design calls it the accepted run | D4, D17 |
-| Accepted run | The accepted strategy with its obligations, pinned versions and authority seed; only fulfillment produces one | D17 |
+| Accepted run | The accepted strategy with its obligations, the evidence recorded for the code it uses, and its authority seed; only fulfillment produces one | D17 |
 | Activity | A named piece of work with its own lifetime, such as a producer, repeat, handler or parallel | D16 |
 | Advancement | What one window's completion did to a unit: synchronize, clip, step, schedule and zero | D9, D20 |
 | Artifact | What a run writes for a declared product: its members and physical resources, with an identity and lineage distinct from the participants it captured. Runtime snapshots and caches are not artifacts, and a strategy saved as text is its written form | D11, D21 |
@@ -346,7 +346,7 @@ stays normative.
 | Checkpoint | Only the user-facing name of a save handler, not a design term; see cut and readiness checkpoint | D17 |
 | Claim | An item taken from a stream, settled exactly once by a disposition | D16 |
 | Component | A part of a model with its own identity, such as an autoencoder, text encoder or denoiser. Arranged by kind in `library/models`; the model that introduced it does not own it | D21 |
-| Contract | The composed, versioned registered vocabulary: everything a strategy may use. Bare "contract" always means this | D18 |
+| Contract | The composed, registered vocabulary, identified by the evidence of its code: everything a strategy may use. Bare "contract" always means this | D18 |
 | Cut | A coherent recoverable capture across owners, for exact restoration; each owner supplies its cut state | D16, G4.4 |
 | Declaration | What something states about itself. A component or feature declares in three layers: its meaning, what a use requires, and provenance or guidance. A participant's or relationship's declaration is what the strategy states it is and how it materializes | D19, D21 |
 | Definition | One contract entry: an operation, type, capability, feature contract or ownership profile. Not a Python `def` | D16, D18 |
@@ -360,7 +360,7 @@ stays normative.
 | Fulfillment | The IR system's acceptance step: read, normalize, verify and derive obligations. Launch runs it | D18 |
 | Generation | The coherent published state across owners | D19 |
 | Guidance | What is known rather than required: provenance, tested combinations, recommended settings and community practice. It produces help and logs, never a refusal | D21 |
-| Implementation | Selected code that does the math, declared with its contract and version | D16, D18 |
+| Implementation | Selected code that does the math, declared with its contract and selected by name | D16, D18 |
 | IR system | Kuroiro on xDSL: the language, its front end, fulfillment, reference semantics and runtime, in `library/iro`. Older text calls it the workflow layer | D14, D16 |
 | Lease | The handle an access scope gives its body for one resource; it cannot leave the scope | D16 |
 | Machinery | Code that runs whatever approach a strategy chooses, such as preparation, FP8 casting, optimizer construction and data loading | D21 |
@@ -530,7 +530,8 @@ arrangement:
 
 ```text
 accepted run arrangement
-  accepted contract version and execution/ownership profile
+  accepted contract (the definitions used, with their recorded evidence)
+    and execution/ownership profile
   selected implementations, configuration, and dependencies
   participants, relationships, obligations, and capabilities
   structured maintained/custom execution and dynamic decision policies
@@ -1248,7 +1249,7 @@ revisions, and publishes or rejects the whole transition.
 The obligation set is authoritative and revisioned rather than independently
 mutable or permanently frozen. A permitted arrangement amendment is one the
 accepted strategy declares (D17). Fulfillment derives its obligations under
-the same contract version and execution/ownership profile, and the amendment
+the same contract and execution/ownership profile, and the amendment
 brings them into force and evaluates them. Every proposal and derived projection identifies
 the exact authority and obligation revisions on which it depends. Evidence is
 checked at its earliest authoritative availability; initial realization and
@@ -2152,7 +2153,7 @@ The design distinguishes four kinds of change:
 3. an authority-governed transition changes bindings, relationships,
    preparation, optimization, or another part of current run state and must
    follow its accepted transition and republication rules; and
-4. behavior that requires a different contract version or ownership profile
+4. behavior that requires a different contract or ownership profile
    requires new strategy fulfillment rather than being smuggled through a
    runtime branch.
 
@@ -3215,7 +3216,7 @@ and launch device work. Owners hold state.
   owner, and none is the core's (D16). Mixed precision, which runs the
   operations its backend deems safe in a reduced-precision dtype, is a
   route's realization, as FP8 or FP4 compute is: the participant declares it
-  as a pinned realization with its settings, `realize(@mixed_precision,
+  as a selected realization with its settings, `realize(@mixed_precision,
   "bfloat16")`, and the route's call setup enters its backend's mechanism for
   the calls through it, PyTorch's autocast for the PyTorch adapters. Only
   those calls run in it, as today's trainer autocasts only the model's
@@ -3495,8 +3496,8 @@ to capability implementations and model behavior to selected implementations.
 These set the direction that tasks 5.3 and 5.4 complete and verify.
 
 - **Accepted run.** The accepted IR document, its obligation revision, the
-  contract and profile identity, the selected implementations with their
-  versions, and the authority seed. The Trainer seeds the run authority from
+  contract and profile identity, the selected implementations with the
+  evidence of their code (D16), and the authority seed. The Trainer seeds the run authority from
   it. Normalized and
   prepared documents
   derive from it. The prepared strategy is inspectable but never an independent
@@ -3680,8 +3681,9 @@ them would be an undeclared retention, which training's checks refuse (D15).
 
 The core may carry information it does not interpret, where a promise needs
 it carried. An implementation, materializer or route realization that a
-strategy selects is pinned with its settings, checked as installed, compared
-for identity where calls are grouped and recorded with the run; what its
+strategy selects is named with its settings, checked as installed, compared
+for identity where calls are grouped and recorded with the run by the
+evidence of its code (Code identity, selection and reuse, below); what its
 settings mean stays with the code that reads them. The core interprets such
 information only where interpreting it is itself needed for a promise.
 
@@ -3704,8 +3706,8 @@ knowing what it means:
   fixed target reaches nothing, since the loss declares no edge from its
   target. What a path between activities means for a relation is for the
   asking domain to decide; for training, a derivative never crosses one
-  (D15). A declaration is its implementation's promise, pinned with its
-  version, and a wrong one is the implementation's error, as any wrong
+  (D15). A declaration is its implementation's promise, recorded with the
+  run by its hash (below), and a wrong one is the implementation's error, as any wrong
   declaration is (D18). Training names as sources the leases that read the
   live state its units train and as sinks its contributions' losses, keyed
   by unit (D15, D20).
@@ -3745,7 +3747,7 @@ knowing what it means:
   records that decide when its leases are released, not kept as a second
   lifetime. Each setup says, for a call's annotations, which realization
   state it needs, as an opaque key the core only compares together with the
-  setup's name and version: calls whose setups need the same state share the
+  setup's name and the evidence of its code: calls whose setups need the same state share the
   hold,
   whichever setup object each lease carries, and a call that needs another
   state on one of those resources waits while the hold binds. When the hold
@@ -3783,17 +3785,17 @@ activity, and the runtime checks that the setup a lease carries needs the
 state declared for the call, so the two never disagree silently.
 They are part of the prepared run: printed, and derived again when a saved
 prepared form is loaded, which refuses one that differs (D14). A setup's
-code is pinned as an implementation's is, by name, version and code
-identity, its module's source and its class's name: the call setups
-derivers attach in the prepared form, and the setups a route's realization
-carries in the route's record, and one name and version claimed with two
-codes anywhere in the run is refused. What a realization configures a setup
-with is pinned with the realization's settings in the strategy. So is the code that derives them:
-the domain code that names sources and sinks, asks reachability and attaches
-annotations and setups is pinned in the prepared form by its own name,
-version and code identity, and since what it derives can change while no
-declaration does, its outputs on small fixture strategies are recorded under
-its version, as a light implementation's results are (below).
+code is recorded as an implementation's is, by name and the evidence of its
+code (below): the call setups derivers attach, in the prepared form, and the
+setups a route's realization carries, in the route's record. One name
+claimed by two codes anywhere in the run is refused. What a realization
+configures a setup with is recorded with the realization's settings in the
+strategy. So is the code that derives them: the domain code that names
+sources and sinks, asks reachability and attaches annotations and setups is
+recorded in the prepared form by its own name and evidence, and since what
+it derives can change while no declaration does, its evidence includes its
+outputs on small fixture strategies, as a light implementation's does
+(below).
 
 The core defines no numerics. An opaque call's numbers depend on what
 realizes it: the implementation, a route's realization, kernels,
@@ -3801,7 +3803,7 @@ compilation, the device and its libraries. Changing them may change a
 result's bits without changing the program the core runs; the reference
 step's bits differ between an RTX 3080 and a 3090. Choices a run applies,
 such as an implementation, a route's realization or a device setting such as
-TF32, are pinned: the strategy states those it relies on, and those it
+TF32, are fixed for the run: the strategy states those it relies on, and those it
 leaves open are chosen at launch and recorded with the run, which applies
 the same ones when it resumes. Facts a run observes, such as the GPU model,
 driver and library versions, come from the devices and implementations that
@@ -3897,9 +3899,10 @@ a longer body.
   realization then shows up as a conformance failure, not only in production.
   That matters once the GIL is off.
 - **Obligations.** D7's run-specific obligation set is what verification
-  derives from the accepted strategy under the pinned definition and
-  implementation versions (below). The accepted strategy and those versions
-  never change during a run. The set's revision advances when a declared transition
+  derives from the accepted strategy under the definitions and
+  implementations it uses, as the evidence recorded with the run identifies
+  them (below). The accepted strategy and that code never change during a
+  run. The set's revision advances when a declared transition
   brings further obligations into force or ends some (D17). A saved
   obligation summary is a projection and never authorizes execution on its
   own.
@@ -3908,57 +3911,109 @@ a longer body.
   from it and saved for inspection. Cold loading and restoration parse them
   and re-derive them, checking correspondence before any effect (D14).
 
-#### Implementation and definition versions
+#### Code identity, selection and reuse
 
-An accepted run pins the implementations and definitions it uses (D17). An
-implementation or definition version is a promise about behavior, so these
-rules say what one covers and what requires a new one.
+A run has to say which code it uses, a run started later has to check that
+it still uses the same code, and saved work, such as a cache or a saved run,
+may be reused only while the code that made it would still compute the same
+thing. None of this rests on numbers that people keep by hand. The system
+computes evidence of what each piece of code is, records it with the run and
+compares it; people choose names and, when code has changed, decide whether
+to accept it.
 
-- **What one covers.** An implementation version covers the declaration
-  (signature and lease types, effects, results kept beyond the call,
-  concurrency safety and completion) and the results and effects for the
-  same inputs under the accepted numerical policy. A definition version
-  covers the operation contracts, the written form and, for a derived word,
-  its expansion. A deriver's version covers what it derives at preparation,
-  such as training's grad mode and annotations, and a setup's version what
-  it establishes. A refactor, a speed-up or logging that changes neither
-  needs no new version.
-- **What requires a new one.** Any change to the declaration or to the
-  results. A pin records the version with a digest of the declaration,
-  including the structure of the types it names. A repository test keeps the
-  digest of every version, so a declaration that changes without a new
-  version fails it. A change in a definition's written form or expansion
-  shows when cold loading derives a saved run again (D14) and in the
-  conformance fixtures. A change in results cannot be caught from the
-  declaration. For light pieces, such as losses, timestep sampling and
-  objectives, recorded outputs on small deterministic inputs catch it,
-  including a change that comes through shared code they call. For whole
-  models it remains a review rule.
-- **What a run pins.** The definitions its normalized strategy uses and its
-  ownership profiles, each with its definition version and digest, and the
-  implementations it selects with theirs. That set is the contract version
-  that governs the run (`training-contract`). A definition added elsewhere
-  leaves it unchanged, so new vocabulary does not stop saved runs from
-  loading.
-- **Not an identity for code.** Prepared forms, compiled code and
-  implementation manifests are keyed on the code itself, so a refactor
-  under an unchanged version never reuses a stale compiled form. Provenance
-  records the repository revision and the environment, such as the Torch,
-  CUDA and library versions, which can change results under one
-  implementation version. They are reported, not pinned.
-- **Caches.** Reusing a cached value needs evidence that what computed it
-  still gives the same results (`training-capability-coordination`), and
-  the implementation version is that evidence. A missed new version reuses
-  stale values; a needless one rebuilds the cache.
-- **When pins are gone.** Launch refuses a saved run whose pinned versions
-  the repository no longer has, and names what is missing. The run can be
-  resumed from a revision that still has them, or a new run can start from
-  its products with lineage (D11, D17). Whether a new run can also start
-  from its runtime snapshot, owner by owner, is settled with restoration
-  (`tasks.md` section 24).
-- **From outside the repository.** A pin also names who provides the
-  implementation or definition, because names from different sources can
-  collide (`tasks.md` section 17).
+- **Selection is by name.** A strategy names what it uses:
+  `uses(@denoise, @l2)`. In one run's composition a name selects exactly one
+  installed implementation, setup, materializer or deriver, and a
+  composition that installs two for one name is refused when it is put
+  together. Code from outside the repository is named with its provider, so
+  names from different sources never collide (`tasks.md` section 17). Two
+  variants that compute different things are two names, such as an l2 that
+  computes in float64 and one that does not: the name is how an author
+  chooses between them. A saved run that needs code the repository no
+  longer has is resumed from a revision that has it, or a new run starts
+  from its products with lineage (D11, D17).
+- **What the run records.** When a run is accepted, the system records, for
+  each piece of code the run uses, evidence of what that code is:
+  - what it takes and returns: a hash of its declaration, including the
+    structure of the types it names;
+  - what it computes, for a piece that ships small fixed inputs of its own,
+    its fixtures, such as a loss, timestep sampling, a noise schedule, a
+    setup or a derivation: its exact outputs on them with their hash, which
+    also catches a change that comes through shared code it calls, and the
+    environment evidence that can change those outputs, such as the library
+    versions and the CPU's instruction set;
+  - where it has no fixtures, such as a whole model: a hash of the source of
+    the module that defines it and of its class's name.
+
+  A word's definition records a hash of its contracts, written form and
+  expansion, as a declaration does.
+- **What a record claims.** Each record says how it was computed and what it
+  covers: its method and the method's revision, the fixtures by name, the
+  files hashed. It claims nothing beyond that, as the metadata change
+  requires of every fingerprint (`expand-model-metadata-identity-and-structure`:
+  fingerprints are evidence products with explicit normalization). A
+  matching source hash says the text is unchanged, not that the results are,
+  since library versions and kernels also change results; those are separate
+  records the run keeps (above). Exactly equal fixture outputs are evidence
+  of exact equality. Fixture outputs also depend on the libraries and the
+  machine: PyTorch's CPU code paths differ by instruction set, so unchanged
+  code can give outputs that differ in the last bit. Each fixture therefore
+  declares a comparison policy for when exact outputs differ, which says
+  what it establishes and over what, such as equal dtype and shape with
+  stated `rtol` and `atol`, or ULP bounds, for floating-point values. The
+  policy and its revision are recorded with the comparison. A difference
+  within the policy is numerical or environment drift, not changed code; a
+  difference beyond it is changed code.
+- **Where records live.** A record's identity is the hash of its content.
+  Records are filed as metadata facts in metadata's append-only store, which
+  holds the canonical copy, and a saved run carries a copy of every record it
+  depends on, so it can be checked on a machine whose store never saw it.
+  The copy checks itself against its identity.
+- **Checking a run that starts later.** Starting a saved run computes the
+  same records for the installed code and compares them with the run's, each
+  only with a record of the same method and coverage. If they match, the run
+  starts. A fixture whose exact outputs differ but agree under its
+  comparison policy also lets the run start, and the run reports the drift
+  with the environment evidence that differs; the tolerant comparison is
+  recorded beside the run's exact records and never replaces them.
+  Otherwise the run refuses and says what changed: what a piece takes or
+  returns, its results on which fixtures, or which source. The person may
+  accept the changed code for that run; the acceptance is recorded with the
+  run, naming what changed and who accepted it, as metadata records a
+  catalog repair, and never happens silently. Accepting changed code covers
+  the code; restoring the run's saved state under it is restoration's
+  question, which each owner of saved state answers for its own state
+  (`tasks.md` section 24). A held setup's key is compared
+  together with the setup's name and evidence, so setups whose code differs
+  never share a hold (above).
+- **Caches.** A cached value records the evidence of the code that computed
+  it and is reused only when that evidence matches under the same method and
+  coverage, which is the metadata change's rule for reusing a cache; a
+  fixture's outputs match exactly or under its comparison policy, and the
+  reuse records which. A
+  refactor that leaves a piece's fixture outputs unchanged keeps its caches;
+  for a piece known only by its source, any edit rebuilds them.
+- **Checks in the repository.** A test records each piece's exact fixture
+  outputs. A change beyond the fixture's comparison policy fails the test,
+  so the system detects the change and the developer confirms it is meant
+  by recording the new outputs; drift within the policy is reported in the
+  test's output and passes, so the test holds on another machine, and a refactor that changes
+  no output passes. Training's derivation is checked this way on fixture
+  strategies.
+- **Where numbers remain.** A number belongs where a reader has to choose how
+  to read something: the saved run's format, the strategy's written form,
+  metadata's payload and storage schemas, a fingerprint method, a comparison
+  policy. A reader
+  refuses a revision it does not know. A public interface, such as a
+  published seam that code from outside the repository implements, gets
+  protocol revisions the same way. A number is never a claim that code
+  computes the same thing.
+- **Compiled and prepared forms** stay keyed on the code itself, so a
+  refactor never reuses a stale compiled form.
+
+The metadata change needs a fingerprint kind for code, covering
+declarations, fixture outputs and sources, beside its model fingerprints;
+the two changes settle it together, as both say of shared identity work.
 
 #### Written form and vocabulary
 
@@ -4002,7 +4057,7 @@ Applying the one-word rule turned up four collisions:
   therefore a **lease**.
 - **binding:** D6 already uses it for a participant's current bound object.
   Selected code is therefore an **implementation**. Calls name it, and the
-  strategy header pins its version.
+  strategy header lists it.
 - **retire:** D6 and D9 already use it for ending a participant's or unit's
   use. A claim is therefore **disposed**, with a disposition.
 - **region:** this is xDSL's word for an operation's body. Kuroiro's word for
@@ -4030,7 +4085,7 @@ Applying the one-word rule turned up four collisions:
 | Access | `exact_current`, `bounded_lag`, `any_with_provenance` | Stream admission policies | Admission values | Exists |
 | Access | `retained`, `release` | A result that keeps its storage alive beyond its call; its release, placed by normalization after the last use and shown in the normalized form | `retained`, `release_product` | Exists |
 | Calls | `call`, `constant`, `yield` | Invoke an implementation by name; a literal; return from a body | Same names | Exists |
-| Calls | `uses` | The strategy header that pins each implementation's version | Per-call version | Exists, moved to the header |
+| Calls | `uses` | The strategy header that names each implementation the strategy selects; code is identified by recorded evidence, not a version in the text (D16) | Per-call version | Exists, moved to the header; versions removed |
 | Model | `resource`, `materialize`, `realize`, `may_leave_device` | Declare something an owner holds, such as a participant; name the implementation that materializes it and those that realize its routes; permit a participant's device storage to leave the device between uses (D15) | `lang.resource` | Exists; `materialize` and `may_leave_device` planned; `realize` planned |
 | Model | `participant`, `view`, `route` | A model resource with identity; its typed projections and its execution routes (D6). An access names a view, or a route other than the normal one; a call reaches the route through its lease | — | Planned |
 | Model | `relationship` | A declared relation between participants, such as an attachment, with its own identity and state (D6) | — | Planned |
@@ -4120,7 +4175,7 @@ Conventions for the written form:
   fulfillment (D18), so they are part of the accepted strategy and its
   content identity. The materialization evidence records what was actually
   loaded, such as the file's hash (D19).
-- A participant's route realization follows its materializer as a pinned
+- A participant's route realization follows its materializer as a selected
   implementation with settings, the way a materializer is:
   `realize(@mixed_precision, "bfloat16")` realizes the normal route, and
   another route is named first, `realize(route @sample, @mixed_precision,
@@ -4155,7 +4210,7 @@ calls become a window, a contribution and Trainer-owned advancement.
 ```text
 // Data-only: score records under a selection policy that learns from
 // feedback.
-iro.strategy @score_records uses(@select v1, @score v1, @feedback v1) {
+iro.strategy @score_records uses(@select, @score, @feedback) {
   %policy  = iro.resource @policy
   %records = iro.stream @records : record
                bounds(outstanding 3, ready 2)
@@ -4192,7 +4247,7 @@ iro.strategy @score_records uses(@select v1, @score v1, @feedback v1) {
 ```text
 // Training: learn from produced records, then evaluate once on request.
 iro.strategy @learn_then_evaluate
-    uses(@encode v1, @objective v1, @equal v1, @measure v1) {
+    uses(@encode, @objective, @equal, @measure) {
   %encoder = iro.resource @encoder : participant
   %model   = iro.resource @model : participant
   %unit    = iro.train.unit @learner of %model optimizer @sgd
@@ -4298,15 +4353,15 @@ used to carry is now in the accepted strategy.
 #### The accepted run
 
 An accepted run is immutable and holds no live objects. It records a content
-identity for its strategy and pinned versions. The run's own identity comes
+identity for its strategy and the evidence of the code it uses. The run's own identity comes
 from the run authority it seeds, so two runs of the same strategy remain
 distinct runs (D6).
 
 | Part | What it is |
 | --- | --- |
 | Strategy | The accepted strategy, in Kuroiro: participants and how each one materializes, relationships, units with their optimizer policy, streams, activities, transitions, triggers and capability handlers. Configuration values are attributes in the strategy. |
-| Pinned versions | The definitions the strategy uses with its ownership profile, and every implementation it selects, each with its version and declaration digest (D16) |
-| Obligations | The revisioned set that verification derives from the strategy under those versions (D16), including the readiness checkpoints that fulfillment derives |
+| Code evidence | For each definition the strategy uses, its ownership profile, and every implementation, setup, materializer and deriver it selects: the records D16 computes (declaration hash, exact fixture outputs with environment evidence, or source hash), each with its method and coverage, and any recorded acceptance of changed code |
+| Obligations | The revisioned set that verification derives from the strategy under that code (D16), including the readiness checkpoints that fulfillment derives |
 | Authority seed | The declared participants and relationships, still unbound, under the strategy and obligation revisions. It is derived from the strategy, and the Trainer creates the run authority from it at the start of realization (D6, D19) |
 
 The strategy is the source. The other parts are derived from it and kept for
@@ -4394,7 +4449,7 @@ states. Nothing is declared while a run executes.
 
 Two kinds of change cannot be declared: one nobody planned, such as a person
 deciding mid-run to add an adapter, and one that needs code or definitions
-the run did not pin. Each is a new run, with its own fulfillment, started
+the run did not record. Each is a new run, with its own fulfillment, started
 from the earlier run's products with lineage (D11).
 
 #### How training operations reach the Trainer
@@ -4655,8 +4710,9 @@ Pieces connect only to what the author hands them. Activities and strategies
 can be reused, and a strategy can build on another without forking it.
 
 Implementations are declared with a decorator that records their contract:
-signature, version, effects, concurrency safety and completion. D16 says
-what an implementation version covers and when it changes. Which
+signature, effects, concurrency safety and completion, and any fixtures it
+ships with their comparison policies. D16 says how the system identifies
+selected code from these without a version kept by hand. Which
 participants a call reads or updates is not written a second time. The lease
 types in the signature say it, and verification checks each call site's
 access mode against them (D14). The decorator states only what the signature
@@ -4667,7 +4723,7 @@ implementation. The decorator has no registration side effect;
 the launcher installs implementations explicitly (D2).
 
 ```python
-@iro.implementation(version=1, effects=["device"], result_keeps=["unet"])
+@iro.implementation(effects=["device"], result_keeps=["unet"])
 def denoise(unet: ReadLease, batch: LatentBatch) -> Loss:
     ...  # the selected PyTorch computation; the lease type says it reads
 ```
@@ -4774,9 +4830,9 @@ Fulfillment is the system's step, not the author's. The launcher runs it,
 and the doctor runs the same checks earlier. Fulfillment never fills a gap.
 It never selects a missing implementation, adds a dependency, or calls the
 strategy back. Config can set only the choices the strategy declared, and
-only within their bounds (`training-contract`). One contract version, which
-is the set of definitions the run pins (D16), and one profile govern the run
-for its lifetime.
+only within their bounds (`training-contract`). One contract, which is the
+set of definitions the run uses as their recorded evidence identifies them
+(D16), and one profile govern the run for its lifetime.
 
 #### Diagnostics
 
@@ -4800,11 +4856,13 @@ limit, reported at the earliest point where it is known (D14).
 Only fulfillment produces an accepted run on the normal path, and the normal
 launcher reaches the Trainer only through fulfillment. A saved strategy, for a
 resume or a cold load, goes back through the same checks at the launcher,
-under the versions it pins, before the Trainer sees it (D16). The Trainer
-re-derives nothing, because it has neither the contract nor that job. It
-checks only what it can know: that the installed implementations it receives
-match the implementation versions and declaration digests the accepted run
-pins (D16). Otherwise it refuses to start.
+which compares the code evidence it records with the installed code's
+before the Trainer sees it (D16). The Trainer re-derives nothing, because
+it has neither the contract nor that job. It checks only what it can know:
+that the installed implementations it receives give the evidence the
+accepted run records for them, computing the same records, with any
+acceptance of changed code the launcher recorded (D16). Otherwise it
+refuses to start.
 Tests may build accepted runs with a test-only builder, which the normal
 launcher never uses (D1). The builder lives under `tests/`, beside the IR
 system's conformance suite, and no production module imports it. Selected Python is trusted (D14), so this is a
@@ -4815,7 +4873,7 @@ objects.
 
 | Concern | Where it lives |
 | --- | --- |
-| The contract | One composition, made by the launcher before any strategy is read, versioned and read in one place |
+| The contract | One composition, made by the launcher before any strategy is read, and read in one place |
 | The code of each entry's rules | With the piece it describes, in the modules D21 gives. Readers never need it, because the composed contract shows every entry |
 | Fulfillment | The IR system (D21). The launcher runs it, and the doctor runs the same checks earlier. Authors never do |
 | Checks that need later facts | Some rules can be checked only once things exist, such as whether the loaded UNet has the layers a LoRA targets. The rule's entry includes its check. The run authority or preparation runs it when the facts arrive, at the rule's readiness checkpoint |
@@ -5390,6 +5448,23 @@ code is.
   implemented when its release is written, and the others are refused with
   the reason until then. Designing architectures beyond the released ones
   is a different matter, closer to strategies.
+- **Several implementations of one component.** A component's interface
+  and declaration are repository-owned. Its implementation may be repository
+  code or a class from an installed library behind that interface, and one
+  component may have several, each selected by name with its own code
+  evidence and its own materializer from the released checkpoints (D16).
+  Which one a run uses is a selection, so adding or replacing one changes no
+  strategy's meaning. What an implementation offers, such as checkpoint
+  points, it declares, so a strategy's need it does not meet is found before
+  the run (D15). The repository starts with its own denoisers and
+  autoencoders, and with the text encoders from `transformers` behind their
+  interface, with whatever wrapper or key mapping keeps the released
+  checkpoints' names and layout. Runtime code does not use Diffusers, since
+  the components it would supply are repository code; it serves tests as a
+  reference implementation. Importing either library's model classes turns
+  the GIL on today, through `torch._dynamo` loading Triton, as building any
+  `torch.optim` optimizer does; a selection that needs the GIL costs only
+  the run that selected it (D15).
 - **Model code** is a component's or an assembly's intrinsic meaning and
   canonical interface, whatever a strategy does with it: its modules, its
   weights and their canonical formats, and the conventions it was trained
@@ -5572,7 +5647,7 @@ edited to follow them.
 | --- | --- | --- |
 | `words/` | Kuroiro's core operations and types: structure, lifetimes, data, access, calls and model use | `dialects.py`, `filter_contracts.py`, `product_contracts.py` |
 | `operation_contracts.py` | Region, flow, resource, realization and decision contracts | `contracts.py` |
-| `composition.py` | The contract: registration of definitions and declarations, version, queries, and the readable form written to `library/strategies/CONTRACT.md` | New (D18, D21) |
+| `composition.py` | The contract: registration of definitions and declarations, queries, and the readable form written to `library/strategies/CONTRACT.md` | New (D18, D21) |
 | `frontend/` | The `iro` namespace, the one entry point authors import, with its decorators; and the reader that reads a strategy into Kuroiro | New (D18) |
 | `normalize.py` | Expansion of derived words, and explicit captures, requests and stops | `normalize.py` |
 | `verify.py` | Verification, the `Obligations` type and readiness checkpoints | `verify.py` |
@@ -5677,7 +5752,7 @@ The libraries below the strategy system:
 
 | Package | Holds once the rework is done |
 | --- | --- |
-| `library/models` | Components arranged by kind, for example `autoencoders/`, `text_encoders/` and `denoisers/`, each with its modules, materializer and materialization evidence, canonical serialization and conversion, repository-owned interface and declaration; and assemblies, the models as released, such as SD, SDXL and SD3, whose materializers load a released checkpoint into its components |
+| `library/models` | Components arranged by kind, for example `autoencoders/`, `text_encoders/` and `denoisers/`, each with its implementations (repository modules, or an installed library's class behind the component's interface), materializer and materialization evidence, canonical serialization and conversion, repository-owned interface and declaration; and assemblies, the models as released, such as SD, SDXL and SD3, whose materializers load a released checkpoint into its components |
 | `library/conditioning` | Conditioning techniques, such as long prompts, prompt weighting, clip-skip and per-encoder dropout, and the meaning of cached conditioning values: their schema and dependencies. It uses the components' interfaces and the assemblies' conventions, and holds no storage or traversal |
 | `library/objectives`, `losses`, `timesteps` | Formulations such as DDPM and rectified flow, losses and their weightings such as EDM2's, and timestep sampling |
 | `library/data` | Sources, manifests, bucketing, realized captions and their transforms, augmentation, image facts, cache storage and the traversal that produces caches, with the caching capability |

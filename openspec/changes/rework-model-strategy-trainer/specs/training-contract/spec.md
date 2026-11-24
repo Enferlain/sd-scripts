@@ -9,8 +9,9 @@ realization and later transitions.
 
 ### Requirement: The active contract guides strategy authoring
 The system SHALL make the active core contract, recognized capability
-contracts, feature contracts, contract version, and execution/ownership
-profiles available before a strategy is authored for that contract.
+contracts, feature contracts, and execution/ownership profiles available
+before a strategy is authored for that contract, with the evidence the
+system computes to identify each definition's code.
 
 #### Scenario: Author uses maintained contract vocabulary
 - **WHEN** a repository author defines a maintained strategy
@@ -92,7 +93,7 @@ merely because they exist.
 
 ### Requirement: Strategy fulfillment produces acceptance or rejection
 The training contract system SHALL evaluate one complete authored strategy using
-the active contract version and execution/ownership profile. It SHALL return
+the active contract and execution/ownership profile. It SHALL return
 useful acceptance or rejection information and SHALL produce an accepted run
 arrangement only on success. Fulfillment requirements do not prescribe whether
 conformance rules are represented as contract data, shared validators,
@@ -261,12 +262,13 @@ contract extension or execution/ownership profile.
 - **AND** governed realization MUST reject an incompatible backend before the imperative region executes
 
 ### Requirement: One accepted contract governs one run authority
-One contract version and execution/ownership profile SHALL govern an accepted
-run authority for its lifetime. The authority SHALL identify the current
+One contract and execution/ownership profile SHALL govern an accepted run
+authority for its lifetime. The authority SHALL identify the current
 arrangement and run-specific obligation revision. Permitted arrangement
 amendments SHALL be ones the accepted arrangement declares, with obligations
-derived at fulfillment under that same contract. A different contract version or Trainer extension SHALL require new
-strategy fulfillment unless an explicit migration contract is later defined.
+derived at fulfillment under that same contract. A different contract or
+Trainer extension SHALL require new strategy fulfillment unless an explicit
+migration contract is later defined.
 
 #### Scenario: Arrangement amendment retains the contract
 - **WHEN** an accepted run brings declared participants into use or retires them through a permitted amendment
@@ -277,7 +279,30 @@ strategy fulfillment unless an explicit migration contract is later defined.
 - **THEN** the authority MUST reject it without deriving new obligations
 - **AND** making that change MUST require a new run with its own strategy fulfillment
 
-#### Scenario: Caller requests another contract version
-- **WHEN** live runtime behavior would require another core contract version or ownership profile
+#### Scenario: Caller requests another contract
+- **WHEN** live runtime behavior would require another core contract or ownership profile
 - **THEN** the existing authority MUST NOT silently adopt it
 - **AND** new strategy fulfillment MUST be required
+
+### Requirement: A run's contract is identified by computed code evidence
+A run's contract SHALL be the definitions and implementations it uses,
+identified by evidence the system computes and records with the accepted run,
+not by version numbers kept by hand. Installed code whose evidence differs
+from the run's records beyond a fixture's declared comparison policy is a
+different contract. Continuing a run under it SHALL require a person's
+recorded acceptance, and restoring its saved state SHALL follow the migration
+contract that restoration defines.
+
+#### Scenario: Installed code differs from the run's records
+- **WHEN** a saved run starts and the evidence computed for installed code differs from the run's records beyond any applicable fixture comparison policy
+- **THEN** the launcher MUST refuse to start it and name what changed: a declaration, the outputs on which fixtures, or which source
+- **AND** continuing under the changed code MUST NOT happen without a person's acceptance recorded with the run
+
+#### Scenario: The Trainer receives code that differs from the accepted run's records
+- **WHEN** the Trainer is given installed implementations whose computed evidence differs from the accepted run's records beyond any applicable fixture comparison policy, without an acceptance recorded for that change
+- **THEN** the Trainer MUST refuse to start the run
+
+#### Scenario: Fixture outputs drift within their comparison policy
+- **WHEN** installed code's fixture outputs differ from the run's exact records only within the fixture's declared comparison policy
+- **THEN** the run MAY start and MUST report the drift with the environment evidence that differs
+- **AND** the run's exact records MUST be kept and MUST NOT be replaced by the tolerant comparison
