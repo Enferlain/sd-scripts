@@ -1,0 +1,137 @@
+{
+  "captured_at_utc": "2026-11-06T08:33:02.023490+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/aa05e859-rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md",
+      "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md",
+      "bytes": 66271,
+      "sha256": "7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2",
+      "lines": 638,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research proposal: bounded adopted semantics, not wholesale adoption of every illustrative API"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-rework-model-strategy-trainer/design.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "bytes": 307221,
+      "sha256": "17cfd07615d9cfc3544d0e6acab86317f23f06472226913e7bcf9f2def830493",
+      "lines": 3745,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current governing language amendment/requirements and still-open production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-rework-model-strategy-trainer/tasks.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "bytes": 32132,
+      "sha256": "ec2e4a9a55a761fe2cf265e192b07378d22a6a2ae5cbf457bddbd2a8a9ac120d",
+      "lines": 123,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current governing language amendment/requirements and still-open production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-rework-model-strategy-trainer/specs/workflow-composition/spec.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md",
+      "bytes": 27127,
+      "sha256": "18a5ffbfb08882ec6fc7330b7ba72755fcc357aa7278de2b257fea1d4adacd83",
+      "lines": 385,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current governing language amendment/requirements and still-open production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "bytes": 37177,
+      "sha256": "f1ec601e4a3263421edc2165465feca433ca004ab6570a14733c6c4500026d2d",
+      "lines": 505,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current governing language amendment/requirements and still-open production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "bytes": 18484,
+      "sha256": "1220ada14b2d3c3b0e4e0b175713543ddd4072db6d16625fa76af3e51118b750",
+      "lines": 261,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current governing language amendment/requirements and still-open production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "bytes": 14763,
+      "sha256": "a1819144c533a1e80d3017e48c668d12a9f98c0785f4c1a7a4e749427c453757",
+      "lines": 233,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current governing language amendment/requirements and still-open production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-xdsl_language/README.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "docs_design/models-strategy-trainer/xdsl_language/README.md",
+      "bytes": 35447,
+      "sha256": "804030f9c71bcc41165edcc05aae0bf2c85442ea80343b2620eaf5ceefc9b429",
+      "lines": 461,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current shared-language experiment and finite qualification boundaries"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-xdsl_language/filtering.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "docs_design/models-strategy-trainer/xdsl_language/filtering.md",
+      "bytes": 8338,
+      "sha256": "8f8e3b5f637976cc95ee97b01f3ee67ed37c0f54eae10c0e19e12830618adab0",
+      "lines": 117,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current shared-language experiment and finite qualification boundaries"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-xdsl_language/products.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "docs_design/models-strategy-trainer/xdsl_language/products.md",
+      "bytes": 6991,
+      "sha256": "742128d90a256ea7c645e5874866e77a140bd317cc7311f6d5aeeaba7e5ce7eb",
+      "lines": 108,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current shared-language experiment and finite qualification boundaries"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f984c41a-xdsl_language/qualification.md",
+      "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+      "original_path": "docs_design/models-strategy-trainer/xdsl_language/qualification.md",
+      "bytes": 7208,
+      "sha256": "55f421e60c34b4e036225b6734d09f5d61612af64463758e77c1768cf90bd52e",
+      "lines": 98,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "current shared-language experiment and finite qualification boundaries"
+    }
+  ],
+  "attachments": [],
+  "section_introductions": [],
+  "scope": "language proposal and explicit amendments, shared semantic slice/reference, verification, lowering, cold/independent qualification, binding effects/filtering/fusion and retained storage/autograd products; ends immediately before this historical audit",
+  "snapshot_timing": "Each exact Git copy is a dated checkpoint identified by commit. A later checkpoint may include subsequent corrections; it is not labelled as the exact state of every earlier message. Original inode dates remain in inventory.json.",
+  "qualification": "Historical experiments, counts, reviews and runtime assertions are evidence from their recorded scope, not fresh qualification, production readiness or automatic adoption of every API. This reading audits decision provenance rather than reexecuting the implementation.",
+  "page_transitions": [],
+  "already_exported_suffix_records": [],
+  "previous_episode_suffix_reclassified": [],
+  "decision_review_scope": "Decision-bearing user corrections, resulting governing edits and experiment conclusions were reviewed. Complete visible transcripts are preserved for joint reading; source-code and numerical qualification claims are not independently rerun by this history capture.",
+  "current_authority": "Governing design/specs retain authority; source role and explicit adoption/supersession control interpretation. Experimental APIs, external opinions, failed reviews and superseded proposals remain evidence.",
+  "live_source_prefix_qualification": "For an actively appended source, hash_scope.prefix_lines fixes only the historical prefix before this audit; later chat/tool traffic is neither captured nor required to keep a constant whole-file hash."
+}

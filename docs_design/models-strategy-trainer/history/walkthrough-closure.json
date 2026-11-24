@@ -1,0 +1,165 @@
+{
+  "format_version": 1,
+  "captured_at_utc": "2026-11-06T08:42:43.633258+00:00",
+  "scope": "Historical reconstruction and classification complete through the pre-audit design frontier; not production design/implementation completion.",
+  "repository_head": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+  "frontier_commit": "f984c41a",
+  "current_source_last_design_message": {
+    "episode": "sessions/19-shared-language-and-current-frontier.json",
+    "message": 191,
+    "raw_line": 21323
+  },
+  "audit_trigger_raw_line": 21340,
+  "main_readings": [
+    {
+      "path": "sessions/00-initial-direction.json",
+      "messages": 59,
+      "compactions": 3
+    },
+    {
+      "path": "sessions/01-inventory-and-authoring.json",
+      "messages": 35,
+      "compactions": 3
+    },
+    {
+      "path": "sessions/02-frameworks-and-contract-surfaces.json",
+      "messages": 48,
+      "compactions": 2
+    },
+    {
+      "path": "sessions/03-training-mode-and-objective.json",
+      "messages": 38,
+      "compactions": 2
+    },
+    {
+      "path": "sessions/04-identity-and-execution-routes.json",
+      "messages": 12,
+      "compactions": 0
+    },
+    {
+      "path": "sessions/05-arrangement-and-persistence.json",
+      "messages": 35,
+      "compactions": 2
+    },
+    {
+      "path": "sessions/06-authority-reviews-and-handoff.json",
+      "messages": 65,
+      "compactions": 2
+    },
+    {
+      "path": "sessions/07-contract-exchanges-and-authority-correction.json",
+      "messages": 88,
+      "compactions": 3
+    },
+    {
+      "path": "sessions/08-design-frontier-preparation-and-identity.json",
+      "messages": 94,
+      "compactions": 2
+    },
+    {
+      "path": "sessions/09-executable-evidence-and-optimization.json",
+      "messages": 114,
+      "compactions": 3
+    },
+    {
+      "path": "sessions/10-accepted-arrangement-and-openspec-transition.json",
+      "messages": 153,
+      "compactions": 4
+    },
+    {
+      "path": "sessions/11-first-openspec-draft-and-reconciliation.json",
+      "messages": 19,
+      "compactions": 1
+    },
+    {
+      "path": "sessions/12-governing-rebuild-and-contract-system.json",
+      "messages": 87,
+      "compactions": 3
+    },
+    {
+      "path": "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.json",
+      "messages": 123,
+      "compactions": 3
+    },
+    {
+      "path": "sessions/14-training-first-placement-and-one-run.json",
+      "messages": 106,
+      "compactions": 4
+    },
+    {
+      "path": "sessions/15-research-and-whole-run-language.json",
+      "messages": 419,
+      "compactions": 16
+    },
+    {
+      "path": "sessions/16-exchanges-audits-and-g5-correction.json",
+      "messages": 631,
+      "compactions": 19
+    },
+    {
+      "path": "sessions/17-connected-candidate-and-ir-machinery.json",
+      "messages": 897,
+      "compactions": 29
+    },
+    {
+      "path": "sessions/18-framework-comparison-and-xdsl-choice.json",
+      "messages": 403,
+      "compactions": 10
+    },
+    {
+      "path": "sessions/19-shared-language-and-current-frontier.json",
+      "messages": 191,
+      "compactions": 7
+    }
+  ],
+  "branch_appendices": [
+    {
+      "path": "sessions/01-branch-differences.json",
+      "messages": 36,
+      "compactions": 0
+    },
+    {
+      "path": "sessions/13-branch-differences.json",
+      "messages": 6,
+      "compactions": 0
+    },
+    {
+      "path": "sessions/14-branch-differences.json",
+      "messages": 26,
+      "compactions": 0
+    },
+    {
+      "path": "sessions/15-branch-differences.json",
+      "messages": 23,
+      "compactions": 0
+    },
+    {
+      "path": "sessions/16-branch-differences.json",
+      "messages": 18,
+      "compactions": 0
+    },
+    {
+      "path": "sessions/17-branch-differences.json",
+      "messages": 20,
+      "compactions": 0
+    }
+  ],
+  "selected_visible_messages": 3617,
+  "distinct_branch_messages": 129,
+  "duplicate_identity_and_content_pairs": 0,
+  "notepad_entries": 87,
+  "classified_original_markdown": 68,
+  "classified_original_root_items": 28,
+  "original_sources_moved_or_edited": false,
+  "governing_or_production_changes": false,
+  "implementation_or_historical_quality_gates_rerun": false,
+  "supplementary_sources": "supplementary-source-records.json",
+  "placement_manifest": "placement-manifest.json",
+  "limits": [
+    "Not an exhaustive search of every incidental or unregistered conversation.",
+    "Visible messages are preserved; private reasoning and tool traffic are not exported as conversation.",
+    "Non-text/unavailable attachments are not reconstructed from prose.",
+    "Git and filesystem/archive timestamps do not establish original authorship or adoption.",
+    "Current G5 and production migration remain separate authorized work."
+  ]
+}

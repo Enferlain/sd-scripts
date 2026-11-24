@@ -1,0 +1,174 @@
+{
+  "captured_at_utc": "2026-11-06T08:32:06.683877+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-candidate_comparison.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/candidate_comparison.md",
+      "bytes": 19880,
+      "sha256": "3ba36817efd1391892771f1a5b4220101f1b913471792e0f9d721192db577122",
+      "lines": 214,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-matched_comparison.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/matched_comparison.md",
+      "bytes": 22825,
+      "sha256": "3ac9d7064c1e92397f3e48b59d93ec6ae23afde36f9bf578211932da14d93708",
+      "lines": 337,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-grouping_comparison.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/grouping_comparison.md",
+      "bytes": 9819,
+      "sha256": "6d50c224cd54af2f4e534f44f5a0fceda1ce79d6fbd458432c4956a63e870653",
+      "lines": 149,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-machinery_comparison.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/machinery_comparison.md",
+      "bytes": 28211,
+      "sha256": "1f981420102583a8dbace389bd0c5ab2bad366c6195f54a5040cf9d372f88ec6",
+      "lines": 398,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-xdsl_candidate/README.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/xdsl_candidate/README.md",
+      "bytes": 48592,
+      "sha256": "3e211ef36cd6e82d5e29b3ba7434df10d0c7352b129686e7a35f8a0f9a559dbb",
+      "lines": 738,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-xdsl_candidate/lifetime_case.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md",
+      "bytes": 10797,
+      "sha256": "9f4c0160b83ecb7e076b26d37a36b773025ead814cfcf54a41482dc192a5dfad",
+      "lines": 169,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-pliron_candidate/README.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/pliron_candidate/README.md",
+      "bytes": 24568,
+      "sha256": "e9861bfe47524e36e1e0256c65d9cd7a5e2e7b29160108e32a6327ba644c3b73",
+      "lines": 326,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-pliron_candidate/composition_case.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md",
+      "bytes": 14393,
+      "sha256": "26001dd19564059db3a36e1cad3e6107a1fd0623ca850c88ab1d0d1e38167783",
+      "lines": 227,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-pliron_candidate/correlation_case.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md",
+      "bytes": 9657,
+      "sha256": "5746232886d34d6aa03f3d5a4b3052b701541080d6f62acedbb5cd663ec22ef7",
+      "lines": 153,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-pliron_candidate/grant_case.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/pliron_candidate/grant_case.md",
+      "bytes": 10786,
+      "sha256": "0fcc33dbe397e87b1a6d9159503db3c9aa3a601101b35ed8956be1bf3b4c656e",
+      "lines": 161,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/fe46babf-pliron_candidate/mixed_case.md",
+      "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+      "original_path": "docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md",
+      "bytes": 9986,
+      "sha256": "7b068c4ee444ba2484f7d76f1d79469bdcbf5344dbf7a44db07065d1af8dc55d",
+      "lines": 157,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "matched experiment/comparison checkpoint before final language implementation; runtime reuse and measurement limits explicit"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/de377b20-b3fa-444c-932a-375dfefee0d2/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase18-attachments/de377b20-b3fa-444c-932a-375dfefee0d2-Pasted_text.md",
+      "sha256": "cc54b6015a4164aa9d2b6b7c09b291346f04bd375886f3896fd99d62e32043d2",
+      "bytes": 12087,
+      "lines": 125,
+      "referenced_in_selected_raw_line": 2779,
+      "source_page": "/home/imi/.codex/sessions/2026/10/29/rollout-2026-10-29T05-24-11-01a185e6-b37c-7192-bd31-0ba5a575b23d.jsonl",
+      "message_number": 111,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-29 19:38:14.214999705 +0100",
+        "mtime_utc": "2026-10-29T18:38:14.215000+00:00",
+        "ctime_utc": "2026-10-29T18:38:14.215000+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/cc1c9760-029a-49c6-8d6d-2731db1fdf97/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase18-attachments/cc1c9760-029a-49c6-8d6d-2731db1fdf97-Pasted_text.md",
+      "sha256": "f337a0d0db7ad2dcd24003c39602a40d8e8988dcd049faae4d438f53ae18d0ee",
+      "bytes": 5704,
+      "lines": 78,
+      "referenced_in_selected_raw_line": 8492,
+      "source_page": "/home/imi/.codex/sessions/2026/10/29/rollout-2026-10-29T05-24-11-01a185e6-b37c-7192-bd31-0ba5a575b23d.jsonl",
+      "message_number": 265,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-11-01 13:53:13.177118897 +0100",
+        "mtime_utc": "2026-11-01T12:53:13.177119+00:00",
+        "ctime_utc": "2026-11-01T12:53:13.177119+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    }
+  ],
+  "section_introductions": [],
+  "scope": "framework screening, xDSL and pinned Pliron experiments, independent extensions, matched six-case comparison, machinery tradeoffs and explicit xDSL working selection",
+  "snapshot_timing": "Each exact Git copy is a dated checkpoint identified by commit. A later checkpoint may include subsequent corrections; it is not labelled as the exact state of every earlier message. Original inode dates remain in inventory.json.",
+  "qualification": "Historical experiments, counts, reviews and runtime assertions are evidence from their recorded scope, not fresh qualification, production readiness or automatic adoption of every API. This reading audits decision provenance rather than reexecuting the implementation.",
+  "page_transitions": [],
+  "already_exported_suffix_records": [],
+  "previous_episode_suffix_reclassified": [],
+  "decision_review_scope": "Decision-bearing user corrections, resulting governing edits and experiment conclusions were reviewed. Complete visible transcripts are preserved for joint reading; source-code and numerical qualification claims are not independently rerun by this history capture.",
+  "current_authority": "Governing design/specs retain authority; source role and explicit adoption/supersession control interpretation. Experimental APIs, external opinions, failed reviews and superseded proposals remain evidence.",
+  "live_source_prefix_qualification": "For an actively appended source, hash_scope.prefix_lines fixes only the historical prefix before this audit; later chat/tool traffic is neither captured nor required to keep a constant whole-file hash."
+}

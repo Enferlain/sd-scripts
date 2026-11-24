@@ -1,0 +1,170 @@
+{
+  "captured_at_utc": "2026-11-05T22:12:32.467805+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/3602960a-strategy_contract_exchange_design.md",
+      "commit": "3602960af0bf8d89ef16bfab678ba0f7204cd300",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 38767,
+      "sha256": "eb13bf347d16ce5f5478e08abfa9cb11d680f61b4927503d18d3e5ca89ac42b5",
+      "lines": 774,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed exchange draft, before the two declaration-view replies and their refinements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/3602960a-notes.md",
+      "commit": "3602960af0bf8d89ef16bfab678ba0f7204cd300",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 25670,
+      "sha256": "082a121471171bd4168b142dd00b4ee05ac915d677a47c16dfa3a793eb229493",
+      "lines": 507,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed exchange draft, before the two declaration-view replies and their refinements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/acdc2b19-strategy_contract_exchange_design.md",
+      "commit": "acdc2b1936afa39c914a72bcb7de2c9b2432416b",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 55065,
+      "sha256": "909d1aea9f8a7fb629010947e8da60df4ca63205870ab2fee6f722a357b2947d",
+      "lines": 1067,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "candidate compatibility filing and assessments still working; includes later organic-naming discussion before its commit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/acdc2b19-notes.md",
+      "commit": "acdc2b1936afa39c914a72bcb7de2c9b2432416b",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 31139,
+      "sha256": "cef8549cb79dcdb62c38daad96ef9133a646df87e1ce08569d9fa3e2bcafd280",
+      "lines": 607,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "candidate compatibility filing and assessments still working; includes later organic-naming discussion before its commit"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/7bd8a124-strategy_contract_exchange_design.md",
+      "commit": "7bd8a1244fe653c83381f6421c6cbcc269a04009",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 57511,
+      "sha256": "696241106b4d8a9b2776fecbf1047ddf5c992d309f7b4378f1a5e31e91820b8e",
+      "lines": 1073,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed correction to authoritative contract-derived obligations; after the Aug23 correction and next early planning prompt, before substantive Aug24 dependency work"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/7bd8a124-notes.md",
+      "commit": "7bd8a1244fe653c83381f6421c6cbcc269a04009",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 33775,
+      "sha256": "691242e3eae80f7776fdaa7f2c56e3f08313d105d3bff4aa085f28d31e2790a9",
+      "lines": 651,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed correction to authoritative contract-derived obligations; after the Aug23 correction and next early planning prompt, before substantive Aug24 dependency work"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/3c2b4f9d-7932-47cc-a3ab-a72cb1905bcf/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-22-establishment-feedback.md",
+      "referenced_in_selected_raw_line": 171,
+      "message_number": 5,
+      "role": "external less-context reply; useful distinctions selectively adopted, not authoritative",
+      "bytes": 8730,
+      "sha256": "2e8063c70f5032856f9d63c61297404e3254cb7d450e89bfe88ef6025e3002ca",
+      "lines": 328,
+      "filesystem": {
+        "birth_display": "2026-08-22 02:29:19.264723313 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787358559264723313,
+        "mtime_utc": "2026-08-22T00:29:19.264723+00:00",
+        "ctime_ns": 1787358559264723313,
+        "ctime_utc": "2026-08-22T00:29:19.264723+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/45af2535-7ae5-4419-81ff-6edc8801ac7a/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-22-declaration-view-1.md",
+      "referenced_in_selected_raw_line": 371,
+      "message_number": 24,
+      "role": "first supplied declaration critique; materialization-field and relationship-identity suggestions not adopted unchanged",
+      "bytes": 7366,
+      "sha256": "e8824d278df60eeb1099c260f2722583e0488659ebb2423ae0a878d6ca010a5e",
+      "lines": 292,
+      "filesystem": {
+        "birth_display": "2026-08-22 22:24:07.998526446 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787430247998526446,
+        "mtime_utc": "2026-08-22T20:24:07.998526+00:00",
+        "ctime_ns": 1787430247998526446,
+        "ctime_utc": "2026-08-22T20:24:07.998526+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/4932f456-db28-47cd-b601-b5142d9e0e3b/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-22-declaration-view-2.md",
+      "referenced_in_selected_raw_line": 371,
+      "message_number": 24,
+      "role": "second supplied declaration critique; freshness and in-place attempt tension inform working exchange decisions",
+      "bytes": 6053,
+      "sha256": "6557e2ede0bde852d3fc6626f700b68b0122642b6536c33bb5ccc495e63f36c6",
+      "lines": 135,
+      "filesystem": {
+        "birth_display": "2026-08-22 22:24:31.447832859 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787430271447832859,
+        "mtime_utc": "2026-08-22T20:24:31.447833+00:00",
+        "ctime_ns": 1787430271447832859,
+        "ctime_utc": "2026-08-22T20:24:31.447833+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Concrete exchange design record started (2026-08-22)",
+      "matching_commits": [
+        "3602960af0bf8d89ef16bfab678ba0f7204cd300\t2026-08-22T22:19:58+02:00\t2026-08-22T22:19:58+02:00\tnew future research, direction design"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## External review refinements to the first exchange draft (2026-08-22)",
+      "matching_commits": [
+        "acdc2b1936afa39c914a72bcb7de2c9b2432416b\t2026-08-23T07:04:10+02:00\t2026-08-23T07:04:10+02:00\tnote progress"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Candidate compatibility validation boundary drafted (2026-08-23)",
+      "matching_commits": [
+        "acdc2b1936afa39c914a72bcb7de2c9b2432416b\t2026-08-23T07:04:10+02:00\t2026-08-23T07:04:10+02:00\tnote progress"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Contract authority corrected in the exchange design (2026-08-23)",
+      "matching_commits": [
+        "7bd8a1244fe653c83381f6421c6cbcc269a04009\t2026-08-24T03:51:34+02:00\t2026-08-24T03:51:34+02:00\trectify design note"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    }
+  ],
+  "scope": "fresh-session establishment, identity/readiness refinements, participant-validator proposal and its explicit supersession by whole-arrangement contract-derived obligations; stops before design-dependency and open-register audit",
+  "snapshot_timing": "3602960a committed Aug22 20:19:58Z; acdc2b19 Aug23 05:04:10Z; 7bd8a124 Aug24 01:51:34Z first commits correction reported Aug23 19:21Z; snapshots are later recorded file states, not exact times of every discussion turn",
+  "qualification": "Historical code checks, review claims, type names and working EX entries retain their scope. No new source-code audit or review. Current accepted-arrangement topology supersedes the active-strategy enclosure still used here."
+}

@@ -1,0 +1,94 @@
+{
+  "captured_at_utc": "2026-11-05T18:09:31.248433+00:00",
+  "scope": "chapter01 capture and provenance validation, not independent rerun of the historical production-code inventory or completed architecture audit",
+  "unchanged_original_source_files": 68,
+  "unchanged_protected_opening_capture_files": [
+    "inventory.json",
+    "sessions/00-initial-direction.json",
+    "sessions/00-initial-direction.md",
+    "snapshots/de2dd0eb-strategy_system_direction.md"
+  ],
+  "main_messages": 35,
+  "branch_only_messages": 36,
+  "raw_record_matches": 142,
+  "stable_identifiers_for_all_messages": true,
+  "selected_and_branch_sets_disjoint": true,
+  "selected_and_chapter00_sets_disjoint": true,
+  "raw_session_hashes_verified": 8,
+  "exact_git_snapshots_verified": 3,
+  "main_compaction_markers": 3,
+  "authored_navigation_links_checked": 70,
+  "authored_markdown_whitespace": "passed",
+  "json_parsing": "passed",
+  "production_or_governing_spec_changes": false,
+  "files": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/README.md",
+      "sha256": "7ccc66e3bae5f66b296924d1c89c400f5573693a392264496ee22cb0a125b7ed"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation.json",
+      "sha256": "562d7070871e2e62dd53b921c2bcdd2beb19861f98912cd2991d5b8bc9a53372"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/decision-notepad.md",
+      "sha256": "6f3343df1a91487c57829b09eccc2c539723719713860492659779349a776060"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/document-map.md",
+      "sha256": "de98165961b931cdf5619843a3e912d161695246a157cf0c39a5f1dbbc1ffbae"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/inventory.json",
+      "sha256": "af402a4dd4b1432739db18533c12fbcfd7e3e9ece55489b0f6334784a04086bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.json",
+      "sha256": "6df4a7c8c1763f6959ce934b7737065fbc2e2fc0cc36f163937187a0b33e9391"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.md",
+      "sha256": "e0020f0589e0548c0f28f6da1a74fa724f002e6462a790b8a3e6f3f7b56b48a1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-branch-differences.json",
+      "sha256": "9f18e8552da2a27526e114185cb3fbcc862ff80c674dfbf54925cf5d36274a69"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-branch-differences.md",
+      "sha256": "a72fb43d1eb7b7412d982bbed605cce413d6accc0790320bc149670c1ddb90e1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-inventory-and-authoring.json",
+      "sha256": "a8eb3a4f84a6e8fb87c7ed196e1dff4839f38506ace3c3c0fed1c28e1fbd2245"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-inventory-and-authoring.md",
+      "sha256": "ba3bffb7f52db2315300d8882495917d19fa6c667a0b353325dbf871d3e068bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-snapshot-sources.json",
+      "sha256": "8fe7c60df9f31a3809ffcef94685df4beef5bbe0424e0e80da6f3a35d5a8fc15"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/branch-map.md",
+      "sha256": "ad08a4e1480d538df6664067e5bb4c7b5000f66208b818a29d9ad5578d21f3b4"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/index.json",
+      "sha256": "e3930e2f36d94d3760cc2f6413b0287cce615e125f7f001a596ed4d54c4614c2"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_direction.md",
+      "sha256": "52366b60c67b320f120936165173ddf3827691fd549ecf842dcb7a63d2a29e44"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_inventory.md",
+      "sha256": "c5e19994f4fd54e4587faf3bc05095469d1bf20141f88f1b3c3649010c51799c"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/de2dd0eb-strategy_system_direction.md",
+      "sha256": "ad67c8ff7c3b9f3aae1a24fdef02df6f9061fa82a0ad2bce2b4e10082497a636"
+    }
+  ]
+}

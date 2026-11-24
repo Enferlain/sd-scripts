@@ -1,0 +1,1266 @@
+{
+  "format_version": 1,
+  "captured_at_utc": "2026-11-06T08:42:43.543423+00:00",
+  "scope": "Role and placement classification of all 68 inventoried Markdown documents and 28 original root items. No moves, new normative decisions or source-code audit.",
+  "inventory": "inventory.json",
+  "governing_authority": "openspec/changes/rework-model-strategy-trainer/design.md:20",
+  "documents": [
+    {
+      "path": "docs_design/models-strategy-trainer/candidate_comparison.md",
+      "sha256": "3ba36817efd1391892771f1a5b4220101f1b913471792e0f9d721192db577122",
+      "role": "matched-comparison-evidence",
+      "current_disposition": "Sequential scoped comparison, fixture/evidence/measurement boundaries retained; working-substrate selection occurs later.",
+      "proposed_home": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 0,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/execution_candidate/README.md",
+      "sha256": "7dc2f04f4ffea33d37f6bca10fa16928dfcfd3fe00b828d271624e3c0d5ac7a3",
+      "role": "connected-execution-experiment",
+      "current_disposition": "Original shared owner/runtime candidate and its bounded assessment; tested mechanisms survive later frontend choices.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 1,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/execution_candidate/system_assessment.md",
+      "sha256": "54d3b95949b642c21a70bfbaac6a9dd4d0e251cea8130b1fa6999a59743dd486",
+      "role": "connected-execution-experiment",
+      "current_disposition": "Original shared owner/runtime candidate and its bounded assessment; tested mechanisms survive later frontend choices.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 2,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+      "sha256": "d48dc9c40c507bfb7d8b80981eac2e2c2960f7e5e280290375aa44f457774750",
+      "role": "prior-art",
+      "current_disposition": "Subordinate framework lessons; old active-strategy topology explicitly superseded.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/framework_pattern_comparison.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/02-frameworks-and-contract-surfaces.md",
+        "sessions/10-accepted-arrangement-and-openspec-transition.md"
+      ],
+      "metadata_inventory_index": 3,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/framework_pattern_comparison.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/grouping_comparison.md",
+      "sha256": "6d50c224cd54af2f4e534f44f5a0fceda1ce79d6fbd458432c4956a63e870653",
+      "role": "matched-comparison-evidence",
+      "current_disposition": "Sequential scoped comparison, fixture/evidence/measurement boundaries retained; working-substrate selection occurs later.",
+      "proposed_home": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 4,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/machinery_comparison.md",
+      "sha256": "1f981420102583a8dbace389bd0c5ab2bad366c6195f54a5040cf9d372f88ec6",
+      "role": "matched-comparison-evidence",
+      "current_disposition": "Sequential scoped comparison, fixture/evidence/measurement boundaries retained; working-substrate selection occurs later.",
+      "proposed_home": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 5,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/matched_comparison.md",
+      "sha256": "3ac9d7064c1e92397f3e48b59d93ec6ae23afde36f9bf578211932da14d93708",
+      "role": "matched-comparison-evidence",
+      "current_disposition": "Sequential scoped comparison, fixture/evidence/measurement boundaries retained; working-substrate selection occurs later.",
+      "proposed_home": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 6,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "sha256": "2c7ddc191776d24d63ba62a9bb35c46971e6b5db8e316893e8e959a4c04b2025",
+      "role": "chronological-history",
+      "current_disposition": "Dated checkpoints and corrections; later corrections replace affected earlier positions, not the entire rationale.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/notes.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/03-training-mode-and-objective.md",
+        "sessions/04-identity-and-execution-routes.md",
+        "sessions/05-arrangement-and-persistence.md",
+        "sessions/06-authority-reviews-and-handoff.md",
+        "sessions/08-design-frontier-preparation-and-identity.md",
+        "sessions/10-accepted-arrangement-and-openspec-transition.md"
+      ],
+      "metadata_inventory_index": 7,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/notes.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/README.md",
+      "sha256": "e9861bfe47524e36e1e0256c65d9cd7a5e2e7b29160108e32a6327ba644c3b73",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 8,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md",
+      "sha256": "26001dd19564059db3a36e1cad3e6107a1fd0623ca850c88ab1d0d1e38167783",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 9,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md",
+      "sha256": "5746232886d34d6aa03f3d5a4b3052b701541080d6f62acedbb5cd663ec22ef7",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 10,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/grant_case.md",
+      "sha256": "0fcc33dbe397e87b1a6d9159503db3c9aa3a601101b35ed8956be1bf3b4c656e",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 11,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md",
+      "sha256": "7b068c4ee444ba2484f7d76f1d79469bdcbf5344dbf7a44db07065d1af8dc55d",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 12,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/provisional_tree.md",
+      "sha256": "f5b6fd5be62f2dbc6e79bf24f2d1593f08593639dc1b900d0152ed6ef7db31ab",
+      "role": "copied-provisional-sketch",
+      "current_disposition": "Two September replies: provisional tree and training sweep; filenames and compressed target ownership are not final production authority.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/provisional_tree.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/14-training-first-placement-and-one-run.md"
+      ],
+      "metadata_inventory_index": 13,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/provisional_tree.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "sha256": "613a0afd6e525b3c7931bab55e33b515a7bb73aa4810e5b9dd97c0b5da2b83d9",
+      "role": "contract-derivation",
+      "current_disposition": "SETTLED INPUT is inherited; working/superseded EX entries follow explicit governing disposition.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/07-contract-exchanges-and-authority-correction.md",
+        "sessions/08-design-frontier-preparation-and-identity.md",
+        "sessions/09-executable-evidence-and-optimization.md",
+        "sessions/10-accepted-arrangement-and-openspec-transition.md",
+        "sessions/12-governing-rebuild-and-contract-system.md"
+      ],
+      "metadata_inventory_index": 14,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_contract_exchange_design.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion.md",
+      "sha256": "baab1c840fcb2dc4dce96697277f696341d2e35dbb6a1db9637568e3ed543b44",
+      "role": "copied-primary-discussion",
+      "current_disposition": "August topology discussion copied retrospectively; seven exact body correspondences. Not the July original or independent requirements.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/strategy_discussion.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/10-accepted-arrangement-and-openspec-transition.md"
+      ],
+      "metadata_inventory_index": 15,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_discussion.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion_external.md",
+      "sha256": "39b7b71fe3c2cd4678bdf2b006c2ff35b21c798c3e8e0d1045eb1e4ffd314fb5",
+      "role": "external-discussion",
+      "current_disposition": "Separate external opinions and changing proposals; adoption requires their actual evaluation and governing result.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/strategy_discussion_external.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/10-accepted-arrangement-and-openspec-transition.md"
+      ],
+      "metadata_inventory_index": 16,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_discussion_external.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "sha256": "4fed32ebe00766d9ba62615c87f629f84628837c81e01d5fa7ddb877b9359172",
+      "role": "inherited-settled-source",
+      "current_disposition": "Normative pre-OpenSpec input; preserve original rationale and explicit later supersessions.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/strategy_system_direction.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/00-initial-direction.md",
+        "sessions/01-inventory-and-authoring.md",
+        "sessions/02-frameworks-and-contract-surfaces.md",
+        "sessions/03-training-mode-and-objective.md",
+        "sessions/04-identity-and-execution-routes.md",
+        "sessions/05-arrangement-and-persistence.md",
+        "sessions/06-authority-reviews-and-handoff.md",
+        "sessions/10-accepted-arrangement-and-openspec-transition.md",
+        "sessions/12-governing-rebuild-and-contract-system.md"
+      ],
+      "metadata_inventory_index": 17,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_system_direction.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "sha256": "e11eb5c3015d720bb79af3f5236b4a737774a92ab8dbbd116a3f1d225eeb5c6e",
+      "role": "migration-derivation",
+      "current_disposition": "Source-to-target responsibility map; provisional package choices do not decide final production placement.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/10-accepted-arrangement-and-openspec-transition.md",
+        "sessions/14-training-first-placement-and-one-run.md"
+      ],
+      "metadata_inventory_index": 18,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_system_implementation_mapping.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "sha256": "5aedabf302b86eae611fb474e3e2e54a5c51d72c1931b2956273b9329ccf985a",
+      "role": "historical-code-baseline",
+      "current_disposition": "Current-code/pressure evidence at its recorded revision, not authority over the target or a new current source audit.",
+      "proposed_home": "Archived at docs_design/archive/models-strategy-trainer/strategy_system_inventory.md",
+      "relocation_performed": true,
+      "chronological_readings": [
+        "sessions/01-inventory-and-authoring.md",
+        "sessions/03-training-mode-and-objective.md",
+        "sessions/14-training-first-placement-and-one-run.md"
+      ],
+      "metadata_inventory_index": 19,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun.",
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_system_inventory.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_candidate/README.md",
+      "sha256": "3e211ef36cd6e82d5e29b3ba7434df10d0c7352b129686e7a35f8a0f9a559dbb",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 20,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md",
+      "sha256": "9f4c0160b83ecb7e076b26d37a36b773025ead814cfcf54a41482dc192a5dfad",
+      "role": "framework-experiment",
+      "current_disposition": "Versioned IR frontend and prepared correspondence/transform evidence; later owner-integrated paths share runtime owners.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 21,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/README.md",
+      "sha256": "804030f9c71bcc41165edcc05aae0bf2c85442ea80343b2620eaf5ceefc9b429",
+      "role": "shared-language-experiment",
+      "current_disposition": "Implemented bounded shared contracts/reference/owner-target evidence. Not production APIs, complete language qualification or G5 completion.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 22,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/filtering.md",
+      "sha256": "8f8e3b5f637976cc95ee97b01f3ee67ed37c0f54eae10c0e19e12830618adab0",
+      "role": "shared-language-experiment",
+      "current_disposition": "Implemented bounded shared contracts/reference/owner-target evidence. Not production APIs, complete language qualification or G5 completion.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 23,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/products.md",
+      "sha256": "742128d90a256ea7c645e5874866e77a140bd317cc7311f6d5aeeaba7e5ce7eb",
+      "role": "shared-language-experiment",
+      "current_disposition": "Implemented bounded shared contracts/reference/owner-target evidence. Not production APIs, complete language qualification or G5 completion.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 24,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/qualification.md",
+      "sha256": "55f421e60c34b4e036225b6734d09f5d61612af64463758e77c1768cf90bd52e",
+      "role": "shared-language-experiment",
+      "current_disposition": "Implemented bounded shared contracts/reference/owner-target evidence. Not production APIs, complete language qualification or G5 completion.",
+      "proposed_home": "Keep runnable experiment with retained evidence",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 25,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "sha256": "17cfd07615d9cfc3544d0e6acab86317f23f06472226913e7bcf9f2def830493",
+      "role": "governing-planning",
+      "current_disposition": "Active proposal/design/task gate. Experimental completion does not imply G5 or production cutover.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/11-first-openspec-draft-and-reconciliation.md",
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 26,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+      "sha256": "8070bfbd49bc49491b267ebfe86b5b98a885e3fa6d9dd5ac96b4ce8978367a84",
+      "role": "governing-planning",
+      "current_disposition": "Active proposal/design/task gate. Experimental completion does not imply G5 or production cutover.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/11-first-openspec-draft-and-reconciliation.md",
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 27,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/README.md",
+      "sha256": "2707ca090f625be2028811e6102683e21823331548072df3486f2d04ce6f2cb3",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 28,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/anima-llm-adapter.md",
+      "sha256": "c6997ca1e33bcf480b78c98caae85c32e6716328198aebc94b4caffb1a12c672",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 29,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/answer-edited.md",
+      "sha256": "10a9c46ef290d7b168596113a24362fb63b9167047a2e53da3eb8edea977cf58",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 30,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/autoencoders-vae.md",
+      "sha256": "fe54b9575184006f0dccc09b2a1256b52f7761a55c26d609ae7e42abdb429aba",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 31,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/conditioning-and-control-networks.md",
+      "sha256": "2bc5822c66043a71297c8fc8edd10f222166d12d47a3c47f0f015125a502f51a",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 32,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/distributed-training-execution.md",
+      "sha256": "5762e3e6d9d92b1550e58d30fe7801fe069e195ee19f3e871039b159d105ab8a",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 33,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/hackable-diffusion.md",
+      "sha256": "94af5aea31046af9cbd16337b10932dc933ffbcd57a959d2988b505916335997",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 34,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md",
+      "sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+      "role": "machinery-research-input",
+      "current_disposition": "Framework/machinery research. Custom-Python baseline was not mandatory; later working xDSL selection governs.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/17-connected-candidate-and-ir-machinery.md",
+        "sessions/18-framework-comparison-and-xdsl-choice.md"
+      ],
+      "metadata_inventory_index": 35,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/llm-training.md",
+      "sha256": "528c669b2d13fe3bcf458c945931affc47bbccc711a566c966b67f8646e98986",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 36,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/mock-a-execution-mechanism.md",
+      "sha256": "44fe970b48428dc2c3f62e5c6f11ce5379fa4251c7c8b75a273eb1ad82bfbde9",
+      "role": "candidate-sketch",
+      "current_disposition": "Reconstructable connected Mock A; not an adopted final runtime, and its letter is distinct from later pressure-case A.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 37,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/model-surgery-and-staged-topology.md",
+      "sha256": "22cdd0aec509d6d486fefd949e0dee7ca1e643af2f37633f61b39ea6fc1bf80f",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 38,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/pixel-space.md",
+      "sha256": "9cb4bbba63fdd4fa2ddd9c9323ce75ed46a8eab3d663ed91cae6e3e8f2209920",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 39,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/precision-and-quantization-training.md",
+      "sha256": "4ff4398ff93446a248255c486e932aa52a4efb984b5360ebcb3e73f89b107a22",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 40,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/preference-and-rl-post-training.md",
+      "sha256": "6b762b3813c20f575bcc3a1c481c2d524675a5de059a7347937708f744ab5e47",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 41,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/teacher-student-distillation.md",
+      "sha256": "789c1579c7b7116a853913d85cab3409cdc90e5ef4d818f62b69a7bd627db23e",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 42,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-concrete.md",
+      "sha256": "3c9c13948621339611d4c20d06cf40bc1b42ba41db0eae6dfee9998709d342c2",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 43,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-research.md",
+      "sha256": "2965625eb7fbfa37aa21464c7341fe24a2f714ab7d4a46934581f67e91fd9ea3",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 44,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/trainer-boundary-adversarial-review.md",
+      "sha256": "25332ecc0617aa84180d12beff3e4308f3e702e6f27701dce41b14932ed5636a",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 45,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/training-data-pipeline.md",
+      "sha256": "76d491db34902c6905f3c1fa5b42fb668b0dc496729588541409cc0d96c9b1f5",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 46,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+      "sha256": "2624813488f73856d32bf082609e87c89d4830357d36b7c3a66034c46f79c270",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 47,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/video-audio-training.md",
+      "sha256": "f54daf5855bb4223e4049b529b5c713046e49c06979ce3b4834b3fb34ed6c877",
+      "role": "domain-research-input",
+      "current_disposition": "Pressure-case evidence or evolving architecture/mechanism research; adopt individual findings through governing decisions, not by analogy or timestamp.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/17-connected-candidate-and-ir-machinery.md"
+      ],
+      "metadata_inventory_index": 48,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md",
+      "sha256": "7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2",
+      "role": "language-research-input",
+      "current_disposition": "Supplied proposal; D14 and delta amendments determine what is adopted. Identifiers and Python sketches remain illustrative.",
+      "proposed_home": "Existing change research folder",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 49,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "sha256": "f1ec601e4a3263421edc2165465feca433ca004ab6570a14733c6c4500026d2d",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 50,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "sha256": "987430a9031be2d13b29b2945aed9fdae9869c30462368838ecac46e93790444",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 51,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "sha256": "33d8a3770a42e332924afa34e40f83704137254beb732685f57f2e1ccaa3f9b8",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 52,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/component-qualified-selectors/spec.md",
+      "sha256": "7e2d829d0d5d2f1eae6c6370aa20d6225d56062f3066d9af5de95298788b89d6",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 53,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "sha256": "c9fa95ed0e05e4a542897e402fc638773d5dfb6aa399bfd634663176afd390ef",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 54,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "sha256": "944018b6d95d9b02503500d26c7b14a1bf925b84b652e5df1f6b125d2cce7142",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 55,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "sha256": "b73e77e9d19be0c0b9f5340f555115e543e2da8cbefe36edb2a5980067cbc332",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 56,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "sha256": "9f97f724882c6b794f9d0229f770ee36ffd9d6167d5f1e1a5e0a56a5336d519f",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 57,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "sha256": "857388a041b497769a8427aab09883e3d4967383ad970e6c2721af182a458b3a",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 58,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "sha256": "fa7e2df29918c20fba70eb2266f63496758dd6b6eea2cf5dfed0b471fd6c5b2e",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 59,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "sha256": "1038ca11a0b430e5357c2c8258b141f0999d1d11f25da07c4696ad33b351ac58",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 60,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "sha256": "d4175e0c9a3372cbc843815d03799a6f321d8038da479684a389b50a4b12ef15",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 61,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "sha256": "1220ada14b2d3c3b0e4e0b175713543ddd4072db6d16625fa76af3e51118b750",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 62,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "sha256": "c17c122ef4c7fafc62af6eab7f1fa884e24c418b47cb9a8ad4f3f5dfb78f0b1e",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 63,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "sha256": "5d2e66b162db3481c3e84d493ccef57355b0d34ead876c1d8098162b9d423126",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 64,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "sha256": "a1819144c533a1e80d3017e48c668d12a9f98c0785f4c1a7a4e749427c453757",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 65,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md",
+      "sha256": "18a5ffbfb08882ec6fc7330b7ba72755fcc357aa7278de2b257fea1d4adacd83",
+      "role": "governing-delta",
+      "current_disposition": "Current accepted delta requirements; preserve their relationship to the active change and main specs.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 66,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "sha256": "ec2e4a9a55a761fe2cf265e192b07378d22a6a2ae5cbf457bddbd2a8a9ac120d",
+      "role": "governing-planning",
+      "current_disposition": "Active proposal/design/task gate. Experimental completion does not imply G5 or production cutover.",
+      "proposed_home": "Existing active OpenSpec change",
+      "relocation_performed": false,
+      "chronological_readings": [
+        "sessions/11-first-openspec-draft-and-reconciliation.md",
+        "sessions/12-governing-rebuild-and-contract-system.md",
+        "sessions/13-dynamic-behavior-peft-and-spec-reconciliation.md",
+        "sessions/15-research-and-whole-run-language.md",
+        "sessions/16-exchanges-audits-and-g5-correction.md",
+        "sessions/19-shared-language-and-current-frontier.md"
+      ],
+      "metadata_inventory_index": 67,
+      "qualification": "Classification and adopted/concluding passages; historical code, review, test and benchmark claims are not newly rerun."
+    }
+  ],
+  "root_items": [
+    {
+      "path": "docs_design/models-strategy-trainer/candidate_comparison.md",
+      "kind": "file",
+      "bytes": 19880,
+      "role": "matched-comparison-evidence",
+      "proposed_handling": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/candidate_comparison_evidence.json",
+      "kind": "file",
+      "bytes": 14444,
+      "role": "comparison-fixture-or-provenance",
+      "proposed_handling": "Keep with owning comparison and retained evidence; do not silently rewrite historical hashes/paths.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/comparison_fixtures.json",
+      "kind": "file",
+      "bytes": 4345,
+      "role": "comparison-fixture-or-provenance",
+      "proposed_handling": "Keep with owning comparison and retained evidence; do not silently rewrite historical hashes/paths.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/evidence_comparison",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/evidence_grouping",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/evidence_matched",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/executable_spike",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/execution_candidate",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+      "kind": "file",
+      "bytes": 43965,
+      "role": "prior-art",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/framework_pattern_comparison.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/grant_target.py",
+      "kind": "file",
+      "bytes": 8418,
+      "role": "shared-experimental-target",
+      "proposed_handling": "Keep shared target and all candidate consumers together; owner/import migration is outside this document audit.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/grouping_comparison.md",
+      "kind": "file",
+      "bytes": 9819,
+      "role": "matched-comparison-evidence",
+      "proposed_handling": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/inventory_01_02.7z",
+      "kind": "file",
+      "bytes": 19718,
+      "role": "historical-inventory-archive",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/packages/inventory_01_02.7z"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/machinery_comparison.md",
+      "kind": "file",
+      "bytes": 28211,
+      "role": "matched-comparison-evidence",
+      "proposed_handling": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/matched_comparison.md",
+      "kind": "file",
+      "bytes": 22825,
+      "role": "matched-comparison-evidence",
+      "proposed_handling": "Future comparisons bundle, after reference/replay migration",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/matched_comparison_preparation.json",
+      "kind": "file",
+      "bytes": 9874,
+      "role": "comparison-fixture-or-provenance",
+      "proposed_handling": "Keep with owning comparison and retained evidence; do not silently rewrite historical hashes/paths.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/mixed_target.py",
+      "kind": "file",
+      "bytes": 27277,
+      "role": "shared-experimental-target",
+      "proposed_handling": "Keep shared target and all candidate consumers together; owner/import migration is outside this document audit.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/model_target.py",
+      "kind": "file",
+      "bytes": 23799,
+      "role": "shared-experimental-target",
+      "proposed_handling": "Keep shared target and all candidate consumers together; owner/import migration is outside this document audit.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "kind": "file",
+      "bytes": 71385,
+      "role": "chronological-history",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/notes.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/provisional_tree.md",
+      "kind": "file",
+      "bytes": 21512,
+      "role": "copied-provisional-sketch",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/provisional_tree.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "kind": "file",
+      "bytes": 101919,
+      "role": "contract-derivation",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_contract_exchange_design.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion.md",
+      "kind": "file",
+      "bytes": 32955,
+      "role": "copied-primary-discussion",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_discussion.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion_external.md",
+      "kind": "file",
+      "bytes": 42749,
+      "role": "external-discussion",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_discussion_external.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "kind": "file",
+      "bytes": 93405,
+      "role": "inherited-settled-source",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_system_direction.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "kind": "file",
+      "bytes": 26985,
+      "role": "migration-derivation",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_system_implementation_mapping.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "kind": "file",
+      "bytes": 102578,
+      "role": "historical-code-baseline",
+      "proposed_handling": "Archived byte-exactly; original capture paths resolve through archive-relocations.json.",
+      "relocation_performed": true,
+      "current_path": "docs_design/archive/models-strategy-trainer/strategy_system_inventory.md"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_candidate",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language",
+      "kind": "directory",
+      "bytes": 4096,
+      "role": "experimental-package-or-evidence",
+      "proposed_handling": "Keep package, commands, imports and evidence together. Relocation requires separate checked code/reference migration.",
+      "relocation_performed": false
+    }
+  ],
+  "archive_relocations": "archive-relocations.json",
+  "placement_updated_at_utc": "2026-11-06T08:58:10.702945+00:00"
+}

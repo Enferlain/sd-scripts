@@ -1,0 +1,399 @@
+{
+  "format_version": 1,
+  "captured_at_utc": "2026-11-05T21:38:05.698726+00:00",
+  "title": "Logical identity and execution routes: Q1-Q2, 31 July-20 August 2026",
+  "scope": "first logical-identity answer and August resumption through Q2 feedback/recording; stops before the adapter/arrangement Q3 discussion",
+  "selected_session": {
+    "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+    "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+    "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+    "header_timestamp": "2026-07-29T02:06:11.949Z",
+    "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it."
+  },
+  "start_source_line": 13895,
+  "stop_source_line": 14033,
+  "lineage": [
+    {
+      "id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-12T22-03-45-019f585b-9603-72c3-8ce7-d89324108d2e.jsonl",
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-12T22:03:45.038Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 6804996,
+      "sha256": "90ca9151363c45c42bcbf59257c6076ec9c4f4fbc4fb077749279aa6d97481da"
+    },
+    {
+      "id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T21-54-25-019f6cec-7e2a-7d41-9362-bf247eb3ffb3.jsonl",
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T21:54:25.987Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 42138056,
+      "sha256": "7f2f8b0d79f95bff055fdc7892707c33e73059b67df0ae05adb00464e52f37af"
+    },
+    {
+      "id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "path": "/home/imi/.codex/sessions/2026/07/21/rollout-2026-07-21T22-17-24-019f86c1-533d-70d0-8e4d-90cd9e9b62de.jsonl",
+      "forked_from_id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "header_timestamp": "2026-07-21T22:17:24.549Z",
+      "title": "Review project status (3)",
+      "bytes": 42084159,
+      "sha256": "417c28912a4c59b3e5f5ccca12dcaebae0e68282edc3228a9f518c61823ff895"
+    },
+    {
+      "id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+      "forked_from_id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "header_timestamp": "2026-07-21T22:38:05.739Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 45393528,
+      "sha256": "254bcf0d4f1293bed1bdd484b8d4c58df8eacf0510f9ceaf6889d12e10053f2f"
+    },
+    {
+      "id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+      "forked_from_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "header_timestamp": "2026-07-23T00:52:12.181Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 47375428,
+      "sha256": "47e32dd8ac93953ddd59b8fdb479f2c8c2b9a0c1c7bcf19c9ddfd52ee1ff2ae2"
+    },
+    {
+      "id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+      "forked_from_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "header_timestamp": "2026-07-28T02:43:05.109Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 48020515,
+      "sha256": "ea42ab61aa0512f5764a5a1c92101a31be9416c3cf9c12268e7927b10aff0b8b"
+    },
+    {
+      "id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+      "forked_from_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "header_timestamp": "2026-07-29T00:13:35.746Z",
+      "title": "Review project status (7)",
+      "bytes": 48974702,
+      "sha256": "5369fe7791aa9189d566ef591c2ee0b3140f232beb1d2b257b7ec1021bde6cb6"
+    },
+    {
+      "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "header_timestamp": "2026-07-29T02:06:11.949Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 64081338,
+      "sha256": "bc036d8ae0bebf72d8fbda35ff2f1cc4b6c9b9482525d1991ce96e48697a3bf9"
+    }
+  ],
+  "matching_episode_records_by_ancestor": {
+    "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f": 12
+  },
+  "compactions": [],
+  "excluded_record_counts": {
+    "event_msg:item_completed": 23,
+    "response_item:reasoning": 25,
+    "response_item:function_call": 2,
+    "response_item:function_call_output": 2,
+    "event_msg:token_count": 22,
+    "event_msg:task_complete": 3,
+    "event_msg:thread_settings_applied": 4,
+    "event_msg:task_started": 3,
+    "response_item:message": 5,
+    "world_state:": 1,
+    "turn_context:": 3,
+    "response_item:custom_tool_call": 17,
+    "response_item:custom_tool_call_output": 17
+  },
+  "extraction": "visible response_item user/assistant messages with exact bodies; no reasoning, tools or generated context",
+  "messages": [
+    {
+      "role": "user",
+      "phase": null,
+      "body": "Need to walk through those questions and elaborate a bit more. starting with the first one",
+      "body_sha256": "6ee5520512f1c8ee4e636d047973f0b08b4ff360b19deaa0b3c82a7dfdfd2396",
+      "content_sha256": "3da912980fae09d3e2c4110819108348ea2c2591a4add16a2b8b127eda2b90da",
+      "stable_key": "id:msg_019fb62c-6c1b-7a01-877d-864df70bab4e",
+      "message_id": "msg_019fb62c-6c1b-7a01-877d-864df70bab4e",
+      "turn_id": "019fb62b-ae60-7e71-a4a6-f48e9772ea22",
+      "nontext_content_types": [],
+      "number": 1,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13895,
+        "record_timestamp": "2026-07-31T03:16:32.411Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13895,
+        "record_timestamp": "2026-07-31T03:16:32.411Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m using the OpenSpec exploration guidance here because we’re still defining semantics, not implementing anything. I’ll focus only on the first question—logical component identity—and make the alternatives concrete against the direction we already settled.",
+      "body_sha256": "30f48bbcf7dd16fa454b6f20a51cbb842a56583fa27ca9d4c88475aa70889e09",
+      "content_sha256": "3a700f1ed5cd446135034927c036bb513246f41dfb864e124161d0363129aa86",
+      "stable_key": "id:msg_0fcb070f3517980d016a6c1395adcc8191a721761e6e013b8b",
+      "message_id": "msg_0fcb070f3517980d016a6c1395adcc8191a721761e6e013b8b",
+      "turn_id": "019fb62b-ae60-7e71-a4a6-f48e9772ea22",
+      "nontext_content_types": [],
+      "number": 2,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13899,
+        "record_timestamp": "2026-07-31T03:16:39.091Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13899,
+        "record_timestamp": "2026-07-31T03:16:39.091Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "The first question was:\n\n> What identifies a logical component within one strategy?\n\nThis is asking how the Trainer and strategy refer to “the same thing” after loading, wrapping, preparation, replacement, and persistence—without relying on a particular Python object.\n\n## What “logical component” means\n\nA logical component is a stable participant in the training strategy.\n\nFor example, an SDXL fine-tuning strategy might declare:\n\n```text\ndenoiser\nautoencoder\ntext_encoder.clip_l\ntext_encoder.clip_g\n```\n\nA distillation strategy might instead declare:\n\n```text\nstudent.denoiser\nteacher.denoiser\nstudent.autoencoder\nconditioning.clip_l\n```\n\nThese identify the component’s place and purpose in this particular strategy. They do not identify:\n\n- the Python object currently implementing it;\n- the checkpoint file it came from;\n- its globally persistent model-catalog identity;\n- its current device, dtype, wrapper, or compiled form.\n\nThose are separate properties associated with the logical component.\n\n## Why it needs an identity\n\nA component may pass through several concrete objects:\n\n```text\nlogical component: student.denoiser\n        │\n        ├── loaded binding:       SdxlUNet(...)\n        ├── prepared binding:     DDP(SdxlUNet(...))\n        ├── persistence view:     unwrapped SdxlUNet(...)\n        └── metadata entity:      catalog model/component ID\n```\n\nIf code identifies the component using `id(module)` or the module instance itself, the identity breaks when Accelerator, DeepSpeed, compilation, or another preparation step replaces or wraps that object.\n\nThe stable logical identity lets every part of the pipeline say:\n\n```text\nGive me the current execution binding for student.denoiser.\nClip the parameters belonging to student.denoiser.\nSave the artifact contribution for student.denoiser.\nReport metadata about student.denoiser.\n```\n\nThe Trainer does not need to know that the component is an SDXL U-Net. It only follows the strategy’s declarations.\n\n## My recommended answer\n\nThe strategy author explicitly assigns each logical component a stable key that is unique within that strategy instance.\n\nConceptually:\n\n```python\nstudent_denoiser = ComponentKey(\"student.denoiser\")\nteacher_denoiser = ComponentKey(\"teacher.denoiser\")\nautoencoder = ComponentKey(\"student.autoencoder\")\n```\n\nThe exact Python type and naming syntax remain undecided, but the semantics should be:\n\n- Explicitly authored, not inferred from class names.\n- Unique within one constructed strategy.\n- Stable across loading, wrapping, device placement, and preparation.\n- Used in typed exchanges between strategy, Trainer, optimization, metadata, and persistence.\n- Opaque to generic Trainer logic—the Trainer compares and looks up keys but does not interpret `\"denoiser\"` as a hard-coded architecture role.\n- Predictable for repository-maintained strategies so diagnostics and metadata remain understandable.\n- Extensible enough for repeated roles such as teacher/student or multiple adapters.\n\nThat last part is important. A role alone is insufficient:\n\n```text\ndenoiser       # ambiguous when there are two\ntext_encoder   # ambiguous when there are three\nadapter        # ambiguous when several are attached\n```\n\nA logical address distinguishes the participants:\n\n```text\nstudent.denoiser\nteacher.denoiser\nconditioning.clip_l\nconditioning.clip_g\nadapter.style\nadapter.character\n```\n\n## Identity is not role\n\nWe should keep these concepts separate:\n\n| Concept | Example | Purpose |\n|---|---|---|\n| Logical component key | `student.denoiser` | Stable address inside the strategy |\n| Capability/role | `denoising`, `trainable`, `conditioner` | What the component can be used for |\n| Implementation | `SdxlUNet` | Concrete model code |\n| Execution binding | `DDP(SdxlUNet(...))` | Object currently used to execute |\n| Source identity | checkpoint/component provenance | Where it came from |\n| Catalog identity | persistent repository-wide ID | Which model entity it represents |\n| Parameter scope | selected tensors/parameters | What optimization acts upon |\n\nThis prevents names from becoming hidden contracts. The Trainer should not assume that everything named `*.denoiser` accepts a particular SD-style call. The actual interaction is defined through the strategy contract and capabilities.\n\n## Additions and replacements\n\nThe identity rules should probably be:\n\n- Wrapping or preparation keeps the same logical identity.\n- Replacing the implementation that fills an existing declared slot keeps the logical key, while recording a new binding and source/provenance.\n- Adding a genuinely new participant creates a new logical key.\n- Two concurrently meaningful participants always have different keys.\n- Splitting or merging components requires explicit new identities and relationships; it should not happen invisibly.\n\nFor example, replacing the checkpoint’s VAE before execution:\n\n```text\nlogical key: autoencoder\nold source: integrated VAE\nnew source: external VAE\ncurrent binding: prepared external VAE\n```\n\nThe role in the strategy remains `autoencoder`; its source and concrete binding changed.\n\nAttaching a LoRA is different:\n\n```text\ndenoiser\nadapter.style\n```\n\nThe adapter is not merely another binding for the denoiser. It is a distinct participant related to it:\n\n```text\nadapter.style --attached_to--> denoiser\n```\n\n## The important boundary\n\nThis is an execution-and-contract identity scoped to the constructed strategy. It is not a substitute for the durable model/component identity being designed in the metadata work.\n\nThe connection is:\n\n```text\nstrategy logical identity\n    identifies the participant in this training definition\n\nmetadata/catalog identity\n    identifies the persistent model entity or realization behind it\n```\n\nA binding record could associate them, but neither should be overloaded to mean the other.\n\nSo my current conclusion is:\n\n> A logical component should be an explicitly declared, strategy-scoped, stable address for one training participant. The strategy defines it; generic systems use it without interpreting family anatomy; concrete objects, persistent model identities, roles, and parameter scopes are associated facts rather than the identity itself.\n\nThat gives us a reliable foundation for the next question about whether one logical component can have multiple active execution bindings.",
+      "body_sha256": "e367f3a1f89c143e9116cd74248a5310a611752407b5c7362ead1f3688d5fc96",
+      "content_sha256": "8e687b8f6aeaf4ad8f41b694dc410e2941352a67d7c4be7c40f7ed5a994a8e95",
+      "stable_key": "id:msg_0fcb070f3517980d016a6c13ad64b881919e4c4a4e146f089a",
+      "message_id": "msg_0fcb070f3517980d016a6c13ad64b881919e4c4a4e146f089a",
+      "turn_id": "019fb62b-ae60-7e71-a4a6-f48e9772ea22",
+      "nontext_content_types": [],
+      "number": 3,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13909,
+        "record_timestamp": "2026-07-31T03:17:31.255Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13909,
+        "record_timestamp": "2026-07-31T03:17:31.255Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "There was like a 2 week break since we last got into the project, so I think we should get back into it and continue on the discussion and recording of the facts/decisions. I see that from the 5 questions that we found, your last response is addressing the first one and is looking for a follow up on the second one\n\n\"So, specifically, where were we in the binding discussion?\n\nYou had just asked:\n\nWhat identifies a logical component within one strategy?\n\nAnd we'd reached the provisional answer:\n\nlogical component identity\n    = stable strategy-scoped identity for one participant\n\n\nNOT\n    Python object identity\n    implementation type\n    source checkpoint identity\n    catalog/metadata identity\n    prepared wrapper identity\n    parameter scope\n\nSomething along the lines of:\n\nstudent.denoiser\nteacher.denoiser\nconditioning.clip_l\nadapter.style\n\nwith the actual representation (ComponentKey, enum-ish object, opaque token, path, etc.) still intentionally undecided.\n\nThe important semantic rule was:\n\nlogical identity survives\n    loading\n    source replacement\n    device movement\n    precision conversion\n    DDP/FSDP/DeepSpeed wrapping\n    compilation\n\nwhile its current execution binding can change.\n\nThat lines up with the established direction doc distinction:\n\nlogical model/component binding\n    identity, source, relationships, metadata, artifact semantics\n\n\nprepared execution binding\n    live wrapper/module that must execute\n\nAnd the current LoadedModelComponent was explicitly identified as the thing to evolve, not throw away and replace with some generic god-object runtime container.\n\nWhat comes next\n\nI wouldn't spend another turn reconsidering question 1 from scratch. I think the answer is basically sound enough to carry forward:\n\nOne strategy-scoped stable logical identity denotes one semantically distinct training participant. Concrete bindings can change underneath it. Concurrently distinct participants require distinct identities.\n\nThe next question is actually where it starts getting spicy:\n\nCan one logical component have more than one active execution binding, or must different uses receive distinct logical identities?\n\nBecause that's where we have to distinguish cases like:\n\none denoiser\n    original module\n    DDP wrapper\n\nwhich intuitively feels like one component, one authoritative execution binding, from:\n\nsame underlying weights\n    teacher execution\n    student execution\n\nor:\n\none logical model\n    compiled inference path\n    training/distributed path\n\nwhere \"one binding per component\" becomes less obviously sufficient.\n\nI'd resume exactly there. That question will force us to define what execution binding actually means, which in turn makes questions 3–5 about replacement, persistence views, and the authoritative binding map much easier instead of answering them independently.\"\n",
+      "body_sha256": "ca63039eb9456f072fedc32b964ec40d979eb967575f336a294b6c09a099aad2",
+      "content_sha256": "de17c7c70adc660eb3dbaf4059385a5895763f0bf7c2d71961e78873bd4b31fb",
+      "stable_key": "id:msg_01a01fa5-14f4-74a2-8139-9536da5ba046",
+      "message_id": "msg_01a01fa5-14f4-74a2-8139-9536da5ba046",
+      "turn_id": "01a01fa5-0f71-7410-9976-7ac96d33e69d",
+      "nontext_content_types": [],
+      "number": 4,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13922,
+        "record_timestamp": "2026-08-20T14:48:27.636Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13922,
+        "record_timestamp": "2026-08-20T14:48:27.636Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m going to refresh the current direction/inventory notes and the active Bead, then resume at question 2 without reopening question 1. I’m using OpenSpec exploration for the architecture discussion and Beads only to preserve the resulting decisions across sessions.",
+      "body_sha256": "00caacc37a01dbb9205e003908a0103d6069b4ea51faaf99c6a3e4cf558e2f8a",
+      "content_sha256": "f61f274c9dde61a284059a8ea5bba4ac7d9b590f9e9108d8650253478a315e17",
+      "stable_key": "id:msg_0da84af500062dd5016a8713c59f008191bbee1c22cbef6869",
+      "message_id": "msg_0da84af500062dd5016a8713c59f008191bbee1c22cbef6869",
+      "turn_id": "01a01fa5-0f71-7410-9976-7ac96d33e69d",
+      "nontext_content_types": [],
+      "number": 5,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13926,
+        "record_timestamp": "2026-08-20T14:48:40.038Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13926,
+        "record_timestamp": "2026-08-20T14:48:40.038Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The written state matches the recap: question 1 is settled provisionally, and the remaining blocker is the binding model rather than component naming. I’m checking the exact wording already recorded so the next conclusion extends it instead of duplicating or contradicting it.",
+      "body_sha256": "de5c9d748386a492ae0f9bd2a51ef0c3eb01ed25a563a5e951361dd57011b8de",
+      "content_sha256": "a75e9206b119b7230f187663da7fd10182f6759a57bed0eaa6e610d9034abcf8",
+      "stable_key": "id:msg_0da84af500062dd5016a8713db05f881919c9615528994bc01",
+      "message_id": "msg_0da84af500062dd5016a8713db05f881919c9615528994bc01",
+      "turn_id": "01a01fa5-0f71-7410-9976-7ac96d33e69d",
+      "nontext_content_types": [],
+      "number": 6,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13936,
+        "record_timestamp": "2026-08-20T14:49:01.730Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13936,
+        "record_timestamp": "2026-08-20T14:49:01.730Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "Before settling question 2, I’m also using the codebase graph to refresh the current `LoadedModelComponent` and preparation behavior. That matters because the answer should distinguish a real need in this repository from hypothetical multi-binding machinery.",
+      "body_sha256": "61acf2e639ce1376f4ab0947285e3d3c8ef261a7d77aedc6a341b230b25aa2dc",
+      "content_sha256": "b9a5e3eafec753be5247274ff5ab93ba4b94a3e344f377a47da639d72341b353",
+      "stable_key": "id:msg_0da84af500062dd5016a8713f0c27481919abdc96c7059c0c2",
+      "message_id": "msg_0da84af500062dd5016a8713f0c27481919abdc96c7059c0c2",
+      "turn_id": "01a01fa5-0f71-7410-9976-7ac96d33e69d",
+      "nontext_content_types": [],
+      "number": 7,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13946,
+        "record_timestamp": "2026-08-20T14:49:22.907Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13946,
+        "record_timestamp": "2026-08-20T14:49:22.907Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "We should resume with question 2:\n\n> Can one logical component have more than one active execution binding, or must different uses receive distinct logical identities?\n\nThe clean answer is neither “always one” nor “arbitrarily many.” The useful invariant is:\n\n```text\n(logical component, execution purpose)\n    → exactly one authoritative current execution binding\n```\n\n## Why one binding per component is too strict\n\nConsider one denoiser used for both training and sampling:\n\n```text\nlogical component\n  denoiser\n\nexecution purposes\n  training → distributed/precision-prepared wrapper\n  sampling → compiled inference callable\n```\n\nThese can still represent the same logical component if:\n\n- they use the same authoritative model state;\n- sampling is expected to observe the current trained weights;\n- replacing one execution route does not create a new semantic participant;\n- their different objects exist only because their execution requirements differ.\n\nGiving them separate logical component identities would incorrectly claim there are two denoisers in the strategy.\n\n## Why an unrestricted list of bindings is too loose\n\nThis would be dangerous:\n\n```python\nbindings[\"denoiser\"] = [module, ddp_module, compiled_module, unwrapped_module]\n```\n\nNothing would explain:\n\n- which one must receive training forwards;\n- which one sampling should use;\n- which object owns current weights;\n- whether the compiled path is fresh;\n- which one may be used for persistence;\n- whether bypassing the wrapper is safe.\n\nThe contract would have preserved all the ambiguity we are trying to remove.\n\nInstead, bindings need purpose:\n\n```text\ndenoiser\n  training execution → DDP-wrapped module\n  sampling execution → compiled inference route\n  artifact view      → unwrapped/source-aware module\n```\n\nThe artifact view is not necessarily an execution binding. It is an access view for state extraction and serialization.\n\n## The normal case remains one execution binding\n\nThe most common transformation is:\n\n```text\noriginal module\n    ↓ Accelerator/DDP/DeepSpeed/compile preparation\nprepared callable\n```\n\nThat is not two active execution bindings.\n\nFor example:\n\n```text\nlogical component: denoiser\n\noriginal/logical handle:\n  SdxlUNet\n\ntraining execution binding:\n  DDP(SdxlUNet)\n```\n\nForward-like training behavior must use the DDP wrapper. The original handle may remain reachable for metadata, inspection, unwrapping, or persistence, but it is not an equally valid training route.\n\nThe current code does not maintain this distinction. `LoadedModelComponent.module` initially holds the loaded module, while the mode preparation paths replace Trainer projections with prepared objects. That confirms the ambiguity identified in the direction document rather than changing our conclusion. See [components.py](/home/imi/Projects/sd-scripts/library/models/components.py:43), [adapter_mode.py](/home/imi/Projects/sd-scripts/library/training/modes/adapter_mode.py:243), and [finetune_mode.py](/home/imi/Projects/sd-scripts/library/training/modes/finetune_mode.py:234).\n\n## When uses require distinct logical identities\n\nDifferent uses need different logical identities when they represent independently meaningful participants, even if they initially come from the same file or weights.\n\n### Teacher and student\n\n```text\nstudent.denoiser\nteacher.denoiser\n```\n\nThese are distinct because they have different:\n\n- roles in the objective;\n- update policies;\n- gradient policies;\n- lifecycle behavior;\n- potentially diverging state.\n\nThey might share a source relationship:\n\n```text\nteacher.denoiser --initialized_from--> model X\nstudent.denoiser --initialized_from--> model X\n```\n\nBut shared origin does not make them one logical participant.\n\n### Live weights and EMA weights\n\n```text\ndenoiser\ndenoiser.ema\n```\n\nEMA has independently evolving state and potentially separate persistence semantics, so it is a distinct logical component.\n\n### Several adapters\n\n```text\nadapter.style\nadapter.character\n```\n\nEven if both attach to the same denoiser, they have distinct state and meaning.\n\n## When uses should not create new identities\n\nThese are technical representations of the same participant:\n\n- raw module versus DDP wrapper;\n- wrapped versus unwrapped access;\n- device or dtype movement;\n- a composition such as compiled-plus-distributed wrapping;\n- distributed replicas managed internally by the backend;\n- train/eval mode changes on the same binding.\n\nInfrastructure replicas should generally remain invisible to strategy-level logical identity. Each process receives the locally authoritative execution binding for the same logical component.\n\n## The harder same-component case\n\nA component may legitimately expose more than one prepared execution route:\n\n```text\ndenoiser\n  training route → distributed wrapper\n  sampling route → compiled inference wrapper\n```\n\nI think the contract should permit this, but only through explicitly declared execution purposes or channels. The exact names remain undecided.\n\nThe invariant would be:\n\n```text\none logical component\n  may have several named execution bindings\n\none execution purpose\n  must resolve to exactly one authoritative binding\n\nunnamed competing bindings\n  are invalid\n```\n\nIt also creates a required freshness rule. If the sampling route is a copied or compiled representation, the system must know whether it still reflects the current trained state. Otherwise it is no longer safely just another route to the same logical component.\n\n## Provisional decision\n\nI recommend recording question 2 as:\n\n> A logical component may expose multiple named execution bindings when they are technical routes to the same authoritative logical state. Exactly one current binding is authoritative for each execution purpose. Original, unwrapped, inspection, and artifact handles are typed views rather than competing execution bindings. Semantically distinct or independently evolving participants require distinct logical identities even when they share a source or underlying implementation.\n\nIn compact form:\n\n```text\nsemantic difference\n    → different logical identity\n\ntechnical execution difference\n    → same logical identity, named execution binding\n\ninspection/persistence access\n    → typed view, not an execution binding\n```\n\nThis is slightly more capable than “one component, one object,” while remaining strict enough that the Trainer and strategy cannot accidentally choose whichever module reference happens to be available. The current graph generation matches the branch and reported no coverage issue for the three relevant source files, with the graph’s normal best-effort limitation.",
+      "body_sha256": "199e4c30d172a5c455a449d4e6ca7eb089d861facd6696a2dfce0e32c09cda5e",
+      "content_sha256": "428bc2cee893536922a7508fa292550cd2486c1090090354b955ffaff1ba223f",
+      "stable_key": "id:msg_0da84af500062dd5016a87145a49208191947028c07c09985a",
+      "message_id": "msg_0da84af500062dd5016a87145a49208191947028c07c09985a",
+      "turn_id": "01a01fa5-0f71-7410-9976-7ac96d33e69d",
+      "nontext_content_types": [],
+      "number": 8,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13993,
+        "record_timestamp": "2026-08-20T14:51:30.038Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13993,
+        "record_timestamp": "2026-08-20T14:51:30.038Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "Feedback:\n\nI think the Q2 resolution is already basically right. I’d want to pin down four things before calling it settled:\n\n1. **What qualifies as a distinct “execution purpose”?**\n   I don’t want `training`, `validation`, `sampling`, `preview`, etc. automatically becoming separate binding slots just because callers have different intentions. A separate purpose should exist only when the component genuinely needs a different prepared/callable representation.\n\n   So:\n\n   ```text\n   training + validation both use DDP(module)\n       → one execution binding\n\n   training uses DDP(module)\n   sampling requires separately compiled route\n       → potentially two execution bindings\n   ```\n\n2. **What does “same authoritative model state” mean?**\n   This is the biggest semantic point. If two routes physically share parameters, easy. If one is a copy/cache/compiled representation, we need to decide what makes it still a route of the *same component* rather than independently evolving state.\n\n   I’d distinguish:\n\n   ```text\n   shared live state\n       → clearly same component\n\n   derived state with explicit refresh/synchronization semantics\n       → can still be same component\n\n   independently evolving state\n       → different logical component\n   ```\n\n   That settles cases like EMA immediately: EMA is another component, not merely `execution.ema`.\n\n3. **Are multiple execution bindings part of the standard core contract or an explicit extension?**\n   I lean toward the standard invariant being very simple:\n\n   ```text\n   component → one normal prepared execution binding\n   ```\n\n   while allowing named extra routes when a selected capability genuinely requires them.\n\n   That would stop every normal strategy from carrying a map of execution purposes it never uses, while preserving the more general semantic model you described.\n\n4. **What happens when an extra route becomes stale?**\n   Suppose:\n\n   ```text\n   denoiser.training → live distributed model\n   denoiser.sampling → separately materialized compiled model\n   ```\n\n   Training takes another optimizer step. Is sampling now:\n\n   ```text\n   invalid\n   stale-but-allowed\n   automatically refreshed\n   refreshed on next use\n   ```\n\n   We don't need to design the mechanism yet, but the contract should say that a binding cannot remain silently authoritative once its freshness guarantee has stopped holding.\n\nSo the main thing I want to clarify is really this boundary:\n\n```text\nmultiple representations of one current participant\nvs.\nmultiple participants/state trajectories that happen to share an origin\n```\n\nYour teacher/student, EMA, adapters, DDP/unwrapped examples already draw that boundary well.\n\nIf we're happy with:\n\n> **Distinct execution purposes are created only by materially different runtime preparation requirements, and every route under one logical component must have a defined relationship to that component's authoritative current state. Independently evolving state means a distinct logical component.**\n\nthen I’d consider Q2 semantically settled and move on.\n\n",
+      "body_sha256": "77585856930dd785fe34ffbeae09fcf5b28694733e0d447d7f9dfe6ed1ce2547",
+      "content_sha256": "76a0ebc397f48279fcf4f59f670e84243bc13e8655901dbb18140a17d5c5bb2d",
+      "stable_key": "id:msg_01a01fae-e36a-7043-81f1-743be3860dc6",
+      "message_id": "msg_01a01fae-e36a-7043-81f1-743be3860dc6",
+      "turn_id": "01a01fae-e2c4-7002-b4fd-7ce70c934b13",
+      "nontext_content_types": [],
+      "number": 9,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13999,
+        "record_timestamp": "2026-08-20T14:59:10.314Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 13999,
+        "record_timestamp": "2026-08-20T14:59:10.314Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m happy with that resolution. It closes Q2 without making multiple routes part of every ordinary strategy, and the freshness rule prevents “same component” from becoming a loophole for hidden state divergence.\n\nBecause this is now a settled semantic decision, the OpenSpec exploration guidance points us to record it in the direction/inventory notes before moving to Q3. I’ll capture it as a bounded invariant, while leaving representation, refresh mechanism, and storage ownership open.",
+      "body_sha256": "41269b1383c9e11facbd68f6148a1fdf1c1c1585deaca372a5e0cb99d9dc8605",
+      "content_sha256": "baa5af00007fb6468ced95cd159a3b2d6b40571313e9119ee6f5e58059cc9dbb",
+      "stable_key": "id:msg_0da84af500062dd5016a8716479a8c8191abfff3dfae291148",
+      "message_id": "msg_0da84af500062dd5016a8716479a8c8191abfff3dfae291148",
+      "turn_id": "01a01fae-e2c4-7002-b4fd-7ce70c934b13",
+      "nontext_content_types": [],
+      "number": 10,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 14003,
+        "record_timestamp": "2026-08-20T14:59:24.652Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 14003,
+        "record_timestamp": "2026-08-20T14:59:24.652Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The decision is now recorded in the working direction, inventory milestone 7, and session notes. I’m also updating the active Bead with the compact version so a future session can recover the conclusion without rereading the entire discussion.",
+      "body_sha256": "0a989dbe3d2eb4a1c0fec95904ef65e84729029dd55d9c28afa68fe31a4ef79e",
+      "content_sha256": "f88cebef0ff35438a98cf2a5969d59d6a3e6d6abe84209165897367f4664ddbe",
+      "stable_key": "id:msg_0da84af500062dd5016a87166e220c8191893f31482643ae55",
+      "message_id": "msg_0da84af500062dd5016a87166e220c8191893f31482643ae55",
+      "turn_id": "01a01fae-e2c4-7002-b4fd-7ce70c934b13",
+      "nontext_content_types": [],
+      "number": 11,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 14014,
+        "record_timestamp": "2026-08-20T14:59:59.741Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 14014,
+        "record_timestamp": "2026-08-20T14:59:59.741Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Agreed. Q2 is now semantically settled.\n\nThe central rule is:\n\n```text\nstandard:\n  logical component → one prepared execution binding\n\nextension:\n  selected capability may add named routes\n  only for materially different runtime representations\n```\n\nThe identity boundary is the state trajectory:\n\n```text\nshared live state\n  → same component\n\nderived state with explicit freshness/synchronization\n  → may remain the same component\n\nindependently evolving state\n  → distinct component\n```\n\nA caller’s intention alone—training, validation, preview—does not create an execution route. A stale route must become invalid, be explicitly permitted under a staleness guarantee, or be refreshed; it cannot silently continue representing current state.\n\nI recorded this in:\n\n- [strategy_system_direction.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_direction.md:1419)\n- [strategy_system_inventory.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_inventory.md:1295)\n- [notes.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/notes.md:127)\n- Bead `sd-scripts-syv`\n\nThe following remain intentionally undecided:\n\n- concrete component-key and route types;\n- freshness/refresh implementation;\n- authoritative binding-state owner;\n- preparation plan/result API.\n\nQuestion 3 is next:\n\n> How are additions, replacements, and delayed materialization represented during adapter attachment or deferred loading?\n\nThat will distinguish changing an existing component’s binding from introducing a genuinely new logical participant.",
+      "body_sha256": "d3cb05667c69c3acd6c6641aa8fcfa4626237e65a91c5a95ce3cd927670b70f2",
+      "content_sha256": "066a0cac9ed9158e36d564affd5617bcbe2cf119ee5c0d08685c4f6baee635ff",
+      "stable_key": "id:msg_0da84af500062dd5016a87169572b081919fa653d232e54d11",
+      "message_id": "msg_0da84af500062dd5016a87169572b081919fa653d232e54d11",
+      "turn_id": "01a01fae-e2c4-7002-b4fd-7ce70c934b13",
+      "nontext_content_types": [],
+      "number": 12,
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 14028,
+        "record_timestamp": "2026-08-20T15:00:48.239Z"
+      },
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 14028,
+        "record_timestamp": "2026-08-20T15:00:48.239Z"
+      }
+    }
+  ]
+}

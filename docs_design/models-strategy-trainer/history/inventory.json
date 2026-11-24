@@ -1,0 +1,3770 @@
+{
+  "format_version": 1,
+  "captured_at_utc": "2026-11-05T16:41:46.567333+00:00",
+  "repository_head": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+  "scope": "metadata inventory, not completed content audit",
+  "selection": "all Markdown under the two roots except evidence* directories; root non-Markdown items listed separately",
+  "date_caveats": [
+    "Git first-recorded dates are not proof of original authorship dates.",
+    "Filesystem birth is this inode creation, mtime is file content modification, and ctime is metadata change. None alone dates an idea.",
+    "Forked session records can replay inherited messages with new record timestamps."
+  ],
+  "documents": [
+    {
+      "path": "docs_design/models-strategy-trainer/candidate_comparison.md",
+      "bytes": 19880,
+      "sha256": "3ba36817efd1391892771f1a5b4220101f1b913471792e0f9d721192db577122",
+      "filesystem": {
+        "birth_display_utc": "2026-10-30 09:36:51.403060418 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793544210549624424,
+        "mtime_utc": "2026-11-01T14:43:30.549624+00:00",
+        "ctime_ns": 1793544210549624424,
+        "ctime_utc": "2026-11-01T14:43:30.549624+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "99bb13e1981698f2c2c173bdd6898d00d3ae8e1b",
+          "author_date": "2026-10-30T12:18:20+01:00",
+          "committer_date": "2026-10-30T12:18:20+01:00",
+          "subject": "candidate comparison 1 2"
+        },
+        "last_recorded": {
+          "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+          "author_date": "2026-11-01T17:19:29+01:00",
+          "committer_date": "2026-11-01T17:19:29+01:00",
+          "subject": "Match framework controls and port lifetime composition to xDSL"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/candidate_comparison.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+            "author_date": "2026-11-01T17:19:29+01:00",
+            "committer_date": "2026-11-01T17:19:29+01:00",
+            "subject": "Match framework controls and port lifetime composition to xDSL"
+          },
+          {
+            "commit": "3b549cd07c6f7bd47280d4ba74e389e001f586b2",
+            "author_date": "2026-10-30T13:10:00+01:00",
+            "committer_date": "2026-10-30T13:10:00+01:00",
+            "subject": "Clarify provisional xDSL baseline and comparison boundaries"
+          },
+          {
+            "commit": "99bb13e1981698f2c2c173bdd6898d00d3ae8e1b",
+            "author_date": "2026-10-30T12:18:20+01:00",
+            "committer_date": "2026-10-30T12:18:20+01:00",
+            "subject": "candidate comparison 1 2"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/execution_candidate/README.md",
+      "bytes": 167034,
+      "sha256": "7dc2f04f4ffea33d37f6bca10fa16928dfcfd3fe00b828d271624e3c0d5ac7a3",
+      "filesystem": {
+        "birth_display_utc": "2026-10-09 03:06:20.799791849 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793196151966010000,
+        "mtime_utc": "2026-10-28T14:02:31.966010+00:00",
+        "ctime_ns": 1793196151966010000,
+        "ctime_utc": "2026-10-28T14:02:31.966010+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "5218fdb1546f7c485647f4f1ba86470f7c88a867",
+          "author_date": "2026-10-09T06:29:23+02:00",
+          "committer_date": "2026-10-09T06:29:23+02:00",
+          "subject": "code level mock"
+        },
+        "last_recorded": {
+          "commit": "2977aad4a375521725756dc7aad2060157635fde",
+          "author_date": "2026-10-28T15:29:03+01:00",
+          "committer_date": "2026-10-28T15:29:03+01:00",
+          "subject": "worker dispatch ownership"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/execution_candidate/README.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "2977aad4a375521725756dc7aad2060157635fde",
+            "author_date": "2026-10-28T15:29:03+01:00",
+            "committer_date": "2026-10-28T15:29:03+01:00",
+            "subject": "worker dispatch ownership"
+          },
+          {
+            "commit": "27cbc744c6a85d9e039787711ce3964b67406f29",
+            "author_date": "2026-10-28T08:14:42+01:00",
+            "committer_date": "2026-10-28T08:14:42+01:00",
+            "subject": "test(training): add independent semantic conformance checks"
+          },
+          {
+            "commit": "14549f87838f21c562db9f43352f2cbd02ff639d",
+            "author_date": "2026-10-28T06:49:25+01:00",
+            "committer_date": "2026-10-28T06:49:25+01:00",
+            "subject": "test(training): qualify RNG ownership across worker schedules"
+          },
+          {
+            "commit": "861c4f06e461198c903674befdd3ef9e2133d1d9",
+            "author_date": "2026-10-28T04:29:32+01:00",
+            "committer_date": "2026-10-28T04:29:32+01:00",
+            "subject": "fix(training): retain input associations through execution lifetimes"
+          },
+          {
+            "commit": "f9f0f5ef727cf92a51ec7fc50166bde3a333d8f1",
+            "author_date": "2026-10-26T11:02:03+01:00",
+            "committer_date": "2026-10-26T11:02:03+01:00",
+            "subject": "perf(training): specialize candidate block access"
+          },
+          {
+            "commit": "892b2a4456af7a5851ad3ca52aab356879c4ec8d",
+            "author_date": "2026-10-25T12:32:36+01:00",
+            "committer_date": "2026-10-25T12:32:36+01:00",
+            "subject": "fix(training): qualify candidate autocast and precision views"
+          },
+          {
+            "commit": "9de52580720aa339966ba285ebbffe5688bafb9d",
+            "author_date": "2026-10-25T02:20:16+01:00",
+            "committer_date": "2026-10-25T02:20:16+01:00",
+            "subject": "feat(training): qualify candidate coordination and free-threading"
+          },
+          {
+            "commit": "21e356e98bac835a21c9bd465e0739c3125594ba",
+            "author_date": "2026-10-24T11:01:05+02:00",
+            "committer_date": "2026-10-24T11:01:05+02:00",
+            "subject": "fix(training): protect candidate state across provider workers"
+          },
+          {
+            "commit": "661fe1377081ee72dec535b43292b157ab6c5eff",
+            "author_date": "2026-10-24T08:52:39+02:00",
+            "committer_date": "2026-10-24T08:52:39+02:00",
+            "subject": "refactor(training): centralize candidate state access and lifetimes"
+          },
+          {
+            "commit": "2ca41a082b496371d5a70436e9b43b55daff86c7",
+            "author_date": "2026-10-24T01:14:09+02:00",
+            "committer_date": "2026-10-24T01:14:09+02:00",
+            "subject": "refactor(training): unify execution candidate optimization ownership"
+          },
+          {
+            "commit": "0055a87a272ca13529ab2c511306ba8fb9d1e437",
+            "author_date": "2026-10-24T00:41:26+02:00",
+            "committer_date": "2026-10-24T00:41:26+02:00",
+            "subject": "test(training): exercise repeated regions and gradient accumulation"
+          },
+          {
+            "commit": "9c911ddee01f023f3fbf34c5bde62c6341f99eae",
+            "author_date": "2026-10-23T21:24:44+02:00",
+            "committer_date": "2026-10-23T21:24:44+02:00",
+            "subject": "test(training): qualify worker lifetimes and reservation planning"
+          },
+          {
+            "commit": "9c4d7addc7fcac2bdd194a3d7cbadb7ce8603df9",
+            "author_date": "2026-10-12T00:45:03+02:00",
+            "committer_date": "2026-10-12T00:45:03+02:00",
+            "subject": "test(training): validate graph-derived worker execution and live interaction"
+          },
+          {
+            "commit": "dad4b2a52803e81d0f282ee1333f2d7d99298dc4",
+            "author_date": "2026-10-11T05:24:49+02:00",
+            "committer_date": "2026-10-11T05:24:49+02:00",
+            "subject": "candidate supports multiple lowerings"
+          },
+          {
+            "commit": "2a8bd5d54b148b634638d89dfb473c5b6e7e9622",
+            "author_date": "2026-10-10T03:51:52+02:00",
+            "committer_date": "2026-10-10T03:51:52+02:00",
+            "subject": "Enforce retained-state correspondence and execution-view semantics"
+          },
+          {
+            "commit": "810376027dda4ac1501fe0a2ed0479171565e1db",
+            "author_date": "2026-10-09T22:32:35+02:00",
+            "committer_date": "2026-10-09T22:32:35+02:00",
+            "subject": "Explore producer lifecycles, execution views and cross-block gradients"
+          },
+          {
+            "commit": "5218fdb1546f7c485647f4f1ba86470f7c88a867",
+            "author_date": "2026-10-09T06:29:23+02:00",
+            "committer_date": "2026-10-09T06:29:23+02:00",
+            "subject": "code level mock"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/execution_candidate/system_assessment.md",
+      "bytes": 27427,
+      "sha256": "54d3b95949b642c21a70bfbaac6a9dd4d0e251cea8130b1fa6999a59743dd486",
+      "filesystem": {
+        "birth_display_utc": "2026-10-27 13:51:47.344292769 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793160535374244392,
+        "mtime_utc": "2026-10-28T04:08:55.374244+00:00",
+        "ctime_ns": 1793160535374244392,
+        "ctime_utc": "2026-10-28T04:08:55.374244+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "9de52580720aa339966ba285ebbffe5688bafb9d",
+          "author_date": "2026-10-25T02:20:16+01:00",
+          "committer_date": "2026-10-25T02:20:16+01:00",
+          "subject": "feat(training): qualify candidate coordination and free-threading"
+        },
+        "last_recorded": {
+          "commit": "14549f87838f21c562db9f43352f2cbd02ff639d",
+          "author_date": "2026-10-28T06:49:25+01:00",
+          "committer_date": "2026-10-28T06:49:25+01:00",
+          "subject": "test(training): qualify RNG ownership across worker schedules"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/execution_candidate/system_assessment.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "14549f87838f21c562db9f43352f2cbd02ff639d",
+            "author_date": "2026-10-28T06:49:25+01:00",
+            "committer_date": "2026-10-28T06:49:25+01:00",
+            "subject": "test(training): qualify RNG ownership across worker schedules"
+          },
+          {
+            "commit": "861c4f06e461198c903674befdd3ef9e2133d1d9",
+            "author_date": "2026-10-28T04:29:32+01:00",
+            "committer_date": "2026-10-28T04:29:32+01:00",
+            "subject": "fix(training): retain input associations through execution lifetimes"
+          },
+          {
+            "commit": "892b2a4456af7a5851ad3ca52aab356879c4ec8d",
+            "author_date": "2026-10-25T12:32:36+01:00",
+            "committer_date": "2026-10-25T12:32:36+01:00",
+            "subject": "fix(training): qualify candidate autocast and precision views"
+          },
+          {
+            "commit": "9de52580720aa339966ba285ebbffe5688bafb9d",
+            "author_date": "2026-10-25T02:20:16+01:00",
+            "committer_date": "2026-10-25T02:20:16+01:00",
+            "subject": "feat(training): qualify candidate coordination and free-threading"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+      "bytes": 43965,
+      "sha256": "d48dc9c40c507bfb7d8b80981eac2e2c2960f7e5e280290375aa44f457774750",
+      "filesystem": {
+        "birth_display_utc": "2026-07-29 18:45:39.844398167 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1787770005828840160,
+        "mtime_utc": "2026-08-26T18:46:45.828840+00:00",
+        "ctime_ns": 1787770005828840160,
+        "ctime_utc": "2026-08-26T18:46:45.828840+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "97a81ef49a4459657d9850262cf74d5c08984745",
+          "author_date": "2026-07-29T22:11:15Z",
+          "committer_date": "2026-07-29T22:11:15Z",
+          "subject": "pre lightning direction + lightning comparison"
+        },
+        "last_recorded": {
+          "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+          "author_date": "2026-08-27T00:20:45+02:00",
+          "committer_date": "2026-08-27T00:20:45+02:00",
+          "subject": "settled state before openspec creation for the rework"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          },
+          {
+            "commit": "97a81ef49a4459657d9850262cf74d5c08984745",
+            "author_date": "2026-07-29T22:11:15Z",
+            "committer_date": "2026-07-29T22:11:15Z",
+            "subject": "pre lightning direction + lightning comparison"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/grouping_comparison.md",
+      "bytes": 9819,
+      "sha256": "6d50c224cd54af2f4e534f44f5a0fceda1ce79d6fbd458432c4956a63e870653",
+      "filesystem": {
+        "birth_display_utc": "2026-11-01 19:24:49.092468756 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793561980194269918,
+        "mtime_utc": "2026-11-01T19:39:40.194270+00:00",
+        "ctime_ns": 1793561980194269918,
+        "ctime_utc": "2026-11-01T19:39:40.194270+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "0055062de4da76ac82c2899a5094db4bb20a7c6a",
+          "author_date": "2026-11-01T21:15:58+01:00",
+          "committer_date": "2026-11-01T21:15:58+01:00",
+          "subject": "Align resource-aware grouping across xDSL and Pliron"
+        },
+        "last_recorded": {
+          "commit": "0055062de4da76ac82c2899a5094db4bb20a7c6a",
+          "author_date": "2026-11-01T21:15:58+01:00",
+          "committer_date": "2026-11-01T21:15:58+01:00",
+          "subject": "Align resource-aware grouping across xDSL and Pliron"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/grouping_comparison.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "0055062de4da76ac82c2899a5094db4bb20a7c6a",
+            "author_date": "2026-11-01T21:15:58+01:00",
+            "committer_date": "2026-11-01T21:15:58+01:00",
+            "subject": "Align resource-aware grouping across xDSL and Pliron"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/machinery_comparison.md",
+      "bytes": 28211,
+      "sha256": "1f981420102583a8dbace389bd0c5ab2bad366c6195f54a5040cf9d372f88ec6",
+      "filesystem": {
+        "birth_display_utc": "2026-11-02 10:48:59.963883976 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793619551198490682,
+        "mtime_utc": "2026-11-02T11:39:11.198491+00:00",
+        "ctime_ns": 1793619551198490682,
+        "ctime_utc": "2026-11-02T11:39:11.198491+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+          "author_date": "2026-11-02T13:04:43+01:00",
+          "committer_date": "2026-11-02T13:04:43+01:00",
+          "subject": "Record matched xDSL and Pliron machinery comparison"
+        },
+        "last_recorded": {
+          "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+          "author_date": "2026-11-02T13:04:43+01:00",
+          "committer_date": "2026-11-02T13:04:43+01:00",
+          "subject": "Record matched xDSL and Pliron machinery comparison"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/machinery_comparison.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+            "author_date": "2026-11-02T13:04:43+01:00",
+            "committer_date": "2026-11-02T13:04:43+01:00",
+            "subject": "Record matched xDSL and Pliron machinery comparison"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/matched_comparison.md",
+      "bytes": 22825,
+      "sha256": "3ac9d7064c1e92397f3e48b59d93ec6ae23afde36f9bf578211932da14d93708",
+      "filesystem": {
+        "birth_display_utc": "2026-11-01 13:00:15.105235297 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793616906830513666,
+        "mtime_utc": "2026-11-02T10:55:06.830514+00:00",
+        "ctime_ns": 1793616906830513666,
+        "ctime_utc": "2026-11-02T10:55:06.830514+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+          "author_date": "2026-11-01T17:19:29+01:00",
+          "committer_date": "2026-11-01T17:19:29+01:00",
+          "subject": "Match framework controls and port lifetime composition to xDSL"
+        },
+        "last_recorded": {
+          "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+          "author_date": "2026-11-02T13:04:43+01:00",
+          "committer_date": "2026-11-02T13:04:43+01:00",
+          "subject": "Record matched xDSL and Pliron machinery comparison"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/matched_comparison.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+            "author_date": "2026-11-02T13:04:43+01:00",
+            "committer_date": "2026-11-02T13:04:43+01:00",
+            "subject": "Record matched xDSL and Pliron machinery comparison"
+          },
+          {
+            "commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+            "author_date": "2026-11-02T11:19:40+01:00",
+            "committer_date": "2026-11-02T11:19:40+01:00",
+            "subject": "Represent mixed feedback and model ownership in Pliron"
+          },
+          {
+            "commit": "1a10d94350291d1f8f8cdb6a91123990647f11d7",
+            "author_date": "2026-11-02T10:01:50+01:00",
+            "committer_date": "2026-11-02T10:01:50+01:00",
+            "subject": "Represent correlation and accumulation in Pliron"
+          },
+          {
+            "commit": "0055062de4da76ac82c2899a5094db4bb20a7c6a",
+            "author_date": "2026-11-01T21:15:58+01:00",
+            "committer_date": "2026-11-01T21:15:58+01:00",
+            "subject": "Align resource-aware grouping across xDSL and Pliron"
+          },
+          {
+            "commit": "4558da99880983af8419bd144e9254589a5847ee",
+            "author_date": "2026-11-01T18:26:32+01:00",
+            "committer_date": "2026-11-01T18:26:32+01:00",
+            "subject": "Represent temporary optimization authority in Pliron"
+          },
+          {
+            "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+            "author_date": "2026-11-01T17:19:29+01:00",
+            "committer_date": "2026-11-01T17:19:29+01:00",
+            "subject": "Match framework controls and port lifetime composition to xDSL"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 71385,
+      "sha256": "2c7ddc191776d24d63ba62a9bb35c46971e6b5db8e316893e8e959a4c04b2025",
+      "filesystem": {
+        "birth_display_utc": "2026-07-29 01:35:18.696935087 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789846784183190535,
+        "mtime_utc": "2026-09-19T19:39:44.183191+00:00",
+        "ctime_ns": 1789846784183190535,
+        "ctime_utc": "2026-09-19T19:39:44.183191+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+          "author_date": "2026-07-29T02:27:47Z",
+          "committer_date": "2026-07-29T02:27:47Z",
+          "subject": "initial strategy direction and inventory"
+        },
+        "last_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/notes.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          },
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          },
+          {
+            "commit": "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df",
+            "author_date": "2026-08-25T21:27:47+02:00",
+            "committer_date": "2026-08-25T21:27:47+02:00",
+            "subject": "spike for parts of the design"
+          },
+          {
+            "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+            "author_date": "2026-08-25T06:06:00+02:00",
+            "committer_date": "2026-08-25T06:06:00+02:00",
+            "subject": "open questions walked through"
+          },
+          {
+            "commit": "7bd8a1244fe653c83381f6421c6cbcc269a04009",
+            "author_date": "2026-08-24T03:51:34+02:00",
+            "committer_date": "2026-08-24T03:51:34+02:00",
+            "subject": "rectify design note"
+          },
+          {
+            "commit": "acdc2b1936afa39c914a72bcb7de2c9b2432416b",
+            "author_date": "2026-08-23T07:04:10+02:00",
+            "committer_date": "2026-08-23T07:04:10+02:00",
+            "subject": "note progress"
+          },
+          {
+            "commit": "3602960af0bf8d89ef16bfab678ba0f7204cd300",
+            "author_date": "2026-08-22T22:19:58+02:00",
+            "committer_date": "2026-08-22T22:19:58+02:00",
+            "subject": "new future research, direction design"
+          },
+          {
+            "commit": "d7c4de7b6c332271df1884be04e276cb33f60c3b",
+            "author_date": "2026-08-22T02:18:40+02:00",
+            "committer_date": "2026-08-22T02:18:40+02:00",
+            "subject": "docs wording"
+          },
+          {
+            "commit": "f603d07457076669fefd189e803516b690d112a5",
+            "author_date": "2026-08-22T01:47:44+02:00",
+            "committer_date": "2026-08-22T01:47:44+02:00",
+            "subject": "q5 second"
+          },
+          {
+            "commit": "c3b59068d1205bf461fcee27a195083534516a1f",
+            "author_date": "2026-08-21T23:21:34+02:00",
+            "committer_date": "2026-08-21T23:21:34+02:00",
+            "subject": "q5 first"
+          },
+          {
+            "commit": "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d",
+            "author_date": "2026-08-21T04:47:36+02:00",
+            "committer_date": "2026-08-21T04:47:36+02:00",
+            "subject": "strategy discussion checkpoint artifacts"
+          },
+          {
+            "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+            "author_date": "2026-08-20T19:17:47+02:00",
+            "committer_date": "2026-08-20T19:17:47+02:00",
+            "subject": "strategy discussion checkpont adapter"
+          },
+          {
+            "commit": "707015ee4441a5a6095b1ff5c13b2284309d5b81",
+            "author_date": "2026-08-01T03:17:54Z",
+            "committer_date": "2026-08-01T03:17:54Z",
+            "subject": "inventory mode clarification and beads update"
+          },
+          {
+            "commit": "78df512dd9c821b7136c1c92658acb771e1606a2",
+            "author_date": "2026-07-30T21:15:39Z",
+            "committer_date": "2026-07-30T21:15:39Z",
+            "subject": "post lightning clarification, discussion about training mode and strategy definition"
+          },
+          {
+            "commit": "97a81ef49a4459657d9850262cf74d5c08984745",
+            "author_date": "2026-07-29T22:11:15Z",
+            "committer_date": "2026-07-29T22:11:15Z",
+            "subject": "pre lightning direction + lightning comparison"
+          },
+          {
+            "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+            "author_date": "2026-07-29T02:27:47Z",
+            "committer_date": "2026-07-29T02:27:47Z",
+            "subject": "initial strategy direction and inventory"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/README.md",
+      "bytes": 24568,
+      "sha256": "e9861bfe47524e36e1e0256c65d9cd7a5e2e7b29160108e32a6327ba644c3b73",
+      "filesystem": {
+        "birth_display_utc": "2026-10-30 14:49:41.701309830 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793616906830513666,
+        "mtime_utc": "2026-11-02T10:55:06.830514+00:00",
+        "ctime_ns": 1793616906830513666,
+        "ctime_utc": "2026-11-02T10:55:06.830514+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "5a737c27749bac7eb364d9cf21ea343dc5420234",
+          "author_date": "2026-10-30T17:08:35+01:00",
+          "committer_date": "2026-10-30T17:08:35+01:00",
+          "subject": "Add pinned Pliron 0.20.0 feedback experiment"
+        },
+        "last_recorded": {
+          "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+          "author_date": "2026-11-02T13:04:43+01:00",
+          "committer_date": "2026-11-02T13:04:43+01:00",
+          "subject": "Record matched xDSL and Pliron machinery comparison"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/pliron_candidate/README.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+            "author_date": "2026-11-02T13:04:43+01:00",
+            "committer_date": "2026-11-02T13:04:43+01:00",
+            "subject": "Record matched xDSL and Pliron machinery comparison"
+          },
+          {
+            "commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+            "author_date": "2026-11-02T11:19:40+01:00",
+            "committer_date": "2026-11-02T11:19:40+01:00",
+            "subject": "Represent mixed feedback and model ownership in Pliron"
+          },
+          {
+            "commit": "1a10d94350291d1f8f8cdb6a91123990647f11d7",
+            "author_date": "2026-11-02T10:01:50+01:00",
+            "committer_date": "2026-11-02T10:01:50+01:00",
+            "subject": "Represent correlation and accumulation in Pliron"
+          },
+          {
+            "commit": "0055062de4da76ac82c2899a5094db4bb20a7c6a",
+            "author_date": "2026-11-01T21:15:58+01:00",
+            "committer_date": "2026-11-01T21:15:58+01:00",
+            "subject": "Align resource-aware grouping across xDSL and Pliron"
+          },
+          {
+            "commit": "4558da99880983af8419bd144e9254589a5847ee",
+            "author_date": "2026-11-01T18:26:32+01:00",
+            "committer_date": "2026-11-01T18:26:32+01:00",
+            "subject": "Represent temporary optimization authority in Pliron"
+          },
+          {
+            "commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+            "author_date": "2026-10-31T14:16:26+01:00",
+            "committer_date": "2026-10-31T14:16:26+01:00",
+            "subject": "Test Pliron lifetime composition with existing owners"
+          },
+          {
+            "commit": "98fbbb23f7066355a06b34d22a87a688673b6f14",
+            "author_date": "2026-10-30T20:43:25+01:00",
+            "committer_date": "2026-10-30T20:43:25+01:00",
+            "subject": "Extend Pliron contracts and resource-aware grouping"
+          },
+          {
+            "commit": "5a737c27749bac7eb364d9cf21ea343dc5420234",
+            "author_date": "2026-10-30T17:08:35+01:00",
+            "committer_date": "2026-10-30T17:08:35+01:00",
+            "subject": "Add pinned Pliron 0.20.0 feedback experiment"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md",
+      "bytes": 14393,
+      "sha256": "26001dd19564059db3a36e1cad3e6107a1fd0623ca850c88ab1d0d1e38167783",
+      "filesystem": {
+        "birth_display_utc": "2026-10-31 11:10:39.398270285 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793448275091839479,
+        "mtime_utc": "2026-10-31T12:04:35.091840+00:00",
+        "ctime_ns": 1793448275091839479,
+        "ctime_utc": "2026-10-31T12:04:35.091840+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+          "author_date": "2026-10-31T14:16:26+01:00",
+          "committer_date": "2026-10-31T14:16:26+01:00",
+          "subject": "Test Pliron lifetime composition with existing owners"
+        },
+        "last_recorded": {
+          "commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+          "author_date": "2026-10-31T14:16:26+01:00",
+          "committer_date": "2026-10-31T14:16:26+01:00",
+          "subject": "Test Pliron lifetime composition with existing owners"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/pliron_candidate/composition_case.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "2f4c9353940d5f467e8fb7ceb2233fd88243baa4",
+            "author_date": "2026-10-31T14:16:26+01:00",
+            "committer_date": "2026-10-31T14:16:26+01:00",
+            "subject": "Test Pliron lifetime composition with existing owners"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md",
+      "bytes": 9657,
+      "sha256": "5746232886d34d6aa03f3d5a4b3052b701541080d6f62acedbb5cd663ec22ef7",
+      "filesystem": {
+        "birth_display_utc": "2026-11-01 21:00:17.104003035 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793567322285225191,
+        "mtime_utc": "2026-11-01T21:08:42.285225+00:00",
+        "ctime_ns": 1793567322285225191,
+        "ctime_utc": "2026-11-01T21:08:42.285225+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "1a10d94350291d1f8f8cdb6a91123990647f11d7",
+          "author_date": "2026-11-02T10:01:50+01:00",
+          "committer_date": "2026-11-02T10:01:50+01:00",
+          "subject": "Represent correlation and accumulation in Pliron"
+        },
+        "last_recorded": {
+          "commit": "1a10d94350291d1f8f8cdb6a91123990647f11d7",
+          "author_date": "2026-11-02T10:01:50+01:00",
+          "committer_date": "2026-11-02T10:01:50+01:00",
+          "subject": "Represent correlation and accumulation in Pliron"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/pliron_candidate/correlation_case.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "1a10d94350291d1f8f8cdb6a91123990647f11d7",
+            "author_date": "2026-11-02T10:01:50+01:00",
+            "committer_date": "2026-11-02T10:01:50+01:00",
+            "subject": "Represent correlation and accumulation in Pliron"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/grant_case.md",
+      "bytes": 10786,
+      "sha256": "0fcc33dbe397e87b1a6d9159503db3c9aa3a601101b35ed8956be1bf3b4c656e",
+      "filesystem": {
+        "birth_display_utc": "2026-11-01 17:19:51.131050038 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793553849796853001,
+        "mtime_utc": "2026-11-01T17:24:09.796853+00:00",
+        "ctime_ns": 1793553849796853001,
+        "ctime_utc": "2026-11-01T17:24:09.796853+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "4558da99880983af8419bd144e9254589a5847ee",
+          "author_date": "2026-11-01T18:26:32+01:00",
+          "committer_date": "2026-11-01T18:26:32+01:00",
+          "subject": "Represent temporary optimization authority in Pliron"
+        },
+        "last_recorded": {
+          "commit": "4558da99880983af8419bd144e9254589a5847ee",
+          "author_date": "2026-11-01T18:26:32+01:00",
+          "committer_date": "2026-11-01T18:26:32+01:00",
+          "subject": "Represent temporary optimization authority in Pliron"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/pliron_candidate/grant_case.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "4558da99880983af8419bd144e9254589a5847ee",
+            "author_date": "2026-11-01T18:26:32+01:00",
+            "committer_date": "2026-11-01T18:26:32+01:00",
+            "subject": "Represent temporary optimization authority in Pliron"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md",
+      "bytes": 9986,
+      "sha256": "7b068c4ee444ba2484f7d76f1d79469bdcbf5344dbf7a44db07065d1af8dc55d",
+      "filesystem": {
+        "birth_display_utc": "2026-11-02 09:30:29.547987983 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793612424968427101,
+        "mtime_utc": "2026-11-02T09:40:24.968427+00:00",
+        "ctime_ns": 1793612424968427101,
+        "ctime_utc": "2026-11-02T09:40:24.968427+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+          "author_date": "2026-11-02T11:19:40+01:00",
+          "committer_date": "2026-11-02T11:19:40+01:00",
+          "subject": "Represent mixed feedback and model ownership in Pliron"
+        },
+        "last_recorded": {
+          "commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+          "author_date": "2026-11-02T11:19:40+01:00",
+          "committer_date": "2026-11-02T11:19:40+01:00",
+          "subject": "Represent mixed feedback and model ownership in Pliron"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/pliron_candidate/mixed_case.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+            "author_date": "2026-11-02T11:19:40+01:00",
+            "committer_date": "2026-11-02T11:19:40+01:00",
+            "subject": "Represent mixed feedback and model ownership in Pliron"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/provisional_tree.md",
+      "bytes": 21512,
+      "sha256": "f5b6fd5be62f2dbc6e79bf24f2d1593f08593639dc1b900d0152ed6ef7db31ab",
+      "filesystem": {
+        "birth_display_utc": "2026-09-22 05:51:20.485118430 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790122077979768009,
+        "mtime_utc": "2026-09-23T00:07:57.979768+00:00",
+        "ctime_ns": 1790122077979768009,
+        "ctime_utc": "2026-09-23T00:07:57.979768+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/provisional_tree.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 101919,
+      "sha256": "613a0afd6e525b3c7931bab55e33b515a7bb73aa4810e5b9dd97c0b5da2b83d9",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:04:28.741859970 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789846098671676130,
+        "mtime_utc": "2026-09-19T19:28:18.671676+00:00",
+        "ctime_ns": 1789846098671676130,
+        "ctime_utc": "2026-09-19T19:28:18.671676+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "3602960af0bf8d89ef16bfab678ba0f7204cd300",
+          "author_date": "2026-08-22T22:19:58+02:00",
+          "committer_date": "2026-08-22T22:19:58+02:00",
+          "subject": "new future research, direction design"
+        },
+        "last_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          },
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          },
+          {
+            "commit": "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df",
+            "author_date": "2026-08-25T21:27:47+02:00",
+            "committer_date": "2026-08-25T21:27:47+02:00",
+            "subject": "spike for parts of the design"
+          },
+          {
+            "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+            "author_date": "2026-08-25T06:06:00+02:00",
+            "committer_date": "2026-08-25T06:06:00+02:00",
+            "subject": "open questions walked through"
+          },
+          {
+            "commit": "7bd8a1244fe653c83381f6421c6cbcc269a04009",
+            "author_date": "2026-08-24T03:51:34+02:00",
+            "committer_date": "2026-08-24T03:51:34+02:00",
+            "subject": "rectify design note"
+          },
+          {
+            "commit": "acdc2b1936afa39c914a72bcb7de2c9b2432416b",
+            "author_date": "2026-08-23T07:04:10+02:00",
+            "committer_date": "2026-08-23T07:04:10+02:00",
+            "subject": "note progress"
+          },
+          {
+            "commit": "3602960af0bf8d89ef16bfab678ba0f7204cd300",
+            "author_date": "2026-08-22T22:19:58+02:00",
+            "committer_date": "2026-08-22T22:19:58+02:00",
+            "subject": "new future research, direction design"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion.md",
+      "bytes": 32955,
+      "sha256": "baab1c840fcb2dc4dce96697277f696341d2e35dbb6a1db9637568e3ed543b44",
+      "filesystem": {
+        "birth_display_utc": "2026-08-26 16:53:16.453857977 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1787762115175432400,
+        "mtime_utc": "2026-08-26T16:35:15.175432+00:00",
+        "ctime_ns": 1787763196464259452,
+        "ctime_utc": "2026-08-26T16:53:16.464259+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+          "author_date": "2026-08-27T00:20:45+02:00",
+          "committer_date": "2026-08-27T00:20:45+02:00",
+          "subject": "settled state before openspec creation for the rework"
+        },
+        "last_recorded": {
+          "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+          "author_date": "2026-08-27T00:20:45+02:00",
+          "committer_date": "2026-08-27T00:20:45+02:00",
+          "subject": "settled state before openspec creation for the rework"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/strategy_discussion.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion_external.md",
+      "bytes": 42749,
+      "sha256": "39b7b71fe3c2cd4678bdf2b006c2ff35b21c798c3e8e0d1045eb1e4ffd314fb5",
+      "filesystem": {
+        "birth_display_utc": "2026-08-26 16:53:16.437857251 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1787763167680957500,
+        "mtime_utc": "2026-08-26T16:52:47.680958+00:00",
+        "ctime_ns": 1787763196445228040,
+        "ctime_utc": "2026-08-26T16:53:16.445228+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+          "author_date": "2026-08-27T00:20:45+02:00",
+          "committer_date": "2026-08-27T00:20:45+02:00",
+          "subject": "settled state before openspec creation for the rework"
+        },
+        "last_recorded": {
+          "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+          "author_date": "2026-08-27T00:20:45+02:00",
+          "committer_date": "2026-08-27T00:20:45+02:00",
+          "subject": "settled state before openspec creation for the rework"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/strategy_discussion_external.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 93405,
+      "sha256": "4fed32ebe00766d9ba62615c87f629f84628837c81e01d5fa7ddb877b9359172",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:04:28.747889993 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789845975708213300,
+        "mtime_utc": "2026-09-19T19:26:15.708213+00:00",
+        "ctime_ns": 1789845975708213300,
+        "ctime_utc": "2026-09-19T19:26:15.708213+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "de2dd0ebae40174e8336157e8928e36cfd013284",
+          "author_date": "2026-07-22T02:32:52Z",
+          "committer_date": "2026-07-22T02:32:52Z",
+          "subject": "openspec model metadata 1st sub point done, pause and subsequent model-strategy-trainer discussion and plans"
+        },
+        "last_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "earliest_recorded_path": "docs_design/strategy_system_direction.md",
+        "renames_newest_first": [
+          {
+            "similarity": "R098",
+            "old_path": "docs_design/strategy_system_direction.md",
+            "new_path": "docs_design/models-strategy-trainer/strategy_system_direction.md"
+          }
+        ],
+        "commits_newest_first": [
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          },
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          },
+          {
+            "commit": "3602960af0bf8d89ef16bfab678ba0f7204cd300",
+            "author_date": "2026-08-22T22:19:58+02:00",
+            "committer_date": "2026-08-22T22:19:58+02:00",
+            "subject": "new future research, direction design"
+          },
+          {
+            "commit": "d7c4de7b6c332271df1884be04e276cb33f60c3b",
+            "author_date": "2026-08-22T02:18:40+02:00",
+            "committer_date": "2026-08-22T02:18:40+02:00",
+            "subject": "docs wording"
+          },
+          {
+            "commit": "f603d07457076669fefd189e803516b690d112a5",
+            "author_date": "2026-08-22T01:47:44+02:00",
+            "committer_date": "2026-08-22T01:47:44+02:00",
+            "subject": "q5 second"
+          },
+          {
+            "commit": "c3b59068d1205bf461fcee27a195083534516a1f",
+            "author_date": "2026-08-21T23:21:34+02:00",
+            "committer_date": "2026-08-21T23:21:34+02:00",
+            "subject": "q5 first"
+          },
+          {
+            "commit": "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d",
+            "author_date": "2026-08-21T04:47:36+02:00",
+            "committer_date": "2026-08-21T04:47:36+02:00",
+            "subject": "strategy discussion checkpoint artifacts"
+          },
+          {
+            "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+            "author_date": "2026-08-20T19:17:47+02:00",
+            "committer_date": "2026-08-20T19:17:47+02:00",
+            "subject": "strategy discussion checkpont adapter"
+          },
+          {
+            "commit": "707015ee4441a5a6095b1ff5c13b2284309d5b81",
+            "author_date": "2026-08-01T03:17:54Z",
+            "committer_date": "2026-08-01T03:17:54Z",
+            "subject": "inventory mode clarification and beads update"
+          },
+          {
+            "commit": "78df512dd9c821b7136c1c92658acb771e1606a2",
+            "author_date": "2026-07-30T21:15:39Z",
+            "committer_date": "2026-07-30T21:15:39Z",
+            "subject": "post lightning clarification, discussion about training mode and strategy definition"
+          },
+          {
+            "commit": "97a81ef49a4459657d9850262cf74d5c08984745",
+            "author_date": "2026-07-29T22:11:15Z",
+            "committer_date": "2026-07-29T22:11:15Z",
+            "subject": "pre lightning direction + lightning comparison"
+          },
+          {
+            "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+            "author_date": "2026-07-29T02:27:47Z",
+            "committer_date": "2026-07-29T02:27:47Z",
+            "subject": "initial strategy direction and inventory"
+          },
+          {
+            "commit": "de2dd0ebae40174e8336157e8928e36cfd013284",
+            "author_date": "2026-07-22T02:32:52Z",
+            "committer_date": "2026-07-22T02:32:52Z",
+            "subject": "openspec model metadata 1st sub point done, pause and subsequent model-strategy-trainer discussion and plans"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "bytes": 26985,
+      "sha256": "e11eb5c3015d720bb79af3f5236b4a737774a92ab8dbbd116a3f1d225eeb5c6e",
+      "filesystem": {
+        "birth_display_utc": "2026-08-26 20:54:11.120692333 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789845975712213493,
+        "mtime_utc": "2026-09-19T19:26:15.712214+00:00",
+        "ctime_ns": 1789845975712213493,
+        "ctime_utc": "2026-09-19T19:26:15.712214+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+          "author_date": "2026-08-25T06:06:00+02:00",
+          "committer_date": "2026-08-25T06:06:00+02:00",
+          "subject": "open questions walked through"
+        },
+        "last_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          },
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          },
+          {
+            "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+            "author_date": "2026-08-25T06:06:00+02:00",
+            "committer_date": "2026-08-25T06:06:00+02:00",
+            "subject": "open questions walked through"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 102578,
+      "sha256": "5aedabf302b86eae611fb474e3e2e54a5c51d72c1931b2956273b9329ccf985a",
+      "filesystem": {
+        "birth_display_utc": "2026-07-29 00:17:50.178993385 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1787782749863015372,
+        "mtime_utc": "2026-08-26T22:19:09.863015+00:00",
+        "ctime_ns": 1787782749863015372,
+        "ctime_utc": "2026-08-26T22:19:09.863015+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+          "author_date": "2026-07-29T02:27:47Z",
+          "committer_date": "2026-07-29T02:27:47Z",
+          "subject": "initial strategy direction and inventory"
+        },
+        "last_recorded": {
+          "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+          "author_date": "2026-08-27T00:20:45+02:00",
+          "committer_date": "2026-08-27T00:20:45+02:00",
+          "subject": "settled state before openspec creation for the rework"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+            "author_date": "2026-08-27T00:20:45+02:00",
+            "committer_date": "2026-08-27T00:20:45+02:00",
+            "subject": "settled state before openspec creation for the rework"
+          },
+          {
+            "commit": "d7c4de7b6c332271df1884be04e276cb33f60c3b",
+            "author_date": "2026-08-22T02:18:40+02:00",
+            "committer_date": "2026-08-22T02:18:40+02:00",
+            "subject": "docs wording"
+          },
+          {
+            "commit": "f603d07457076669fefd189e803516b690d112a5",
+            "author_date": "2026-08-22T01:47:44+02:00",
+            "committer_date": "2026-08-22T01:47:44+02:00",
+            "subject": "q5 second"
+          },
+          {
+            "commit": "c3b59068d1205bf461fcee27a195083534516a1f",
+            "author_date": "2026-08-21T23:21:34+02:00",
+            "committer_date": "2026-08-21T23:21:34+02:00",
+            "subject": "q5 first"
+          },
+          {
+            "commit": "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d",
+            "author_date": "2026-08-21T04:47:36+02:00",
+            "committer_date": "2026-08-21T04:47:36+02:00",
+            "subject": "strategy discussion checkpoint artifacts"
+          },
+          {
+            "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+            "author_date": "2026-08-20T19:17:47+02:00",
+            "committer_date": "2026-08-20T19:17:47+02:00",
+            "subject": "strategy discussion checkpont adapter"
+          },
+          {
+            "commit": "707015ee4441a5a6095b1ff5c13b2284309d5b81",
+            "author_date": "2026-08-01T03:17:54Z",
+            "committer_date": "2026-08-01T03:17:54Z",
+            "subject": "inventory mode clarification and beads update"
+          },
+          {
+            "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+            "author_date": "2026-07-29T02:27:47Z",
+            "committer_date": "2026-07-29T02:27:47Z",
+            "subject": "initial strategy direction and inventory"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_candidate/README.md",
+      "bytes": 48592,
+      "sha256": "3e211ef36cd6e82d5e29b3ba7434df10d0c7352b129686e7a35f8a0f9a559dbb",
+      "filesystem": {
+        "birth_display_utc": "2026-10-29 10:35:23.810142293 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793616906830513666,
+        "mtime_utc": "2026-11-02T10:55:06.830514+00:00",
+        "ctime_ns": 1793616906830513666,
+        "ctime_utc": "2026-11-02T10:55:06.830514+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "2131f31dfdc1f0fb8e6403da000fced2e78bfd49",
+          "author_date": "2026-10-29T14:09:47+01:00",
+          "committer_date": "2026-10-29T14:09:47+01:00",
+          "subject": "Add xDSL data-only feedback research experiment"
+        },
+        "last_recorded": {
+          "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+          "author_date": "2026-11-02T13:04:43+01:00",
+          "committer_date": "2026-11-02T13:04:43+01:00",
+          "subject": "Record matched xDSL and Pliron machinery comparison"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/xdsl_candidate/README.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "fe46babff6330282d56fdcd8b9dc0ce5bf3fb124",
+            "author_date": "2026-11-02T13:04:43+01:00",
+            "committer_date": "2026-11-02T13:04:43+01:00",
+            "subject": "Record matched xDSL and Pliron machinery comparison"
+          },
+          {
+            "commit": "139ab2dce4160cf6bc07562e7ad9556217075c1d",
+            "author_date": "2026-11-02T11:19:40+01:00",
+            "committer_date": "2026-11-02T11:19:40+01:00",
+            "subject": "Represent mixed feedback and model ownership in Pliron"
+          },
+          {
+            "commit": "1a10d94350291d1f8f8cdb6a91123990647f11d7",
+            "author_date": "2026-11-02T10:01:50+01:00",
+            "committer_date": "2026-11-02T10:01:50+01:00",
+            "subject": "Represent correlation and accumulation in Pliron"
+          },
+          {
+            "commit": "0055062de4da76ac82c2899a5094db4bb20a7c6a",
+            "author_date": "2026-11-01T21:15:58+01:00",
+            "committer_date": "2026-11-01T21:15:58+01:00",
+            "subject": "Align resource-aware grouping across xDSL and Pliron"
+          },
+          {
+            "commit": "4558da99880983af8419bd144e9254589a5847ee",
+            "author_date": "2026-11-01T18:26:32+01:00",
+            "committer_date": "2026-11-01T18:26:32+01:00",
+            "subject": "Represent temporary optimization authority in Pliron"
+          },
+          {
+            "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+            "author_date": "2026-11-01T17:19:29+01:00",
+            "committer_date": "2026-11-01T17:19:29+01:00",
+            "subject": "Match framework controls and port lifetime composition to xDSL"
+          },
+          {
+            "commit": "d967faf4dbe783520bff2ec1de06aecb8817f2b3",
+            "author_date": "2026-10-30T08:35:24+01:00",
+            "committer_date": "2026-10-30T08:35:24+01:00",
+            "subject": "Fix xDSL exclusion progress and runtime outcome contracts"
+          },
+          {
+            "commit": "504dcf88dcdb2b76218e19af89117f7f7de22c59",
+            "author_date": "2026-10-30T06:55:45+01:00",
+            "committer_date": "2026-10-30T06:55:45+01:00",
+            "subject": "Qualify xDSL plan verification, fusion, and workflow composition"
+          },
+          {
+            "commit": "6bea859b8884552670c021502794f117f443d093",
+            "author_date": "2026-10-29T17:51:45+01:00",
+            "committer_date": "2026-10-29T17:51:45+01:00",
+            "subject": "Add xDSL granted two-pass authority experiment"
+          },
+          {
+            "commit": "6d103b14d03c2ac52270c9d7fd6c5b272bdbb8c8",
+            "author_date": "2026-10-29T15:36:32+01:00",
+            "committer_date": "2026-10-29T15:36:32+01:00",
+            "subject": "Add xDSL correlated data and model owner experiment"
+          },
+          {
+            "commit": "2131f31dfdc1f0fb8e6403da000fced2e78bfd49",
+            "author_date": "2026-10-29T14:09:47+01:00",
+            "committer_date": "2026-10-29T14:09:47+01:00",
+            "subject": "Add xDSL data-only feedback research experiment"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md",
+      "bytes": 10797,
+      "sha256": "9f4c0160b83ecb7e076b26d37a36b773025ead814cfcf54a41482dc192a5dfad",
+      "filesystem": {
+        "birth_display_utc": "2026-11-01 14:42:01.210380337 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793545845203071781,
+        "mtime_utc": "2026-11-01T15:10:45.203072+00:00",
+        "ctime_ns": 1793545845203071781,
+        "ctime_utc": "2026-11-01T15:10:45.203072+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+          "author_date": "2026-11-01T17:19:29+01:00",
+          "committer_date": "2026-11-01T17:19:29+01:00",
+          "subject": "Match framework controls and port lifetime composition to xDSL"
+        },
+        "last_recorded": {
+          "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+          "author_date": "2026-11-01T17:19:29+01:00",
+          "committer_date": "2026-11-01T17:19:29+01:00",
+          "subject": "Match framework controls and port lifetime composition to xDSL"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/xdsl_candidate/lifetime_case.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "7386bba31761d470e33abfdc8c8d8fd9a02bd85a",
+            "author_date": "2026-11-01T17:19:29+01:00",
+            "committer_date": "2026-11-01T17:19:29+01:00",
+            "subject": "Match framework controls and port lifetime composition to xDSL"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/README.md",
+      "bytes": 35447,
+      "sha256": "804030f9c71bcc41165edcc05aae0bf2c85442ea80343b2620eaf5ceefc9b429",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 14:05:35.682554062 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793874739736149283,
+        "mtime_utc": "2026-11-05T10:32:19.736149+00:00",
+        "ctime_ns": 1793874739736149283,
+        "ctime_utc": "2026-11-05T10:32:19.736149+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+          "author_date": "2026-11-03T22:29:08+01:00",
+          "committer_date": "2026-11-03T22:29:08+01:00",
+          "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+        },
+        "last_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/xdsl_language/README.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+            "author_date": "2026-11-05T13:21:21+01:00",
+            "committer_date": "2026-11-05T13:21:21+01:00",
+            "subject": "Add scoped products and retained resource ownership"
+          },
+          {
+            "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+            "author_date": "2026-11-04T22:55:03+01:00",
+            "committer_date": "2026-11-04T22:55:03+01:00",
+            "subject": "Extend shared workflow effects, filtering and fusion"
+          },
+          {
+            "commit": "8ac18bd5ce900c83eee952eef356372cddd08281",
+            "author_date": "2026-11-04T14:03:33+01:00",
+            "committer_date": "2026-11-04T14:03:33+01:00",
+            "subject": "Qualify shared xDSL workflow lifecycle and cold execution"
+          },
+          {
+            "commit": "61467849d851c3ada04cc08cb11d6e3acd7ee466",
+            "author_date": "2026-11-04T12:39:36+01:00",
+            "committer_date": "2026-11-04T12:39:36+01:00",
+            "subject": "Lower xDSL workflows through existing owner services"
+          },
+          {
+            "commit": "8f92019170a9691cdf748dd4d241068486d869a4",
+            "author_date": "2026-11-04T08:26:49+01:00",
+            "committer_date": "2026-11-04T08:26:49+01:00",
+            "subject": "Verify xDSL workflow lifecycle and scoped resource contracts"
+          },
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/filtering.md",
+      "bytes": 8338,
+      "sha256": "8f8e3b5f637976cc95ee97b01f3ee67ed37c0f54eae10c0e19e12830618adab0",
+      "filesystem": {
+        "birth_display_utc": "2026-11-04 20:22:48.123373922 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793825731578806715,
+        "mtime_utc": "2026-11-04T20:55:31.578807+00:00",
+        "ctime_ns": 1793825731578806715,
+        "ctime_utc": "2026-11-04T20:55:31.578807+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+          "author_date": "2026-11-04T22:55:03+01:00",
+          "committer_date": "2026-11-04T22:55:03+01:00",
+          "subject": "Extend shared workflow effects, filtering and fusion"
+        },
+        "last_recorded": {
+          "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+          "author_date": "2026-11-04T22:55:03+01:00",
+          "committer_date": "2026-11-04T22:55:03+01:00",
+          "subject": "Extend shared workflow effects, filtering and fusion"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/xdsl_language/filtering.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+            "author_date": "2026-11-04T22:55:03+01:00",
+            "committer_date": "2026-11-04T22:55:03+01:00",
+            "subject": "Extend shared workflow effects, filtering and fusion"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/products.md",
+      "bytes": 6991,
+      "sha256": "742128d90a256ea7c645e5874866e77a140bd317cc7311f6d5aeeaba7e5ce7eb",
+      "filesystem": {
+        "birth_display_utc": "2026-11-05 10:32:19.750340275 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793875743663393231,
+        "mtime_utc": "2026-11-05T10:49:03.663393+00:00",
+        "ctime_ns": 1793875743663393231,
+        "ctime_utc": "2026-11-05T10:49:03.663393+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "last_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/xdsl_language/products.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+            "author_date": "2026-11-05T13:21:21+01:00",
+            "committer_date": "2026-11-05T13:21:21+01:00",
+            "subject": "Add scoped products and retained resource ownership"
+          }
+        ]
+      }
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language/qualification.md",
+      "bytes": 7208,
+      "sha256": "55f421e60c34b4e036225b6734d09f5d61612af64463758e77c1768cf90bd52e",
+      "filesystem": {
+        "birth_display_utc": "2026-11-04 12:14:50.077151188 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793796392727647745,
+        "mtime_utc": "2026-11-04T12:46:32.727648+00:00",
+        "ctime_ns": 1793796392727647745,
+        "ctime_utc": "2026-11-04T12:46:32.727648+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ac18bd5ce900c83eee952eef356372cddd08281",
+          "author_date": "2026-11-04T14:03:33+01:00",
+          "committer_date": "2026-11-04T14:03:33+01:00",
+          "subject": "Qualify shared xDSL workflow lifecycle and cold execution"
+        },
+        "last_recorded": {
+          "commit": "8ac18bd5ce900c83eee952eef356372cddd08281",
+          "author_date": "2026-11-04T14:03:33+01:00",
+          "committer_date": "2026-11-04T14:03:33+01:00",
+          "subject": "Qualify shared xDSL workflow lifecycle and cold execution"
+        },
+        "earliest_recorded_path": "docs_design/models-strategy-trainer/xdsl_language/qualification.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "8ac18bd5ce900c83eee952eef356372cddd08281",
+            "author_date": "2026-11-04T14:03:33+01:00",
+            "committer_date": "2026-11-04T14:03:33+01:00",
+            "subject": "Qualify shared xDSL workflow lifecycle and cold execution"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "bytes": 307221,
+      "sha256": "17cfd07615d9cfc3544d0e6acab86317f23f06472226913e7bcf9f2def830493",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 07:45:35.992051436 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793875743662347732,
+        "mtime_utc": "2026-11-05T10:49:03.662348+00:00",
+        "ctime_ns": 1793875743662347732,
+        "ctime_utc": "2026-11-05T10:49:03.662348+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+            "author_date": "2026-11-05T13:21:21+01:00",
+            "committer_date": "2026-11-05T13:21:21+01:00",
+            "subject": "Add scoped products and retained resource ownership"
+          },
+          {
+            "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+            "author_date": "2026-11-04T22:55:03+01:00",
+            "committer_date": "2026-11-04T22:55:03+01:00",
+            "subject": "Extend shared workflow effects, filtering and fusion"
+          },
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          },
+          {
+            "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+            "author_date": "2026-11-03T08:41:38+01:00",
+            "committer_date": "2026-11-03T08:41:38+01:00",
+            "subject": "1st language proposal and subsequent openspec edits"
+          },
+          {
+            "commit": "fdf996422552512703609eaf06010a142d4572da",
+            "author_date": "2026-10-06T08:33:04+02:00",
+            "committer_date": "2026-10-06T08:33:04+02:00",
+            "subject": "os component selectors"
+          },
+          {
+            "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+            "author_date": "2026-10-05T05:41:01+02:00",
+            "committer_date": "2026-10-05T05:41:01+02:00",
+            "subject": "os audit closeout, modelspec fixes"
+          },
+          {
+            "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+            "author_date": "2026-10-04T06:39:22+02:00",
+            "committer_date": "2026-10-04T06:39:22+02:00",
+            "subject": "4.6"
+          },
+          {
+            "commit": "2077904f2b1a180598fc3280dec156c910e79f59",
+            "author_date": "2026-10-04T04:14:31+02:00",
+            "committer_date": "2026-10-04T04:14:31+02:00",
+            "subject": "4.4"
+          },
+          {
+            "commit": "cf0f3be9fd3a9325705eba0aa321379f975ec83d",
+            "author_date": "2026-10-03T22:40:45+02:00",
+            "committer_date": "2026-10-03T22:40:45+02:00",
+            "subject": "4.3"
+          },
+          {
+            "commit": "6e36264e87663d67ca92fef672143fd2822af119",
+            "author_date": "2026-10-03T04:19:34+02:00",
+            "committer_date": "2026-10-03T04:19:34+02:00",
+            "subject": "os g 4.1"
+          },
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "e0a6f9bb2f7299bf576dfdd1cf5a1c6e8c9ac627",
+            "author_date": "2026-10-01T06:00:00+02:00",
+            "committer_date": "2026-10-01T06:00:00+02:00",
+            "subject": "os G.37"
+          },
+          {
+            "commit": "931d8e3c633283d7d22e93219a4c318f8803dd74",
+            "author_date": "2026-09-27T20:47:01+02:00",
+            "committer_date": "2026-09-27T20:47:01+02:00",
+            "subject": "os G3.5"
+          },
+          {
+            "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+            "author_date": "2026-09-27T18:30:33+02:00",
+            "committer_date": "2026-09-27T18:30:33+02:00",
+            "subject": "training language testing, openspec work, sketch, new research"
+          },
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+      "bytes": 10005,
+      "sha256": "8070bfbd49bc49491b267ebfe86b5b98a885e3fa6d9dd5ac96b4ce8978367a84",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 07:46:27.654162021 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793873569469728694,
+        "mtime_utc": "2026-11-05T10:12:49.469729+00:00",
+        "ctime_ns": 1793873569469728694,
+        "ctime_utc": "2026-11-05T10:12:49.469729+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+            "author_date": "2026-11-05T13:21:21+01:00",
+            "committer_date": "2026-11-05T13:21:21+01:00",
+            "subject": "Add scoped products and retained resource ownership"
+          },
+          {
+            "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+            "author_date": "2026-11-04T22:55:03+01:00",
+            "committer_date": "2026-11-04T22:55:03+01:00",
+            "subject": "Extend shared workflow effects, filtering and fusion"
+          },
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          },
+          {
+            "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+            "author_date": "2026-11-03T08:41:38+01:00",
+            "committer_date": "2026-11-03T08:41:38+01:00",
+            "subject": "1st language proposal and subsequent openspec edits"
+          },
+          {
+            "commit": "fdf996422552512703609eaf06010a142d4572da",
+            "author_date": "2026-10-06T08:33:04+02:00",
+            "committer_date": "2026-10-06T08:33:04+02:00",
+            "subject": "os component selectors"
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/README.md",
+      "bytes": 6125,
+      "sha256": "2707ca090f625be2028811e6102683e21823331548072df3486f2d04ce6f2cb3",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:48:34.191535131 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790139061521974559,
+        "mtime_utc": "2026-09-23T04:51:01.521975+00:00",
+        "ctime_ns": 1790139061521974559,
+        "ctime_utc": "2026-09-23T04:51:01.521975+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/README.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/anima-llm-adapter.md",
+      "bytes": 8561,
+      "sha256": "c6997ca1e33bcf480b78c98caae85c32e6716328198aebc94b4caffb1a12c672",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:12:48.604629279 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790136827802707549,
+        "mtime_utc": "2026-09-23T04:13:47.802707+00:00",
+        "ctime_ns": 1790136827802707549,
+        "ctime_utc": "2026-09-23T04:13:47.802707+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/anima-llm-adapter.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/answer-edited.md",
+      "bytes": 23025,
+      "sha256": "10a9c46ef290d7b168596113a24362fb63b9167047a2e53da3eb8edea977cf58",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 06:55:01.865790954 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790146501893792436,
+        "mtime_utc": "2026-09-23T06:55:01.893793+00:00",
+        "ctime_ns": 1790146501893792436,
+        "ctime_utc": "2026-09-23T06:55:01.893793+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "b570aeb350b9c8a825d2249fcffe901605aca57e",
+          "author_date": "2026-09-24T06:56:30+02:00",
+          "committer_date": "2026-09-24T06:56:30+02:00",
+          "subject": "ongoing sketch"
+        },
+        "last_recorded": {
+          "commit": "b570aeb350b9c8a825d2249fcffe901605aca57e",
+          "author_date": "2026-09-24T06:56:30+02:00",
+          "committer_date": "2026-09-24T06:56:30+02:00",
+          "subject": "ongoing sketch"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/answer-edited.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b570aeb350b9c8a825d2249fcffe901605aca57e",
+            "author_date": "2026-09-24T06:56:30+02:00",
+            "committer_date": "2026-09-24T06:56:30+02:00",
+            "subject": "ongoing sketch"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/autoencoders-vae.md",
+      "bytes": 28478,
+      "sha256": "fe54b9575184006f0dccc09b2a1256b52f7761a55c26d609ae7e42abdb429aba",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 03:20:14.623005583 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790134286800735155,
+        "mtime_utc": "2026-09-23T03:31:26.800735+00:00",
+        "ctime_ns": 1790134286800735155,
+        "ctime_utc": "2026-09-23T03:31:26.800735+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/autoencoders-vae.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/conditioning-and-control-networks.md",
+      "bytes": 21937,
+      "sha256": "2bc5822c66043a71297c8fc8edd10f222166d12d47a3c47f0f015125a502f51a",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:41:37.032182450 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790138604801686487,
+        "mtime_utc": "2026-09-23T04:43:24.801687+00:00",
+        "ctime_ns": 1790138604801686487,
+        "ctime_utc": "2026-09-23T04:43:24.801687+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/conditioning-and-control-networks.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/distributed-training-execution.md",
+      "bytes": 11180,
+      "sha256": "5762e3e6d9d92b1550e58d30fe7801fe069e195ee19f3e871039b159d105ab8a",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:22:45.442967294 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790137770394579500,
+        "mtime_utc": "2026-09-23T04:29:30.394579+00:00",
+        "ctime_ns": 1790137770394579500,
+        "ctime_utc": "2026-09-23T04:29:30.394579+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/distributed-training-execution.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/hackable-diffusion.md",
+      "bytes": 24910,
+      "sha256": "94af5aea31046af9cbd16337b10932dc933ffbcd57a959d2988b505916335997",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 03:59:19.517505879 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790136071957019322,
+        "mtime_utc": "2026-09-23T04:01:11.957019+00:00",
+        "ctime_ns": 1790136071957019322,
+        "ctime_utc": "2026-09-23T04:01:11.957019+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/hackable-diffusion.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md",
+      "bytes": 158086,
+      "sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+      "filesystem": {
+        "birth_display_utc": "2026-10-28 12:42:05.071890905 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793191325123894245,
+        "mtime_utc": "2026-10-28T12:42:05.123894+00:00",
+        "ctime_ns": 1793191332255287934,
+        "ctime_utc": "2026-10-28T12:42:12.255288+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "504dcf88dcdb2b76218e19af89117f7f7de22c59",
+          "author_date": "2026-10-30T06:55:45+01:00",
+          "committer_date": "2026-10-30T06:55:45+01:00",
+          "subject": "Qualify xDSL plan verification, fusion, and workflow composition"
+        },
+        "last_recorded": {
+          "commit": "504dcf88dcdb2b76218e19af89117f7f7de22c59",
+          "author_date": "2026-10-30T06:55:45+01:00",
+          "committer_date": "2026-10-30T06:55:45+01:00",
+          "subject": "Qualify xDSL plan verification, fusion, and workflow composition"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "504dcf88dcdb2b76218e19af89117f7f7de22c59",
+            "author_date": "2026-10-30T06:55:45+01:00",
+            "committer_date": "2026-10-30T06:55:45+01:00",
+            "subject": "Qualify xDSL plan verification, fusion, and workflow composition"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/llm-training.md",
+      "bytes": 54114,
+      "sha256": "528c669b2d13fe3bcf458c945931affc47bbccc711a566c966b67f8646e98986",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 03:45:44.287129219 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790135838670646742,
+        "mtime_utc": "2026-09-23T03:57:18.670647+00:00",
+        "ctime_ns": 1790135838670646742,
+        "ctime_utc": "2026-09-23T03:57:18.670647+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/llm-training.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/mock-a-execution-mechanism.md",
+      "bytes": 28385,
+      "sha256": "44fe970b48428dc2c3f62e5c6f11ce5379fa4251c7c8b75a273eb1ad82bfbde9",
+      "filesystem": {
+        "birth_display_utc": "2026-10-06 06:24:42.844418871 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791268001431213694,
+        "mtime_utc": "2026-10-06T06:26:41.431214+00:00",
+        "ctime_ns": 1791268001431213694,
+        "ctime_utc": "2026-10-06T06:26:41.431214+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "5218fdb1546f7c485647f4f1ba86470f7c88a867",
+          "author_date": "2026-10-09T06:29:23+02:00",
+          "committer_date": "2026-10-09T06:29:23+02:00",
+          "subject": "code level mock"
+        },
+        "last_recorded": {
+          "commit": "5218fdb1546f7c485647f4f1ba86470f7c88a867",
+          "author_date": "2026-10-09T06:29:23+02:00",
+          "committer_date": "2026-10-09T06:29:23+02:00",
+          "subject": "code level mock"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/mock-a-execution-mechanism.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "5218fdb1546f7c485647f4f1ba86470f7c88a867",
+            "author_date": "2026-10-09T06:29:23+02:00",
+            "committer_date": "2026-10-09T06:29:23+02:00",
+            "subject": "code level mock"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/model-surgery-and-staged-topology.md",
+      "bytes": 29515,
+      "sha256": "22cdd0aec509d6d486fefd949e0dee7ca1e643af2f37633f61b39ea6fc1bf80f",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:47:25.873973947 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790138871500186095,
+        "mtime_utc": "2026-09-23T04:47:51.500186+00:00",
+        "ctime_ns": 1790138871500186095,
+        "ctime_utc": "2026-09-23T04:47:51.500186+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/model-surgery-and-staged-topology.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/pixel-space.md",
+      "bytes": 18533,
+      "sha256": "9cb4bbba63fdd4fa2ddd9c9323ce75ed46a8eab3d663ed91cae6e3e8f2209920",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 03:05:11.606908084 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790132760840422173,
+        "mtime_utc": "2026-09-23T03:06:00.840422+00:00",
+        "ctime_ns": 1790132760840422173,
+        "ctime_utc": "2026-09-23T03:06:00.840422+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/pixel-space.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/precision-and-quantization-training.md",
+      "bytes": 16102,
+      "sha256": "4ff4398ff93446a248255c486e932aa52a4efb984b5360ebcb3e73f89b107a22",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:19:39.284493908 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790137250909992133,
+        "mtime_utc": "2026-09-23T04:20:50.909992+00:00",
+        "ctime_ns": 1790137250909992133,
+        "ctime_utc": "2026-09-23T04:20:50.909992+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/precision-and-quantization-training.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/preference-and-rl-post-training.md",
+      "bytes": 24469,
+      "sha256": "6b762b3813c20f575bcc3a1c481c2d524675a5de059a7347937708f744ab5e47",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:34:54.322621127 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790138150232935856,
+        "mtime_utc": "2026-09-23T04:35:50.232936+00:00",
+        "ctime_ns": 1790138150232935856,
+        "ctime_utc": "2026-09-23T04:35:50.232936+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/preference-and-rl-post-training.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/teacher-student-distillation.md",
+      "bytes": 21232,
+      "sha256": "789c1579c7b7116a853913d85cab3409cdc90e5ef4d818f62b69a7bd627db23e",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 02:51:32.771226478 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790132751394937904,
+        "mtime_utc": "2026-09-23T03:05:51.394938+00:00",
+        "ctime_ns": 1790132751394937904,
+        "ctime_utc": "2026-09-23T03:05:51.394938+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/teacher-student-distillation.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-concrete.md",
+      "bytes": 104117,
+      "sha256": "3c9c13948621339611d4c20d06cf40bc1b42ba41db0eae6dfee9998709d342c2",
+      "filesystem": {
+        "birth_display_utc": "2026-10-01 21:04:02.818154962 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790888615360283500,
+        "mtime_utc": "2026-10-01T21:03:35.360283+00:00",
+        "ctime_ns": 1790888656674445026,
+        "ctime_utc": "2026-10-01T21:04:16.674445+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+          "author_date": "2026-10-02T01:08:25+02:00",
+          "committer_date": "2026-10-02T01:08:25+02:00",
+          "subject": "concrete research"
+        },
+        "last_recorded": {
+          "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+          "author_date": "2026-10-02T01:08:25+02:00",
+          "committer_date": "2026-10-02T01:08:25+02:00",
+          "subject": "concrete research"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-concrete.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+            "author_date": "2026-10-02T01:08:25+02:00",
+            "committer_date": "2026-10-02T01:08:25+02:00",
+            "subject": "concrete research"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-research.md",
+      "bytes": 70800,
+      "sha256": "2965625eb7fbfa37aa21464c7341fe24a2f714ab7d4a46934581f67e91fd9ea3",
+      "filesystem": {
+        "birth_display_utc": "2026-10-01 18:31:32.677760328 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790829271233689900,
+        "mtime_utc": "2026-10-01T04:34:31.233690+00:00",
+        "ctime_ns": 1790879492684895980,
+        "ctime_utc": "2026-10-01T18:31:32.684896+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+          "author_date": "2026-10-02T01:08:25+02:00",
+          "committer_date": "2026-10-02T01:08:25+02:00",
+          "subject": "concrete research"
+        },
+        "last_recorded": {
+          "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+          "author_date": "2026-10-02T01:08:25+02:00",
+          "committer_date": "2026-10-02T01:08:25+02:00",
+          "subject": "concrete research"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-research.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+            "author_date": "2026-10-02T01:08:25+02:00",
+            "committer_date": "2026-10-02T01:08:25+02:00",
+            "subject": "concrete research"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/trainer-boundary-adversarial-review.md",
+      "bytes": 37457,
+      "sha256": "25332ecc0617aa84180d12beff3e4308f3e702e6f27701dce41b14932ed5636a",
+      "filesystem": {
+        "birth_display_utc": "2026-10-01 18:31:32.709761996 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790835416814870300,
+        "mtime_utc": "2026-10-01T06:16:56.814870+00:00",
+        "ctime_ns": 1790879492713493153,
+        "ctime_utc": "2026-10-01T18:31:32.713493+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+          "author_date": "2026-10-02T01:08:25+02:00",
+          "committer_date": "2026-10-02T01:08:25+02:00",
+          "subject": "concrete research"
+        },
+        "last_recorded": {
+          "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+          "author_date": "2026-10-02T01:08:25+02:00",
+          "committer_date": "2026-10-02T01:08:25+02:00",
+          "subject": "concrete research"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/trainer-boundary-adversarial-review.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+            "author_date": "2026-10-02T01:08:25+02:00",
+            "committer_date": "2026-10-02T01:08:25+02:00",
+            "subject": "concrete research"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/training-data-pipeline.md",
+      "bytes": 11111,
+      "sha256": "76d491db34902c6905f3c1fa5b42fb668b0dc496729588541409cc0d96c9b1f5",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 04:25:16.764257190 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790137764670244549,
+        "mtime_utc": "2026-09-23T04:29:24.670245+00:00",
+        "ctime_ns": 1790137764670244549,
+        "ctime_utc": "2026-09-23T04:29:24.670245+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/training-data-pipeline.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+      "bytes": 134588,
+      "sha256": "2624813488f73856d32bf082609e87c89d4830357d36b7c3a66034c46f79c270",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 20:18:22.641508877 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790896476972475497,
+        "mtime_utc": "2026-10-01T23:14:36.972475+00:00",
+        "ctime_ns": 1790896476972475497,
+        "ctime_utc": "2026-10-01T23:14:36.972475+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "b570aeb350b9c8a825d2249fcffe901605aca57e",
+          "author_date": "2026-09-24T06:56:30+02:00",
+          "committer_date": "2026-09-24T06:56:30+02:00",
+          "subject": "ongoing sketch"
+        },
+        "last_recorded": {
+          "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+          "author_date": "2026-10-03T02:08:47+02:00",
+          "committer_date": "2026-10-03T02:08:47+02:00",
+          "subject": "os G3.8"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "e0a6f9bb2f7299bf576dfdd1cf5a1c6e8c9ac627",
+            "author_date": "2026-10-01T06:00:00+02:00",
+            "committer_date": "2026-10-01T06:00:00+02:00",
+            "subject": "os G.37"
+          },
+          {
+            "commit": "931d8e3c633283d7d22e93219a4c318f8803dd74",
+            "author_date": "2026-09-27T20:47:01+02:00",
+            "committer_date": "2026-09-27T20:47:01+02:00",
+            "subject": "os G3.5"
+          },
+          {
+            "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+            "author_date": "2026-09-27T18:30:33+02:00",
+            "committer_date": "2026-09-27T18:30:33+02:00",
+            "subject": "training language testing, openspec work, sketch, new research"
+          },
+          {
+            "commit": "b570aeb350b9c8a825d2249fcffe901605aca57e",
+            "author_date": "2026-09-24T06:56:30+02:00",
+            "committer_date": "2026-09-24T06:56:30+02:00",
+            "subject": "ongoing sketch"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/video-audio-training.md",
+      "bytes": 20168,
+      "sha256": "f54daf5855bb4223e4049b529b5c713046e49c06979ce3b4834b3fb34ed6c877",
+      "filesystem": {
+        "birth_display_utc": "2026-09-23 03:18:42.535906146 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790133540357276794,
+        "mtime_utc": "2026-09-23T03:19:00.357277+00:00",
+        "ctime_ns": 1790133540357276794,
+        "ctime_utc": "2026-09-23T03:19:00.357277+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "last_recorded": {
+          "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+          "author_date": "2026-09-23T09:01:11+02:00",
+          "committer_date": "2026-09-23T09:01:11+02:00",
+          "subject": "design changes."
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/video-audio-training.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md",
+      "bytes": 66271,
+      "sha256": "7194cb7cd6bad5f2090133100b0ad4a66320c2d46ade6275786b6e594e65bfd2",
+      "filesystem": {
+        "birth_display_utc": "2026-11-02 21:43:18.527981717 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793655798551983226,
+        "mtime_utc": "2026-11-02T21:43:18.551983+00:00",
+        "ctime_ns": 1793655798551983226,
+        "ctime_utc": "2026-11-02T21:43:18.551983+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+          "author_date": "2026-11-03T08:41:38+01:00",
+          "committer_date": "2026-11-03T08:41:38+01:00",
+          "subject": "1st language proposal and subsequent openspec edits"
+        },
+        "last_recorded": {
+          "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+          "author_date": "2026-11-03T08:41:38+01:00",
+          "committer_date": "2026-11-03T08:41:38+01:00",
+          "subject": "1st language proposal and subsequent openspec edits"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/research/xdsl_language_0_1_proposal.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+            "author_date": "2026-11-03T08:41:38+01:00",
+            "committer_date": "2026-11-03T08:41:38+01:00",
+            "subject": "1st language proposal and subsequent openspec edits"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "bytes": 37177,
+      "sha256": "f1ec601e4a3263421edc2165465feca433ca004ab6570a14733c6c4500026d2d",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 07:44:29.705644580 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793691869708274830,
+        "mtime_utc": "2026-11-03T07:44:29.708275+00:00",
+        "ctime_ns": 1793691869709644798,
+        "ctime_utc": "2026-11-03T07:44:29.709645+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+          "author_date": "2026-11-03T22:29:08+01:00",
+          "committer_date": "2026-11-03T22:29:08+01:00",
+          "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          },
+          {
+            "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+            "author_date": "2026-11-03T08:41:38+01:00",
+            "committer_date": "2026-11-03T08:41:38+01:00",
+            "subject": "1st language proposal and subsequent openspec edits"
+          },
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+            "author_date": "2026-09-27T18:30:33+02:00",
+            "committer_date": "2026-09-27T18:30:33+02:00",
+            "subject": "training language testing, openspec work, sketch, new research"
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "bytes": 12795,
+      "sha256": "987430a9031be2d13b29b2945aed9fdae9869c30462368838ecac46e93790444",
+      "filesystem": {
+        "birth_display_utc": "2026-09-21 03:58:18.633411998 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789973958333449833,
+        "mtime_utc": "2026-09-21T06:59:18.333450+00:00",
+        "ctime_ns": 1789973958333449833,
+        "ctime_utc": "2026-09-21T06:59:18.333450+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+          "author_date": "2026-09-21T09:02:35+02:00",
+          "committer_date": "2026-09-21T09:02:35+02:00",
+          "subject": "openspec updates after doublecheck"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "bytes": 10175,
+      "sha256": "33d8a3770a42e332924afa34e40f83704137254beb732685f57f2e1ccaa3f9b8",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:23:08.653325999 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789963670402141712,
+        "mtime_utc": "2026-09-21T04:07:50.402142+00:00",
+        "ctime_ns": 1789963670402141712,
+        "ctime_utc": "2026-09-21T04:07:50.402142+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+          "author_date": "2026-09-21T09:02:35+02:00",
+          "committer_date": "2026-09-21T09:02:35+02:00",
+          "subject": "openspec updates after doublecheck"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/component-qualified-selectors/spec.md",
+      "bytes": 6489,
+      "sha256": "7e2d829d0d5d2f1eae6c6370aa20d6225d56062f3066d9af5de95298788b89d6",
+      "filesystem": {
+        "birth_display_utc": "2026-10-05 04:15:58.824212378 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791173839709904258,
+        "mtime_utc": "2026-10-05T04:17:19.709904+00:00",
+        "ctime_ns": 1791173839709904258,
+        "ctime_utc": "2026-10-05T04:17:19.709904+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "fdf996422552512703609eaf06010a142d4572da",
+          "author_date": "2026-10-06T08:33:04+02:00",
+          "committer_date": "2026-10-06T08:33:04+02:00",
+          "subject": "os component selectors"
+        },
+        "last_recorded": {
+          "commit": "fdf996422552512703609eaf06010a142d4572da",
+          "author_date": "2026-10-06T08:33:04+02:00",
+          "committer_date": "2026-10-06T08:33:04+02:00",
+          "subject": "os component selectors"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/component-qualified-selectors/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "fdf996422552512703609eaf06010a142d4572da",
+            "author_date": "2026-10-06T08:33:04+02:00",
+            "committer_date": "2026-10-06T08:33:04+02:00",
+            "subject": "os component selectors"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "bytes": 4478,
+      "sha256": "c9fa95ed0e05e4a542897e402fc638773d5dfb6aa399bfd634663176afd390ef",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:23:08.648955471 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791094581319053495,
+        "mtime_utc": "2026-10-04T06:16:21.319054+00:00",
+        "ctime_ns": 1791094581319053495,
+        "ctime_utc": "2026-10-04T06:16:21.319054+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+          "author_date": "2026-10-05T05:41:01+02:00",
+          "committer_date": "2026-10-05T05:41:01+02:00",
+          "subject": "os audit closeout, modelspec fixes"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+            "author_date": "2026-10-05T05:41:01+02:00",
+            "committer_date": "2026-10-05T05:41:01+02:00",
+            "subject": "os audit closeout, modelspec fixes"
+          },
+          {
+            "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+            "author_date": "2026-10-04T06:39:22+02:00",
+            "committer_date": "2026-10-04T06:39:22+02:00",
+            "subject": "4.6"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "bytes": 15010,
+      "sha256": "944018b6d95d9b02503500d26c7b14a1bf925b84b652e5df1f6b125d2cce7142",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:23:08.664956236 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791087864670869593,
+        "mtime_utc": "2026-10-04T04:24:24.670870+00:00",
+        "ctime_ns": 1791087864670869593,
+        "ctime_utc": "2026-10-04T04:24:24.670870+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+          "author_date": "2026-10-04T06:39:22+02:00",
+          "committer_date": "2026-10-04T06:39:22+02:00",
+          "subject": "4.6"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+            "author_date": "2026-10-04T06:39:22+02:00",
+            "committer_date": "2026-10-04T06:39:22+02:00",
+            "subject": "4.6"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "bytes": 8955,
+      "sha256": "b73e77e9d19be0c0b9f5340f555115e543e2da8cbefe36edb2a5980067cbc332",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:23:08.664956236 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791094653220072847,
+        "mtime_utc": "2026-10-04T06:17:33.220073+00:00",
+        "ctime_ns": 1791094653220072847,
+        "ctime_utc": "2026-10-04T06:17:33.220073+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+          "author_date": "2026-10-05T05:41:01+02:00",
+          "committer_date": "2026-10-05T05:41:01+02:00",
+          "subject": "os audit closeout, modelspec fixes"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+            "author_date": "2026-10-05T05:41:01+02:00",
+            "committer_date": "2026-10-05T05:41:01+02:00",
+            "subject": "os audit closeout, modelspec fixes"
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "bytes": 1271,
+      "sha256": "9f97f724882c6b794f9d0229f770ee36ffd9d6167d5f1e1a5e0a56a5336d519f",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:39:44.174642248 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789963678506567080,
+        "mtime_utc": "2026-09-21T04:07:58.506567+00:00",
+        "ctime_ns": 1789963678506567080,
+        "ctime_utc": "2026-09-21T04:07:58.506567+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+          "author_date": "2026-09-21T09:02:35+02:00",
+          "committer_date": "2026-09-21T09:02:35+02:00",
+          "subject": "openspec updates after doublecheck"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "bytes": 1285,
+      "sha256": "857388a041b497769a8427aab09883e3d4967383ad970e6c2721af182a458b3a",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:39:44.181341902 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1789963678522567921,
+        "mtime_utc": "2026-09-21T04:07:58.522568+00:00",
+        "ctime_ns": 1789963678522567921,
+        "ctime_utc": "2026-09-21T04:07:58.522568+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+          "author_date": "2026-09-21T09:02:35+02:00",
+          "committer_date": "2026-09-21T09:02:35+02:00",
+          "subject": "openspec updates after doublecheck"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "bytes": 11836,
+      "sha256": "fa7e2df29918c20fba70eb2266f63496758dd6b6eea2cf5dfed0b471fd6c5b2e",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:19:52.293911355 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791170967463827475,
+        "mtime_utc": "2026-10-05T03:29:27.463827+00:00",
+        "ctime_ns": 1791170967463827475,
+        "ctime_utc": "2026-10-05T03:29:27.463827+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+          "author_date": "2026-10-05T05:41:01+02:00",
+          "committer_date": "2026-10-05T05:41:01+02:00",
+          "subject": "os audit closeout, modelspec fixes"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+            "author_date": "2026-10-05T05:41:01+02:00",
+            "committer_date": "2026-10-05T05:41:01+02:00",
+            "subject": "os audit closeout, modelspec fixes"
+          },
+          {
+            "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+            "author_date": "2026-10-04T06:39:22+02:00",
+            "committer_date": "2026-10-04T06:39:22+02:00",
+            "subject": "4.6"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "bytes": 18374,
+      "sha256": "1038ca11a0b430e5357c2c8258b141f0999d1d11f25da07c4696ad33b351ac58",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:21:38.723996765 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791051133873924380,
+        "mtime_utc": "2026-10-03T18:12:13.873924+00:00",
+        "ctime_ns": 1791051133873924380,
+        "ctime_utc": "2026-10-03T18:12:13.873924+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "cf0f3be9fd3a9325705eba0aa321379f975ec83d",
+          "author_date": "2026-10-03T22:40:45+02:00",
+          "committer_date": "2026-10-03T22:40:45+02:00",
+          "subject": "4.3"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "cf0f3be9fd3a9325705eba0aa321379f975ec83d",
+            "author_date": "2026-10-03T22:40:45+02:00",
+            "committer_date": "2026-10-03T22:40:45+02:00",
+            "subject": "4.3"
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "bytes": 43302,
+      "sha256": "d4175e0c9a3372cbc843815d03799a6f321d8038da479684a389b50a4b12ef15",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:21:38.725580858 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791150078828011807,
+        "mtime_utc": "2026-10-04T21:41:18.828012+00:00",
+        "ctime_ns": 1791150078828011807,
+        "ctime_utc": "2026-10-04T21:41:18.828012+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+          "author_date": "2026-10-05T05:41:01+02:00",
+          "committer_date": "2026-10-05T05:41:01+02:00",
+          "subject": "os audit closeout, modelspec fixes"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+            "author_date": "2026-10-05T05:41:01+02:00",
+            "committer_date": "2026-10-05T05:41:01+02:00",
+            "subject": "os audit closeout, modelspec fixes"
+          },
+          {
+            "commit": "2077904f2b1a180598fc3280dec156c910e79f59",
+            "author_date": "2026-10-04T04:14:31+02:00",
+            "committer_date": "2026-10-04T04:14:31+02:00",
+            "subject": "4.4"
+          },
+          {
+            "commit": "cf0f3be9fd3a9325705eba0aa321379f975ec83d",
+            "author_date": "2026-10-03T22:40:45+02:00",
+            "committer_date": "2026-10-03T22:40:45+02:00",
+            "subject": "4.3"
+          },
+          {
+            "commit": "6e36264e87663d67ca92fef672143fd2822af119",
+            "author_date": "2026-10-03T04:19:34+02:00",
+            "committer_date": "2026-10-03T04:19:34+02:00",
+            "subject": "os g 4.1"
+          },
+          {
+            "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+            "author_date": "2026-09-27T18:30:33+02:00",
+            "committer_date": "2026-09-27T18:30:33+02:00",
+            "subject": "training language testing, openspec work, sketch, new research"
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "bytes": 18484,
+      "sha256": "1220ada14b2d3c3b0e4e0b175713543ddd4072db6d16625fa76af3e51118b750",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 07:44:36.781543508 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793691876781543508,
+        "mtime_utc": "2026-11-03T07:44:36.781543+00:00",
+        "ctime_ns": 1793691876789543934,
+        "ctime_utc": "2026-11-03T07:44:36.789544+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+          "author_date": "2026-11-03T22:29:08+01:00",
+          "committer_date": "2026-11-03T22:29:08+01:00",
+          "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          },
+          {
+            "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+            "author_date": "2026-11-03T08:41:38+01:00",
+            "committer_date": "2026-11-03T08:41:38+01:00",
+            "subject": "1st language proposal and subsequent openspec edits"
+          },
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+            "author_date": "2026-09-27T18:30:33+02:00",
+            "committer_date": "2026-09-27T18:30:33+02:00",
+            "subject": "training language testing, openspec work, sketch, new research"
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "bytes": 9918,
+      "sha256": "c17c122ef4c7fafc62af6eab7f1fa884e24c418b47cb9a8ad4f3f5dfb78f0b1e",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:23:08.669409097 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1791082931854886085,
+        "mtime_utc": "2026-10-04T03:02:11.854886+00:00",
+        "ctime_ns": 1791082931854886085,
+        "ctime_utc": "2026-10-04T03:02:11.854886+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+          "author_date": "2026-10-04T06:39:22+02:00",
+          "committer_date": "2026-10-04T06:39:22+02:00",
+          "subject": "4.6"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/training-observability/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+            "author_date": "2026-10-04T06:39:22+02:00",
+            "committer_date": "2026-10-04T06:39:22+02:00",
+            "subject": "4.6"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "bytes": 17160,
+      "sha256": "5d2e66b162db3481c3e84d493ccef57355b0d34ead876c1d8098162b9d423126",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:21:38.721828282 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790979835677651489,
+        "mtime_utc": "2026-10-02T22:23:55.677651+00:00",
+        "ctime_ns": 1790979835677651489,
+        "ctime_utc": "2026-10-02T22:23:55.677651+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+          "author_date": "2026-10-03T02:08:47+02:00",
+          "committer_date": "2026-10-03T02:08:47+02:00",
+          "subject": "os G3.8"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "bytes": 14763,
+      "sha256": "a1819144c533a1e80d3017e48c668d12a9f98c0785f4c1a7a4e749427c453757",
+      "filesystem": {
+        "birth_display_utc": "2026-09-19 19:21:38.714779894 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1790924367319331925,
+        "mtime_utc": "2026-10-02T06:59:27.319332+00:00",
+        "ctime_ns": 1790924367319331925,
+        "ctime_utc": "2026-10-02T06:59:27.319332+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+          "author_date": "2026-10-03T02:08:47+02:00",
+          "committer_date": "2026-10-03T02:08:47+02:00",
+          "subject": "os G3.8"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md",
+      "bytes": 27127,
+      "sha256": "18a5ffbfb08882ec6fc7330b7ba72755fcc357aa7278de2b257fea1d4adacd83",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 07:44:15.140852285 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793873569469728694,
+        "mtime_utc": "2026-11-05T10:12:49.469729+00:00",
+        "ctime_ns": 1793873569469728694,
+        "ctime_utc": "2026-11-05T10:12:49.469729+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+          "author_date": "2026-11-03T22:29:08+01:00",
+          "committer_date": "2026-11-03T22:29:08+01:00",
+          "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+        },
+        "last_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/specs/workflow-composition/spec.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+            "author_date": "2026-11-05T13:21:21+01:00",
+            "committer_date": "2026-11-05T13:21:21+01:00",
+            "subject": "Add scoped products and retained resource ownership"
+          },
+          {
+            "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+            "author_date": "2026-11-04T22:55:03+01:00",
+            "committer_date": "2026-11-04T22:55:03+01:00",
+            "subject": "Extend shared workflow effects, filtering and fusion"
+          },
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          }
+        ]
+      }
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "bytes": 32132,
+      "sha256": "ec2e4a9a55a761fe2cf265e192b07378d22a6a2ae5cbf457bddbd2a8a9ac120d",
+      "filesystem": {
+        "birth_display_utc": "2026-11-03 07:46:19.701727315 +0000",
+        "birth_is_original_document_creation": false,
+        "mtime_ns": 1793875743659927813,
+        "mtime_utc": "2026-11-05T10:49:03.659928+00:00",
+        "ctime_ns": 1793875743659927813,
+        "ctime_utc": "2026-11-05T10:49:03.659928+00:00",
+        "ctime_meaning": "inode metadata change, not file creation"
+      },
+      "git": {
+        "first_recorded": {
+          "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+          "author_date": "2026-09-20T05:23:38+02:00",
+          "committer_date": "2026-09-20T05:23:38+02:00",
+          "subject": "openspec work first"
+        },
+        "last_recorded": {
+          "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+          "author_date": "2026-11-05T13:21:21+01:00",
+          "committer_date": "2026-11-05T13:21:21+01:00",
+          "subject": "Add scoped products and retained resource ownership"
+        },
+        "earliest_recorded_path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+        "renames_newest_first": [],
+        "commits_newest_first": [
+          {
+            "commit": "f984c41aa8a29f34c0dd10e83677cb66e8d90d45",
+            "author_date": "2026-11-05T13:21:21+01:00",
+            "committer_date": "2026-11-05T13:21:21+01:00",
+            "subject": "Add scoped products and retained resource ownership"
+          },
+          {
+            "commit": "a09bcf5dc87461e4638d012cecece15ebf8946d4",
+            "author_date": "2026-11-04T22:55:03+01:00",
+            "committer_date": "2026-11-04T22:55:03+01:00",
+            "subject": "Extend shared workflow effects, filtering and fusion"
+          },
+          {
+            "commit": "8ac18bd5ce900c83eee952eef356372cddd08281",
+            "author_date": "2026-11-04T14:03:33+01:00",
+            "committer_date": "2026-11-04T14:03:33+01:00",
+            "subject": "Qualify shared xDSL workflow lifecycle and cold execution"
+          },
+          {
+            "commit": "61467849d851c3ada04cc08cb11d6e3acd7ee466",
+            "author_date": "2026-11-04T12:39:36+01:00",
+            "committer_date": "2026-11-04T12:39:36+01:00",
+            "subject": "Lower xDSL workflows through existing owner services"
+          },
+          {
+            "commit": "8f92019170a9691cdf748dd4d241068486d869a4",
+            "author_date": "2026-11-04T08:26:49+01:00",
+            "committer_date": "2026-11-04T08:26:49+01:00",
+            "subject": "Verify xDSL workflow lifecycle and scoped resource contracts"
+          },
+          {
+            "commit": "b145419c49a33088f3f5d799b8c583e829082335",
+            "author_date": "2026-11-03T22:29:08+01:00",
+            "committer_date": "2026-11-03T22:29:08+01:00",
+            "subject": "Define shared xDSL workflow contracts and lifecycle reference"
+          },
+          {
+            "commit": "aa05e859c5541c187a93f745ff2eb46b360f6121",
+            "author_date": "2026-11-03T08:41:38+01:00",
+            "committer_date": "2026-11-03T08:41:38+01:00",
+            "subject": "1st language proposal and subsequent openspec edits"
+          },
+          {
+            "commit": "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48",
+            "author_date": "2026-10-04T06:39:22+02:00",
+            "committer_date": "2026-10-04T06:39:22+02:00",
+            "subject": "4.6"
+          },
+          {
+            "commit": "2077904f2b1a180598fc3280dec156c910e79f59",
+            "author_date": "2026-10-04T04:14:31+02:00",
+            "committer_date": "2026-10-04T04:14:31+02:00",
+            "subject": "4.4"
+          },
+          {
+            "commit": "cf0f3be9fd3a9325705eba0aa321379f975ec83d",
+            "author_date": "2026-10-03T22:40:45+02:00",
+            "committer_date": "2026-10-03T22:40:45+02:00",
+            "subject": "4.3"
+          },
+          {
+            "commit": "6e36264e87663d67ca92fef672143fd2822af119",
+            "author_date": "2026-10-03T04:19:34+02:00",
+            "committer_date": "2026-10-03T04:19:34+02:00",
+            "subject": "os g 4.1"
+          },
+          {
+            "commit": "00d9bb637f874f0cd1e1509f74dbfe618b4daf14",
+            "author_date": "2026-10-03T02:08:47+02:00",
+            "committer_date": "2026-10-03T02:08:47+02:00",
+            "subject": "os G3.8"
+          },
+          {
+            "commit": "e0a6f9bb2f7299bf576dfdd1cf5a1c6e8c9ac627",
+            "author_date": "2026-10-01T06:00:00+02:00",
+            "committer_date": "2026-10-01T06:00:00+02:00",
+            "subject": "os G.37"
+          },
+          {
+            "commit": "931d8e3c633283d7d22e93219a4c318f8803dd74",
+            "author_date": "2026-09-27T20:47:01+02:00",
+            "committer_date": "2026-09-27T20:47:01+02:00",
+            "subject": "os G3.5"
+          },
+          {
+            "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+            "author_date": "2026-09-27T18:30:33+02:00",
+            "committer_date": "2026-09-27T18:30:33+02:00",
+            "subject": "training language testing, openspec work, sketch, new research"
+          },
+          {
+            "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+            "author_date": "2026-09-23T09:01:11+02:00",
+            "committer_date": "2026-09-23T09:01:11+02:00",
+            "subject": "design changes."
+          },
+          {
+            "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+            "author_date": "2026-09-21T09:02:35+02:00",
+            "committer_date": "2026-09-21T09:02:35+02:00",
+            "subject": "openspec updates after doublecheck"
+          },
+          {
+            "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+            "author_date": "2026-09-20T05:23:38+02:00",
+            "committer_date": "2026-09-20T05:23:38+02:00",
+            "subject": "openspec work first"
+          }
+        ]
+      }
+    }
+  ],
+  "root_items": [
+    {
+      "path": "docs_design/models-strategy-trainer/candidate_comparison.md",
+      "kind": "file",
+      "bytes": 19880
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/candidate_comparison_evidence.json",
+      "kind": "file",
+      "bytes": 14444
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/comparison_fixtures.json",
+      "kind": "file",
+      "bytes": 4345
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/evidence_comparison",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/evidence_grouping",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/evidence_matched",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/executable_spike",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/execution_candidate",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+      "kind": "file",
+      "bytes": 43965
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/grant_target.py",
+      "kind": "file",
+      "bytes": 8418
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/grouping_comparison.md",
+      "kind": "file",
+      "bytes": 9819
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/inventory_01_02.7z",
+      "kind": "file",
+      "bytes": 19718
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/machinery_comparison.md",
+      "kind": "file",
+      "bytes": 28211
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/matched_comparison.md",
+      "kind": "file",
+      "bytes": 22825
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/matched_comparison_preparation.json",
+      "kind": "file",
+      "bytes": 9874
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/mixed_target.py",
+      "kind": "file",
+      "bytes": 27277
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/model_target.py",
+      "kind": "file",
+      "bytes": 23799
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "kind": "file",
+      "bytes": 71385
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/pliron_candidate",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/provisional_tree.md",
+      "kind": "file",
+      "bytes": 21512
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "kind": "file",
+      "bytes": 101919
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion.md",
+      "kind": "file",
+      "bytes": 32955
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_discussion_external.md",
+      "kind": "file",
+      "bytes": 42749
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "kind": "file",
+      "bytes": 93405
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "kind": "file",
+      "bytes": 26985
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "kind": "file",
+      "bytes": 102578
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_candidate",
+      "kind": "directory",
+      "bytes": 4096
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/xdsl_language",
+      "kind": "directory",
+      "bytes": 4096
+    }
+  ],
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/de2dd0eb-strategy_system_direction.md",
+      "commit": "de2dd0ebae40174e8336157e8928e36cfd013284",
+      "original_path": "docs_design/strategy_system_direction.md",
+      "sha256": "ad67c8ff7c3b9f3aae1a24fdef02df6f9061fa82a0ad2bce2b4e10082497a636",
+      "lines": 785,
+      "extraction": "exact bytes from git show, without an added header"
+    }
+  ]
+}

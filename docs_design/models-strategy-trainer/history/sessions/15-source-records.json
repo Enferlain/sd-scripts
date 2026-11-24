@@ -1,0 +1,412 @@
+{
+  "captured_at_utc": "2026-11-06T08:23:49.044963+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/README.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/README.md",
+      "bytes": 6125,
+      "sha256": "2707ca090f625be2028811e6102683e21823331548072df3486f2d04ce6f2cb3",
+      "lines": 49,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/anima-llm-adapter.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/anima-llm-adapter.md",
+      "bytes": 8561,
+      "sha256": "c6997ca1e33bcf480b78c98caae85c32e6716328198aebc94b4caffb1a12c672",
+      "lines": 406,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/answer-edited.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/answer-edited.md",
+      "bytes": 23025,
+      "sha256": "10a9c46ef290d7b168596113a24362fb63b9167047a2e53da3eb8edea977cf58",
+      "lines": 632,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/autoencoders-vae.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/autoencoders-vae.md",
+      "bytes": 28478,
+      "sha256": "fe54b9575184006f0dccc09b2a1256b52f7761a55c26d609ae7e42abdb429aba",
+      "lines": 881,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/conditioning-and-control-networks.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/conditioning-and-control-networks.md",
+      "bytes": 21937,
+      "sha256": "2bc5822c66043a71297c8fc8edd10f222166d12d47a3c47f0f015125a502f51a",
+      "lines": 788,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/distributed-training-execution.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/distributed-training-execution.md",
+      "bytes": 11180,
+      "sha256": "5762e3e6d9d92b1550e58d30fe7801fe069e195ee19f3e871039b159d105ab8a",
+      "lines": 347,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/hackable-diffusion.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/hackable-diffusion.md",
+      "bytes": 24910,
+      "sha256": "94af5aea31046af9cbd16337b10932dc933ffbcd57a959d2988b505916335997",
+      "lines": 1013,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/llm-training.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/llm-training.md",
+      "bytes": 54114,
+      "sha256": "528c669b2d13fe3bcf458c945931affc47bbccc711a566c966b67f8646e98986",
+      "lines": 1248,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/model-surgery-and-staged-topology.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/model-surgery-and-staged-topology.md",
+      "bytes": 29515,
+      "sha256": "22cdd0aec509d6d486fefd949e0dee7ca1e643af2f37633f61b39ea6fc1bf80f",
+      "lines": 1155,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/pixel-space.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/pixel-space.md",
+      "bytes": 18533,
+      "sha256": "9cb4bbba63fdd4fa2ddd9c9323ce75ed46a8eab3d663ed91cae6e3e8f2209920",
+      "lines": 461,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/precision-and-quantization-training.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/precision-and-quantization-training.md",
+      "bytes": 16102,
+      "sha256": "4ff4398ff93446a248255c486e932aa52a4efb984b5360ebcb3e73f89b107a22",
+      "lines": 486,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/preference-and-rl-post-training.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/preference-and-rl-post-training.md",
+      "bytes": 24469,
+      "sha256": "6b762b3813c20f575bcc3a1c481c2d524675a5de059a7347937708f744ab5e47",
+      "lines": 831,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/teacher-student-distillation.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/teacher-student-distillation.md",
+      "bytes": 21232,
+      "sha256": "789c1579c7b7116a853913d85cab3409cdc90e5ef4d818f62b69a7bd627db23e",
+      "lines": 212,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/training-data-pipeline.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/training-data-pipeline.md",
+      "bytes": 11111,
+      "sha256": "76d491db34902c6905f3c1fa5b42fb668b0dc496729588541409cc0d96c9b1f5",
+      "lines": 425,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+      "bytes": 117590,
+      "sha256": "6d76d160d8f2593b6654b26a8da632b857de3df26e7761b617bfbfc97b18e9dd",
+      "lines": 627,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2eed40b6-rework-model-strategy-trainer/research/video-audio-training.md",
+      "commit": "2eed40b622e724e8fbf1f0b74fc8494a4f7a23aa",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/video-audio-training.md",
+      "bytes": 20168,
+      "sha256": "f54daf5855bb4223e4049b529b5c713046e49c06979ce3b4834b3fb34ed6c877",
+      "lines": 483,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "research evidence and evolving whole-run sketch; source observations, inferences and unknowns are not all governing requirements"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b570aeb3-rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+      "commit": "b570aeb350b9c8a825d2249fcffe901605aca57e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/training-mechanism-sketch.md",
+      "bytes": 83567,
+      "sha256": "c7eb874c830e802417c9ea20e63d2e6b7d13efc51fd94022ca545152c3277f78",
+      "lines": 531,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "earlier working sketch, before later experiment refinements"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/9197566d-ea53-4e0b-b06a-e416a485b112/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase15-attachments/9197566d-ea53-4e0b-b06a-e416a485b112-Pasted_text.md",
+      "sha256": "56706543327672c4a911ac1e53dbc72756b19b59a7abba07ccf8369c88676b9a",
+      "bytes": 15291,
+      "lines": 774,
+      "referenced_in_selected_raw_line": 92,
+      "source_page": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-16-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccb1-b32b-78d3-b220-35053556c8d9.jsonl",
+      "message_number": 120,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-09-23 07:27:27.174494635 +0200",
+        "mtime_utc": "2026-09-23T05:27:27.174495+00:00",
+        "ctime_utc": "2026-09-23T05:27:27.174495+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/35b87706-bf67-475a-8100-a9906ca1c30b/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase15-attachments/35b87706-bf67-475a-8100-a9906ca1c30b-Pasted_text.md",
+      "sha256": "b62ecafbe54739ec7a0bb9e6ee0abf016ddad4bfff1dc21696ef94e6438f88c7",
+      "bytes": 15588,
+      "lines": 698,
+      "referenced_in_selected_raw_line": 47,
+      "source_page": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-31-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccbf-1b95-7a70-b8b1-db7f69f2b7eb.jsonl",
+      "message_number": 126,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-09-23 07:35:28.469753878 +0200",
+        "mtime_utc": "2026-09-23T05:35:28.469754+00:00",
+        "ctime_utc": "2026-09-23T05:35:28.469754+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    }
+  ],
+  "section_introductions": [],
+  "scope": "broader research, ordinary and adversarial training, staged topology, independent producers, stateful inputs and the first action/whole-run language experiments",
+  "snapshot_timing": "Each exact Git copy is a dated checkpoint identified by commit. A later checkpoint may include subsequent corrections; it is not labelled as the exact state of every earlier message. Original inode dates remain in inventory.json.",
+  "qualification": "Historical experiments, counts, reviews and runtime assertions are evidence from their recorded scope, not fresh qualification, production readiness or automatic adoption of every API. This reading audits decision provenance rather than reexecuting the implementation.",
+  "page_transitions": [
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-11-09-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb63-2d70-7243-8dd6-5b2661ce7d5d.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-16-23-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb67-f791-7963-aef0-ac09b8e706ce.jsonl",
+      "child_header_timestamp": "2026-09-22T23:16:23.569Z",
+      "reported_history_base": {
+        "thread_id": "01a0cb63-2d70-7243-8dd6-5b2661ce7d5d",
+        "end_ordinal_exclusive": 11527,
+        "end_byte_offset": 64490
+      },
+      "parent_last_included_raw_line": 20,
+      "last_included_ordinal": 11526,
+      "prefix_bytes": 64490,
+      "prefix_sha256": "7da2b36bf7d7fbea3d8da08f3576f4dca674da03aac550ad662ea41ac9812d77"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-16-23-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb67-f791-7963-aef0-ac09b8e706ce.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T03-42-37-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cbed-d890-7012-9950-b5479f2150c1.jsonl",
+      "child_header_timestamp": "2026-09-23T01:42:37.456Z",
+      "reported_history_base": {
+        "thread_id": "01a0cb67-f791-7963-aef0-ac09b8e706ce",
+        "end_ordinal_exclusive": 13203,
+        "end_byte_offset": 12016162
+      },
+      "parent_last_included_raw_line": 1676,
+      "last_included_ordinal": 13202,
+      "prefix_bytes": 12016162,
+      "prefix_sha256": "024c8c6659007d72fbcac4459596bc1efb4c39b95e557e95c20d33422202d7b6"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T03-42-37-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cbed-d890-7012-9950-b5479f2150c1.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T04-33-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cc1c-7556-7cd3-bd8c-c07c5be85ea4.jsonl",
+      "child_header_timestamp": "2026-09-23T02:33:32.246Z",
+      "reported_history_base": {
+        "thread_id": "01a0cbed-d890-7012-9950-b5479f2150c1",
+        "end_ordinal_exclusive": 13792,
+        "end_byte_offset": 2463138
+      },
+      "parent_last_included_raw_line": 589,
+      "last_included_ordinal": 13791,
+      "prefix_bytes": 2463138,
+      "prefix_sha256": "7369768306cbcf66d2346f5a34c014cee619fa4f58436f974519817d23e505f0"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T04-33-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cc1c-7556-7cd3-bd8c-c07c5be85ea4.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T06-58-39-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cca1-50a9-7573-a28b-bf8f7e981a7e.jsonl",
+      "child_header_timestamp": "2026-09-23T04:58:39.145Z",
+      "reported_history_base": {
+        "thread_id": "01a0cc1c-7556-7cd3-bd8c-c07c5be85ea4",
+        "end_ordinal_exclusive": 14053,
+        "end_byte_offset": 2497472
+      },
+      "parent_last_included_raw_line": 261,
+      "last_included_ordinal": 14052,
+      "prefix_bytes": 2497472,
+      "prefix_sha256": "d645a05835ac3810a40dc0466a3e70186d3cd09ee59ca087dab4233eb8f48f6c"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T06-58-39-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cca1-50a9-7573-a28b-bf8f7e981a7e.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-16-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccb1-b32b-78d3-b220-35053556c8d9.jsonl",
+      "child_header_timestamp": "2026-09-23T05:16:32.939Z",
+      "reported_history_base": {
+        "thread_id": "01a0cca1-50a9-7573-a28b-bf8f7e981a7e",
+        "end_ordinal_exclusive": 14269,
+        "end_byte_offset": 1272724
+      },
+      "parent_last_included_raw_line": 216,
+      "last_included_ordinal": 14268,
+      "prefix_bytes": 1272724,
+      "prefix_sha256": "2088b232d53ba04c2bde95566a02b6c5729d74894f5b44c0966601704a01fb90"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-16-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccb1-b32b-78d3-b220-35053556c8d9.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-31-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccbf-1b95-7a70-b8b1-db7f69f2b7eb.jsonl",
+      "child_header_timestamp": "2026-09-23T05:31:11.637Z",
+      "reported_history_base": {
+        "thread_id": "01a0ccb1-b32b-78d3-b220-35053556c8d9",
+        "end_ordinal_exclusive": 14432,
+        "end_byte_offset": 1983055
+      },
+      "parent_last_included_raw_line": 163,
+      "last_included_ordinal": 14431,
+      "prefix_bytes": 1983055,
+      "prefix_sha256": "446401d8cc741a2788566b2bc46546bf9a50dca3a92d86e286fad81c0017b113"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-31-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccbf-1b95-7a70-b8b1-db7f69f2b7eb.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-59-21-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccd8-e43d-7201-b684-86f6aadd7d4f.jsonl",
+      "child_header_timestamp": "2026-09-23T05:59:21.405Z",
+      "reported_history_base": {
+        "thread_id": "01a0ccbf-1b95-7a70-b8b1-db7f69f2b7eb",
+        "end_ordinal_exclusive": 14576,
+        "end_byte_offset": 862700
+      },
+      "parent_last_included_raw_line": 144,
+      "last_included_ordinal": 14575,
+      "prefix_bytes": 862700,
+      "prefix_sha256": "5ab6585aa481b7908818e2237747a5215d2025c143347ab4abf0a96426a0cc9f"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T07-59-21-01a0bb09-899f-7d32-957d-99b317e588ce_01a0ccd8-e43d-7201-b684-86f6aadd7d4f.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T08-09-15-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cce1-f53d-7310-aedd-37b15d4d288b.jsonl",
+      "child_header_timestamp": "2026-09-23T06:09:15.581Z",
+      "reported_history_base": {
+        "thread_id": "01a0ccd8-e43d-7201-b684-86f6aadd7d4f",
+        "end_ordinal_exclusive": 14580,
+        "end_byte_offset": 25030
+      },
+      "parent_last_included_raw_line": 4,
+      "last_included_ordinal": 14579,
+      "prefix_bytes": 25030,
+      "prefix_sha256": "8b2b8d32f8c35aa7b0661fcdd2cde0da7dce14c8330ff6575cb0fa567f352b60"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T08-09-15-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cce1-f53d-7310-aedd-37b15d4d288b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T23-31-00-01a0bb09-899f-7d32-957d-99b317e588ce_01a0d02d-d64c-7953-81a5-6874bf3ceeca.jsonl",
+      "child_header_timestamp": "2026-09-23T21:31:00.044Z",
+      "reported_history_base": {
+        "thread_id": "01a0cce1-f53d-7310-aedd-37b15d4d288b",
+        "end_ordinal_exclusive": 15727,
+        "end_byte_offset": 6730665
+      },
+      "parent_last_included_raw_line": 1147,
+      "last_included_ordinal": 15726,
+      "prefix_bytes": 6730665,
+      "prefix_sha256": "e9f4495e4b40bfda301d89715b726c5efe230240dbd3ee713bd2c275e80e51c3"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T23-31-00-01a0bb09-899f-7d32-957d-99b317e588ce_01a0d02d-d64c-7953-81a5-6874bf3ceeca.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T23-31-41-01a0bb09-899f-7d32-957d-99b317e588ce_01a0d02e-76a3-71b3-b6d9-e5ecd104e8ad.jsonl",
+      "child_header_timestamp": "2026-09-23T21:31:41.091Z",
+      "reported_history_base": {
+        "thread_id": "01a0d02d-d64c-7953-81a5-6874bf3ceeca",
+        "end_ordinal_exclusive": 15731,
+        "end_byte_offset": 25083
+      },
+      "parent_last_included_raw_line": 4,
+      "last_included_ordinal": 15730,
+      "prefix_bytes": 25083,
+      "prefix_sha256": "5905570b0b1be7aec7ee1ed231425f5d3f965224dc11383810087984e989fcb4"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T23-31-41-01a0bb09-899f-7d32-957d-99b317e588ce_01a0d02e-76a3-71b3-b6d9-e5ecd104e8ad.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T01-04-04-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dacf-c48d-7851-8ebe-30a561c7ad37.jsonl",
+      "child_header_timestamp": "2026-09-25T23:04:04.493Z",
+      "reported_history_base": {
+        "thread_id": "01a0d02e-76a3-71b3-b6d9-e5ecd104e8ad",
+        "end_ordinal_exclusive": 22698,
+        "end_byte_offset": 43816857
+      },
+      "parent_last_included_raw_line": 6967,
+      "last_included_ordinal": 22697,
+      "prefix_bytes": 43816857,
+      "prefix_sha256": "440d6b5aa4d6b3182deb40cd5f35ce880259c830f3615c3a1cf21004f3ae27ef"
+    }
+  ],
+  "related_exports": [
+    {
+      "json_path": "15-branch-differences.json",
+      "markdown_path": "15-branch-differences.md",
+      "messages": 23,
+      "kind": "distinct branch suffixes"
+    }
+  ],
+  "already_exported_suffix_records": [],
+  "previous_episode_suffix_reclassified": [
+    {
+      "episode": "14-training-first-placement-and-one-run.json",
+      "messages": [
+        105,
+        106
+      ],
+      "reason": "next page history_base ends at raw832 of c78f; these two bodies are preserved earlier suffix material, not inherited by cb63"
+    }
+  ],
+  "decision_review_scope": "Decision-bearing user corrections, resulting governing edits and experiment conclusions were reviewed. Complete visible transcripts are preserved for joint reading; source-code and numerical qualification claims are not independently rerun by this history capture.",
+  "current_authority": "Governing design/specs retain authority; source role and explicit adoption/supersession control interpretation. Experimental APIs, external opinions, failed reviews and superseded proposals remain evidence.",
+  "live_source_prefix_qualification": null
+}

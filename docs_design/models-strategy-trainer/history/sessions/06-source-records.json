@@ -1,0 +1,229 @@
+{
+  "captured_at_utc": "2026-11-05T21:59:46.360742+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/c3b59068-strategy_system_direction.md",
+      "commit": "c3b59068d1205bf461fcee27a195083534516a1f",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 77194,
+      "sha256": "c654aacbba1df86c479a303496b888828126ca07dfa40ead848deccc064925b8",
+      "lines": 1818,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "target-first scenario checkpoint; physical Q5 layout still open; commit is after initial review discussion but before settlement is written"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/c3b59068-strategy_system_inventory.md",
+      "commit": "c3b59068d1205bf461fcee27a195083534516a1f",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 98340,
+      "sha256": "bfca5ac1361faf3615143e6a9c84bcdb49e390c65c217b6255628b39a8b830e8",
+      "lines": 2052,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "target-first scenario checkpoint; physical Q5 layout still open; commit is after initial review discussion but before settlement is written"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/c3b59068-notes.md",
+      "commit": "c3b59068d1205bf461fcee27a195083534516a1f",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 20804,
+      "sha256": "87866b7e7d3cc2ac227255699ad50937869b0d41dd6bb29d91e91052220f57b1",
+      "lines": 419,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "target-first scenario checkpoint; physical Q5 layout still open; commit is after initial review discussion but before settlement is written"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f603d074-strategy_system_direction.md",
+      "commit": "f603d07457076669fefd189e803516b690d112a5",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 81973,
+      "sha256": "34ccb8da80349b2bdfa715474116aa229552abfcf33c1e908840265f17b479c4",
+      "lines": 1908,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "settled Q5 internal-active-strategy topology plus initially categorical conservative-policy rejection; before original-review reread corrects that rejection"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f603d074-strategy_system_inventory.md",
+      "commit": "f603d07457076669fefd189e803516b690d112a5",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 101282,
+      "sha256": "400931d25f59b8d10c5ce6bc8ab9edaf432a71596dcac5f9146b02a96528f00e",
+      "lines": 2096,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "settled Q5 internal-active-strategy topology plus initially categorical conservative-policy rejection; before original-review reread corrects that rejection"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/f603d074-notes.md",
+      "commit": "f603d07457076669fefd189e803516b690d112a5",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 23328,
+      "sha256": "a2a0fd030a07aa224b476d87adcb8507190a823d461e9e89f02cc3cb9c2ce0e9",
+      "lines": 470,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "settled Q5 internal-active-strategy topology plus initially categorical conservative-policy rejection; before original-review reread corrects that rejection"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/d7c4de7b-strategy_system_direction.md",
+      "commit": "d7c4de7b6c332271df1884be04e276cb33f60c3b",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 82810,
+      "sha256": "36e1f777647d9b20cc4f768124fb9664402f73a680af6e1156bd7060fa12c993",
+      "lines": 1911,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "corrected conservative-policy wording after rejected normalization and user edits; final handoff state, active-strategy topology later superseded"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/d7c4de7b-strategy_system_inventory.md",
+      "commit": "d7c4de7b6c332271df1884be04e276cb33f60c3b",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 101539,
+      "sha256": "77ba09818101e8ff2679cb49a9df287ea80211f8bdb0a7b3caaf77210c687ed6",
+      "lines": 2090,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "corrected conservative-policy wording after rejected normalization and user edits; final handoff state, active-strategy topology later superseded"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/d7c4de7b-notes.md",
+      "commit": "d7c4de7b6c332271df1884be04e276cb33f60c3b",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 24069,
+      "sha256": "c1515fd94878908d7d9781e8f4bc0d2a31e1d0f6702adfdb5b8f3f783cfa0b6c",
+      "lines": 480,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "corrected conservative-policy wording after rejected normalization and user edits; final handoff state, active-strategy topology later superseded"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/532320d5-05c5-4307-9d22-2b2ad0707704/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-21-q5-outside-assessment.md",
+      "referenced_in_selected_raw_line": 15113,
+      "message_number": 27,
+      "role": "last outside/less-context assessment; user explicitly disagrees with its conservative-v1 recommendation; not adopted wholesale",
+      "bytes": 11653,
+      "sha256": "6d18b4ffd53844c839cf6b88ccfb1d529c3a584105177d93dbad1815b9dd5ed8",
+      "lines": 420,
+      "filesystem": {
+        "birth_display": "2026-08-21 23:13:25.840102537 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787346805840102537,
+        "mtime_utc": "2026-08-21T21:13:25.840102+00:00",
+        "ctime_ns": 1787346805840102537,
+        "ctime_utc": "2026-08-21T21:13:25.840102+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    }
+  ],
+  "historical_reviews": [
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-21-q5-claude-review.md",
+      "original_path": "/home/imi/.gemini/antigravity-cli/brain/3d95c76e-1959-493c-a583-02871ae46d7e/architecture_critique.md",
+      "sha256": "855d4fad1d199426d009c2459e1f0436c7b16b60774d880e47d4b0fd59140fa5",
+      "bytes": 20799,
+      "lines": 208,
+      "filesystem": {
+        "birth_display": "2026-08-21 22:48:51.397068487 +0200",
+        "mtime_ns": 1787345331397068487,
+        "ctime_ns": 1787345331397068487
+      },
+      "historical_attribution": "Claude Opus 4.6 Thinking; original conversation distinguishes failed Gemini fallbacks from the later successful report",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 15269,
+        "content_block_index": 1,
+        "text_sha256": "855d4fad1d199426d009c2459e1f0436c7b16b60774d880e47d4b0fd59140fa5"
+      },
+      "extraction": "exact saved critique bytes, equal to full report read in historical session",
+      "scope": "historical read-only critique; no current independent runtime or code qualification"
+    },
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-21-q5-glm-review.md",
+      "sha256": "13e9a613eea129c602c8467c16b736740ae18fb9b59752fea2bb22a94f611635",
+      "bytes": 18968,
+      "lines": 101,
+      "historical_attribution": "GLM 5.3, hcom identity mobe; attributed by original requested run and its returned report",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 15265,
+        "content_block_index": 1,
+        "text_sha256": "545c1aa63794fca0aafa15b072a62e1bba716e20d056c6b84d06825550699735"
+      },
+      "selection": {
+        "start_character": 2911,
+        "end_character_exclusive": 21780
+      },
+      "extraction": "exact contiguous visible report text from original hcom transcript action; excludes task prompt, hcom label and completion-send chatter; no generated reconstruction",
+      "scope": "historical read-only critique; caveats retained, no current independent qualification"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "literal": "## Milestone 10: Target-First Binding-Authority Scenarios",
+      "matching_commits": [
+        "c3b59068d1205bf461fcee27a195083534516a1f\t2026-08-21T23:21:34+02:00\t2026-08-21T23:21:34+02:00\tq5 first"
+      ],
+      "qualification": "Git change events for literal; not a claim that every paragraph or rejected working-tree edit was committed"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Question 5 target-first scenario checkpoint (2026-08-21)",
+      "matching_commits": [
+        "c3b59068d1205bf461fcee27a195083534516a1f\t2026-08-21T23:21:34+02:00\t2026-08-21T23:21:34+02:00\tq5 first"
+      ],
+      "qualification": "Git change events for literal; not a claim that every paragraph or rejected working-tree edit was committed"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "literal": "## Settled Binding-Authority Ownership",
+      "matching_commits": [
+        "f603d07457076669fefd189e803516b690d112a5\t2026-08-22T01:47:44+02:00\t2026-08-22T01:47:44+02:00\tq5 second"
+      ],
+      "qualification": "Git change events for literal; not a claim that every paragraph or rejected working-tree edit was committed"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Question 5 settled after ownership review (2026-08-21)",
+      "matching_commits": [
+        "f603d07457076669fefd189e803516b690d112a5\t2026-08-22T01:47:44+02:00\t2026-08-22T01:47:44+02:00\tq5 second"
+      ],
+      "qualification": "Git change events for literal; not a claim that every paragraph or rejected working-tree edit was committed"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "literal": "Conservative policies are valid when they are explicit and correct",
+      "matching_commits": [
+        "d7c4de7b6c332271df1884be04e276cb33f60c3b\t2026-08-22T02:18:40+02:00\t2026-08-22T02:18:40+02:00\tdocs wording"
+      ],
+      "qualification": "Git change events for literal; not a claim that every paragraph or rejected working-tree edit was committed"
+    }
+  ],
+  "scope": "historical Q5 ownership decision, review interpretation correction and rejected normalization; no new external review or current source-code audit",
+  "snapshot_timing": "c3b59068 2026-08-21T21:21:34Z captures open layout; f603d074 23:47:44Z captures Q5 settlement but predates the conservative-policy correction; d7c4de7b 2026-08-22T00:18:40Z captures corrected wording and final user edits",
+  "qualification": "The abandoned large normalization has no committed snapshot established here. Its attempt, objection and reported exact restoration are retained as conversation evidence; final Git changes are small. Proposed OpenSpec name/count in the handoff is a proposal, not an already adopted change structure.",
+  "next_session_bridge": {
+    "id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+    "path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+    "bytes": 27890604,
+    "sha256": "34ccaf6f1a17eddbf37ef4e6722186e5b4d9878b6472b4b8c1a78448bb238979",
+    "header_timestamp": "2026-08-22T00:18:51.669Z",
+    "forked_from_id": null,
+    "first_user_record": {
+      "line": 9,
+      "record_timestamp": "2026-08-22T00:18:55.693Z",
+      "message_id": "msg_01a026d5-b84d-7793-bf0f-58ccbb0809ff",
+      "body_sha256": "3a890c9196f3a11719b33cfa857f57ef8e353a149d9fd1f350833c746eec59fd"
+    },
+    "continuity": "first substantive user message explicitly quotes the old handoff and names the earlier session; not a fork link",
+    "coverage": "bridge located only; later thread not yet exported in this reading"
+  }
+}

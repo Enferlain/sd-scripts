@@ -1,0 +1,66 @@
+{
+  "captured_at_utc": "2026-11-05T18:26:45.923335+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/97a81ef4-framework_pattern_comparison.md",
+      "commit": "97a81ef49a4459657d9850262cf74d5c08984745",
+      "original_path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+      "sha256": "49ca0e89b061ac1b06523428c85019cf9ca193b2c089dd03e4b51ab3f2a6e70d",
+      "bytes": 42201,
+      "lines": 897,
+      "extraction": "exact Git blob bytes, no added header"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/97a81ef4-strategy_system_direction.md",
+      "commit": "97a81ef49a4459657d9850262cf74d5c08984745",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "sha256": "fee18cba109bf3ed7f68dc1e186863ea0ccccb7b5f1a80a09faf4a51cbdee111",
+      "bytes": 41577,
+      "lines": 990,
+      "extraction": "exact Git blob bytes, no added header"
+    }
+  ],
+  "attachments": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2026-07-29-contract-surfaces-feedback.md",
+      "source_path": "/home/imi/.codex/attachments/083a886d-b339-4ad7-90f9-5cec153f9360/pasted-text.txt",
+      "sha256": "457368b9d2ce84ee00279525b90d9b824cc88244936a9dbcb19951fcb2deffc6",
+      "bytes": 10762,
+      "source_message_numbers": [
+        36
+      ],
+      "role": "external feedback supplied by user, not user-authored instructions or standalone accepted requirements",
+      "filesystem": {
+        "birth_display_utc": "2026-07-29 22:03:21.397826790 +0000",
+        "mtime_ns": 1785362601397826790,
+        "ctime_ns": 1785362601397826790
+      },
+      "extraction": "exact source bytes; .md extension for readability, no added header",
+      "message_date_is_separate_from_filesystem_date": true
+    }
+  ],
+  "section_introductions": [
+    {
+      "literal": "## Three Contract Surfaces",
+      "matching_commits": [
+        "78df512dd9c821b7136c1c92658acb771e1606a2\t2026-07-30T21:15:39Z\t2026-07-30T21:15:39Z\tpost lightning clarification, discussion about training mode and strategy definition"
+      ],
+      "qualification": "Git change events, not first-discussion dates; the first containing revision also includes later events outside chapter02"
+    },
+    {
+      "literal": "## Lifecycle Is An Orthogonal Axis",
+      "matching_commits": [
+        "78df512dd9c821b7136c1c92658acb771e1606a2\t2026-07-30T21:15:39Z\t2026-07-30T21:15:39Z\tpost lightning clarification, discussion about training mode and strategy definition"
+      ],
+      "qualification": "Git change events, not first-discussion dates; the first containing revision also includes later events outside chapter02"
+    },
+    {
+      "literal": "## Runtime State And Artifact Persistence",
+      "matching_commits": [
+        "78df512dd9c821b7136c1c92658acb771e1606a2\t2026-07-30T21:15:39Z\t2026-07-30T21:15:39Z\tpost lightning clarification, discussion about training mode and strategy definition"
+      ],
+      "qualification": "Git change events, not first-discussion dates; the first containing revision also includes later events outside chapter02"
+    }
+  ],
+  "scope": "chapter02 provenance, not an updated audit of external frameworks"
+}

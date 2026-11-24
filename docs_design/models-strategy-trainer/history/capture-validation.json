@@ -1,0 +1,52 @@
+{
+  "captured_at_utc": "2026-11-05T16:49:12.008776+00:00",
+  "scope": "capture/provenance checks only; not completed historical interpretation or production qualification",
+  "unchanged_inventoried_source_files": 68,
+  "snapshot_exact_git_blob": true,
+  "exported_messages": 59,
+  "roles": {
+    "user": 22,
+    "assistant": 37
+  },
+  "raw_record_matches": 118,
+  "inspected_raw_session_hashes": 4,
+  "compaction_markers": 3,
+  "audit_navigation_links_checked": 30,
+  "unique_stable_message_identities": true,
+  "original_files_moved_or_edited": false,
+  "initial_validation_failure": "Transcript line-ending normalization was detected and corrected by regeneration from preserved message bodies before these checks passed.",
+  "files": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/README.md",
+      "sha256": "8d62083f0e848d46fe39b76145c2db50185be3dc4c91ec887b1200d1e338e073"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/decision-notepad.md",
+      "sha256": "f8beb68f24c17303cf0b48701ec5f969e39803b3e00e5305fa47336f82c5a391"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/document-map.md",
+      "sha256": "790111566613d0435c60a41720dd95aaae472f1e3656424bfc1034bb3a96c65e"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/inventory.json",
+      "sha256": "af402a4dd4b1432739db18533c12fbcfd7e3e9ece55489b0f6334784a04086bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.json",
+      "sha256": "6df4a7c8c1763f6959ce934b7737065fbc2e2fc0cc36f163937187a0b33e9391"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.md",
+      "sha256": "e0020f0589e0548c0f28f6da1a74fa724f002e6462a790b8a3e6f3f7b56b48a1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/index.json",
+      "sha256": "168e7f388b83884e07f456586c28cb2d24565254688ecb3395a214ffd5bb6cd9"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/de2dd0eb-strategy_system_direction.md",
+      "sha256": "ad67c8ff7c3b9f3aae1a24fdef02df6f9061fa82a0ad2bce2b4e10082497a636"
+    }
+  ]
+}

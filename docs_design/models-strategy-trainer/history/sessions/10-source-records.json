@@ -1,0 +1,254 @@
+{
+  "captured_at_utc": "2026-11-05T22:40:11.397066+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_system_direction.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 93350,
+      "sha256": "6c9329890ca0f6c0299341dc51f762edba131bd92e949970edc86177d8f7c6b3",
+      "lines": 2097,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_contract_exchange_design.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 101746,
+      "sha256": "164b7457d72199445897c7aa341e7eb4b7ce57951166efb191fd53608e88306a",
+      "lines": 1735,
+      "reused_existing_copy": true,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-notes.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 69037,
+      "sha256": "b82f293a2f61218ace52aa34423d5f592ec7ce283efc0e6ec70e01019e7288eb",
+      "lines": 1246,
+      "reused_existing_copy": true,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_system_inventory.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 102578,
+      "sha256": "5aedabf302b86eae611fb474e3e2e54a5c51d72c1931b2956273b9329ccf985a",
+      "lines": 2106,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-framework_pattern_comparison.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/framework_pattern_comparison.md",
+      "bytes": 43965,
+      "sha256": "d48dc9c40c507bfb7d8b80981eac2e2c2960f7e5e280290375aa44f457774750",
+      "lines": 919,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_system_implementation_mapping.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "bytes": 26808,
+      "sha256": "71e540d88ead790b2069e246ac4d771bc131bbec588b7e52afc092643c09fdb0",
+      "lines": 390,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_discussion.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_discussion.md",
+      "bytes": 32212,
+      "sha256": "385e0b051cfabfb8cb0e79ede7aabc4517f14ea899dfc82752ebf1b674f89c05",
+      "lines": 744,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_discussion_external.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_discussion_external.md",
+      "bytes": 40999,
+      "sha256": "852703482378806000a09c7f9261eed3228a75200e72bf44a40da2c3d28bd30a",
+      "lines": 1750,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Aug26 corrected topology, source-role labels and transition checkpoint; not an exact snapshot of the earlier uncorrected proposals"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/5e165399-3f3a-481e-9e6f-f4a0979c4c73/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-26-arrangement-and-imperative-feedback.md",
+      "referenced_in_selected_raw_line": 4801,
+      "message_number": 71,
+      "role": "external opinion; user explicitly highlights points 2/3, separating imperative runtime role from authoring and composing structured/imperative work",
+      "bytes": 11966,
+      "sha256": "f646b0ee8e2ef92e2cf0fb53a42a05c18e2ce9ddc5f6bf52d4a9dda0da946546",
+      "lines": 398,
+      "filesystem": {
+        "birth_display": "2026-08-26 19:33:09.275824159 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787765589275824159,
+        "mtime_utc": "2026-08-26T17:33:09.275824+00:00",
+        "ctime_ns": 1787765589275824159,
+        "ctime_utc": "2026-08-26T17:33:09.275824+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Optimization ownership wording correction and overlap decision (2026-08-26)",
+      "matching_commits": [
+        "bb763b59d1ee115c62985232e4b7822541421c48\t2026-08-27T00:20:45+02:00\t2026-08-27T00:20:45+02:00\tsettled state before openspec creation for the rework"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Accepted run arrangement topology correction (2026-08-26)",
+      "matching_commits": [
+        "bb763b59d1ee115c62985232e4b7822541421c48\t2026-08-27T00:20:45+02:00\t2026-08-27T00:20:45+02:00\tsettled state before openspec creation for the rework"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Governing OpenSpec transition decision (2026-08-27)",
+      "matching_commits": [
+        "bb763b59d1ee115c62985232e4b7822541421c48\t2026-08-27T00:20:45+02:00\t2026-08-27T00:20:45+02:00\tsettled state before openspec creation for the rework"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    }
+  ],
+  "scope": "correction of optimization/current-code/takeover assumptions; reconstruction of authoring/runtime conflation; accepted arrangement with composed maintained/custom/imperative behavior; real-source mapping, contract-first authority, representative-case breadth and OpenSpec transition; stops before the September drafting attempt",
+  "snapshot_timing": "bb763b59 committed Aug26 22:20:45Z (Aug27 00:20:45+02:00), after the22:20:08Z final handoff. It records the whole day of corrections and adds the two discussion companions. Date headings using Aug27 reflect local date, not an additional UTC day of work.",
+  "qualification": "The prior active-strategy enclosure is superseded while Q1-Q5 meanings survive. Graphs/decorators are options, not representation/API choices made here. Early freeze-all-variability and performance assertions are proposals, not current restrictions or measured results. Current contracts also retain accepted runtime decision policies and stateful behavior. No new review, source-code audit or production qualification.",
+  "historical_reviews": [
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-26-openspec-transition-review.md",
+      "sha256": "0e47cf38a3a3a904f08838ae68f4e6b3a6a6d809496b394d785e1694cca91c3a",
+      "bytes": 11666,
+      "lines": 103,
+      "historical_attribution": "review-mcp report returned in original transition-record review; cleanup findings are followed by the original corrections",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+        "line": 6050,
+        "content_block_index": 1,
+        "text_sha256": "0e47cf38a3a3a904f08838ae68f4e6b3a6a6d809496b394d785e1694cca91c3a"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 11568
+      },
+      "extraction": "exact original returned report text",
+      "scope": "historical documentation/authority/readiness review; no new approval or production qualification"
+    }
+  ],
+  "discussion_correspondence": [
+    {
+      "snapshot_path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_discussion.md",
+      "comparison": "whole visible body substring after CRLF-to-LF normalization for comparison only; snapshot bytes unchanged",
+      "matching_episode_bodies": [
+        {
+          "episode_message": 52,
+          "selected_raw_line": 4559,
+          "role": "assistant",
+          "body_sha256": "4a4437f72ff2c2c47e20b11003f89a641b5dd82dfd22140c6b73252739b3d1a2"
+        },
+        {
+          "episode_message": 53,
+          "selected_raw_line": 4565,
+          "role": "user",
+          "body_sha256": "48a1b5b793b4855da0158ffbd0a43a620e689943ef3779b62da7e44ed116e79e"
+        },
+        {
+          "episode_message": 57,
+          "selected_raw_line": 4691,
+          "role": "assistant",
+          "body_sha256": "3725ff81393833f9c62182492894b962e7630a5e278cd09cdd88476770039a44"
+        },
+        {
+          "episode_message": 58,
+          "selected_raw_line": 4697,
+          "role": "user",
+          "body_sha256": "2ba7cdc7f9a2a37e5cd76394253c573f5738ae870cbc2c97e18ebff01885d136"
+        },
+        {
+          "episode_message": 60,
+          "selected_raw_line": 4719,
+          "role": "assistant",
+          "body_sha256": "0ce83551e5d455b34abea8ee354a0c003ff1266ab032f614bb634b0423fdef0e"
+        },
+        {
+          "episode_message": 61,
+          "selected_raw_line": 4725,
+          "role": "user",
+          "body_sha256": "019b04b48657b0aad4dca08573fc177e9962365a4a5af0d94b129ccfb335d4d6"
+        },
+        {
+          "episode_message": 62,
+          "selected_raw_line": 4732,
+          "role": "assistant",
+          "body_sha256": "6d68f7fe5cc3bb754bda58a637f4173596a2477a69919ddcc78463a1ca7e8a15"
+        }
+      ],
+      "qualification": "text correspondence is not a stable message ID, date of external authorship, exhaustive origin claim or permission to deduplicate distinct sources"
+    },
+    {
+      "snapshot_path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_discussion_external.md",
+      "comparison": "whole visible body substring after CRLF-to-LF normalization for comparison only; snapshot bytes unchanged",
+      "matching_episode_bodies": [],
+      "qualification": "text correspondence is not a stable message ID, date of external authorship, exhaustive origin claim or permission to deduplicate distinct sources"
+    }
+  ],
+  "implementation_evidence": [
+    {
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/executable_spike/exchange.py",
+      "sha256": "dcc159dd0085d27b2c777923b0dde8fd2c690bfaa3a75e822ed72362a0e9f5a5",
+      "bytes": 53511,
+      "lines": 1290,
+      "role": "historical post-correction witness; spike implementation is not promoted into production"
+    },
+    {
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/executable_spike/scenarios.py",
+      "sha256": "60e7dc2c6a83931e69481d7e006058cbdcb86685f4794d5a2c64927d152e57d9",
+      "bytes": 52150,
+      "lines": 1249,
+      "role": "historical post-correction witness; spike implementation is not promoted into production"
+    }
+  ],
+  "historical_spike_delta": {
+    "before": "b45f1d4e",
+    "after": "bb763b59",
+    "path": "docs_design/models-strategy-trainer/executable_spike/exchange.py",
+    "sha256": "d96ece580ebbf877491b91e79e97ed5678c4f94dfc57dbb6bea25cea653cf842",
+    "scope": "six-line docstring change labels TrainingStrategy as historical spike vocabulary; no runtime logic change in this diff"
+  },
+  "next_reading": {
+    "selected_session": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+    "start_source_line": 6093,
+    "first_substantive_user_line": 6108,
+    "first_user_timestamp": "2026-09-18T00:10:25.469Z",
+    "scope": "September governing-draft creation and later archive/rebuild; also correlate the separately registered misstart thread"
+  }
+}

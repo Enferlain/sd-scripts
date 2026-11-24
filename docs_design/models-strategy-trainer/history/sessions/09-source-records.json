@@ -1,0 +1,187 @@
+{
+  "captured_at_utc": "2026-11-05T22:34:35.359454+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b45f1d4e-strategy_contract_exchange_design.md",
+      "commit": "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 82340,
+      "sha256": "840aad040024eeb120ed315c9d767402f01924d1811ca54d81cb50cc4c51c281",
+      "lines": 1429,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed 28-scenario spike findings, before the later optimization recording and topology correction"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b45f1d4e-notes.md",
+      "commit": "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 50467,
+      "sha256": "f0070f8faa1e5234e2ed58c7fba8067614fe23cea29be5e3c3521e99fdd1fc00",
+      "lines": 932,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed 28-scenario spike findings, before the later optimization recording and topology correction"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-strategy_contract_exchange_design.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 101746,
+      "sha256": "164b7457d72199445897c7aa341e7eb4b7ce57951166efb191fd53608e88306a",
+      "lines": 1735,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed optimization groundwork; also contains later Aug26 ownership/topology and OpenSpec-transition corrections outside this chapter"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/bb763b59-notes.md",
+      "commit": "bb763b59d1ee115c62985232e4b7822541421c48",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 69037,
+      "sha256": "b82f293a2f61218ace52aa34423d5f592ec7ce283efc0e6ec70e01019e7288eb",
+      "lines": 1246,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed optimization groundwork; also contains later Aug26 ownership/topology and OpenSpec-transition corrections outside this chapter"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/992bcf1a-9b5f-4ae2-b287-01f835f7109c/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-25-spike-feedback.md",
+      "referenced_in_selected_raw_line": 3152,
+      "message_number": 51,
+      "role": "external report of independently running the uploaded spike; its verification is supplied evidence, not a fresh run here",
+      "bytes": 8195,
+      "sha256": "179aea4084809ab25ca773e4db38ca0ef3e7f7d3d1dfe0f304f1727cd2b41067",
+      "lines": 200,
+      "filesystem": {
+        "birth_display": "2026-08-25 20:50:54.144074271 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787683854144074271,
+        "mtime_utc": "2026-08-25T18:50:54.144074+00:00",
+        "ctime_ns": 1787683854144074271,
+        "ctime_utc": "2026-08-25T18:50:54.144074+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/a0433e45-387b-4854-81a0-966628c98bc2/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-25-optimization-feedback.md",
+      "referenced_in_selected_raw_line": 3655,
+      "message_number": 76,
+      "role": "explicitly supplied as opinions; qualifies unit identity, overlap, ownership and optimizer-construction timing",
+      "bytes": 7351,
+      "sha256": "ffb4c9e36dce1ce98d930d980ce26af33dcccda91540eb55840ba85f55edcc90",
+      "lines": 120,
+      "filesystem": {
+        "birth_display": "2026-08-26 00:23:29.604515214 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787696609604515214,
+        "mtime_utc": "2026-08-25T22:23:29.604515+00:00",
+        "ctime_ns": 1787696609604515214,
+        "ctime_utc": "2026-08-25T22:23:29.604515+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/c4e74b78-179a-4dc3-9726-6be829e32b14/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-25-optimization-unit-feedback.md",
+      "referenced_in_selected_raw_line": 3837,
+      "message_number": 93,
+      "role": "semantic membership vs parameter objects; address reuse and dependency suggestions selectively qualified before recording",
+      "bytes": 11498,
+      "sha256": "a12c49df9fd04b03896a3ed67da8545e6ad130626cb5a453807c98db33bf3876",
+      "lines": 302,
+      "filesystem": {
+        "birth_display": "2026-08-26 01:43:27.464115818 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787701407464115818,
+        "mtime_utc": "2026-08-25T23:43:27.464116+00:00",
+        "ctime_ns": 1787701407464115818,
+        "ctime_utc": "2026-08-25T23:43:27.464116+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Executable binding/preparation pressure test (2026-08-25)",
+      "matching_commits": [
+        "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df\t2026-08-25T21:27:47+02:00\t2026-08-25T21:27:47+02:00\tspike for parts of the design"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Optimization ownership code-evidence pass (2026-08-25)",
+      "matching_commits": [
+        "bb763b59d1ee115c62985232e4b7822541421c48\t2026-08-27T00:20:45+02:00\t2026-08-27T00:20:45+02:00\tsettled state before openspec creation for the rework"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Optimization feedback reconciliation (2026-08-26)",
+      "matching_commits": [
+        "bb763b59d1ee115c62985232e4b7822541421c48\t2026-08-27T00:20:45+02:00\t2026-08-27T00:20:45+02:00\tsettled state before openspec creation for the rework"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Optimization unit identity and revision decision (2026-08-26)",
+      "matching_commits": [
+        "bb763b59d1ee115c62985232e4b7822541421c48\t2026-08-27T00:20:45+02:00\t2026-08-27T00:20:45+02:00\tsettled state before openspec creation for the rework"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    }
+  ],
+  "scope": "paper-review limitation, isolated executable binding/preparation spike and historical review-driven findings; optimization intent, unit identity/revision, overlap and backend-flexible realization groundwork; stops before correction of current-code and takeover assumptions",
+  "snapshot_timing": "b45f1d4e committed Aug25 19:27:47Z, after spike handoff at17:02Z and before the optimization recording at19:30Z; bb763b59 committed Aug26 22:20:45Z and includes the subsequent topology correction and transition decision",
+  "qualification": "Historical passing tests and review outcomes are retained at their original scope, not rerun. Fake-object spike classes and enums are not production API or whole-language validation. Optimization statements about process_batch, EDM2 placement and strategy takeover are corrected in the following reading. Construction ordering is backend-dependent; selected semantic policies are distinct from concrete objects.",
+  "historical_reviews": [
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-25-spike-final-review.md",
+      "sha256": "0a56490ceafc81846cdf94189f18b284203e1e45ebfb3d8cc15df1235bbfb42d",
+      "bytes": 6837,
+      "lines": 62,
+      "historical_attribution": "review-mcp report returned during the original bounded spike review; not a new review",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+        "line": 3090,
+        "content_block_index": 1,
+        "text_sha256": "0a56490ceafc81846cdf94189f18b284203e1e45ebfb3d8cc15df1235bbfb42d"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 6809
+      },
+      "extraction": "exact original returned review report text; not regenerated from the later handoff",
+      "scope": "final review of specific fake-object spike correctness fixes; no current production/backend qualification"
+    }
+  ],
+  "implementation_evidence": [
+    {
+      "commit": "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df",
+      "original_path": "docs_design/models-strategy-trainer/executable_spike/exchange.py",
+      "sha256": "9750971563ef8cfd2d143d33ad5011743d66696eccdeb07a4e257640655aa384",
+      "bytes": 53371,
+      "lines": 1286,
+      "role": "exact historical code witness for the recorded spike; not copied, executed or structurally re-audited in this capture"
+    },
+    {
+      "commit": "b45f1d4e6a6fda49424c8d2e9fc5ea80a7c974df",
+      "original_path": "docs_design/models-strategy-trainer/executable_spike/scenarios.py",
+      "sha256": "60e7dc2c6a83931e69481d7e006058cbdcb86685f4794d5a2c64927d152e57d9",
+      "bytes": 52150,
+      "lines": 1249,
+      "role": "exact historical code witness for the recorded spike; not copied, executed or structurally re-audited in this capture"
+    }
+  ]
+}

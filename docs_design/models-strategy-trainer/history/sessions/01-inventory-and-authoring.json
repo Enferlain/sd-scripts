@@ -1,0 +1,971 @@
+{
+  "format_version": 1,
+  "captured_at_utc": "2026-11-05T18:00:27.008450+00:00",
+  "title": "Inventory and explicit strategy authoring, 22-29 July 2026",
+  "scope": "next bounded passage, ending immediately before the Lightning/Fabric question",
+  "selected_session": {
+    "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+    "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+    "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+    "header_timestamp": "2026-07-29T02:06:11.949Z",
+    "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it."
+  },
+  "start_source_line": 11422,
+  "stop_source_line": 12192,
+  "lineage": [
+    {
+      "id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-12T22-03-45-019f585b-9603-72c3-8ce7-d89324108d2e.jsonl",
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-12T22:03:45.038Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 6804996,
+      "sha256": "90ca9151363c45c42bcbf59257c6076ec9c4f4fbc4fb077749279aa6d97481da"
+    },
+    {
+      "id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T21-54-25-019f6cec-7e2a-7d41-9362-bf247eb3ffb3.jsonl",
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T21:54:25.987Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 42138056,
+      "sha256": "7f2f8b0d79f95bff055fdc7892707c33e73059b67df0ae05adb00464e52f37af"
+    },
+    {
+      "id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "path": "/home/imi/.codex/sessions/2026/07/21/rollout-2026-07-21T22-17-24-019f86c1-533d-70d0-8e4d-90cd9e9b62de.jsonl",
+      "forked_from_id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "header_timestamp": "2026-07-21T22:17:24.549Z",
+      "title": "Review project status (3)",
+      "bytes": 42084159,
+      "sha256": "417c28912a4c59b3e5f5ccca12dcaebae0e68282edc3228a9f518c61823ff895"
+    },
+    {
+      "id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+      "forked_from_id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "header_timestamp": "2026-07-21T22:38:05.739Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 45393528,
+      "sha256": "254bcf0d4f1293bed1bdd484b8d4c58df8eacf0510f9ceaf6889d12e10053f2f"
+    },
+    {
+      "id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+      "forked_from_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "header_timestamp": "2026-07-23T00:52:12.181Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 47375428,
+      "sha256": "47e32dd8ac93953ddd59b8fdb479f2c8c2b9a0c1c7bcf19c9ddfd52ee1ff2ae2"
+    },
+    {
+      "id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+      "forked_from_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "header_timestamp": "2026-07-28T02:43:05.109Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 48020515,
+      "sha256": "ea42ab61aa0512f5764a5a1c92101a31be9416c3cf9c12268e7927b10aff0b8b"
+    },
+    {
+      "id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+      "forked_from_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "header_timestamp": "2026-07-29T00:13:35.746Z",
+      "title": "Review project status (7)",
+      "bytes": 48974702,
+      "sha256": "5369fe7791aa9189d566ef591c2ee0b3140f232beb1d2b257b7ec1021bde6cb6"
+    },
+    {
+      "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "header_timestamp": "2026-07-29T02:06:11.949Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 64081338,
+      "sha256": "bc036d8ae0bebf72d8fbda35ff2f1cc4b6c9b9482525d1991ce96e48697a3bf9"
+    }
+  ],
+  "extraction": "visible response_item user/assistant messages only, exact bodies, reasoning/tools/generated context excluded",
+  "ordering": "selected fork order; inherited shared discussion from chapter00 is outside this interval",
+  "compactions": [
+    {
+      "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "line": 11434,
+      "record_timestamp": "2026-07-29T02:06:14.960Z"
+    },
+    {
+      "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "line": 11673,
+      "record_timestamp": "2026-07-29T02:06:15.094Z"
+    },
+    {
+      "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "line": 12000,
+      "record_timestamp": "2026-07-29T02:26:17.001Z"
+    }
+  ],
+  "excluded_record_counts": {
+    "event_msg:item_completed": 163,
+    "response_item:reasoning": 146,
+    "event_msg:token_count": 127,
+    "event_msg:task_complete": 10,
+    "event_msg:thread_settings_applied": 21,
+    "world_state:": 6,
+    "compacted:": 3,
+    "response_item:message": 9,
+    "event_msg:task_started": 10,
+    "turn_context:": 11,
+    "response_item:custom_tool_call": 66,
+    "response_item:custom_tool_call_output": 66,
+    "response_item:tool_search_call": 9,
+    "response_item:tool_search_output": 9,
+    "response_item:function_call": 40,
+    "response_item:function_call_output": 40
+  },
+  "messages": [
+    {
+      "role": "user",
+      "phase": null,
+      "body": "looking at the doc and otherwise, what's left to discuss and look into before doing anything?\n",
+      "body_sha256": "b2bdcd2bd1328ee53d4b60d867488aa59b56a02fbe777226301c87aaf608e6a2",
+      "content_sha256": "acdc01fcf13c76c0293e89f35a840d29cd515fbbbbadcbfb15ce097269da2b69",
+      "nontext_content_types": [],
+      "message_id": "msg_019f8b74-dfc3-7ba2-b93d-c9c3ae12d7cd",
+      "turn_id": "019f8b74-df36-7313-8682-c3a179e8b172",
+      "stable_key": "id:msg_019f8b74-dfc3-7ba2-b93d-c9c3ae12d7cd",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11422,
+        "record_timestamp": "2026-07-29T02:06:14.956Z"
+      },
+      "number": 1,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+        "line": 11422,
+        "record_timestamp": "2026-07-22T20:12:00.324Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "We’re ready to begin the research pass, but not implementation. The remaining work is much narrower than the discussion we just finished.\n\n## Must resolve before implementation\n\n1. **Inventory the current contract**\n\nFor every method in `base/contracts.py`, record:\n\n- Who calls it.\n- Whether the caller is trainer, mode, objective, or another strategy facet.\n- What state it consumes and mutates.\n- Whether it represents a contract concern, reusable feature, family-local helper, or misplaced behavior.\n- How SD, SDXL, and SD3 actually fulfill it.\n\nThis will expose which current abstractions are real and which merely reflect historical extraction.\n\n2. **Define the minimum training-contract vocabulary**\n\nWe need to identify the concerns that every valid run must file, without encoding SD anatomy. Likely candidates include:\n\n```text\nmodel/component loading\ninput representation\nconditioning\nprediction\ntraining subjects\nobjective interaction\nstep result\npreparation\npersistence\n```\n\nThen distinguish:\n\n- Exactly-one choices.\n- Composable choices.\n- Requirements activated by configuration or another selection.\n- Behaviors that are merely internal implementation details.\n\n3. **Settle the final participant relationship**\n\nThe largest conceptual question remains:\n\n```text\nfamily integration + features + mode + objective\n```\n\nDo these become one fulfilled training strategy before reaching the trainer, or remain separate objects jointly governed by one contract?\n\nWe do not need the final class structure yet, but we need a clear ownership rule so the trainer does not become the place that finishes model-family assembly accidentally.\n\n4. **Resolve loaded-state ownership**\n\nWe need to map the lifecycle:\n\n```text\nunloaded\n  → loaded components\n  → training-mode modifications\n  → accelerator wrapping/replacement\n  → prepared execution state\n  → saving/finalization\n```\n\nFor each transition:\n\n- Who owns the authoritative component collection?\n- Who may replace component modules?\n- Where do family loading facts such as SDXL checkpoint state live?\n- How do modes select trainables without receiving the entire trainer?\n- How does metadata observe this state without owning it?\n\nThe bound-strategy direction is promising, but it still needs to survive these cases.\n\n5. **Define the minimum feature compatibility model**\n\nNot a general dependency resolver—just enough vocabulary to validate current and immediately foreseeable compositions.\n\nFor example:\n\n```text\nLatentDiffusion\n  requires: autoencoder encoding\n  provides: latent clean state\n\nSDXL prediction\n  requires: SDXL-compatible latent and conditioning states\n\nDistillation\n  requires: teacher prediction + student prediction\n```\n\nWe need to determine which compatibility facts are meaningfully typed and testable now, rather than relying on names or arbitrary tags.\n\n6. **Write conformance scenarios before choosing code shapes**\n\nThe contract should be tested on paper against:\n\n- Current SD, SDXL, and SD3 adapter/fine-tune runs.\n- Cache-on and cache-off paths.\n- Validation, sampling, and saving selections.\n- Pixel diffusion.\n- Alternate autoencoder/representation.\n- Base model plus adapter training.\n- Newly attached trainable components.\n- Teacher/student distillation.\n- Video/audio-shaped state.\n- Integrated or external LLM components.\n\nThese pressure tests determine whether the vocabulary is useful. They do not require implementing all those arrangements.\n\n## Important placement questions during the inventory\n\nThe research should specifically revisit:\n\n- Whether model loading coordination belongs to models, strategy, or trainer infrastructure.\n- Whether CLIP FP8/checkpointing quirks are component mechanics or training behavior.\n- Whether `process_batch()` remains a meaningful public boundary.\n- How training and validation share prediction/target behavior.\n- What objective/loss work should leave family diffusion files.\n- Whether caching codecs are strategy features while cache persistence remains data-owned.\n- Whether sampling and checkpointing are contract filings, family integrations, or both.\n- Which existing mixins are reusable features versus merely internal file organization.\n\n## What does not need settling yet\n\nThese should stay deferred:\n\n- Strategy graphs.\n- Arbitrary user-configured component assembly.\n- A general plugin/dependency-resolution framework.\n- The final decorator or registration mechanism.\n- Hydra target selection for features.\n- Whether CLIP should be vendored.\n- Formal contract version numbers.\n- Exact package names beyond the current `features/` leaning.\n- Supporting every future model category.\n\nThose choices should follow the contract inventory rather than lead it.\n\n## Project-tracking decision\n\nBefore implementation, we should also separate this from the active model-metadata change.\n\nThe clean relationship is probably:\n\n```text\nmodel/strategy contract work\n        ↓ establishes stable model boundaries\nmodel metadata continuation\n        ↓ records identity, structure, provenance, and queries\n```\n\nThis architecture work deserves its own Beads issue and OpenSpec rather than being folded into `expand-model-metadata-identity-and-structure`. The metadata change should record the dependency where relevant, without absorbing the strategy redesign.\n\n## Practical next sequence\n\nTomorrow’s productive sequence would be:\n\n1. Build the code-grounded contract/caller inventory.\n2. Turn it into the contract-concern and ownership matrix.\n3. Pressure-test that matrix against current and compound run scenarios.\n4. Resolve the trainer/strategy state boundary.\n5. Decide the bounded scope of the first implementation.\n6. Write the governing OpenSpec and create/link the Beads work.\n7. Only then begin code changes.\n\nSo we are no longer missing an overall direction. What remains is proving that direction against the actual code and converting the vocabulary into enforceable boundaries.",
+      "body_sha256": "9fc5ce127bc68a5498ac8e5ecfa335ac8698f80fb9ccebf3d0b226e315d489a2",
+      "content_sha256": "8f5378af8db5385cdf55922167ec2d11640225ca86a66777d69e4676ce4a49ec",
+      "nontext_content_types": [],
+      "message_id": "msg_00b92705afd72942016a6124252f70819183a8598e5217d795",
+      "turn_id": "019f8b74-df36-7313-8682-c3a179e8b172",
+      "stable_key": "id:msg_00b92705afd72942016a6124252f70819183a8598e5217d795",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11427,
+        "record_timestamp": "2026-07-29T02:06:14.957Z"
+      },
+      "number": 2,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+        "line": 11427,
+        "record_timestamp": "2026-07-22T20:12:42.396Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "then let's do the inventory before the other points. the working docs folder for this will be the area docs_design/models-strategy-trainer from now on\n\nrecord the information between exploration milestones to avoid losing context from hitting context limit compaction\n",
+      "body_sha256": "31e9578b390843e9c390a054f77531e3ed5e87efd0b38b29c47082127de40b9f",
+      "content_sha256": "350ace36c90323fb57fccda65eb28c8c8e543ed15a0287fd7071e162b60009f3",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab39-c2fc-7dd3-938d-6cb634b7473e",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_019fab39-c2fc-7dd3-938d-6cb634b7473e",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11447,
+        "record_timestamp": "2026-07-29T02:06:15.060Z"
+      },
+      "number": 3,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11447,
+        "record_timestamp": "2026-07-29T00:15:17.244Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’ll start the model–strategy–trainer inventory and treat `docs_design/models-strategy-trainer/` as the durable working area. I’m using the codebase-memory exploration workflow because this inventory depends on real call paths and ownership, and I’ll write findings at each meaningful milestone so compaction cannot erase the evidence or conclusions. I’ll work locally without subagents.",
+      "body_sha256": "6b8f67ffb361cbd74daef15f1b370636b523f989837e738ea72826a7a903265e",
+      "content_sha256": "18fafe8aadbad9e5ebe1f458886ecdd6dfd3d894514f42d9d9eca4da2e1fbbb0",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a694618288c8191baf550f1922ad0a7",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a694618288c8191baf550f1922ad0a7",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11451,
+        "record_timestamp": "2026-07-29T02:06:15.061Z"
+      },
+      "number": 4,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11451,
+        "record_timestamp": "2026-07-29T00:15:22.685Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The first milestone will be a factual map, not a redesign: current entrypoints and object construction, trainer-facing calls, strategy-internal collaboration, state ownership, and the actual `models/` boundary. I’ll record that map before moving to contract evaluation, so later conclusions remain traceable to current code.",
+      "body_sha256": "190183eddb6b2afe53fc481973fde9d0a0e4221e4936f6e08984da8bbe3de380",
+      "content_sha256": "de4b5c651d3943d870d0ecd08250177cdf5c8706d8ad88e38a3fd2f868164e08",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69462034e88191a090083aaf1ca6d5",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a69462034e88191a090083aaf1ca6d5",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11457,
+        "record_timestamp": "2026-07-29T02:06:15.062Z"
+      },
+      "number": 5,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11457,
+        "record_timestamp": "2026-07-29T00:15:30.938Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "Milestone 1 confirms the current system is already “one strategy object” only at construction time. At runtime the trainer is the real integration hub: it owns the loaded-component tuple and projections, objective runtime, modes, caches, dtypes, accelerator state, optimization state, and lifecycle coordinates, then repeatedly hands those pieces back to strategy methods. I’m recording that distinction now before auditing the individual contracts.",
+      "body_sha256": "7d1ac85e9bafb18aeedd9981adc774ddaddf8ff34187ac7993bd4776b5337652",
+      "content_sha256": "20c694f4c013034ca6c20e4003914c0cc701efe1fa5b512f278f9ec24ba328e3",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69467adf4c819189bd78b1d5087b7c",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a69467adf4c819189bd78b1d5087b7c",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11531,
+        "record_timestamp": "2026-07-29T02:06:15.072Z"
+      },
+      "number": 6,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11531,
+        "record_timestamp": "2026-07-29T00:17:02.053Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "Milestone 2 found a sharper issue than “the contract is too large”: it conflates two different interfaces. Twenty methods are called by trainer phases or modes, while five exist only so family mixins can find each other through the aggregate object. Six methods are non-abstract but still only raise `NotImplementedError`, so the type can instantiate without proving those conditionally required behaviors exist. That is nominal composition, not fulfillment validation.",
+      "body_sha256": "cd1732aca6afa21ad2e83b44b026563ddf368f7f03ba95183f33b665e114bbba",
+      "content_sha256": "f84142853b5e3c7a7b46a2041978760bfcb2d80c19e173118b5b1665b05c9ec7",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a6946fa962c8191b2d79436a1881791",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a6946fa962c8191b2d79436a1881791",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11598,
+        "record_timestamp": "2026-07-29T02:06:15.081Z"
+      },
+      "number": 7,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11598,
+        "record_timestamp": "2026-07-29T00:19:10.175Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "Milestone 3 shows that the families are not three unrelated training systems. Their core step flow is already nearly the same: obtain a representation, resolve conditioning, ask the objective for corrupted input/target semantics, invoke the predictor, compute and shape per-sample loss. The meaningful variations are payload types, objective compatibility, model-forward arguments, VAE transforms, and persistence/sampling codecs. Validation duplicates the same skeleton in all three families instead of consuming one shared execution seam.",
+      "body_sha256": "c8a9fe00decd207f8d1a1c5c453df8d83068bc2e04a93fa32a5e4ecb0d0ad3ae",
+      "content_sha256": "49b14406c6894e958144e7dc2e7610ca16a2021e57db5c58fdca8ed4af4d2d82",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69474f49e08191905eada01fad84e7",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a69474f49e08191905eada01fad84e7",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11627,
+        "record_timestamp": "2026-07-29T02:06:15.087Z"
+      },
+      "number": 8,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11627,
+        "record_timestamp": "2026-07-29T00:20:37.856Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The first three inventory milestones are already recorded in the new working area. I’m continuing with the ownership/placement audit now, then I’ll record the contract and compatibility gaps as the final milestone before we discuss any redesign.",
+      "body_sha256": "d18ca98a549fc883e1b042e7c4fd32570599368a8198a42d9b3c71ecf9fc577e",
+      "content_sha256": "b2145a7908aa3b931407c063369fd227d20d528a8a844e2e69a2372a0998e86d",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69483e4b6c8191b513d42a2a837f1f",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a69483e4b6c8191b513d42a2a837f1f",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11680,
+        "record_timestamp": "2026-07-29T02:06:15.096Z"
+      },
+      "number": 9,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11680,
+        "record_timestamp": "2026-07-29T00:24:32.385Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The placement pass is exposing a useful distinction: the model loaders themselves currently mix component materialization with distributed and training-runtime policy, while strategy loading adds another policy layer on top. I’m recording this as a split responsibility—not as a verdict that either entire file should move.",
+      "body_sha256": "c0c38a6ad70eb63ec1454e77c6153b75fea7e4d985a59247629c4afdfdcb712a",
+      "content_sha256": "6710838593761e88f833c283dd8e92d95c7b92fe73efdaa33495d3fbf2018410",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69487d54ac8191ab60306a18396141",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a69487d54ac8191ab60306a18396141",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11749,
+        "record_timestamp": "2026-07-29T02:06:15.105Z"
+      },
+      "number": 10,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11749,
+        "record_timestamp": "2026-07-29T00:25:36.797Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The placement and contract-seam milestones are now written down. The important result is that this is not a “move strategies into models” cleanup: the current problem is mixed responsibilities and a missing typed fulfillment/state boundary, with several specific misplaced helpers on both sides. I’m doing a consistency pass now and recording the completed inventory in Beads.",
+      "body_sha256": "73ad66b0c348f31aff1a6da0e3a747adb1c2d79728f8f478ba3110baf716e9bb",
+      "content_sha256": "ebf6d20b097c95b3fa46238e46210ad149caaf85d6f05d6d20de45cb6c675e9a",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a694a534c408191b7269a8da4ba8ad6",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a694a534c408191b7269a8da4ba8ad6",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11862,
+        "record_timestamp": "2026-07-29T02:06:15.121Z"
+      },
+      "number": 11,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11862,
+        "record_timestamp": "2026-07-29T00:33:26.455Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The inventory is complete and the Beads task is closed. Since this is a substantial architecture handoff, I’m sending the documentation through the repository review step now; I’ll wait for the result and address any concrete findings before handing it back.",
+      "body_sha256": "88149fd2e7e59c832aceb457c6720c9906eee4b09ecb720e82688a5571f60c68",
+      "content_sha256": "bcc5aeb7d24a463d1f65cae40884c25042de2bddbf4166d9470f345dc24b16ed",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a694a91153081918f1e97d4baaff78b",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a694a91153081918f1e97d4baaff78b",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11901,
+        "record_timestamp": "2026-07-29T02:06:15.125Z"
+      },
+      "number": 12,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11901,
+        "record_timestamp": "2026-07-29T00:34:28.807Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "The inventory is complete and recorded at each milestone in [strategy_system_inventory.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_inventory.md:1). The working area now contains both the direction document and production inventory.\n\nMain conclusions:\n\n- The model → strategy → trainer principle remains sound.\n- The main problem is the absence of one typed fulfillment/bound-state boundary. The trainer currently fills that role implicitly.\n- Model loaders mix component materialization with distributed, precision, memory, and performance policy.\n- Strategy contracts mix trainer-facing operations with family-internal collaboration and late conditional failures.\n- Compatibility rules already exist, but are scattered between config validation, family implementations, and runtime checks.\n- Specific placement pressure and nine future conformance scenarios are documented.\n- The next discussion is now bounded: contract concerns/results, state ownership, fulfillment, mode/objective participation, and conformance tests.\n\nBead `sd-scripts-syv` is closed. `git diff --check` passes; no tests were needed for documentation-only work.\n\nThe repository review tool was unavailable after discovery, so this has not received an external review result.",
+      "body_sha256": "6b232ea9aefcbef6d8eada0ddc1bc69a4858b6984a4d730011a19e7dec9d4988",
+      "content_sha256": "88828024126685d883fe8aab3dba570196114d5b93d8f5f3390ced7822ba2309",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a694aab0a7c8191bd768d930173cf7f",
+      "turn_id": "019fab39-bf30-71f3-986f-547d4d9ff2d4",
+      "stable_key": "id:msg_0291ff4185d624e2016a694aab0a7c8191bd768d930173cf7f",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11915,
+        "record_timestamp": "2026-07-29T02:06:15.127Z"
+      },
+      "number": 13,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11915,
+        "record_timestamp": "2026-07-29T00:34:56.231Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "my current stance as we discussed before is that I like the contract idea centralizing strategy (your training \"plan\") and handing it to the active trainer layer so it doesn't need to track or know about individual parts, but that's not how it happens today, and the contracts despite being made \"strict\" are not really respected in the way we imagined it when we came up with the system. and the part about being able to grab features and eventually components for your strategy is pretty attractive as a goal. Then there's also decisions (vae vs autoencoder lanugage, specific component, names, handling, separation, etc basically same with \"clip\") about the models folder\n\nI didn't read through the inventory fully yet, this is just my thoughts. we should work with our design docs (direction and now inventory) in general unless we decide on other details and actions. what should we do next?",
+      "body_sha256": "da1c362098eeba21110f08a6e67affe9df5128d6010d53a7deae86ba6566edb4",
+      "content_sha256": "f4a01f614a23c810f3e83c748e7e5c95fc609e70f8a73de64baa34a34c94da1e",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab86-abbb-7443-b443-dfe20505bf6c",
+      "turn_id": "019fab86-ab33-7013-a192-a15ddebe8bdb",
+      "stable_key": "id:msg_019fab86-abbb-7443-b443-dfe20505bf6c",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11923,
+        "record_timestamp": "2026-07-29T02:06:15.131Z"
+      },
+      "number": 14,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11923,
+        "record_timestamp": "2026-07-29T01:39:17.563Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Your stance is supported by the inventory. Today the trainer stores VAE/text-encoder/denoiser projections and passes them back into the strategy, while the “strict” contracts mainly enforce method names. They do not prove that a concrete run’s features are compatible or fully implemented.\n\nThe intended architecture should be stated more firmly as:\n\n```text\nCONTRACT\ndefines what the training pipeline accepts\n\nFAMILY INTEGRATIONS + FEATURES + COMPONENTS\nfulfill the selected contract\n\nFULFILLED TRAINING STRATEGY\nis the bound, executable training plan\n\nTRAINER\ncontrols when things happen without understanding model parts\n```\n\n“One fulfilled strategy” should mean one narrow public façade—not one giant implementation class. Internally it can be assembled from the feature grab box and family/component integrations.\n\nWhat I think we should do next:\n\n1. Lock down the trainer-facing invariant in the direction document.\n\n   The trainer should not retain semantic projections such as `vae`, `text_encoders`, or `denoiser`. It should call generic operations and receive generic results. It may provide infrastructure such as the accelerator, but the strategy should bind and update its own components.\n\n2. Design the contract from the trainer outward.\n\n   Walk through the trainer lifecycle and define the minimum semantic boundaries it needs:\n\n   ```python\n   strategy.bind(binding_context)\n   strategy.prepare(preparation_context)\n\n   result = strategy.training_step(step_request)\n   evaluation = strategy.evaluation_step(evaluation_request)\n   artifacts = strategy.sample(sample_request)\n   saved = strategy.save(artifact_request)\n   ```\n\n   The names are provisional. The important part is deciding exactly what the trainer supplies and receives without exposing model anatomy.\n\n   Optimization needs special attention: the strategy or mode should provide generic parameter groups/trainable state, rather than making the trainer discover components.\n\n3. Separate structural fulfillment from runtime binding.\n\n   Before expensive loading, fulfillment should determine that the selected representation, conditioning, objective, predictor, mode, caching, sampling, precision, and persistence choices are compatible. Runtime binding can then load components and attach accelerator-dependent state.\n\n4. Define the first feature vocabulary.\n\n   Start from what already exists rather than designing an unlimited plugin system:\n\n   - latent representation\n   - pixel representation\n   - text conditioning\n   - predictor invocation\n   - DDPM integration\n   - rectified-flow integration\n   - cache codec\n   - sampling\n   - persistence\n   - component preparation\n\n   A selected feature is required for that run. “Feature” must not become another word for optional or unverified behavior.\n\n5. Settle model/component vocabulary against those contract roles.\n\n   The likely distinction is:\n\n   ```text\n   autoencoder / representation codec\n       generic contract role\n\n   VAE, SDVAE, AutoencoderKL\n       concrete component identities\n\n   text conditioning\n       strategy concern\n\n   CLIP-L, CLIP-G, T5, LLM\n       concrete components\n\n   CLIP adapter\n       low-level component interaction\n\n   weighted prompts / chunk assembly\n       strategy features\n   ```\n\n   We should retain both generic roles and specific identities. Calling everything “autoencoder” would lose useful truth; calling the generic contract role “VAE” would encode one implementation into the pipeline.\n\n6. Pressure-test the proposed contract against SD, SDXL, and SD3, then pixel diffusion and distillation. Those two extra cases expose the current fake-VAE and single-family/single-predictor assumptions without requiring us to design arbitrary component assembly immediately.\n\nFor documentation, I’d keep the roles simple:\n\n- `strategy_system_inventory.md`: evidence about current production behavior.\n- `strategy_system_direction.md`: decisions, leanings, rejected routes, and open questions.\n- Only create another working document once we have a concrete candidate contract large enough to deserve one.\n\nThe immediate next session should therefore be the trainer-facing contract and bound-state discussion—not file movement, feature package layout, decorators, or an OpenSpec yet. Once that boundary is coherent, the feature catalog and model-folder decisions become much easier to judge.",
+      "body_sha256": "271966f3d007cfa068e467cbbca51d469465b3d909b49dc6d7dbd77b5a7ff38e",
+      "content_sha256": "ce64cc39e9b2837a662ff14e46edfa3c5fb093e6f7025fc569222e976d924a29",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a695a0036ac81919a9fcf399376c878",
+      "turn_id": "019fab86-ab33-7013-a192-a15ddebe8bdb",
+      "stable_key": "id:msg_0291ff4185d624e2016a695a0036ac81919a9fcf399376c878",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11930,
+        "record_timestamp": "2026-07-29T02:06:15.132Z"
+      },
+      "number": 15,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11930,
+        "record_timestamp": "2026-07-29T01:40:43.331Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "1 let's try to make the contracts like this:\n\na basic idea built on what we have today, intuition about what we might have in the future extrapolated from the direction we want to move to, what \"training a neural network\" means, and what is needed to be able to train something in our repo today (this can be very narrow technically so let's start from where we are at)\n",
+      "body_sha256": "5851875d3227732d76ac736a7db170ae603b2049f437e21e89f931262962a6b6",
+      "content_sha256": "844219a389a6e8c45c7e8d62e7fcb068dcb99b3ccd524bdcb06138187ecb0352",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab8c-f2db-7e23-89db-5b885d1abbc2",
+      "turn_id": "019fab8c-f27e-7de0-aed3-88455d6cb8e2",
+      "stable_key": "id:msg_019fab8c-f2db-7e23-89db-5b885d1abbc2",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11936,
+        "record_timestamp": "2026-07-29T02:06:15.133Z"
+      },
+      "number": 16,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11936,
+        "record_timestamp": "2026-07-29T01:46:08.988Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "That is the right derivation method. We should design a narrow, honest v1 contract from three sources—not attempt a universal model taxonomy.\n\n| Source | What it contributes |\n| --- | --- |\n| Current production path | The operations required to train successfully in this repository today |\n| “Training a neural network” | The irreducible semantics: trainable parameters, differentiable computation, loss, backward, and optimization |\n| Intended direction | Enough separation and vocabulary to avoid permanently encoding SD’s VAE/CLIP/UNet anatomy |\n\nThe future intuition should influence the seams, but it should not make v1 pretend to support workflows we have never implemented.\n\n### The irreducible contract\n\nFor the current trainer, a fulfilled strategy must be able to:\n\n1. Validate that the concrete run selections form an executable training plan.\n2. Bind all required model components and keep their live state authoritative.\n3. Prepare those components for the selected precision, distributed runtime, mode, and training subject.\n4. Supply optimizer-ready trainable parameter groups without requiring the trainer to understand which components they came from.\n5. Accept a batch plus generic execution coordinates and produce a differentiable training result.\n6. Support the required lifecycle transitions—training, evaluation, preparation, replacement, and finalization.\n7. Fulfill every additional operation selected by the run, such as caching, validation, sampling, or persistence.\n\nThe trainer then owns:\n\n- epochs, steps, and accumulation;\n- dataloader traversal;\n- backward;\n- clipping;\n- optimizer and scheduler advancement;\n- trigger timing;\n- interruption, observation, and cleanup.\n\nIt should not own:\n\n- VAE/text-encoder/denoiser projections;\n- conditioning assembly;\n- representation conversion;\n- predictor invocation;\n- family-objective compatibility;\n- knowledge of which component is being trained.\n\nIts essential loop should eventually be conceptually close to:\n\n```python\nresult = strategy.training_step(\n    batch=batch,\n    coordinates=step_coordinates,\n)\n\naccelerator.backward(result.loss)\noptimizer.step()\n```\n\n`result.loss` should probably be the final differentiable loss for that training plan, not merely an intermediate family loss that requires the trainer to know about timesteps, objective modifiers, or model-family semantics. Metrics and observations can accompany it without becoming model parts.\n\n### Three related contract levels\n\nThe current `TrainingStrategy` ABC collapses three different contracts. We should separate them conceptually before deciding Python classes.\n\n1. Trainer-facing execution contract\n\n   The narrow façade handed to the trainer:\n\n   ```text\n   bind\n   prepare\n   describe optimization inputs\n   execute training step\n   enter training/evaluation state\n   execute selected lifecycle operations\n   finalize\n   ```\n\n2. Strategy-fulfillment contract\n\n   The internal rules used to assemble that façade:\n\n   ```text\n   selected representation\n   selected conditioning\n   selected predictor behavior\n   selected objective integration\n   selected training subject/mode\n   selected persistence and auxiliary operations\n   compatibility between all selections\n   ```\n\n   This is where the feature grab box belongs.\n\n3. Model-component contract\n\n   The concrete objects and mechanics used by those features:\n\n   ```text\n   component declarations\n   loading and materialization\n   component roles/capabilities\n   low-level preparation quirks\n   module replacement\n   component state access\n   ```\n\nA family strategy becomes a tested default recipe that fulfills the second contract using known features and components. It is not the only imaginable assembly, but it remains the normal way SD, SDXL, and SD3 enter the system.\n\n### Required versus selected concerns\n\nWe should preserve the distinction we reached earlier:\n\n- The core training obligations are always required.\n- Other concerns are selected by the concrete run.\n- Once selected, they are fully required.\n\nCaching is not inherently required to train a neural network. But if the run selects latent caching, the fulfilled strategy must contain compatible representation and cache-codec behavior. It cannot expose a method that merely raises later.\n\nThe same applies to:\n\n- weighted prompts;\n- validation;\n- sampling;\n- full-model persistence;\n- adapter training;\n- text-encoder training;\n- FP8 preparation;\n- deferred loading.\n\nThis avoids both extremes: forcing every strategy to implement everything and treating meaningful run requirements as vague “optional capabilities.”\n\n### A deliberately narrow v1\n\nWe should explicitly allow v1 to mean:\n\n- one trainer-controlled optimization step;\n- one final differentiable loss per step;\n- one optimizer plan, potentially containing parameters from multiple components;\n- any number of bound model components;\n- one fulfilled strategy façade;\n- current SD, SDXL, and SD3 execution behavior.\n\nThat permits adapters and multiple trainable components without claiming immediate support for GAN-style alternating optimizers or arbitrary multi-stage training. Those can expand the contract later through an explicit version or extension.\n\n### How model terminology fits\n\nThe generic contract vocabulary and concrete model vocabulary should coexist:\n\n```text\ncontract concern: latent representation\nconcrete component: AutoencoderKL / SDVAE\ncomponent kind: VAE, deterministic autoencoder, tokenizer, etc.\n\ncontract concern: conditioning\nconcrete component: CLIP-L / CLIP-G / T5 / LLM\nstrategy feature: weighted prompts, chunk assembly, pooled-output handling\n```\n\nTherefore:\n\n- “VAE” should not be the universal contract role.\n- “Autoencoder” should not erase the fact that a component is specifically variational.\n- “CLIP” should not be synonymous with conditioning.\n- Specific component names remain model-owned facts.\n- Generic concern names describe how the training plan uses them.\n\nThe next design milestone should be writing these principles into `strategy_system_direction.md`, followed by a first trainer-facing contract table: every operation, its semantic input, its result, its lifecycle state, and whether it is core or selected. We should derive that table from the inventory before choosing class names or modifying `contracts.py`.",
+      "body_sha256": "c9370312c138270694241fb8c88cd406a5b97ea3be66f630268ab8dc26df34d3",
+      "content_sha256": "9864b6ae32a3abe79b0598666268d3209b54a8ca99a1d49b30012d2162b48ae5",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a695bc8e7b88191830edf371ae07f72",
+      "turn_id": "019fab8c-f27e-7de0-aed3-88455d6cb8e2",
+      "stable_key": "id:msg_0291ff4185d624e2016a695bc8e7b88191830edf371ae07f72",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11946,
+        "record_timestamp": "2026-07-29T02:06:15.135Z"
+      },
+      "number": 17,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11946,
+        "record_timestamp": "2026-07-29T01:48:33.741Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "the \"run\" doesn't select things, these are defined in the strategy build the same as today, just under the new contract. it might constrain or validate it (where this happens is not decided from what I've read so far). the contract defines what must be fulfilled and what is available to use whether it's a slot that needs to be filled or something that you're picking for yourself. we're not going for a super smart mind reader system that automatically picks things based on implication, at least not for now. strategies should be built with intent. we can validate that the choices are correct, but that's different from a feature dragging another with it, that should still be left to whoever is putting the strategy together. (and this is us, we make the default training strategies for models aka what you see currently)\n\nThis process is manual, it's not done by a hydra replacement or a config system, at least not initially anyways. It's the same as how model code is still written by hand. strategy is essentially \"the model code\" in this repo. there might be a config equivalent that can do the task of putting together a strategy in the future to make things more streamlined, but that's not current goal",
+      "body_sha256": "4f16aa02d86785b6977fa78e3aedff49e11be39ab83d542f7f4320c9b00b150c",
+      "content_sha256": "0ecc7052f726348ead1c98562df50017ffaccdb808d6d85c656ff9b79a3a8880",
+      "nontext_content_types": [],
+      "message_id": "msg_019faba3-7724-7651-84b7-683b091c2112",
+      "turn_id": "019faba3-76c4-7013-9985-9af44a19b8b0",
+      "stable_key": "id:msg_019faba3-7724-7651-84b7-683b091c2112",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11955,
+        "record_timestamp": "2026-07-29T02:10:44.645Z"
+      },
+      "number": 18,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11955,
+        "record_timestamp": "2026-07-29T02:10:44.645Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "That correction materially changes the framing. “Fulfillment” should mean that a strategy author has explicitly implemented and assembled the contract—not that the runtime resolves a collection of requirements into a strategy.\n\nThe intended flow is:\n\n```text\nTRAINING CONTRACT\ndefines required slots, available feature interfaces, and execution rules\n        │\n        ▼\nHANDWRITTEN STRATEGY DEFINITION\nexplicitly chooses and wires implementations\n        │\n        ▼\nSTRATEGY BUILD\nconstructs that known implementation, much as it does today\n        │\n        ├── validation may reject incompatible or incomplete wiring\n        │\n        ▼\nFULFILLED TRAINING STRATEGY\nhanded to the trainer as one executable model-training implementation\n```\n\nThere is no generic dependency resolver in that picture.\n\n### What the contract does\n\nThe contract should tell a strategy author:\n\n- what every strategy must provide;\n- which slots admit different implementations;\n- which reusable feature interfaces are available;\n- what inputs and results those features use;\n- what the trainer expects from the finished strategy;\n- which combinations are semantically valid or invalid;\n- which lifecycle rules implementations must respect.\n\nIt does not choose implementations.\n\nFor example, the contract may define a representation slot, a predictor slot, and an objective-integration slot. The SDXL strategy author explicitly wires:\n\n```python\nrepresentation = SdxlLatentRepresentation(...)\nconditioning = SdxlClipConditioning(...)\npredictor = SdxlUnetPredictor(...)\nobjectives = SdxlObjectiveIntegration(\n    ddpm=...,\n    rectified_flow=...,\n)\n```\n\nThat example is conceptual; it does not settle composition versus inheritance.\n\nConfiguration may choose DDPM versus rectified flow only because the handwritten SDXL strategy deliberately supports and exposes both. Seeing rectified flow in the config must not cause the system to discover and attach some feature automatically.\n\nSimilarly:\n\n- SD explicitly wires DDPM.\n- SD3 explicitly wires rectified flow.\n- A strategy using latent representation explicitly wires the needed representation behavior.\n- If its cache feature needs a corresponding latent codec, the author explicitly provides it.\n- Validation may detect that the author forgot the codec or connected incompatible tensor semantics.\n- Validation does not add the codec.\n\nThat is the distinction between validating intent and inventing intent.\n\n### What “available features” means\n\nThe grab box is a code organization and reuse system for strategy authors:\n\n```text\nfeatures/\n  representation/\n    latent.py\n    pixel.py\n  diffusion/\n    ddpm.py\n    rectified_flow.py\n  conditioning/\n    clip.py\n  persistence/\n  caching/\n```\n\nA feature being available means:\n\n> A strategy implementation can deliberately import, instantiate, inherit, or otherwise use this tested behavior.\n\nIt does not mean:\n\n> The framework automatically activates this feature whenever its requirements appear to match.\n\nThe exact assembly mechanism remains open:\n\n- explicit composition;\n- current-style inheritance;\n- decorators;\n- imported factory helpers;\n- a limited mixture.\n\nBut whichever mechanism we choose, the family strategy remains readable source code that shows its intent.\n\n### Two kinds of choice\n\nWe should distinguish these clearly in the design:\n\n1. Strategy-author choice\n\n   The implementation author decides which components and features form the strategy and writes that choice into code.\n\n2. Runtime configuration choice\n\n   The strategy may deliberately expose a bounded choice to users—objective variant, caching enabled, precision mode, which components to train, and so on.\n\nA runtime choice exists only because the strategy author implemented it. Configuration cannot summon arbitrary feature implementations that the strategy did not wire.\n\n### What strictness should mean\n\nA strict contract should not merely require method names. It should make handwritten strategy implementations provably coherent through:\n\n- required typed slots or operations;\n- typed feature inputs and results;\n- explicit supported alternatives;\n- compatibility validation;\n- lifecycle/state rules;\n- shared conformance tests;\n- fail-fast rejection of an incomplete strategy build.\n\nThis remains ordinary authored software. The validation layer acts more like a type checker or construction invariant than a dependency injection system.\n\n### Strategy as repository model code\n\nYour description is accurate:\n\n```text\nlibrary/models/\n    implements or adapts the neural components themselves\n\nlibrary/strategies/\n    implements how those components become a trainable model in this repository\n```\n\nThe strategy is effectively the repository-specific executable model integration. That is why it must remain intentional and reviewable. Automatically assembling it from config would create a second implicit model implementation system and make behavior harder to understand.\n\nA future declarative/config-based strategy assembler could eventually be syntax over the same contracts:\n\n```text\ndeclarative strategy description\n        ↓\nconstructs the same explicit feature objects\n        ↓\nmust satisfy the same contract and conformance tests\n```\n\nIt is not part of the initial design.\n\nThis means the direction document should be corrected in several places:\n\n- replace “run-selected features” with “strategy-authored features and explicitly exposed runtime choices”;\n- define fulfillment as authored conformance, not resolution;\n- state that features never pull dependencies into a strategy automatically;\n- add manual strategy construction as an initial architectural invariant;\n- list declarative/config-driven assembly as a possible future layer, not a current goal.\n\nThat correction should happen before drafting the actual contract table, because it changes who the contract is written for: primarily strategy implementers, with the finished contract surface consumed by the trainer.",
+      "body_sha256": "214fbc12490f6369a6269b49036974b0b0bb932fc8dabf1f80a94a202531af69",
+      "content_sha256": "563b2d04100b1ae21a459b625d9b2b8ed7d15fc807ad505b96ff0392022914b6",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69614fd6708191a297c51a5aaf25b2",
+      "turn_id": "019faba3-76c4-7013-9985-9af44a19b8b0",
+      "stable_key": "id:msg_0291ff4185d624e2016a69614fd6708191a297c51a5aaf25b2",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11962,
+        "record_timestamp": "2026-07-29T02:11:56.034Z"
+      },
+      "number": 19,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11962,
+        "record_timestamp": "2026-07-29T02:11:56.034Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "yes. there is essentially no noob mode on strategy besides \"trainer needs something to train chief)\" and even that can be overridden if someone wants it, or allowed for mutated/adopted/custom strategies besides the base model training strategies as that would go against the spirit of experimentation and research\n\nif you know this repo it takes a similar approach at a base level, although it's not for training [ljleb/sd-mecha](https://github.com/ljleb/sd-mecha)\n",
+      "body_sha256": "8c5621341218e1223759973b341a20a441549f3198208f5012683fdb47f138fe",
+      "content_sha256": "64496cf9d809a8ce6ff571b706d493810d5f3a7adb26d37496e29a94b4c86722",
+      "nontext_content_types": [],
+      "message_id": "msg_019fabab-ab1e-7e80-9ff9-d695bc82b01d",
+      "turn_id": "019fabab-aabf-77d3-9585-192803b5e2bc",
+      "stable_key": "id:msg_019fabab-ab1e-7e80-9ff9-d695bc82b01d",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11968,
+        "record_timestamp": "2026-07-29T02:19:42.238Z"
+      },
+      "number": 20,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11968,
+        "record_timestamp": "2026-07-29T02:19:42.238Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I understand the distinction: the contract should provide a rigorous construction language, not a safety rail that narrows research to approved recipes. I’m checking `sd-mecha` directly because the useful comparison is likely its separation between an expressive low-level mechanism and authored compositions—not its specific inference/model-merging purpose.",
+      "body_sha256": "c7ba78b8dee6134e875eb8d54a14d2d39c6691412b20c36984de37db40e62283",
+      "content_sha256": "5f0e41c8921b56c3952ffcdec44e4ad89d3e2af155557a4fec99f018f67a2963",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a6963428c788191b196e4db25d92cb0",
+      "turn_id": "019fabab-aabf-77d3-9585-192803b5e2bc",
+      "stable_key": "id:msg_0291ff4185d624e2016a6963428c788191b196e4db25d92cb0",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11972,
+        "record_timestamp": "2026-07-29T02:19:48.648Z"
+      },
+      "number": 21,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11972,
+        "record_timestamp": "2026-07-29T02:19:48.648Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Yes. The contract should constrain interoperability, not permissible research.\n\nThere is one boundary we should keep intellectually honest about: the active trainer needs some stable handshake. A custom strategy can avoid VAEs, predictors, conventional trainable components, or the standard feature assembly entirely, but it must still give the active trainer whatever that trainer requires. If someone also wants to replace backward/optimization semantics or the handshake itself, that becomes an explicit trainer-contract extension—not something we should disguise as satisfying the unchanged contract.\n\nThat suggests three levels.\n\n### 1. Minimal trainer handshake\n\nThis is the genuinely hard floor for compatibility with the shared trainer:\n\n```text\nthe strategy can be initialized/prepared\nthe trainer can ask it to perform the next training operation\nthe strategy returns enough information for the trainer to continue\nthe strategy participates in required lifecycle operations\n```\n\nEven the assumption that the result is one scalar loss should be treated as the narrow initial handshake, not a universal truth. A later experimental strategy might require multiple losses, optimizers, backward phases, or strategy-managed updates.\n\n### 2. Standard strategy-construction contract\n\nThis is the organized route used by our handwritten model-family strategies:\n\n```text\nrepresentation\nconditioning\npredictor invocation\nobjective integration\ntraining-subject exposure\npreparation\ncaching\nvalidation\nsampling\npersistence\n```\n\nSD, SDXL, and SD3 would deliberately fill or override these slots. This is the paved architecture we maintain and test—not “noob mode” and not the only legal way to experiment.\n\n### 3. Research escape surface\n\nA custom strategy should be allowed to:\n\n- replace a standard feature;\n- override a whole slot;\n- combine slots unusually;\n- add a component dynamically;\n- train only an attached component;\n- use a model as a teacher or fixed instrument rather than the subject;\n- implement the trainer-facing operation directly without using the standard internal decomposition;\n- eventually target an extended trainer handshake where the shared trainer’s assumptions are insufficient.\n\nSo the standard feature system is compositional help, not a compulsory ontology.\n\nThe useful rule is:\n\n```text\nDefault family strategies should use the standard contract vocabulary.\n\nCustom strategies may bypass its internal decomposition,\nbut must still satisfy the active trainer handshake they claim to support.\n```\n\nThat keeps the standard system coherent without making research ask permission from the architecture.\n\nThe `sd-mecha` comparison is apt. It provides model configurations, component/key structure, typed merge-method interfaces, recipe nodes, and an execution engine, but the actual recipe is explicitly authored. Its README describes recipes as exact executable instructions, and custom models and merge methods are extension points rather than things inferred from a beginner-facing configuration system. [`@merge_method` also validates declared parameter/return constraints and interface implementations](https://github.com/ljleb/sd-mecha/blob/main/sd_mecha/extensions/merge_methods.py#L598-L637), while [model configurations explicitly publish components, keys, tensor metadata, and aliases](https://github.com/ljleb/sd-mecha/blob/main/sd_mecha/extensions/model_configs.py#L65-L124). The framework supplies vocabulary and execution semantics; the author supplies intent. [sd-mecha README](https://github.com/ljleb/sd-mecha#usage)\n\nWhat we should borrow:\n\n- authored compositions rather than inferred compositions;\n- structural contracts that make custom implementations interoperable;\n- explicit component descriptions;\n- validation of declared intent;\n- a useful standard library that does not define the limit of experimentation;\n- direct extensibility at both the operation and model-description levels.\n\nWhat we should not copy automatically:\n\n- its recipe graph, because state-dict merging naturally forms a lazy executable graph and we deliberately deferred a training graph;\n- automatic interface dispatch;\n- a registry-driven resolver as the primary strategy builder;\n- its state-dict-centered model concept.\n\nFor us, the analogous structure is:\n\n```text\nsd-mecha                         this repository\n\nmodel config                     model component declaration/adapter\nmerge method                     strategy feature implementation\nauthored recipe                  handwritten family/custom strategy\nrecipe validation/finalization   strategy conformance/compatibility validation\nmerge executor                   shared trainer\n```\n\nThe next revision to the direction document should therefore add two explicit principles:\n\n1. **Research freedom:** the standard strategy decomposition is the maintained default, not the boundary of permitted training behavior.\n2. **Layered conformance:** a strategy may bypass standard feature slots, but it must satisfy the trainer handshake it claims to target.\n\nThen the contract inventory table should include a column such as:\n\n```text\nstandard slot\nstandard feature interface\ndirect strategy override allowed?\ntrainer-visible obligation\n```\n\nThat will let us make the normal path strong without accidentally turning it into a gatekeeper.",
+      "body_sha256": "41420c7ed43e84728b17ef1949d5ed489edc69e4b14e6c60d34ffc5f8259ce09",
+      "content_sha256": "632f05914632dfa9d177f76e05211cc89da644fbb5e61c58c61fa4b7e2d29752",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69637bfd0881919fb251020a389e00",
+      "turn_id": "019fabab-aabf-77d3-9585-192803b5e2bc",
+      "stable_key": "id:msg_0291ff4185d624e2016a69637bfd0881919fb251020a389e00",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11995,
+        "record_timestamp": "2026-07-29T02:21:11.835Z"
+      },
+      "number": 22,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 11995,
+        "record_timestamp": "2026-07-29T02:21:11.835Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "basically we didn't change the overall goal, because we are still the ones that put the strategies together, we just establish the mechanics around the contract (which covers the constraints as well) and the intended way to interact with the strategy system\n\nif any updates should be made to [strategy_system_direction.md](docs_design/models-strategy-trainer/strategy_system_direction.md) now is a good time before context compacts\n",
+      "body_sha256": "dd64e8d15661ed68349f7f28ad70be8033c49d53be6edbc8eae4117ec0ac2bf2",
+      "content_sha256": "6fc5469294e1cccd3bc20ebce4bf6ae858724baafc5113a43b1c9234554f6b8b",
+      "nontext_content_types": [],
+      "message_id": "msg_019fabb1-b18d-7ed0-b474-a84053752421",
+      "turn_id": "019fabb0-f0c2-7813-9327-173515ff9cbb",
+      "stable_key": "id:msg_019fabb1-b18d-7ed0-b474-a84053752421",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12009,
+        "record_timestamp": "2026-07-29T02:26:17.101Z"
+      },
+      "number": 23,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12009,
+        "record_timestamp": "2026-07-29T02:26:17.101Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m using the OpenSpec exploration workflow to tighten the direction document without turning these architectural decisions into production code. I’ll first reread the current document and project workflow context, then revise only the language that still implies automatic strategy assembly or changes the original contract goal.",
+      "body_sha256": "176fe0f5e4e60be11b8dda622c5ff70c6a405345f3677d0bfb058a18033d7f73",
+      "content_sha256": "1bcbdfd53e82d38604037da202070e1aad1547586e052b7da9d3b4abc771b5db",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a6964cdebb88191a7bb513f93e90181",
+      "turn_id": "019fabb0-f0c2-7813-9327-173515ff9cbb",
+      "stable_key": "id:msg_0291ff4185d624e2016a6964cdebb88191a7bb513f93e90181",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12013,
+        "record_timestamp": "2026-07-29T02:26:24.277Z"
+      },
+      "number": 24,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12013,
+        "record_timestamp": "2026-07-29T02:26:24.277Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The document already preserves the original architecture at the top, but its contract section still contains one important drift: it describes “the run” as selecting and filing features. That suggests a resolver/config assembler we explicitly rejected. I’m checking the rest of the document for the same assumption before making a narrow correction.",
+      "body_sha256": "0c5f2a9c3df42a41c83c8704b5807f7bcde6ab075600dabd3cc19d03d9b5cce9",
+      "content_sha256": "77c6d8a6c7c157ec6a18ccb9820a7416e133f0b3bbc86b7046b37ed52319136b",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a6964edb2ec81919a78ccb57d0c9680",
+      "turn_id": "019fabb0-f0c2-7813-9327-173515ff9cbb",
+      "stable_key": "id:msg_0291ff4185d624e2016a6964edb2ec81919a78ccb57d0c9680",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12039,
+        "record_timestamp": "2026-07-29T02:26:56.645Z"
+      },
+      "number": 25,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12039,
+        "record_timestamp": "2026-07-29T02:26:56.645Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The correction is architectural, not cosmetic: strategy authors—including us for the maintained family defaults—compose the strategy deliberately. The contract supplies vocabulary, required outcomes, lifecycle mechanics, constraints, and validation; it does not select features or infer dependencies. I’m recording that distinction, plus the separate research escape surface, so later OpenSpec work does not accidentally design an automatic assembler.",
+      "body_sha256": "3d513403293c4e0ff6ea6a215ff0488ec0171ed146e65f88c03efd86448fd7eb",
+      "content_sha256": "a9d12d14d89ff296739e888b315b89b6b0394095274bf16e9c4292cfdc6b78ed",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69651f98b88191ad0d113334b45742",
+      "turn_id": "019fabb0-f0c2-7813-9327-173515ff9cbb",
+      "stable_key": "id:msg_0291ff4185d624e2016a69651f98b88191ad0d113334b45742",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12051,
+        "record_timestamp": "2026-07-29T02:27:46.038Z"
+      },
+      "number": 26,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12051,
+        "record_timestamp": "2026-07-29T02:27:46.038Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The direction now says the complete strategy is authored in Python, validated against the contract, and then handed to the trainer as one contract-facing object. It also records that reusable features are authoring tools—not units the run, Hydra, or a dependency resolver automatically assembles—and that custom research strategies can either meet the active trainer boundary directly or declare an extension. I’m doing the documentation checks now.",
+      "body_sha256": "fc9cfc130d60d2e1771b8ca9ede75490101b0165f3f7e5205876609488d78783",
+      "content_sha256": "5d66aede4864d36c679e0bf22b25e8198e2c170a31b57592bc9c691671b102b9",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69657f20948191a1654809ebd02ff9",
+      "turn_id": "019fabb0-f0c2-7813-9327-173515ff9cbb",
+      "stable_key": "id:msg_0291ff4185d624e2016a69657f20948191a1654809ebd02ff9",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12078,
+        "record_timestamp": "2026-07-29T02:29:21.513Z"
+      },
+      "number": 27,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12078,
+        "record_timestamp": "2026-07-29T02:29:21.513Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Updated [strategy_system_direction.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_direction.md:122) to make the unchanged goal explicit:\n\n- Strategies remain deliberately assembled in Python by repository developers.\n- The contract defines mechanics, constraints, validation, and trainer-facing results.\n- Configuration may only choose bounded alternatives intentionally exposed by a strategy.\n- Validation rejects bad wiring; it never selects features or adds dependencies.\n- The trainer receives the complete strategy rather than coordinating its components.\n- Custom research strategies can satisfy the standard trainer contract directly or explicitly extend it.\n- Graphs, automatic resolvers, and config-authored assembly remain out of scope.\n- The `sd-mecha` comparison is recorded as an analogy for authored composition, not an implementation template.\n\nI also updated the Beads issue with this milestone so it survives compaction. `git diff --check` passes; no tests were needed for documentation-only changes. `review-mcp` was not available in this session.",
+      "body_sha256": "2c37583957709e84e634e97add5219b708edbca65ecd5bf3b0c3dca6dd4bb3e0",
+      "content_sha256": "ccadaa03907c101c559db150a7a723d6cde59322e9a1114d4625c09f9da2cf19",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a6965ae71b08191b836e64e0dcbc6b7",
+      "turn_id": "019fabb0-f0c2-7813-9327-173515ff9cbb",
+      "stable_key": "id:msg_0291ff4185d624e2016a6965ae71b08191b836e64e0dcbc6b7",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12104,
+        "record_timestamp": "2026-07-29T02:30:10.919Z"
+      },
+      "number": 28,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12104,
+        "record_timestamp": "2026-07-29T02:30:10.919Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "\"onclusion: treat pixel/latent behavior as available feature implementations\r\nthat a strategy author can deliberately wire into a contract filing, not\r\nnecessarily as the family integration's class.\"\n\nthis means that the contract offers this and the author chooses it? I'm not 100% on what \"deliberately wire into a contract filing\" means\n",
+      "body_sha256": "d07f644d3f3ef6c2308a710a00a2a30889fe478eef90d0d9dc349759eb59a3a5",
+      "content_sha256": "e4318a2c0852c480c96c982d1773dc1d18b7b1bf8623b7f38180e7128a9cd967",
+      "nontext_content_types": [],
+      "message_id": "msg_019fabbc-2313-7612-a006-8c3cb9b9d8e7",
+      "turn_id": "019fabbc-22a2-7493-a94c-6c90810f92fe",
+      "stable_key": "id:msg_019fabbc-2313-7612-a006-8c3cb9b9d8e7",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12110,
+        "record_timestamp": "2026-07-29T02:37:41.523Z"
+      },
+      "number": 29,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12110,
+        "record_timestamp": "2026-07-29T02:37:41.523Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Mostly, but with one important distinction:\n\n- The contract defines a required **representation concern** and the interface/results it must provide.\n- The feature catalog offers known implementations such as `PixelDiffusion` and `LatentDiffusion`.\n- The strategy author explicitly chooses and connects an implementation.\n- Validation checks that the chosen representation works with the other strategy parts.\n\nSo “contract filing” meant “the strategy’s concrete implementation choices,” but it is unnecessarily abstract wording.\n\nA clearer version would be:\n\n> Conclusion: treat pixel and latent diffusion as reusable representation implementations. A strategy author explicitly chooses and connects one when implementing the training contract; it does not need to define the family strategy’s class hierarchy.\n\nThe contract offers the **place and rules**; the feature catalog offers the **implementations**; the author performs the **wiring**.",
+      "body_sha256": "12b21de181eee979ac311583c7a769587ac8224f4b18aa641168b1d14fe94e2c",
+      "content_sha256": "243202cf43474760ee4a4732c7af1e28944de8d65ec39aec7b66513fa325018a",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a69677dfcd48191ad5437e6bcb4e25a",
+      "turn_id": "019fabbc-22a2-7493-a94c-6c90810f92fe",
+      "stable_key": "id:msg_0291ff4185d624e2016a69677dfcd48191ad5437e6bcb4e25a",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12114,
+        "record_timestamp": "2026-07-29T02:37:53.905Z"
+      },
+      "number": 30,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12114,
+        "record_timestamp": "2026-07-29T02:37:53.905Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "nice. what are the next questions to decide/clarify?\n",
+      "body_sha256": "e3535aaabab47cb204ae71c32f999a291eaa32ee97dd157ced7e8ccd31be35cc",
+      "content_sha256": "3ae74c92ff7fedcc76bd7cb4f924059922f69da01ae164520986f0172c4ad610",
+      "nontext_content_types": [],
+      "message_id": "msg_019fabc0-c1d4-7662-b030-b62c133e5166",
+      "turn_id": "019fabc0-c14b-76c2-bb11-47e5ddee250b",
+      "stable_key": "id:msg_019fabc0-c1d4-7662-b030-b62c133e5166",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12120,
+        "record_timestamp": "2026-07-29T02:42:44.308Z"
+      },
+      "number": 31,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12120,
+        "record_timestamp": "2026-07-29T02:42:44.308Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "The next central question is:\n\n> What must the trainer be able to ask of one completed strategy, without knowing how that strategy was assembled?\n\nThat should be decided before naming feature classes or moving files. I’d work through these in order:\n\n1. Trainer-facing contract\n\n   - Which lifecycle operations does every trainer-compatible strategy expose?\n   - What are their typed inputs and results?\n   - Does the trainer call broad operations such as `load`, `prepare`, `training_step`, `validate`, `sample`, and `save`?\n   - Which current calls should disappear because they expose VAE/text-encoder/denoiser anatomy?\n\n2. Shape of the fulfilled strategy\n\n   The trainer should receive one public strategy surface, but internally it could contain:\n\n   - one family integration;\n   - representation and conditioning features;\n   - a training mode;\n   - an objective;\n   - persistence and validation behavior.\n\n   We still need to decide whether mode and objective are inside that object or remain separate collaborators hidden behind the same trainer-facing façade.\n\n3. Loaded-state ownership\n\n   If the strategy owns its loaded components, we must define:\n\n   - how training mode selects trainable parameters;\n   - how distributed preparation replaces/wraps modules;\n   - how checkpointing accesses components;\n   - how metadata observes them;\n   - whether anything outside the strategy can replace a component.\n\n4. Contract concerns\n\n   We need the first concrete vocabulary. Likely candidates include:\n\n   - training subject;\n   - input representation;\n   - conditioning;\n   - prediction/forward execution;\n   - objective and loss production;\n   - component preparation;\n   - validation;\n   - sampling;\n   - persistence.\n\n   The important question is which are trainer-facing requirements and which are internal tools used by a strategy to satisfy those requirements.\n\n5. Feature interfaces and compatibility\n\n   For example, what exactly does a representation implementation provide?\n\n   ```text\n   batch input\n       → clean training state\n       → cacheable representation\n       → shape/semantic description\n   ```\n\n   We need enough declared semantics for validation, without creating an automatic dependency resolver.\n\n6. Model/component vocabulary\n\n   This includes the unresolved naming and ownership questions:\n\n   - generic `autoencoder` role versus concrete VAE implementations;\n   - CLIP as a component versus CLIP-based conditioning behavior;\n   - predictor role versus UNet/DiT implementation;\n   - adapters and newly attached components;\n   - what belongs in `models/` versus reusable strategy features.\n\n7. Conformance and contract evolution\n\n   - What shared tests prove that SD, SDXL, and SD3 genuinely fulfill the same contract?\n   - When does an experiment still satisfy the existing contract?\n   - When does it require an explicit extension or new contract version?\n   - Where does validation execute: builder, strategy finalization, trainer startup, or some combination?\n\n8. Migration shape\n\n   Only after the above should we decide which current contract methods move, combine, disappear, or become feature interfaces.\n\nI would start with question 1 and use the completed inventory to draft a concrete trainer-facing contract table:\n\n```text\noperation | trainer supplies | strategy returns | trainer must not know\n```\n\nThat is the boundary everything else has to satisfy.",
+      "body_sha256": "91f684ff80df9b56369baa0b98cbf6ceb167d32c68537790878dfa8ff6dca4f6",
+      "content_sha256": "b2db4d1ba6aa6c84235c8a32151d7bf646d8226daf4a1a7a5122519a98ff97be",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a6968be3f308191884566ffea50d0ae",
+      "turn_id": "019fabc0-c14b-76c2-bb11-47e5ddee250b",
+      "stable_key": "id:msg_0291ff4185d624e2016a6968be3f308191884566ffea50d0ae",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12125,
+        "record_timestamp": "2026-07-29T02:43:21.477Z"
+      },
+      "number": 32,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12125,
+        "record_timestamp": "2026-07-29T02:43:21.477Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "well this should be dictated by the trainer no? which also dictates the contract. idk if this means strategy passes a bundled item that the trainer then needs to unpack, or how this is handled in python/other repos normally",
+      "body_sha256": "2e9252708b42b5931abc960547d4a5d2d7d48556f962e2ea956ac661c8384941",
+      "content_sha256": "d85c0fae570012a52932bbc952b732e87230ed0e963085742a6b524583ff77b5",
+      "nontext_content_types": [],
+      "message_id": "msg_019fabc9-7de9-7583-b2dc-ac290d56b3ed",
+      "turn_id": "019fabc9-7d8e-76a1-9301-cc4930ff311b",
+      "stable_key": "id:msg_019fabc9-7de9-7583-b2dc-ac290d56b3ed",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12132,
+        "record_timestamp": "2026-07-29T02:52:16.745Z"
+      },
+      "number": 33,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12132,
+        "record_timestamp": "2026-07-29T02:52:16.745Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m staying in the OpenSpec exploration stance here because this is the contract boundary decision, not implementation yet. Your correction is right: the trainer’s execution needs define the contract; the strategy fulfills it. I’ll compare that conclusion against a few established Python training interfaces so we can distinguish a clean protocol from an opaque “bundle the trainer unpacks.”",
+      "body_sha256": "b55d32e9ed3115ad527f0ba9126c402da139940bfed8588cc94b9488838f714a",
+      "content_sha256": "e424a7023331fbe60fdd88f570cff3d6c64990f3bb2b65b84f0cbd68d77c1e36",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a696af2318c819195a3b79735cb3951",
+      "turn_id": "019fabc9-7d8e-76a1-9301-cc4930ff311b",
+      "stable_key": "id:msg_0291ff4185d624e2016a696af2318c819195a3b79735cb3951",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12137,
+        "record_timestamp": "2026-07-29T02:52:35.610Z"
+      },
+      "number": 34,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12137,
+        "record_timestamp": "2026-07-29T02:52:35.610Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Yes. The trainer—or more precisely, the shared training pipeline we want the trainer to embody—dictates the contract.\n\nThe dependency direction should be:\n\n```text\nTRAINER\n  defines what it needs to execute training\n          │\n          ▼\nTRAINING-STRATEGY CONTRACT\n  expresses those needs as typed operations and results\n          │\n          ▼\nSTRATEGY\n  implements the contract using its chosen features and components\n```\n\nOne caveat: we should not simply copy everything the current `Trainer` happens to do. Some current requirements, such as directly holding a VAE and text-encoder list, are historical leaks. We first decide what the generic trainer legitimately owns, and then that becomes the contract.\n\n## The trainer should not unpack the strategy\n\nThe clean Python pattern is that the strategy itself is the aggregate object. The trainer invokes its public contract:\n\n```python\nclass TrainingStrategy(Protocol):\n    def prepare(self, context: PreparationContext) -> None:\n        ...\n\n    def training_step(\n        self,\n        context: TrainingStepContext,\n    ) -> TrainingStepResult:\n        ...\n\n    def save(self, context: SaveContext) -> None:\n        ...\n```\n\n```python\nclass Trainer:\n    def __init__(self, strategy: TrainingStrategy) -> None:\n        self.strategy = strategy\n\n    def run_step(self, batch: Batch) -> None:\n        result = self.strategy.training_step(\n            TrainingStepContext(batch=batch, step=self.global_step)\n        )\n\n        self.accelerator.backward(result.loss)\n        self.advance_optimizer()\n        self.record_metrics(result.metrics)\n```\n\nInternally, the strategy can be assembled however its author wants:\n\n```python\nclass SdxlTrainingStrategy:\n    def __init__(self, ...):\n        self.representation = LatentDiffusion(...)\n        self.conditioning = SdxlConditioning(...)\n        self.predictor = SdxlPredictor(...)\n\n    def training_step(self, context):\n        clean = self.representation.prepare(context.batch)\n        conditioning = self.conditioning.encode(context.batch)\n        prediction = self.predictor.predict(clean, conditioning)\n        return ...\n```\n\nThe trainer never asks for `strategy.representation`, `strategy.autoencoder`, or `strategy.predictor`.\n\n## Typed bundles are still useful\n\nThe problem is not bundling itself. The problem is exposing model anatomy.\n\nGood boundary objects have trainer-level meaning:\n\n```python\nTrainingStepResult(\n    loss=loss,\n    metrics=metrics,\n    observations=observations,\n)\n```\n\n```python\nTrainableGroup(\n    parameters=parameters,\n    learning_rate_role=\"denoiser\",\n)\n```\n\nBad boundary objects merely package the current leakage:\n\n```python\nLoadedThings(\n    vae=vae,\n    text_encoders=text_encoders,\n    denoiser=denoiser,\n)\n```\n\nThe first two tell the trainer what it needs to do generically. The last one makes it unpack and coordinate one specific model topology.\n\n## There are two kinds of interaction\n\nThe likely answer is a hybrid:\n\n1. Model-specific behavior stays behind strategy methods.\n\n   ```python\n   result = strategy.training_step(context)\n   ```\n\n2. Trainer-owned infrastructure receives generic typed descriptions where it genuinely must act.\n\n   ```python\n   trainables = strategy.describe_trainables()\n   optimizer = trainer.build_optimizer(trainables)\n   ```\n\nThe remaining design question is therefore narrower:\n\n> For distributed preparation, optimizer construction, and component replacement, can the trainer operate on generic handles/plans, or should the strategy perform those operations using trainer-provided infrastructure services?\n\nThat is where some controlled strategy–trainer exchange may be unavoidable. It should exchange semantic plans and results, not SD component identities.\n\n## How established frameworks handle it\n\nPyTorch Lightning is close to this shape. A `LightningModule` is the authored training recipe: it owns `training_step()`, `validation_step()`, and optimizer configuration, while `Trainer` owns the loop, device movement, backward, and scheduling. The trainer receives the module and calls its contract rather than unpacking its internal neural modules. [LightningModule documentation](https://lightning.ai/docs/pytorch/stable/common/lightning_module.html), [Trainer execution overview](https://api.lightning.ai/docs/pytorch/stable/common/trainer.html)\n\nHugging Face’s `Trainer` uses a narrower, model-shaped contract: the model must accept particular inputs and return loss/output structures, while custom behavior can override `compute_loss()` or `training_step()`. Its documentation explicitly warns that non-Transformers models may behave unexpectedly if they do not follow those conventions. That is a useful warning for us: we should not make our trainer contract accidentally “SD-shaped” in the same way that HF Trainer is intentionally “Transformers-shaped.” [Hugging Face Trainer documentation](https://huggingface.co/docs/transformers/en/main_classes/trainer)\n\nThe strongest direction for this repository is therefore:\n\n```text\ntrainer owns:\n  contract definition\n  temporal execution\n  optimization\n  distributed/infrastructure policy\n\nstrategy owns:\n  the complete authored fulfillment\n  loaded model-family state\n  feature/component coordination\n  model-specific execution\n\nboundary objects carry:\n  generic requests\n  generic plans\n  generic results\n```\n\nThis also suggests that the trainer-facing contract may ultimately belong under `library/training/`, while reusable feature interfaces belong under `library/strategies/`. The current `strategies/base/contracts.py` placement makes the provider appear to own a contract that is actually dictated by its consumer.",
+      "body_sha256": "73eb347ab65197b4579c1c225ac8c1bdd7b6558cfe3072fafbccf632481c1326",
+      "content_sha256": "fd7ae390362dc42913bd5c104e04355c7b31d2a591c2bfa73aad43037b18bec4",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a696b55c0c0819186a04ae831d69b7c",
+      "turn_id": "019fabc9-7d8e-76a1-9301-cc4930ff311b",
+      "stable_key": "id:msg_0291ff4185d624e2016a696b55c0c0819186a04ae831d69b7c",
+      "selected_record": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12186,
+        "record_timestamp": "2026-07-29T02:54:33.261Z"
+      },
+      "number": 35,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+        "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+        "line": 12186,
+        "record_timestamp": "2026-07-29T02:54:33.261Z"
+      }
+    }
+  ]
+}

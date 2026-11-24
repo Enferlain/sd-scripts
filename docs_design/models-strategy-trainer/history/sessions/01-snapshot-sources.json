@@ -1,0 +1,23 @@
+{
+  "captured_at_utc": "2026-11-05T18:00:27.008450+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_inventory.md",
+      "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "sha256": "c5e19994f4fd54e4587faf3bc05095469d1bf20141f88f1b3c3649010c51799c",
+      "bytes": 49814,
+      "lines": 1089,
+      "extraction": "exact Git blob bytes, no added header"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_direction.md",
+      "commit": "16801f38c802bae413a75785e54d8435aabbf785",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "sha256": "52366b60c67b320f120936165173ddf3827691fd549ecf842dcb7a63d2a29e44",
+      "bytes": 30845,
+      "lines": 793,
+      "extraction": "exact Git blob bytes, no added header"
+    }
+  ]
+}

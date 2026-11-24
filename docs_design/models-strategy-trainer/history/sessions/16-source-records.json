@@ -1,0 +1,616 @@
+{
+  "captured_at_utc": "2026-11-06T08:31:03.019825+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/design.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "bytes": 276208,
+      "sha256": "b001763bac6ada4ef36843b7b9e77448adaaa0971293f47faa169facaf54fd76",
+      "lines": 3303,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/proposal.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+      "bytes": 7393,
+      "sha256": "81c9d97e6fd67a0c207c013c8a44250ebedb025ac17a0e0aecf9d27cc17e1026",
+      "lines": 123,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "bytes": 36991,
+      "sha256": "11fd330222135b7196c428ec0794ba2e2eb19cf880715ac54e61707dd93b00cb",
+      "lines": 502,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "bytes": 12795,
+      "sha256": "987430a9031be2d13b29b2945aed9fdae9869c30462368838ecac46e93790444",
+      "lines": 195,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "bytes": 10175,
+      "sha256": "33d8a3770a42e332924afa34e40f83704137254beb732685f57f2e1ccaa3f9b8",
+      "lines": 169,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "bytes": 4478,
+      "sha256": "c9fa95ed0e05e4a542897e402fc638773d5dfb6aa399bfd634663176afd390ef",
+      "lines": 60,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "bytes": 15010,
+      "sha256": "944018b6d95d9b02503500d26c7b14a1bf925b84b652e5df1f6b125d2cce7142",
+      "lines": 205,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "bytes": 8955,
+      "sha256": "b73e77e9d19be0c0b9f5340f555115e543e2da8cbefe36edb2a5980067cbc332",
+      "lines": 131,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "bytes": 1271,
+      "sha256": "9f97f724882c6b794f9d0229f770ee36ffd9d6167d5f1e1a5e0a56a5336d519f",
+      "lines": 19,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "bytes": 1285,
+      "sha256": "857388a041b497769a8427aab09883e3d4967383ad970e6c2721af182a458b3a",
+      "lines": 20,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "bytes": 11836,
+      "sha256": "fa7e2df29918c20fba70eb2266f63496758dd6b6eea2cf5dfed0b471fd6c5b2e",
+      "lines": 193,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "bytes": 18374,
+      "sha256": "1038ca11a0b430e5357c2c8258b141f0999d1d11f25da07c4696ad33b351ac58",
+      "lines": 276,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "bytes": 43302,
+      "sha256": "d4175e0c9a3372cbc843815d03799a6f321d8038da479684a389b50a4b12ef15",
+      "lines": 595,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "bytes": 16974,
+      "sha256": "a427d2f2847173d23464515e1b9d599f1abafc8dc3caafed89f4b68cb0684b51",
+      "lines": 245,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "bytes": 9918,
+      "sha256": "c17c122ef4c7fafc62af6eab7f1fa884e24c418b47cb9a8ad4f3f5dfb78f0b1e",
+      "lines": 146,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "bytes": 17160,
+      "sha256": "5d2e66b162db3481c3e84d493ccef57355b0d34ead876c1d8098162b9d423126",
+      "lines": 265,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "bytes": 14763,
+      "sha256": "a1819144c533a1e80d3017e48c668d12a9f98c0785f4c1a7a4e749427c453757",
+      "lines": 233,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-rework-model-strategy-trainer/tasks.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "bytes": 16801,
+      "sha256": "729a7e0f1a8c5e91f442dfbdeccb916f56cd5803923bd9214f3390dfb90c7cb6",
+      "lines": 64,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "governing design/spec/audit closeout checkpoint; not completed production G5"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_general_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_general_audit.md",
+      "bytes": 4828,
+      "sha256": "feed1d845cff0eeadcba458f07137b72d36ad69c2aa1561f4f8ab2e80cf1f0db",
+      "lines": 92,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_0_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_0_audit.md",
+      "bytes": 5232,
+      "sha256": "989ffe1b4b02f56bb6f3f2cb710c02717f2d2082b33be71169d2ca270ce8ddf8",
+      "lines": 106,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_0_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_0_report.md",
+      "bytes": 153058,
+      "sha256": "d4f5c1363e69f6516827a2461515acdf3c158cf7bdec6e8f3a1f293500a4dcef",
+      "lines": 338,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_1_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_1_audit.md",
+      "bytes": 6713,
+      "sha256": "0a8d605b0ebdcfa78a904a75eaeea0f31b7c33cd8e4accece17b43b3a4c32fee",
+      "lines": 127,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_1_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_1_report.md",
+      "bytes": 47228,
+      "sha256": "20fc95f36175ed7db322b2caf0024980126425b1211e9625082b2e0bb00ef404",
+      "lines": 226,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_2_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_2_audit.md",
+      "bytes": 10110,
+      "sha256": "da78911c111852af27191b13b8e7e3eb88a7da64922ef5a227c2cf5b4aa48008",
+      "lines": 216,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_2_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_2_report.md",
+      "bytes": 51686,
+      "sha256": "87a8452926df70762a84cb74c1defd430ab08c8d6780ce111b5c4ce71152e05d",
+      "lines": 292,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_3_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_3_audit.md",
+      "bytes": 11415,
+      "sha256": "5a970906e8fd9c838fb7b9afdbc1c39934d177f4e3017e9a004c45369a0cc449",
+      "lines": 259,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_3_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_3_report.md",
+      "bytes": 49685,
+      "sha256": "5678316adb9a4c6f219633e48e47c79bf2c6cca343651ca7c638edea3b9baa1b",
+      "lines": 289,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_4_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_4_audit.md",
+      "bytes": 11810,
+      "sha256": "02cd9768c76f9b18187df4cdc24d6f9c30316bf80c1d997d420b333eaf73b83f",
+      "lines": 264,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_4_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_4_report.md",
+      "bytes": 43828,
+      "sha256": "4d9d4934080b87af87b05f5fe7a84e9d0b8c393684fd524b57e09b6f906db59a",
+      "lines": 269,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_5_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_5_audit.md",
+      "bytes": 11660,
+      "sha256": "8cc6c3553b2c56b985c64e04947208eed7c46f2a8fe0efb766e17e0ffb1473c5",
+      "lines": 259,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_5_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_5_report.md",
+      "bytes": 55634,
+      "sha256": "4de9483f5e681294d5684af910b15fcec724bc02bb007d1a9008c28b85b63b1b",
+      "lines": 276,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_6_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_6_audit.md",
+      "bytes": 13931,
+      "sha256": "39c52f0fe57bb0147a87b259e49315aa2f88b72b4a5bc6259ff6908bb1a8bcdc",
+      "lines": 307,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_6_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_6_report.md",
+      "bytes": 83693,
+      "sha256": "7e2b6853133992a2a5306666aaa2463d53a28bce00676bf5304f2cb09a94bcb4",
+      "lines": 442,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_7_audit.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_7_audit.md",
+      "bytes": 12444,
+      "sha256": "a2348da74dc7e1183abda89819bb20eee901aae1733495bde4e0d932b5f40db2",
+      "lines": 232,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/b19717fa-AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_7_report.md",
+      "commit": "b19717fa4eab3d6b31ad0a3ae4fe1c24bfa6f42c",
+      "original_path": "AUDIT/REWORK_MODEL_STRATEGY_TRAINER/rmst_pass_7_report.md",
+      "bytes": 93999,
+      "sha256": "6d8043dc1b64ea07ad78f6abcd19fb4bcada49b9182a17cb5e35c406953306af",
+      "lines": 378,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "original staged audit prompt/report, opinion or verification at its recorded baseline; not a current independent review"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/a8e9cf5f-rework-model-strategy-trainer/research/trainer-architecture-research.md",
+      "commit": "a8e9cf5f2e9aafcd9666c5892b17f1db13f2ad51",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/trainer-architecture-research.md",
+      "bytes": 70800,
+      "sha256": "2965625eb7fbfa37aa21464c7341fe24a2f714ab7d4a46934581f67e91fd9ea3",
+      "lines": 545,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "external architectural mechanisms research, not an adoption of its sample APIs"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/2da48256-ab6a-4ad0-9ae8-578611d292b9/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase16-attachments/2da48256-ab6a-4ad0-9ae8-578611d292b9-Pasted_text.md",
+      "sha256": "b6bec239fe9647dc9e460aeb183bd8e378d83c7300e11b2b56563dbc7b91fa49",
+      "bytes": 20230,
+      "lines": 198,
+      "referenced_in_selected_raw_line": 21,
+      "source_page": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T06-25-37-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dbf6-2961-7312-b33e-f6ac02715f77.jsonl",
+      "message_number": 3,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-09-26 06:31:00.515380735 +0200",
+        "mtime_utc": "2026-09-26T04:31:00.515381+00:00",
+        "ctime_utc": "2026-09-26T04:31:00.515381+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/d78da59a-de04-4e80-b34a-588d601426ce/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase16-attachments/d78da59a-de04-4e80-b34a-588d601426ce-Pasted_text.md",
+      "sha256": "007a2e9b3ad82e06e6ba7c5d2004a4eee0399d41220e171da9f766a559a12995",
+      "bytes": 8196,
+      "lines": 178,
+      "referenced_in_selected_raw_line": 1762,
+      "source_page": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T08-28-05-01a0bb09-899f-7d32-957d-99b317e588ce_01a0fb4c-6e99-7791-ac0a-de53a63627ba.jsonl",
+      "message_number": 286,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-03 04:20:22.992144426 +0200",
+        "mtime_utc": "2026-10-03T02:20:22.992144+00:00",
+        "ctime_utc": "2026-10-03T02:20:22.992144+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/8df9dad6-3260-42c2-81be-405c53d3c891/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase16-attachments/8df9dad6-3260-42c2-81be-405c53d3c891-Pasted_text.md",
+      "sha256": "4c0926bfb29619de9a7241e771f48821c7bcb99e2893de7bac42a575f922869b",
+      "bytes": 19133,
+      "lines": 512,
+      "referenced_in_selected_raw_line": 4092,
+      "source_page": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T08-28-05-01a0bb09-899f-7d32-957d-99b317e588ce_01a0fb4c-6e99-7791-ac0a-de53a63627ba.jsonl",
+      "message_number": 421,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-04 06:46:20.501634329 +0200",
+        "mtime_utc": "2026-10-04T04:46:20.501634+00:00",
+        "ctime_utc": "2026-10-04T04:46:20.501634+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    }
+  ],
+  "section_introductions": [],
+  "scope": "G3/G4 exchange completion, early executable research, restoration correction, pinned multi-pass audit and the rejection of following G5 component checkboxes without a connected execution mechanism",
+  "snapshot_timing": "Each exact Git copy is a dated checkpoint identified by commit. A later checkpoint may include subsequent corrections; it is not labelled as the exact state of every earlier message. Original inode dates remain in inventory.json.",
+  "qualification": "Historical experiments, counts, reviews and runtime assertions are evidence from their recorded scope, not fresh qualification, production readiness or automatic adoption of every API. This reading audits decision provenance rather than reexecuting the implementation.",
+  "page_transitions": [
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T01-04-04-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dacf-c48d-7851-8ebe-30a561c7ad37.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T01-16-01-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dada-b6ff-7002-b01f-72f5e2778c6b.jsonl",
+      "child_header_timestamp": "2026-09-25T23:16:01.919Z",
+      "reported_history_base": {
+        "thread_id": "01a0dacf-c48d-7851-8ebe-30a561c7ad37",
+        "end_ordinal_exclusive": 22702,
+        "end_byte_offset": 25057
+      },
+      "parent_last_included_raw_line": 4,
+      "last_included_ordinal": 22701,
+      "prefix_bytes": 25057,
+      "prefix_sha256": "fe30c1bf03d21e681d2f2cb6df88ec94104448f1bf056f9cde3590689768b604"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T01-16-01-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dada-b6ff-7002-b01f-72f5e2778c6b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T06-25-37-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dbf6-2961-7312-b33e-f6ac02715f77.jsonl",
+      "child_header_timestamp": "2026-09-26T04:25:37.889Z",
+      "reported_history_base": {
+        "thread_id": "01a0dada-b6ff-7002-b01f-72f5e2778c6b",
+        "end_ordinal_exclusive": 22706,
+        "end_byte_offset": 25081
+      },
+      "parent_last_included_raw_line": 4,
+      "last_included_ordinal": 22705,
+      "prefix_bytes": 25081,
+      "prefix_sha256": "852cb2e8059ed8b3b4dbc92b239c7ebd124684f05a938df648c2ac0c1ecf8072"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-26T06-25-37-01a0bb09-899f-7d32-957d-99b317e588ce_01a0dbf6-2961-7312-b33e-f6ac02715f77.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-01T02-51-42-01a0bb09-899f-7d32-957d-99b317e588ce_01a0f4f2-1a60-7da2-8b93-f999fcad8367.jsonl",
+      "child_header_timestamp": "2026-10-01T00:51:42.304Z",
+      "reported_history_base": {
+        "thread_id": "01a0dbf6-2961-7312-b33e-f6ac02715f77",
+        "end_ordinal_exclusive": 25321,
+        "end_byte_offset": 18468040
+      },
+      "parent_last_included_raw_line": 2615,
+      "last_included_ordinal": 25320,
+      "prefix_bytes": 18468040,
+      "prefix_sha256": "d65c040350b57cc6dd49c60e7763be852a5c4c5b6f786e518fa6eb0d297f0bda"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-01T02-51-42-01a0bb09-899f-7d32-957d-99b317e588ce_01a0f4f2-1a60-7da2-8b93-f999fcad8367.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T00-24-46-01a0bb09-899f-7d32-957d-99b317e588ce_01a0f991-f18e-7181-9818-bb4043aed296.jsonl",
+      "child_header_timestamp": "2026-10-01T22:24:46.478Z",
+      "reported_history_base": {
+        "thread_id": "01a0f4f2-1a60-7da2-8b93-f999fcad8367",
+        "end_ordinal_exclusive": 26185,
+        "end_byte_offset": 8292895
+      },
+      "parent_last_included_raw_line": 864,
+      "last_included_ordinal": 26184,
+      "prefix_bytes": 8292895,
+      "prefix_sha256": "ab54970db7b09bdc357bc1080ff834493a42af5ea9c4b6349fc994cf0110b931"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T00-24-46-01a0bb09-899f-7d32-957d-99b317e588ce_01a0f991-f18e-7181-9818-bb4043aed296.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T08-28-05-01a0bb09-899f-7d32-957d-99b317e588ce_01a0fb4c-6e99-7791-ac0a-de53a63627ba.jsonl",
+      "child_header_timestamp": "2026-10-02T06:28:05.401Z",
+      "reported_history_base": {
+        "thread_id": "01a0f991-f18e-7181-9818-bb4043aed296",
+        "end_ordinal_exclusive": 26693,
+        "end_byte_offset": 5430050
+      },
+      "parent_last_included_raw_line": 508,
+      "last_included_ordinal": 26692,
+      "prefix_bytes": 5430050,
+      "prefix_sha256": "c095430c786160b4f839c966f2c90eaf5b66a2ce2b852810c21e7bcf02bb9ea4"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T08-28-05-01a0bb09-899f-7d32-957d-99b317e588ce_01a0fb4c-6e99-7791-ac0a-de53a63627ba.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/04/rollout-2026-10-04T06-53-01-01a10542-1c0e-7f10-b7ea-a2a9583c344a.jsonl",
+      "child_header_timestamp": "2026-10-04T04:53:01.083Z",
+      "reported_history_base": {
+        "thread_id": "01a0fb4c-6e99-7791-ac0a-de53a63627ba",
+        "end_ordinal_exclusive": 30818,
+        "end_byte_offset": 31898628
+      },
+      "parent_last_included_raw_line": 4125,
+      "last_included_ordinal": 30817,
+      "prefix_bytes": 31898628,
+      "prefix_sha256": "a69b71b7241fa66bc5fe710edd3e3e5623e88bccb46438e5afa656e831235bbe"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/04/rollout-2026-10-04T06-53-01-01a10542-1c0e-7f10-b7ea-a2a9583c344a.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/04/rollout-2026-10-04T08-12-41-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a1058b-0c6b-7480-bfe5-7d074713b6a8.jsonl",
+      "child_header_timestamp": "2026-10-04T06:12:41.195Z",
+      "reported_history_base": {
+        "thread_id": "01a10542-1c0e-7f10-b7ea-a2a9583c344a",
+        "end_ordinal_exclusive": 31129,
+        "end_byte_offset": 3829345
+      },
+      "parent_last_included_raw_line": 311,
+      "last_included_ordinal": 31128,
+      "prefix_bytes": 3829345,
+      "prefix_sha256": "ea5e1e330aee164de72838849d27c19a419e2e9f373ef7606bb43361e12d9f2a"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/04/rollout-2026-10-04T08-12-41-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a1058b-0c6b-7480-bfe5-7d074713b6a8.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T08-45-57-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a10acf-dccf-7c41-bd33-318b6d161949.jsonl",
+      "child_header_timestamp": "2026-10-05T06:45:57.071Z",
+      "reported_history_base": {
+        "thread_id": "01a1058b-0c6b-7480-bfe5-7d074713b6a8",
+        "end_ordinal_exclusive": 33478,
+        "end_byte_offset": 24762335
+      },
+      "parent_last_included_raw_line": 2349,
+      "last_included_ordinal": 33477,
+      "prefix_bytes": 24762335,
+      "prefix_sha256": "e68052b0ae9bc984c7d6e8486d94a5adb1ba25865203d5b8898e93d0d0799a69"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T08-45-57-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a10acf-dccf-7c41-bd33-318b6d161949.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T09-25-40-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a10af4-3a00-7e12-af43-2b0d146a21d0.jsonl",
+      "child_header_timestamp": "2026-10-05T07:25:40.224Z",
+      "reported_history_base": {
+        "thread_id": "01a10acf-dccf-7c41-bd33-318b6d161949",
+        "end_ordinal_exclusive": 33632,
+        "end_byte_offset": 1244219
+      },
+      "parent_last_included_raw_line": 154,
+      "last_included_ordinal": 33631,
+      "prefix_bytes": 1244219,
+      "prefix_sha256": "22cc54abd3ff1eb83e9e51fc1bc84886329cca641c1ef2658ae0aeb1bef2e915"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T09-25-40-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a10af4-3a00-7e12-af43-2b0d146a21d0.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T09-26-18-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a10af4-d0d1-7840-9ec4-f555379a96fb.jsonl",
+      "child_header_timestamp": "2026-10-05T07:26:18.833Z",
+      "reported_history_base": {
+        "thread_id": "01a10af4-3a00-7e12-af43-2b0d146a21d0",
+        "end_ordinal_exclusive": 33636,
+        "end_byte_offset": 25230
+      },
+      "parent_last_included_raw_line": 4,
+      "last_included_ordinal": 33635,
+      "prefix_bytes": 25230,
+      "prefix_sha256": "b6e8295f2db2aac290b38ab3a2d6cb7ce2d318a0d5e36c55ec3a2cc3df8db8a0"
+    }
+  ],
+  "related_exports": [
+    {
+      "json_path": "16-branch-differences.json",
+      "markdown_path": "16-branch-differences.md",
+      "messages": 18,
+      "kind": "distinct branch suffixes"
+    }
+  ],
+  "already_exported_suffix_records": [],
+  "previous_episode_suffix_reclassified": [],
+  "decision_review_scope": "Decision-bearing user corrections, resulting governing edits and experiment conclusions were reviewed. Complete visible transcripts are preserved for joint reading; source-code and numerical qualification claims are not independently rerun by this history capture.",
+  "current_authority": "Governing design/specs retain authority; source role and explicit adoption/supersession control interpretation. Experimental APIs, external opinions, failed reviews and superseded proposals remain evidence.",
+  "live_source_prefix_qualification": null
+}

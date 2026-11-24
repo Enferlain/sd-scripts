@@ -1,0 +1,809 @@
+{
+  "captured_at_utc": "2026-11-05T16:41:46.567333+00:00",
+  "source": "read-only query of Codex state_5.sqlite, then session_meta headers",
+  "coverage": "registered primary sd-scripts threads created on or after 2026-07-16; archived/unregistered alternatives and attachments may require later discovery",
+  "candidates": [
+    {
+      "id": "019f6c13-b8ea-7053-976a-32a7c82ce477",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-16T17-57-39-019f6c13-b8ea-7053-976a-32a7c82ce477.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Review project status (2)",
+      "registered_created_utc": "2026-07-16T17:57:39+00:00",
+      "registered_updated_utc": "2026-07-16T18:00:30+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T17:57:39.719Z",
+      "bytes": 6239270
+    },
+    {
+      "id": "019f6c17-7555-7b82-8451-a5ebd414fc3e",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-16T18-01-44-019f6c17-7555-7b82-8451-a5ebd414fc3e.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hello. Please help with work on the repo. First, is the codebase-memory mcp working?",
+      "registered_created_utc": "2026-07-16T18:01:44+00:00",
+      "registered_updated_utc": "2026-07-16T18:23:16+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-16T18:01:44.557Z",
+      "bytes": 966036
+    },
+    {
+      "id": "019f6c2d-9a94-7701-adab-fd29bd53d926",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T18-25-55-019f6c2d-9a94-7701-adab-fd29bd53d926.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "hi. is the codebase-memory mpc properly exposed?",
+      "registered_created_utc": "2026-07-16T18:25:55+00:00",
+      "registered_updated_utc": "2026-07-16T21:51:05+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-16T18:25:55.883Z",
+      "bytes": 1395346
+    },
+    {
+      "id": "019f6ccb-ad99-7f73-a735-0bf46f11d2b2",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-16T21-18-35-019f6ccb-ad99-7f73-a735-0bf46f11d2b2.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Check codebase-memory MCP exposure",
+      "registered_created_utc": "2026-07-16T21:18:35+00:00",
+      "registered_updated_utc": "2026-07-16T21:19:42+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-16T21:18:35.818Z",
+      "bytes": 281718
+    },
+    {
+      "id": "019f6cea-e3d0-7ca0-b337-efae15e0d505",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-16T21-52-40-019f6cea-e3d0-7ca0-b337-efae15e0d505.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Test codebase-memory",
+      "registered_created_utc": "2026-07-16T21:52:40+00:00",
+      "registered_updated_utc": "2026-07-16T21:53:54+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-16T21:52:40.940Z",
+      "bytes": 223482
+    },
+    {
+      "id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T21-54-25-019f6cec-7e2a-7d41-9362-bf247eb3ffb3.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "registered_created_utc": "2026-07-16T21:54:25+00:00",
+      "registered_updated_utc": "2026-07-21T21:55:52+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T21:54:25.987Z",
+      "bytes": 42138056
+    },
+    {
+      "id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/21/rollout-2026-07-21T22-17-24-019f86c1-533d-70d0-8e4d-90cd9e9b62de.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Review project status (3)",
+      "registered_created_utc": "2026-07-21T22:17:24+00:00",
+      "registered_updated_utc": "2026-07-21T22:36:57+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "header_timestamp": "2026-07-21T22:17:24.549Z",
+      "bytes": 42084159
+    },
+    {
+      "id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "registered_created_utc": "2026-07-21T22:38:05+00:00",
+      "registered_updated_utc": "2026-07-23T00:51:21+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "header_timestamp": "2026-07-21T22:38:05.739Z",
+      "bytes": 45393528
+    },
+    {
+      "id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "registered_created_utc": "2026-07-23T00:52:12+00:00",
+      "registered_updated_utc": "2026-07-26T01:31:39+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "header_timestamp": "2026-07-23T00:52:12.181Z",
+      "bytes": 47375428
+    },
+    {
+      "id": "019f9b0e-384f-71b1-9045-875d3a41c43d",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/25/rollout-2026-07-25T20-53-48-019f9b0e-384f-71b1-9045-875d3a41c43d.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "codebasememoryshit",
+      "registered_created_utc": "2026-07-25T20:53:48+00:00",
+      "registered_updated_utc": "2026-07-26T00:31:39+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-25T20:53:48.255Z",
+      "bytes": 4061548
+    },
+    {
+      "id": "019f9baf-8ed8-7512-9b5c-f2c83534cb5a",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-25T23-50-01-019f9baf-8ed8-7512-9b5c-f2c83534cb5a.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Check codebase memory MCP",
+      "registered_created_utc": "2026-07-25T23:50:01+00:00",
+      "registered_updated_utc": "2026-07-25T23:52:50+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-25T23:50:01.701Z",
+      "bytes": 726191
+    },
+    {
+      "id": "019f9bd9-36d4-70a1-9a16-5abeb643e527",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/26/rollout-2026-07-26T00-35-31-019f9bd9-36d4-70a1-9a16-5abeb643e527.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "hello, please check if codebase memory mcp works properly (graph, index, all tools available)",
+      "registered_created_utc": "2026-07-26T00:35:31+00:00",
+      "registered_updated_utc": "2026-08-31T02:56:52+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-26T00:35:31.677Z",
+      "bytes": 40395652
+    },
+    {
+      "id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "registered_created_utc": "2026-07-28T02:43:05+00:00",
+      "registered_updated_utc": "2026-07-29T00:12:02+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "header_timestamp": "2026-07-28T02:43:05.109Z",
+      "bytes": 48020515
+    },
+    {
+      "id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Review project status (7)",
+      "registered_created_utc": "2026-07-29T00:13:35+00:00",
+      "registered_updated_utc": "2026-07-29T02:05:35+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "header_timestamp": "2026-07-29T00:13:35.746Z",
+      "bytes": 48974702
+    },
+    {
+      "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "registered_created_utc": "2026-07-29T02:06:11+00:00",
+      "registered_updated_utc": "2026-08-22T00:14:15+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "header_timestamp": "2026-07-29T02:06:11.949Z",
+      "bytes": 64081338
+    },
+    {
+      "id": "019fb9e8-cc0d-75b3-822a-623a2560b8e0",
+      "rollout_path": "/home/imi/.codex/sessions/2026/07/31/rollout-2026-07-31T20-41-09-019fb9e8-cc0d-75b3-822a-623a2560b8e0.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "do pal-mcp-server or sub-agents-mcp look usable? one is 7 months old last commit",
+      "registered_created_utc": "2026-07-31T20:41:09+00:00",
+      "registered_updated_utc": "2026-08-03T04:58:46+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-31T20:41:09.400Z",
+      "bytes": 20114285
+    },
+    {
+      "id": "019fbb5b-5ba3-7732-ab81-ff7a4a58e840",
+      "rollout_path": "/home/imi/.codex/sessions/2026/08/01/rollout-2026-08-01T03-25-54-019fbb5b-5ba3-7732-ab81-ff7a4a58e840.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. We just finished setting up a bunch of stuff and I'd like to do a test of their functionalities",
+      "registered_created_utc": "2026-08-01T03:25:54+00:00",
+      "registered_updated_utc": "2026-08-01T04:28:08+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-08-01T03:25:54.475Z",
+      "bytes": 933412
+    },
+    {
+      "id": "019fbb9b-576d-7b62-99c0-845fab632d78",
+      "rollout_path": "/home/imi/.codex/sessions/2026/08/01/rollout-2026-08-01T04-35-47-019fbb9b-576d-7b62-99c0-845fab632d78.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Test new Luna native agents",
+      "registered_created_utc": "2026-08-01T04:35:47+00:00",
+      "registered_updated_utc": "2026-08-01T04:50:03+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-08-01T04:35:47.702Z",
+      "bytes": 842180
+    },
+    {
+      "id": "019fcf87-b505-7860-b72e-0441183587b5",
+      "rollout_path": "/home/imi/.codex/sessions/2026/08/05/rollout-2026-08-05T01-26-45-019fcf87-b505-7860-b72e-0441183587b5.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Verify OpenSpec installation",
+      "registered_created_utc": "2026-08-05T01:26:45+00:00",
+      "registered_updated_utc": "2026-08-05T01:33:46+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-08-05T01:26:45.261Z",
+      "bytes": 357808
+    },
+    {
+      "id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+      "rollout_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi! We're opening a new chapter for working on our repo. Get familiar with the preliminary documentation and tools.&#x20;",
+      "registered_created_utc": "2026-08-22T00:18:51+00:00",
+      "registered_updated_utc": "2026-09-19T18:16:51+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-08-22T00:18:51.669Z",
+      "bytes": 27890604
+    },
+    {
+      "id": "01a0b1d2-0138-7c11-bc81-4ee074b48204",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-18T02-02-05-01a0b1d2-0138-7c11-bc81-4ee074b48204.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Resume architecture binding work - misstart",
+      "registered_created_utc": "2026-09-18T00:02:05+00:00",
+      "registered_updated_utc": "2026-09-18T00:04:27+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-09-18T00:02:05.251Z",
+      "bytes": 556044
+    },
+    {
+      "id": "01a0c753-fef3-7023-877b-14fee9308c8c",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-08-01a0c753-fef3-7023-877b-14fee9308c8c_01a0c757-b282-7fe3-b5aa-c12163cd4aac.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "sounds about right",
+      "registered_created_utc": "2026-09-22T04:20:08+00:00",
+      "registered_updated_utc": "2026-09-22T04:20:28+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+      "header_timestamp": "2026-09-22T04:20:08.450Z",
+      "bytes": 99564
+    },
+    {
+      "id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-02T08-28-05-01a0bb09-899f-7d32-957d-99b317e588ce_01a0fb4c-6e99-7791-ac0a-de53a63627ba.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "hi. I'm thinking we'll start putting together the openspec now. I tried using the new gpt model for this a few days ago but it guessed too much stuff because session summary hit right before it (it might again) and it didn't read the design",
+      "registered_created_utc": "2026-10-02T06:28:05+00:00",
+      "registered_updated_utc": "2026-10-04T04:52:45+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+      "header_timestamp": "2026-10-02T06:28:05.401Z",
+      "bytes": 31907798
+    },
+    {
+      "id": "01a10542-1c0e-7f10-b7ea-a2a9583c344a",
+      "rollout_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T09-26-18-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a10af4-d0d1-7840-9ec4-f555379a96fb.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Okay, how does the generic prompt and pass 0 prompt look like?",
+      "registered_created_utc": "2026-10-05T07:26:18+00:00",
+      "registered_updated_utc": "2026-10-05T16:55:54+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+      "header_timestamp": "2026-10-05T07:26:18.833Z",
+      "bytes": 455642
+    },
+    {
+      "id": "01a14650-e205-7750-9522-dca86fe0d762",
+      "rollout_path": "/home/imi/.codex/archived_sessions/rollout-2026-10-16T22-04-28-01a14650-e205-7750-9522-dca86fe0d762.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Identify target architecture",
+      "registered_created_utc": "2026-10-16T20:04:28+00:00",
+      "registered_updated_utc": "2026-10-17T02:14:13+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-10-16T20:04:28.318Z",
+      "bytes": 3548823
+    },
+    {
+      "id": "01a10cff-f22a-7973-96f2-f1a98c749d19",
+      "rollout_path": "/home/imi/.codex/sessions/2026/10/28/rollout-2026-10-28T07-16-17-01a10cff-f22a-7973-96f2-f1a98c749d19_01a18126-f8e0-74c1-870c-55eaad949b15.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Perhaps you can do one at a time mocks of the design (either in the repo in an isolated section that still allows you to reuse existing mechanisms where needed, or in chat) with details about what parts of it do or how they look like, and t",
+      "registered_created_utc": "2026-10-28T06:16:17+00:00",
+      "registered_updated_utc": "2026-11-03T07:21:40+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": "01a10542-1c0e-7f10-b7ea-a2a9583c344a",
+      "header_timestamp": "2026-10-28T06:16:17.376Z",
+      "bytes": 10851658
+    },
+    {
+      "id": "01a185e6-b37c-7192-bd31-0ba5a575b23d",
+      "rollout_path": "/home/imi/.codex/sessions/2026/10/29/rollout-2026-10-29T05-24-11-01a185e6-b37c-7192-bd31-0ba5a575b23d.jsonl",
+      "cwd": "/home/imi/Projects/sd-scripts",
+      "title": "Hi. Time to start a new session with a fresh and ready mindset. Please look around first to catch up with where things are, without trying to guess what the next ask will be. avoid reading the uncommitted file since we'll go over that toget",
+      "registered_created_utc": "2026-10-29T04:24:11+00:00",
+      "registered_updated_utc": "2026-11-05T16:41:46+00:00",
+      "relevance": "candidate only; title/cwd are not proof of relevant discussion",
+      "exists": true,
+      "forked_from_id": null,
+      "header_timestamp": "2026-10-29T04:24:11.406Z",
+      "bytes": 103645259
+    }
+  ],
+  "inspected_ancestry": [
+    {
+      "id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-12T22-03-45-019f585b-9603-72c3-8ce7-d89324108d2e.jsonl",
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-12T22:03:45.038Z",
+      "bytes": 6804996,
+      "sha256": "90ca9151363c45c42bcbf59257c6076ec9c4f4fbc4fb077749279aa6d97481da"
+    },
+    {
+      "id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T21-54-25-019f6cec-7e2a-7d41-9362-bf247eb3ffb3.jsonl",
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T21:54:25.987Z",
+      "bytes": 42138056,
+      "sha256": "7f2f8b0d79f95bff055fdc7892707c33e73059b67df0ae05adb00464e52f37af"
+    },
+    {
+      "id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "path": "/home/imi/.codex/sessions/2026/07/21/rollout-2026-07-21T22-17-24-019f86c1-533d-70d0-8e4d-90cd9e9b62de.jsonl",
+      "forked_from_id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "header_timestamp": "2026-07-21T22:17:24.549Z",
+      "bytes": 42084159,
+      "sha256": "417c28912a4c59b3e5f5ccca12dcaebae0e68282edc3228a9f518c61823ff895"
+    },
+    {
+      "id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+      "forked_from_id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "header_timestamp": "2026-07-21T22:38:05.739Z",
+      "bytes": 45393528,
+      "sha256": "254bcf0d4f1293bed1bdd484b8d4c58df8eacf0510f9ceaf6889d12e10053f2f"
+    }
+  ],
+  "exported_episode": "00-initial-direction.json",
+  "walkthrough_updated_at_utc": "2026-11-06T08:33:33.839476+00:00",
+  "exported_episodes": [
+    "00-initial-direction.json",
+    "01-inventory-and-authoring.json",
+    "01-branch-differences.json",
+    "02-frameworks-and-contract-surfaces.json",
+    "03-training-mode-and-objective.json",
+    "04-identity-and-execution-routes.json",
+    "05-arrangement-and-persistence.json",
+    "06-authority-reviews-and-handoff.json",
+    "07-contract-exchanges-and-authority-correction.json",
+    "08-design-frontier-preparation-and-identity.json",
+    "09-executable-evidence-and-optimization.json",
+    "10-accepted-arrangement-and-openspec-transition.json",
+    {
+      "path": "11-first-openspec-draft-and-reconciliation.json",
+      "messages": 19,
+      "scope": "September18 first draft, source-reading correction and independent orientation"
+    },
+    {
+      "path": "12-governing-rebuild-and-contract-system.json",
+      "messages": 87,
+      "scope": "September19-20 governing rebuild and first two walkthrough items"
+    },
+    {
+      "path": "13-dynamic-behavior-peft-and-spec-reconciliation.json",
+      "messages": 123,
+      "scope": "initial walkthrough completion through first spec double-check"
+    },
+    {
+      "path": "13-branch-differences.json",
+      "messages": 6,
+      "scope": "distinct suffixes outside selected page continuations"
+    },
+    {
+      "path": "14-training-first-placement-and-one-run.json",
+      "messages": 106,
+      "scope": "training-first placement and coherent run-root clarification"
+    },
+    {
+      "path": "14-branch-differences.json",
+      "messages": 26,
+      "scope": "alternate suffixes and short strategy-layout side fork"
+    },
+    {
+      "path": "15-research-and-whole-run-language.json",
+      "messages": 419,
+      "scope": "broader research, ordinary and adversarial training, staged topology, independent producers, stateful inputs and the first action/whole-run language experiments"
+    },
+    {
+      "path": "15-branch-differences.json",
+      "messages": 23,
+      "scope": "distinct branch suffixes"
+    },
+    {
+      "path": "16-exchanges-audits-and-g5-correction.json",
+      "messages": 631,
+      "scope": "G3/G4 exchange completion, early executable research, restoration correction, pinned multi-pass audit and the rejection of following G5 component checkboxes without a connected execution mechanism"
+    },
+    {
+      "path": "16-branch-differences.json",
+      "messages": 18,
+      "scope": "distinct branch suffixes"
+    },
+    {
+      "path": "17-connected-candidate-and-ir-machinery.json",
+      "messages": 897,
+      "scope": "connected whole-system mocks, graph-derived execution, shared owners, state/gradient/physical lifetimes, independent oracles, free-threading and backend qualifications, Togeari learning and the next IR machinery candidate"
+    },
+    {
+      "path": "17-branch-differences.json",
+      "messages": 20,
+      "scope": "distinct branch suffixes"
+    },
+    {
+      "path": "18-framework-comparison-and-xdsl-choice.json",
+      "messages": 403,
+      "scope": "framework screening, xDSL and pinned Pliron experiments, independent extensions, matched six-case comparison, machinery tradeoffs and explicit xDSL working selection"
+    },
+    {
+      "path": "19-shared-language-and-current-frontier.json",
+      "messages": 191,
+      "scope": "language proposal and explicit amendments, shared semantic slice/reference, verification, lowering, cold/independent qualification, binding effects/filtering/fusion and retained storage/autograd products; ends immediately before this historical audit"
+    }
+  ],
+  "inspected_ancestry_chapter01": [
+    {
+      "id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-12T22-03-45-019f585b-9603-72c3-8ce7-d89324108d2e.jsonl",
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-12T22:03:45.038Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 6804996,
+      "sha256": "90ca9151363c45c42bcbf59257c6076ec9c4f4fbc4fb077749279aa6d97481da"
+    },
+    {
+      "id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T21-54-25-019f6cec-7e2a-7d41-9362-bf247eb3ffb3.jsonl",
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T21:54:25.987Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 42138056,
+      "sha256": "7f2f8b0d79f95bff055fdc7892707c33e73059b67df0ae05adb00464e52f37af"
+    },
+    {
+      "id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "path": "/home/imi/.codex/sessions/2026/07/21/rollout-2026-07-21T22-17-24-019f86c1-533d-70d0-8e4d-90cd9e9b62de.jsonl",
+      "forked_from_id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "header_timestamp": "2026-07-21T22:17:24.549Z",
+      "title": "Review project status (3)",
+      "bytes": 42084159,
+      "sha256": "417c28912a4c59b3e5f5ccca12dcaebae0e68282edc3228a9f518c61823ff895"
+    },
+    {
+      "id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+      "forked_from_id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "header_timestamp": "2026-07-21T22:38:05.739Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 45393528,
+      "sha256": "254bcf0d4f1293bed1bdd484b8d4c58df8eacf0510f9ceaf6889d12e10053f2f"
+    },
+    {
+      "id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+      "forked_from_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "header_timestamp": "2026-07-23T00:52:12.181Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 47375428,
+      "sha256": "47e32dd8ac93953ddd59b8fdb479f2c8c2b9a0c1c7bcf19c9ddfd52ee1ff2ae2"
+    },
+    {
+      "id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+      "forked_from_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "header_timestamp": "2026-07-28T02:43:05.109Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 48020515,
+      "sha256": "ea42ab61aa0512f5764a5a1c92101a31be9416c3cf9c12268e7927b10aff0b8b"
+    },
+    {
+      "id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+      "forked_from_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "header_timestamp": "2026-07-29T00:13:35.746Z",
+      "title": "Review project status (7)",
+      "bytes": 48974702,
+      "sha256": "5369fe7791aa9189d566ef591c2ee0b3140f232beb1d2b257b7ec1021bde6cb6"
+    },
+    {
+      "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "header_timestamp": "2026-07-29T02:06:11.949Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 64081338,
+      "sha256": "bc036d8ae0bebf72d8fbda35ff2f1cc4b6c9b9482525d1991ce96e48697a3bf9"
+    }
+  ],
+  "branch_map": "branch-map.md",
+  "chapter02_source_records": "02-source-records.json",
+  "chapter03_source_records": "03-source-records.json",
+  "chapter04_source_records": "04-source-records.json",
+  "chapter05_source_records": "05-source-records.json",
+  "chapter06_source_records": "06-source-records.json",
+  "next_primary_session_bridge": {
+    "id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+    "path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+    "bytes": 27890604,
+    "sha256": "34ccaf6f1a17eddbf37ef4e6722186e5b4d9878b6472b4b8c1a78448bb238979",
+    "header_timestamp": "2026-08-22T00:18:51.669Z",
+    "forked_from_id": null,
+    "first_user_record": {
+      "line": 9,
+      "record_timestamp": "2026-08-22T00:18:55.693Z",
+      "message_id": "msg_01a026d5-b84d-7793-bf0f-58ccbb0809ff",
+      "body_sha256": "3a890c9196f3a11719b33cfa857f57ef8e353a149d9fd1f350833c746eec59fd"
+    },
+    "continuity": "first substantive user message explicitly quotes the old handoff and names the earlier session; not a fork link",
+    "coverage": "bridge located only; later thread not yet exported in this reading"
+  },
+  "chapter07_source_records": "07-source-records.json",
+  "inspected_primary_root_chapter07": [
+    {
+      "id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+      "path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+      "forked_from_id": null,
+      "header_timestamp": "2026-08-22T00:18:51.669Z",
+      "title": "Hi! We're opening a new chapter for working on our repo. Get familiar with the preliminary documentation and tools.&#x20;",
+      "bytes": 27890604,
+      "sha256": "34ccaf6f1a17eddbf37ef4e6722186e5b4d9878b6472b4b8c1a78448bb238979"
+    }
+  ],
+  "chapter08_source_records": "08-source-records.json",
+  "chapter09_source_records": "09-source-records.json",
+  "chapter10_source_records": "10-source-records.json",
+  "next_reading": {
+    "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-11-09-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb63-2d70-7243-8dd6-5b2661ce7d5d.jsonl",
+    "sha256": "a599458edc80b214979fe8f3a3c4eaf45ae3df0d686fb846f4479972d8acb9ff",
+    "header": {
+      "thread_id": "01a0c78f-9687-7450-9f3c-be7e6e0f25f9",
+      "end_ordinal_exclusive": 11507,
+      "end_byte_offset": 8765003
+    },
+    "scope": "next programming-model/language and research pressure discussion; metadata only preview, its messages are not exported in this chapter"
+  },
+  "chapter11_source_records": "11-source-records.json",
+  "chapter12_source_records": "12-source-records.json",
+  "inspected_original_rebuild": {
+    "id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+    "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+    "forked_from_id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+    "forked_from_ordinal_exclusive": 6088,
+    "header_timestamp": "2026-09-19T18:59:19.603Z",
+    "title": "Original September19 governing rebuild fork"
+  },
+  "chapter13_source_records": "13-source-records.json",
+  "inspected_page_continuations_chapter13": [
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-42-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c057-b277-7b71-9ae6-bfcf6084d53a.jsonl",
+      "child_header_timestamp": "2026-09-20T19:42:47.927Z",
+      "reported_history_base": {
+        "thread_id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+        "end_ordinal_exclusive": 7808,
+        "end_byte_offset": 13947078
+      },
+      "parent_last_included_raw_line": 1720,
+      "last_included_ordinal": 7807,
+      "prefix_bytes": 13947078,
+      "prefix_sha256": "45107e99247abe062fb41f8c18a3875709e11ec071f1373e814a7f848a60f966",
+      "qualification": "exact page prefix; logical session id and original fork metadata are distinct from history_base page identity"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-42-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c057-b277-7b71-9ae6-bfcf6084d53a.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-58-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c066-55db-7592-ad7c-c85ff0c7507f.jsonl",
+      "child_header_timestamp": "2026-09-20T19:58:47.259Z",
+      "reported_history_base": {
+        "thread_id": "01a0c057-b277-7b71-9ae6-bfcf6084d53a",
+        "end_ordinal_exclusive": 8094,
+        "end_byte_offset": 2612206
+      },
+      "parent_last_included_raw_line": 286,
+      "last_included_ordinal": 8093,
+      "prefix_bytes": 2612206,
+      "prefix_sha256": "578fcc19a0d341127515c3978085555179ec70953be44c22c5eb665f23b3d6a4",
+      "qualification": "exact page prefix; logical session id and original fork metadata are distinct from history_base page identity"
+    }
+  ],
+  "chapter14_source_records": "14-source-records.json",
+  "inspected_page_continuations_chapter14": [
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-58-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c066-55db-7592-ad7c-c85ff0c7507f.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T01-08-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c63a-6b19-74a3-873d-77bfbfa86ee4.jsonl",
+      "child_header_timestamp": "2026-09-21T23:08:32.409Z",
+      "reported_history_base": {
+        "thread_id": "01a0c066-55db-7592-ad7c-c85ff0c7507f",
+        "end_ordinal_exclusive": 9927,
+        "end_byte_offset": 14543427
+      },
+      "parent_last_included_raw_line": 1833,
+      "last_included_ordinal": 9926,
+      "prefix_bytes": 14543427,
+      "prefix_sha256": "798d0a8b8380b28a72354aab56c77eaa05f740012252a1847c6da8a974cc0cfb"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T01-08-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c63a-6b19-74a3-873d-77bfbfa86ee4.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-11-07-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c673-b8dd-75b1-b78d-0d8d44d00efa.jsonl",
+      "child_header_timestamp": "2026-09-22T00:11:07.869Z",
+      "reported_history_base": {
+        "thread_id": "01a0c63a-6b19-74a3-873d-77bfbfa86ee4",
+        "end_ordinal_exclusive": 10031,
+        "end_byte_offset": 520484
+      },
+      "parent_last_included_raw_line": 104,
+      "last_included_ordinal": 10030,
+      "prefix_bytes": 520484,
+      "prefix_sha256": "4c27ac85f02c362e512c7f3893667f6ce1542bab6103f6383852f64f0a62b9a1"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-11-07-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c673-b8dd-75b1-b78d-0d8d44d00efa.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-56-50-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c69d-9103-7133-91b1-2eb35fa463b4.jsonl",
+      "child_header_timestamp": "2026-09-22T00:56:50.179Z",
+      "reported_history_base": {
+        "thread_id": "01a0c673-b8dd-75b1-b78d-0d8d44d00efa",
+        "end_ordinal_exclusive": 10125,
+        "end_byte_offset": 398982
+      },
+      "parent_last_included_raw_line": 94,
+      "last_included_ordinal": 10124,
+      "prefix_bytes": 398982,
+      "prefix_sha256": "c2613e05d9edd7d622db9d354fe3c0a698eb9a5f38082e2897ec61f6de611241"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-56-50-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c69d-9103-7133-91b1-2eb35fa463b4.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T03-06-36-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6a6-81dd-7c60-a2d5-bcd953128d4b.jsonl",
+      "child_header_timestamp": "2026-09-22T01:06:36.125Z",
+      "reported_history_base": {
+        "thread_id": "01a0c69d-9103-7133-91b1-2eb35fa463b4",
+        "end_ordinal_exclusive": 10127,
+        "end_byte_offset": 20921
+      },
+      "parent_last_included_raw_line": 2,
+      "last_included_ordinal": 10126,
+      "prefix_bytes": 20921,
+      "prefix_sha256": "dc39cc34bbd7020792397522a6932f5649673403094089dda814a9e4b3c6ae0b"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T03-06-36-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6a6-81dd-7c60-a2d5-bcd953128d4b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T04-16-59-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6e6-f376-7c93-90d3-5884ec6bc62b.jsonl",
+      "child_header_timestamp": "2026-09-22T02:16:59.510Z",
+      "reported_history_base": {
+        "thread_id": "01a0c6a6-81dd-7c60-a2d5-bcd953128d4b",
+        "end_ordinal_exclusive": 10129,
+        "end_byte_offset": 20920
+      },
+      "parent_last_included_raw_line": 2,
+      "last_included_ordinal": 10128,
+      "prefix_bytes": 20920,
+      "prefix_sha256": "b57da5cc224f70508fbf3d4b9688ddeec151e50c587fe539c40fb04259f15559"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T04-16-59-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6e6-f376-7c93-90d3-5884ec6bc62b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-43-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c758-3a3c-7ec1-afdb-5ef3b17a74d9.jsonl",
+      "child_header_timestamp": "2026-09-22T04:20:43.196Z",
+      "reported_history_base": {
+        "thread_id": "01a0c6e6-f376-7c93-90d3-5884ec6bc62b",
+        "end_ordinal_exclusive": 10246,
+        "end_byte_offset": 405452
+      },
+      "parent_last_included_raw_line": 117,
+      "last_included_ordinal": 10245,
+      "prefix_bytes": 405452,
+      "prefix_sha256": "05718831cfed2fa3e9bfcf8937589210070c26189d4287f71fd9d467cb826370"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-43-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c758-3a3c-7ec1-afdb-5ef3b17a74d9.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-01-21-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c77d-6d5c-7f61-bafa-98277f19b779.jsonl",
+      "child_header_timestamp": "2026-09-22T05:01:21.116Z",
+      "reported_history_base": {
+        "thread_id": "01a0c758-3a3c-7ec1-afdb-5ef3b17a74d9",
+        "end_ordinal_exclusive": 10510,
+        "end_byte_offset": 2769213
+      },
+      "parent_last_included_raw_line": 264,
+      "last_included_ordinal": 10509,
+      "prefix_bytes": 2769213,
+      "prefix_sha256": "e46042626bb02b7203368488f3c99d8bbd5cde86ef5c77f7ca0490e069390a10"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-01-21-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c77d-6d5c-7f61-bafa-98277f19b779.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-21-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c78f-9687-7450-9f3c-be7e6e0f25f9.jsonl",
+      "child_header_timestamp": "2026-09-22T05:21:11.303Z",
+      "reported_history_base": {
+        "thread_id": "01a0c77d-6d5c-7f61-bafa-98277f19b779",
+        "end_ordinal_exclusive": 10675,
+        "end_byte_offset": 1260008
+      },
+      "parent_last_included_raw_line": 165,
+      "last_included_ordinal": 10674,
+      "prefix_bytes": 1260008,
+      "prefix_sha256": "d6d2c0fef4c036d3453282b6b9d036fbceaf9764f84a7abce88e01acdc24a329"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-21-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c78f-9687-7450-9f3c-be7e6e0f25f9.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-11-09-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb63-2d70-7243-8dd6-5b2661ce7d5d.jsonl",
+      "child_header_timestamp": "2026-09-22T23:11:09.680Z",
+      "reported_history_base": {
+        "thread_id": "01a0c78f-9687-7450-9f3c-be7e6e0f25f9",
+        "end_ordinal_exclusive": 11507,
+        "end_byte_offset": 8765003
+      },
+      "parent_last_included_raw_line": 832,
+      "last_included_ordinal": 11506,
+      "prefix_bytes": 8765003,
+      "prefix_sha256": "878038b41905845a075da252d7ec5697fa1fe22d34929d0bfc57c3b22d63c0c6"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T04-16-59-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6e6-f376-7c93-90d3-5884ec6bc62b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-16-05-01a0c753-fef3-7023-877b-14fee9308c8c.jsonl",
+      "child_header_timestamp": "2026-09-22T04:16:05.890Z",
+      "reported_history_base": {
+        "thread_id": "01a0c6e6-f376-7c93-90d3-5884ec6bc62b",
+        "end_ordinal_exclusive": 10227,
+        "end_byte_offset": 359991
+      },
+      "parent_last_included_raw_line": 98,
+      "last_included_ordinal": 10226,
+      "prefix_bytes": 359991,
+      "prefix_sha256": "5b341d9ca94cf4482b4b9547ff0a29d77aa7ba43438a41c9feec9e70cba3c8ab"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-16-05-01a0c753-fef3-7023-877b-14fee9308c8c.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-08-01a0c753-fef3-7023-877b-14fee9308c8c_01a0c757-b282-7fe3-b5aa-c12163cd4aac.jsonl",
+      "child_header_timestamp": "2026-09-22T04:20:08.450Z",
+      "reported_history_base": {
+        "thread_id": "01a0c753-fef3-7023-877b-14fee9308c8c",
+        "end_ordinal_exclusive": 10230,
+        "end_byte_offset": 21563
+      },
+      "parent_last_included_raw_line": 3,
+      "last_included_ordinal": 10229,
+      "prefix_bytes": 21563,
+      "prefix_sha256": "cb4d42133d02f4511215b111343b26e5b394eb6f96aaca3b0384f6f7d9b49c54"
+    }
+  ],
+  "chapter15_source_records": "15-source-records.json",
+  "chapter16_source_records": "16-source-records.json",
+  "chapter17_source_records": "17-source-records.json",
+  "chapter18_source_records": "18-source-records.json",
+  "chapter19_source_records": "19-source-records.json",
+  "post_walkthrough_archival": {
+    "relocations": "../archive-relocations.json",
+    "archive_index": "../../../archive/models-strategy-trainer/README.md",
+    "qualification": "Original captured source locations and message bodies are unchanged."
+  }
+}

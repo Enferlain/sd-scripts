@@ -1,0 +1,61 @@
+{
+  "captured_at_utc": "2026-11-05T20:24:10.727168+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/78df512d-strategy_system_direction.md",
+      "commit": "78df512dd9c821b7136c1c92658acb771e1606a2",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 64353,
+      "sha256": "9a19175b2395d06b95d5e443b458ecde33f3588310be2c715a37b8771d7de16a",
+      "lines": 1524,
+      "extraction": "exact Git blob bytes, no added header"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/78df512d-notes.md",
+      "commit": "78df512dd9c821b7136c1c92658acb771e1606a2",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 10164,
+      "sha256": "21303c75dd70e420f5d89f2517b1d1cf23732013b0beac23ab94b64ac55086fb",
+      "lines": 182,
+      "extraction": "exact Git blob bytes, no added header"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/707015ee-strategy_system_inventory.md",
+      "commit": "707015ee4441a5a6095b1ff5c13b2284309d5b81",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 64693,
+      "sha256": "1277a902262513f52e5f6836fb51347cc6fb421685317da2a3820fbb6b1abcac",
+      "lines": 1293,
+      "extraction": "exact Git blob bytes, no added header"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/707015ee-notes.md",
+      "commit": "707015ee4441a5a6095b1ff5c13b2284309d5b81",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 10835,
+      "sha256": "43d7088eb6d6ead0a577e133411d70c016cacd295c0b84a7f0692a6fb783c015",
+      "lines": 196,
+      "extraction": "exact Git blob bytes, no added header"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "literal": "## Milestone 6: Training Mode And Objective Responsibility Classification",
+      "matching_commits": [
+        "707015ee4441a5a6095b1ff5c13b2284309d5b81\t2026-08-01T03:17:54Z\t2026-08-01T03:17:54Z\tinventory mode clarification and beads update"
+      ],
+      "qualification": "Git events for this literal, not creation dates for every claim in the surrounding section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "literal": "## Model, Strategy, And Trainer Boundaries",
+      "matching_commits": [
+        "78df512dd9c821b7136c1c92658acb771e1606a2\t2026-07-30T21:15:39Z\t2026-07-30T21:15:39Z\tpost lightning clarification, discussion about training mode and strategy definition"
+      ],
+      "qualification": "Git events for this literal, not creation dates for every claim in the surrounding section"
+    }
+  ],
+  "scope": "historical source records; current production or external framework code was not requalified",
+  "timing": "78df512d records July30 direction consolidation before the evening classification;707015ee records classification and revised handoff onAugust1"
+}

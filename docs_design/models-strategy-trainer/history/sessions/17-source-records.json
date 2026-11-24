@@ -1,0 +1,285 @@
+{
+  "captured_at_utc": "2026-11-06T08:31:33.664139+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2977aad4-execution_candidate/README.md",
+      "commit": "2977aad4a375521725756dc7aad2060157635fde",
+      "original_path": "docs_design/models-strategy-trainer/execution_candidate/README.md",
+      "bytes": 167034,
+      "sha256": "7dc2f04f4ffea33d37f6bca10fa16928dfcfd3fe00b828d271624e3c0d5ac7a3",
+      "lines": 2630,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "connected execution candidate evidence, not production API or a completed G5 design"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2977aad4-execution_candidate/system_assessment.md",
+      "commit": "2977aad4a375521725756dc7aad2060157635fde",
+      "original_path": "docs_design/models-strategy-trainer/execution_candidate/system_assessment.md",
+      "bytes": 27427,
+      "sha256": "54d3b95949b642c21a70bfbaac6a9dd4d0e251cea8130b1fa6999a59743dd486",
+      "lines": 383,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "connected execution candidate evidence, not production API or a completed G5 design"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/504dcf88dcdb2b76218e19af89117f7f7de22c59-rework-model-strategy-trainer/research/ir_architecture_report.md",
+      "commit": "504dcf88dcdb2b76218e19af89117f7f7de22c59",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/research/ir_architecture_report.md",
+      "bytes": 158086,
+      "sha256": "7d3d7a761eca5b03b75531adc257038930452ff3491fb165f7f8103ebbb96a92",
+      "lines": 1350,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "IR machinery report with framework/backend amendment; research input, custom baseline not mandatory"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/082d8650-ccbe-43c1-a568-db7ac78296ab/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase17-attachments/082d8650-ccbe-43c1-a568-db7ac78296ab-Pasted_text.md",
+      "sha256": "e61968686a7e45d871e51c4036b2aea939fca2fdf0ab0db1e070cac906cdcb83",
+      "bytes": 24367,
+      "lines": 204,
+      "referenced_in_selected_raw_line": 1932,
+      "source_page": "/home/imi/.codex/sessions/2026/10/06/rollout-2026-10-06T10-16-30-01a10cff-f22a-7973-96f2-f1a98c749d19_01a11049-211e-7fe1-b315-ef7d0b46a28a.jsonl",
+      "message_number": 144,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-09 07:48:36.779310099 +0200",
+        "mtime_utc": "2026-10-09T05:48:36.779310+00:00",
+        "ctime_utc": "2026-10-09T05:48:36.779310+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/6e47976e-31a5-404e-969a-5aaccdbc9875/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase17-attachments/6e47976e-31a5-404e-969a-5aaccdbc9875-Pasted_text.md",
+      "sha256": "aca843a4d91aaa1cc9b59569efad8006e5aa1a873b9f474727695c58b7c683e7",
+      "bytes": 7034,
+      "lines": 66,
+      "referenced_in_selected_raw_line": 3403,
+      "source_page": "/home/imi/.codex/sessions/2026/10/06/rollout-2026-10-06T10-16-30-01a10cff-f22a-7973-96f2-f1a98c749d19_01a11049-211e-7fe1-b315-ef7d0b46a28a.jsonl",
+      "message_number": 190,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-09 23:23:11.775040680 +0200",
+        "mtime_utc": "2026-10-09T21:23:11.775041+00:00",
+        "ctime_utc": "2026-10-09T21:23:11.775041+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/eb367504-47d7-4b47-9b60-0cc50e094861/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase17-attachments/eb367504-47d7-4b47-9b60-0cc50e094861-Pasted_text.md",
+      "sha256": "a9ff3f9e3300a1785294d05435f4fed1a06779c3ea1512f0f56eeb13ee342e2d",
+      "bytes": 5482,
+      "lines": 31,
+      "referenced_in_selected_raw_line": 247,
+      "source_page": "/home/imi/.codex/sessions/2026/10/10/rollout-2026-10-10T03-03-03-01a10cff-f22a-7973-96f2-f1a98c749d19_01a12355-bc5b-7510-9377-3081c6176138.jsonl",
+      "message_number": 219,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-10 03:39:00.186108585 +0200",
+        "mtime_utc": "2026-10-10T01:39:00.186109+00:00",
+        "ctime_utc": "2026-10-10T01:39:00.186109+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/8ed534a3-5c78-41a4-85e3-2f7144876cb9/Pasted text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/phase17-attachments/8ed534a3-5c78-41a4-85e3-2f7144876cb9-Pasted_text.md",
+      "sha256": "87014c7dc02889c0988b160b20f3dc211d354a19cc2eeae364dfa6596ce69197",
+      "bytes": 8965,
+      "lines": 406,
+      "referenced_in_selected_raw_line": 271,
+      "source_page": "/home/imi/.codex/sessions/2026/10/11/rollout-2026-10-11T01-58-09-01a10cff-f22a-7973-96f2-f1a98c749d19_01a12840-adb2-79f1-ae43-3c0b97c473dd.jsonl",
+      "message_number": 252,
+      "role": "user-supplied external opinion or report; adoption requires the subsequent actual response/decision",
+      "filesystem": {
+        "birth_display": "2026-10-11 03:18:18.626145258 +0200",
+        "mtime_utc": "2026-10-11T01:18:18.626145+00:00",
+        "ctime_utc": "2026-10-11T01:18:18.626145+00:00",
+        "qualification": "inode metadata; not original authorship"
+      },
+      "extraction": "exact supplied bytes, extension changed for readable archival copy"
+    }
+  ],
+  "section_introductions": [],
+  "scope": "connected whole-system mocks, graph-derived execution, shared owners, state/gradient/physical lifetimes, independent oracles, free-threading and backend qualifications, Togeari learning and the next IR machinery candidate",
+  "snapshot_timing": "Each exact Git copy is a dated checkpoint identified by commit. A later checkpoint may include subsequent corrections; it is not labelled as the exact state of every earlier message. Original inode dates remain in inventory.json.",
+  "qualification": "Historical experiments, counts, reviews and runtime assertions are evidence from their recorded scope, not fresh qualification, production readiness or automatic adoption of every API. This reading audits decision provenance rather than reexecuting the implementation.",
+  "page_transitions": [
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/04/rollout-2026-10-04T08-12-41-01a10542-1c0e-7f10-b7ea-a2a9583c344a_01a1058b-0c6b-7480-bfe5-7d074713b6a8.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T18-57-42-01a10cff-f22a-7973-96f2-f1a98c749d19.jsonl",
+      "child_header_timestamp": "2026-10-05T16:57:42.708Z",
+      "reported_history_base": {
+        "thread_id": "01a1058b-0c6b-7480-bfe5-7d074713b6a8",
+        "end_ordinal_exclusive": 33390,
+        "end_byte_offset": 22402533
+      },
+      "parent_last_included_raw_line": 2261,
+      "last_included_ordinal": 33389,
+      "prefix_bytes": 22402533,
+      "prefix_sha256": "259fe9664e5ad756bae67adf2846b2652c26cac331ea72feb8a92dc8a6f42411"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/05/rollout-2026-10-05T18-57-42-01a10cff-f22a-7973-96f2-f1a98c749d19.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/06/rollout-2026-10-06T08-34-28-01a10cff-f22a-7973-96f2-f1a98c749d19_01a10feb-b641-70d1-83fc-64c8e099c051.jsonl",
+      "child_header_timestamp": "2026-10-06T06:34:28.289Z",
+      "reported_history_base": {
+        "thread_id": "01a10cff-f22a-7973-96f2-f1a98c749d19",
+        "end_ordinal_exclusive": 33877,
+        "end_byte_offset": 4344180
+      },
+      "parent_last_included_raw_line": 487,
+      "last_included_ordinal": 33876,
+      "prefix_bytes": 4344180,
+      "prefix_sha256": "07dcbe33ae434fdd21d9798ef3648d6966437c73c2e8a751c3460252b96fa834"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/06/rollout-2026-10-06T08-34-28-01a10cff-f22a-7973-96f2-f1a98c749d19_01a10feb-b641-70d1-83fc-64c8e099c051.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/06/rollout-2026-10-06T10-16-30-01a10cff-f22a-7973-96f2-f1a98c749d19_01a11049-211e-7fe1-b315-ef7d0b46a28a.jsonl",
+      "child_header_timestamp": "2026-10-06T08:16:30.494Z",
+      "reported_history_base": {
+        "thread_id": "01a10feb-b641-70d1-83fc-64c8e099c051",
+        "end_ordinal_exclusive": 34352,
+        "end_byte_offset": 4702760
+      },
+      "parent_last_included_raw_line": 475,
+      "last_included_ordinal": 34351,
+      "prefix_bytes": 4702760,
+      "prefix_sha256": "4030bb1414e9abe1adfc2fc40a307948a2f7057840d1527d59fd9fbd8aa8285f"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/06/rollout-2026-10-06T10-16-30-01a10cff-f22a-7973-96f2-f1a98c749d19_01a11049-211e-7fe1-b315-ef7d0b46a28a.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/10/rollout-2026-10-10T03-03-03-01a10cff-f22a-7973-96f2-f1a98c749d19_01a12355-bc5b-7510-9377-3081c6176138.jsonl",
+      "child_header_timestamp": "2026-10-10T01:03:03.771Z",
+      "reported_history_base": {
+        "thread_id": "01a11049-211e-7fe1-b315-ef7d0b46a28a",
+        "end_ordinal_exclusive": 38172,
+        "end_byte_offset": 43889991
+      },
+      "parent_last_included_raw_line": 3820,
+      "last_included_ordinal": 38171,
+      "prefix_bytes": 43889991,
+      "prefix_sha256": "58c29e4291b6268202eed37ef6ceaee7d99f6c654b5c6316bc09cf3b9aa55042"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/10/rollout-2026-10-10T03-03-03-01a10cff-f22a-7973-96f2-f1a98c749d19_01a12355-bc5b-7510-9377-3081c6176138.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/11/rollout-2026-10-11T01-58-09-01a10cff-f22a-7973-96f2-f1a98c749d19_01a12840-adb2-79f1-ae43-3c0b97c473dd.jsonl",
+      "child_header_timestamp": "2026-10-10T23:58:09.842Z",
+      "reported_history_base": {
+        "thread_id": "01a12355-bc5b-7510-9377-3081c6176138",
+        "end_ordinal_exclusive": 38757,
+        "end_byte_offset": 4429816
+      },
+      "parent_last_included_raw_line": 585,
+      "last_included_ordinal": 38756,
+      "prefix_bytes": 4429816,
+      "prefix_sha256": "c14afc87cf68c0d45c66c555fe8fa930be9ba08faeba0208ccbee6148447d389"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/11/rollout-2026-10-11T01-58-09-01a10cff-f22a-7973-96f2-f1a98c749d19_01a12840-adb2-79f1-ae43-3c0b97c473dd.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/22/rollout-2026-10-22T03-34-27-01a10cff-f22a-7973-96f2-f1a98c749d19_01a1613e-c939-7ad2-bde3-a3cc1916d56f.jsonl",
+      "child_header_timestamp": "2026-10-22T01:34:27.129Z",
+      "reported_history_base": {
+        "thread_id": "01a12840-adb2-79f1-ae43-3c0b97c473dd",
+        "end_ordinal_exclusive": 42528,
+        "end_byte_offset": 29269540
+      },
+      "parent_last_included_raw_line": 3771,
+      "last_included_ordinal": 42527,
+      "prefix_bytes": 29269540,
+      "prefix_sha256": "967efdf97eae8191d6a1e173eff9652d7d1021a1d63ccedb887d0bb38f5a4f30"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/22/rollout-2026-10-22T03-34-27-01a10cff-f22a-7973-96f2-f1a98c749d19_01a1613e-c939-7ad2-bde3-a3cc1916d56f.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/25/rollout-2026-10-25T02-53-43-01a10cff-f22a-7973-96f2-f1a98c749d19_01a1708c-9430-7fe3-a3f4-01c9e6e2024f.jsonl",
+      "child_header_timestamp": "2026-10-25T00:53:43.600Z",
+      "reported_history_base": {
+        "thread_id": "01a1613e-c939-7ad2-bde3-a3cc1916d56f",
+        "end_ordinal_exclusive": 48290,
+        "end_byte_offset": 27278000
+      },
+      "parent_last_included_raw_line": 5762,
+      "last_included_ordinal": 48289,
+      "prefix_bytes": 27278000,
+      "prefix_sha256": "4ad7cd88aa737f71998be1df1359eea9da2b45026f36cd800b4b6f44cbeb4277"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/25/rollout-2026-10-25T02-53-43-01a10cff-f22a-7973-96f2-f1a98c749d19_01a1708c-9430-7fe3-a3f4-01c9e6e2024f.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/26/rollout-2026-10-26T05-43-16-01a10cff-f22a-7973-96f2-f1a98c749d19_01a17685-16e5-72d1-93f9-ff333556c04f.jsonl",
+      "child_header_timestamp": "2026-10-26T04:43:16.069Z",
+      "reported_history_base": {
+        "thread_id": "01a1708c-9430-7fe3-a3f4-01c9e6e2024f",
+        "end_ordinal_exclusive": 50588,
+        "end_byte_offset": 13447998
+      },
+      "parent_last_included_raw_line": 2298,
+      "last_included_ordinal": 50587,
+      "prefix_bytes": 13447998,
+      "prefix_sha256": "82e4a13fe4d56fe41449bff00f2be761668f8670d52d6ffd1e3aba960a7c7123"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/26/rollout-2026-10-26T05-43-16-01a10cff-f22a-7973-96f2-f1a98c749d19_01a17685-16e5-72d1-93f9-ff333556c04f.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/26/rollout-2026-10-26T11-03-25-01a10cff-f22a-7973-96f2-f1a98c749d19_01a177aa-32e3-77f0-91ef-ab4961e3f13e.jsonl",
+      "child_header_timestamp": "2026-10-26T10:03:25.283Z",
+      "reported_history_base": {
+        "thread_id": "01a17685-16e5-72d1-93f9-ff333556c04f",
+        "end_ordinal_exclusive": 51308,
+        "end_byte_offset": 2400911
+      },
+      "parent_last_included_raw_line": 720,
+      "last_included_ordinal": 51307,
+      "prefix_bytes": 2400911,
+      "prefix_sha256": "11b93245a754c649a2150f8cdd30f29d23585c2810fac8f3c433d70a2d672716"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/26/rollout-2026-10-26T11-03-25-01a10cff-f22a-7973-96f2-f1a98c749d19_01a177aa-32e3-77f0-91ef-ab4961e3f13e.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/27/rollout-2026-10-27T14-33-18-01a10cff-f22a-7973-96f2-f1a98c749d19_01a17d90-b6ac-7380-8e6a-57ba3c782810.jsonl",
+      "child_header_timestamp": "2026-10-27T13:33:18.380Z",
+      "reported_history_base": {
+        "thread_id": "01a177aa-32e3-77f0-91ef-ab4961e3f13e",
+        "end_ordinal_exclusive": 51422,
+        "end_byte_offset": 2351760
+      },
+      "parent_last_included_raw_line": 114,
+      "last_included_ordinal": 51421,
+      "prefix_bytes": 2351760,
+      "prefix_sha256": "f3e2f77ff6eec21e005689323751dcc08ef853d357ca525d68684efcfc1df337"
+    },
+    {
+      "parent_path": "/home/imi/.codex/sessions/2026/10/27/rollout-2026-10-27T14-33-18-01a10cff-f22a-7973-96f2-f1a98c749d19_01a17d90-b6ac-7380-8e6a-57ba3c782810.jsonl",
+      "child_path": "/home/imi/.codex/sessions/2026/10/28/rollout-2026-10-28T07-16-17-01a10cff-f22a-7973-96f2-f1a98c749d19_01a18126-f8e0-74c1-870c-55eaad949b15.jsonl",
+      "child_header_timestamp": "2026-10-28T06:16:17.376Z",
+      "reported_history_base": {
+        "thread_id": "01a17d90-b6ac-7380-8e6a-57ba3c782810",
+        "end_ordinal_exclusive": 53521,
+        "end_byte_offset": 10400774
+      },
+      "parent_last_included_raw_line": 2099,
+      "last_included_ordinal": 53520,
+      "prefix_bytes": 10400774,
+      "prefix_sha256": "098435dc019c92196d49feca406ecd3ec2e681825b60d7bb092cb873307c7ea8"
+    }
+  ],
+  "related_exports": [
+    {
+      "json_path": "17-branch-differences.json",
+      "markdown_path": "17-branch-differences.md",
+      "messages": 20,
+      "kind": "distinct branch suffixes"
+    }
+  ],
+  "already_exported_suffix_records": [],
+  "previous_episode_suffix_reclassified": [],
+  "decision_review_scope": "Decision-bearing user corrections, resulting governing edits and experiment conclusions were reviewed. Complete visible transcripts are preserved for joint reading; source-code and numerical qualification claims are not independently rerun by this history capture.",
+  "current_authority": "Governing design/specs retain authority; source role and explicit adoption/supersession control interpretation. Experimental APIs, external opinions, failed reviews and superseded proposals remain evidence.",
+  "live_source_prefix_qualification": null
+}

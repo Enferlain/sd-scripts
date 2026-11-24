@@ -1,0 +1,130 @@
+{
+  "captured_at_utc": "2026-11-05T18:31:41.028906+00:00",
+  "scope": "chapter02 historical capture/provenance, not current framework/code qualification or new architectural adoption",
+  "unchanged_original_source_files": 68,
+  "unchanged_previous_capture_files": [
+    "capture-validation.json",
+    "inventory.json",
+    "sessions/00-initial-direction.json",
+    "sessions/00-initial-direction.md",
+    "sessions/01-branch-differences.json",
+    "sessions/01-branch-differences.md",
+    "sessions/01-inventory-and-authoring.json",
+    "sessions/01-inventory-and-authoring.md",
+    "sessions/01-snapshot-sources.json",
+    "snapshots/16801f38-strategy_system_direction.md",
+    "snapshots/16801f38-strategy_system_inventory.md",
+    "snapshots/de2dd0eb-strategy_system_direction.md"
+  ],
+  "new_messages": 48,
+  "raw_record_matches": 96,
+  "original_session_hashes_verified": 8,
+  "exact_git_snapshots_verified": 5,
+  "exact_attachment_copies_verified": 1,
+  "prior_episode_identity_overlap": 0,
+  "compaction_markers": 2,
+  "authored_navigation_links_checked": 112,
+  "heading_introduction_git_queries_verified": 3,
+  "json_parsing": "passed",
+  "authored_markdown_whitespace": "passed",
+  "production_or_governing_spec_changes": false,
+  "capture_note": "Initial exporter syntax error occurred before execution; corrected before any chapter02 artifact was written.",
+  "files": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/README.md",
+      "sha256": "eb15a562bcf8083518005bc376749bf33803b6db029a586b440290af81365199"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation-01.json",
+      "sha256": "de04e85859cfc2e87074257933921277241f6ba1ea0140f98b4b2cab79baaf05"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation.json",
+      "sha256": "562d7070871e2e62dd53b921c2bcdd2beb19861f98912cd2991d5b8bc9a53372"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/decision-notepad.md",
+      "sha256": "c812f7f32cdf25ce67a6d696d95364bc6c261baf8db51268bea1bee0f59a9f6c"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/document-map.md",
+      "sha256": "246f7b16e674164c035de8352cb09cc2f73f2a7144c37710be7b0244fb5e8c95"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/inventory.json",
+      "sha256": "af402a4dd4b1432739db18533c12fbcfd7e3e9ece55489b0f6334784a04086bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.json",
+      "sha256": "6df4a7c8c1763f6959ce934b7737065fbc2e2fc0cc36f163937187a0b33e9391"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.md",
+      "sha256": "e0020f0589e0548c0f28f6da1a74fa724f002e6462a790b8a3e6f3f7b56b48a1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-branch-differences.json",
+      "sha256": "9f18e8552da2a27526e114185cb3fbcc862ff80c674dfbf54925cf5d36274a69"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-branch-differences.md",
+      "sha256": "a72fb43d1eb7b7412d982bbed605cce413d6accc0790320bc149670c1ddb90e1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-inventory-and-authoring.json",
+      "sha256": "a8eb3a4f84a6e8fb87c7ed196e1dff4839f38506ace3c3c0fed1c28e1fbd2245"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-inventory-and-authoring.md",
+      "sha256": "ba3bffb7f52db2315300d8882495917d19fa6c667a0b353325dbf871d3e068bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-snapshot-sources.json",
+      "sha256": "8fe7c60df9f31a3809ffcef94685df4beef5bbe0424e0e80da6f3a35d5a8fc15"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/02-frameworks-and-contract-surfaces.json",
+      "sha256": "6243915660201153221000d9667189f06968c0ea3bd3152cd4a094ad8ededc41"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/02-frameworks-and-contract-surfaces.md",
+      "sha256": "6b3059b25850d67f24add199dd696e3687bbd789e933e9bc940298c15adc92b7"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/02-source-records.json",
+      "sha256": "77a12e384ec2a493a7371c8ad5f92817b0528821450a893da9fc23d25911234b"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/branch-map.md",
+      "sha256": "6a5299d2fb5ac3e58549b3f51f7716262832a98bb958fa859763c5681878d5ab"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/index.json",
+      "sha256": "27fd2e46d4353ff4dc0df801661b217ea44332b0a5eddde8c53f020469940ea2"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_direction.md",
+      "sha256": "52366b60c67b320f120936165173ddf3827691fd549ecf842dcb7a63d2a29e44"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_inventory.md",
+      "sha256": "c5e19994f4fd54e4587faf3bc05095469d1bf20141f88f1b3c3649010c51799c"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2026-07-29-contract-surfaces-feedback.md",
+      "sha256": "457368b9d2ce84ee00279525b90d9b824cc88244936a9dbcb19951fcb2deffc6"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/97a81ef4-framework_pattern_comparison.md",
+      "sha256": "49ca0e89b061ac1b06523428c85019cf9ca193b2c089dd03e4b51ab3f2a6e70d"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/97a81ef4-strategy_system_direction.md",
+      "sha256": "fee18cba109bf3ed7f68dc1e186863ea0ccccb7b5f1a80a09faf4a51cbdee111"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/de2dd0eb-strategy_system_direction.md",
+      "sha256": "ad67c8ff7c3b9f3aae1a24fdef02df6f9061fa82a0ad2bce2b4e10082497a636"
+    }
+  ]
+}

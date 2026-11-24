@@ -1,0 +1,204 @@
+{
+  "captured_at_utc": "2026-11-05T21:44:21.207219+00:00",
+  "scope": "chapter04 historical provenance, not a fresh source-code audit or completion of the architecture walkthrough",
+  "unchanged_original_source_files": 68,
+  "unchanged_previous_capture_files": [
+    "capture-validation-01.json",
+    "capture-validation-02.json",
+    "capture-validation.json",
+    "inventory.json",
+    "sessions/00-initial-direction.json",
+    "sessions/00-initial-direction.md",
+    "sessions/01-branch-differences.json",
+    "sessions/01-branch-differences.md",
+    "sessions/01-inventory-and-authoring.json",
+    "sessions/01-inventory-and-authoring.md",
+    "sessions/01-snapshot-sources.json",
+    "sessions/02-frameworks-and-contract-surfaces.json",
+    "sessions/02-frameworks-and-contract-surfaces.md",
+    "sessions/02-source-records.json",
+    "sessions/03-source-records.json",
+    "sessions/03-training-mode-and-objective.json",
+    "sessions/03-training-mode-and-objective.md",
+    "snapshots/16801f38-strategy_system_direction.md",
+    "snapshots/16801f38-strategy_system_inventory.md",
+    "snapshots/2026-07-29-contract-surfaces-feedback.md",
+    "snapshots/707015ee-notes.md",
+    "snapshots/707015ee-strategy_system_inventory.md",
+    "snapshots/78df512d-notes.md",
+    "snapshots/78df512d-strategy_system_direction.md",
+    "snapshots/97a81ef4-framework_pattern_comparison.md",
+    "snapshots/97a81ef4-strategy_system_direction.md",
+    "snapshots/de2dd0eb-strategy_system_direction.md"
+  ],
+  "new_messages": 12,
+  "raw_record_matches": 24,
+  "original_session_hashes_verified": 8,
+  "exact_git_snapshots_verified": 12,
+  "earlier_attachment_copy_verified": true,
+  "prior_episode_identity_overlap": 0,
+  "compaction_markers": 0,
+  "authored_navigation_links_checked": 164,
+  "heading_introduction_queries_verified": 3,
+  "json_parsing": "passed",
+  "authored_markdown_whitespace": "passed",
+  "production_or_governing_spec_changes": false,
+  "files": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/README.md",
+      "sha256": "8be2341834b753f8fb69a13a3526ff5f52fe5536a4320fa5df2adf9be2bfe32b"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation-01.json",
+      "sha256": "de04e85859cfc2e87074257933921277241f6ba1ea0140f98b4b2cab79baaf05"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation-02.json",
+      "sha256": "ef1900d13574657d5c3b424f4f9294364d2547770d48ed0642e34e9ba26e9f2a"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation-03.json",
+      "sha256": "efadb3df3aaba418e42a207bbc3639dbebb46ad9d8781f0a95c97db5721ec762"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/capture-validation.json",
+      "sha256": "562d7070871e2e62dd53b921c2bcdd2beb19861f98912cd2991d5b8bc9a53372"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/decision-notepad.md",
+      "sha256": "7fdec5e21bc99486f9f2c95151babcfc8d4a6a4039ff9ccbb089145ece86e64a"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/document-map.md",
+      "sha256": "bb8226342c186d170898d98a3e9167a24eb6db6b1d4414b54bba463a19bf99db"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/inventory.json",
+      "sha256": "af402a4dd4b1432739db18533c12fbcfd7e3e9ece55489b0f6334784a04086bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.json",
+      "sha256": "6df4a7c8c1763f6959ce934b7737065fbc2e2fc0cc36f163937187a0b33e9391"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/00-initial-direction.md",
+      "sha256": "e0020f0589e0548c0f28f6da1a74fa724f002e6462a790b8a3e6f3f7b56b48a1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-branch-differences.json",
+      "sha256": "9f18e8552da2a27526e114185cb3fbcc862ff80c674dfbf54925cf5d36274a69"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-branch-differences.md",
+      "sha256": "a72fb43d1eb7b7412d982bbed605cce413d6accc0790320bc149670c1ddb90e1"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-inventory-and-authoring.json",
+      "sha256": "a8eb3a4f84a6e8fb87c7ed196e1dff4839f38506ace3c3c0fed1c28e1fbd2245"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-inventory-and-authoring.md",
+      "sha256": "ba3bffb7f52db2315300d8882495917d19fa6c667a0b353325dbf871d3e068bb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/01-snapshot-sources.json",
+      "sha256": "8fe7c60df9f31a3809ffcef94685df4beef5bbe0424e0e80da6f3a35d5a8fc15"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/02-frameworks-and-contract-surfaces.json",
+      "sha256": "6243915660201153221000d9667189f06968c0ea3bd3152cd4a094ad8ededc41"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/02-frameworks-and-contract-surfaces.md",
+      "sha256": "6b3059b25850d67f24add199dd696e3687bbd789e933e9bc940298c15adc92b7"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/02-source-records.json",
+      "sha256": "77a12e384ec2a493a7371c8ad5f92817b0528821450a893da9fc23d25911234b"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/03-source-records.json",
+      "sha256": "97534ad8e6314a3b14ba3e3aeb89206c21ed385e2b03b50e0beec3cf35141f84"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/03-training-mode-and-objective.json",
+      "sha256": "ce0058ea61f173b5192a7a5291f88af0e788cecbcc1148ba2b7646bed2b4c1ba"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/03-training-mode-and-objective.md",
+      "sha256": "3aacc5dd45d2fe23c0ed288a5e8d96cf15fd9157a665bec61ff55220dd4b97c7"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/04-identity-and-execution-routes.json",
+      "sha256": "1ed20a3fd5cfcfdef79af680a5a1a6587d4acaed6707c0889a55e3ef7d0fbf11"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/04-identity-and-execution-routes.md",
+      "sha256": "788c2a5e2f48cde92822f03d4fc38676de28d99b5acab5cc59567a149af49f2c"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/04-source-records.json",
+      "sha256": "7afe8a9ac30d5ef9a885ad9b5df3044dc62546b408f80aaf958bd0131925b16c"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/branch-map.md",
+      "sha256": "d008b1e1202d3f9f6cb9a575db00b36c78237cfa306d6ab3c3f5aa1caf678d8a"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/sessions/index.json",
+      "sha256": "3a1cc1fee3229767117b709d883e08bed3b27c08ae0a1ba685bf0e346ab9147f"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-notes.md",
+      "sha256": "6dab5a9fe709765cdd854bcdfe09bb7348debc021c7f342c39f8210b40bc6f5f"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-strategy_system_direction.md",
+      "sha256": "27a0875abfdb02836fc9efc2e8ddd8d25633c6f922498ec4f980f09d98cdc519"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-strategy_system_inventory.md",
+      "sha256": "6e4bee102630aa8d2569203290e7493ba1ac4d33e92bc0777bdc61e44dd05d22"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_direction.md",
+      "sha256": "52366b60c67b320f120936165173ddf3827691fd549ecf842dcb7a63d2a29e44"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/16801f38-strategy_system_inventory.md",
+      "sha256": "c5e19994f4fd54e4587faf3bc05095469d1bf20141f88f1b3c3649010c51799c"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/2026-07-29-contract-surfaces-feedback.md",
+      "sha256": "457368b9d2ce84ee00279525b90d9b824cc88244936a9dbcb19951fcb2deffc6"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/707015ee-notes.md",
+      "sha256": "43d7088eb6d6ead0a577e133411d70c016cacd295c0b84a7f0692a6fb783c015"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/707015ee-strategy_system_inventory.md",
+      "sha256": "1277a902262513f52e5f6836fb51347cc6fb421685317da2a3820fbb6b1abcac"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/78df512d-notes.md",
+      "sha256": "21303c75dd70e420f5d89f2517b1d1cf23732013b0beac23ab94b64ac55086fb"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/78df512d-strategy_system_direction.md",
+      "sha256": "9a19175b2395d06b95d5e443b458ecde33f3588310be2c715a37b8771d7de16a"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/97a81ef4-framework_pattern_comparison.md",
+      "sha256": "49ca0e89b061ac1b06523428c85019cf9ca193b2c089dd03e4b51ab3f2a6e70d"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/97a81ef4-strategy_system_direction.md",
+      "sha256": "fee18cba109bf3ed7f68dc1e186863ea0ccccb7b5f1a80a09faf4a51cbdee111"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/de2dd0eb-strategy_system_direction.md",
+      "sha256": "ad67c8ff7c3b9f3aae1a24fdef02df6f9061fa82a0ad2bce2b4e10082497a636"
+    }
+  ]
+}

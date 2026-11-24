@@ -1,0 +1,186 @@
+{
+  "captured_at_utc": "2026-11-05T21:53:42.967723+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-strategy_system_direction.md",
+      "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 67003,
+      "sha256": "27a0875abfdb02836fc9efc2e8ddd8d25633c6f922498ec4f980f09d98cdc519",
+      "lines": 1584,
+      "reused_existing_copy": true,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "Q1-Q2 plus provisional Q3, before supplied external feedback"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-strategy_system_inventory.md",
+      "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 71392,
+      "sha256": "6e4bee102630aa8d2569203290e7493ba1ac4d33e92bc0777bdc61e44dd05d22",
+      "lines": 1433,
+      "reused_existing_copy": true,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "Q1-Q2 plus provisional Q3, before supplied external feedback"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-notes.md",
+      "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 13738,
+      "sha256": "6dab5a9fe709765cdd854bcdfe09bb7348debc021c7f342c39f8210b40bc6f5f",
+      "lines": 260,
+      "reused_existing_copy": true,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "Q1-Q2 plus provisional Q3, before supplied external feedback"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/e0613c2f-strategy_system_direction.md",
+      "commit": "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 76536,
+      "sha256": "98ede7213618309455e3a3dd9b613d2065b522641ec461dd156b44c5b2c6c1ee",
+      "lines": 1807,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "settled Q3 and Q4 checkpoint, after both conversations; not an exact end-of-Q3 file state"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/e0613c2f-strategy_system_inventory.md",
+      "commit": "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 82857,
+      "sha256": "a4480cf6ce8c3753dceb4d9dc4e6124543ca2f5d16d5dcae6105cc10da281485",
+      "lines": 1681,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "settled Q3 and Q4 checkpoint, after both conversations; not an exact end-of-Q3 file state"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/e0613c2f-notes.md",
+      "commit": "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 18117,
+      "sha256": "7177cfb33b5f0f337069680324d585651d68804b5698fda6e3a7af1495db5e73",
+      "lines": 356,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "settled Q3 and Q4 checkpoint, after both conversations; not an exact end-of-Q3 file state"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/5e0319a5-435c-41de-91e2-af3437673c6b/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-20-q3-starting-take.md",
+      "referenced_in_selected_raw_line": 14034,
+      "message_number": 1,
+      "role": "supplied starting hypothesis; provenance of original author not established",
+      "bytes": 6278,
+      "sha256": "0dc9521f5b83e1febc3a8d14e8bdbf63074fcb369ae214a2084a3897e9b24893",
+      "lines": 275,
+      "filesystem": {
+        "birth_display": "2026-08-20 17:06:41.511450531 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787238401511450531,
+        "mtime_utc": "2026-08-20T15:06:41.511451+00:00",
+        "ctime_ns": 1787238401511450531,
+        "ctime_utc": "2026-08-20T15:06:41.511451+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/a57dd49b-8b0a-4b44-b53f-ca9d35a988ff/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-20-q3-external-feedback.md",
+      "referenced_in_selected_raw_line": 14147,
+      "message_number": 9,
+      "role": "explicitly introduced as external feedback; distinguish critique from adopted corrections",
+      "bytes": 10263,
+      "sha256": "3ffed9f31bfb45c759a5290ca4279cef6934cddb55c8cc4f9c3e7de4c7151268",
+      "lines": 430,
+      "filesystem": {
+        "birth_display": "2026-08-20 19:18:59.475080170 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787246339475080170,
+        "mtime_utc": "2026-08-20T17:18:59.475080+00:00",
+        "ctime_ns": 1787246339475080170,
+        "ctime_utc": "2026-08-20T17:18:59.475080+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    },
+    {
+      "original_path": "/home/imi/.codex/attachments/6ac32664-0f4c-466c-8c9d-e0c832199408/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-08-21-q4-notices.md",
+      "referenced_in_selected_raw_line": 14414,
+      "message_number": 25,
+      "role": "supplied notices explicitly described as less informed hypotheses to check before recording direction",
+      "bytes": 15038,
+      "sha256": "85e046716d6b85d4296496bef650815baca1535983fe397f0944065bd5749384",
+      "lines": 555,
+      "filesystem": {
+        "birth_display": "2026-08-21 04:22:39.644080450 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1787278959644080450,
+        "mtime_utc": "2026-08-21T02:22:39.644080+00:00",
+        "ctime_ns": 1787278959644080450,
+        "ctime_utc": "2026-08-21T02:22:39.644080+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "literal": "## Settled Arrangement-Change Semantics",
+      "matching_commits": [
+        "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d\t2026-08-21T04:47:36+02:00\t2026-08-21T04:47:36+02:00\tstrategy discussion checkpoint artifacts"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "literal": "## Settled Artifact-Persistence Semantics",
+      "matching_commits": [
+        "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d\t2026-08-21T04:47:36+02:00\t2026-08-21T04:47:36+02:00\tstrategy discussion checkpoint artifacts"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "literal": "## Milestone 8: Adapter Pressure Test For Arrangement Changes",
+      "matching_commits": [
+        "144faf0312edff9e8d25b897a73c1337fc3cd15f\t2026-08-20T19:17:47+02:00\t2026-08-20T19:17:47+02:00\tstrategy discussion checkpont adapter",
+        "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d\t2026-08-21T04:47:36+02:00\t2026-08-21T04:47:36+02:00\tstrategy discussion checkpoint artifacts"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "literal": "## Milestone 9:",
+      "matching_commits": [
+        "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d\t2026-08-21T04:47:36+02:00\t2026-08-21T04:47:36+02:00\tstrategy discussion checkpoint artifacts"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Question 3 settled arrangement semantics (2026-08-20)",
+      "matching_commits": [
+        "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d\t2026-08-21T04:47:36+02:00\t2026-08-21T04:47:36+02:00\tstrategy discussion checkpoint artifacts"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Question 4 settled persistence semantics (2026-08-21)",
+      "matching_commits": [
+        "e0613c2fc5fc535f1ad2e1e1d7eed8ca6abb554d\t2026-08-21T04:47:36+02:00\t2026-08-21T04:47:36+02:00\tstrategy discussion checkpoint artifacts"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    }
+  ],
+  "scope": "Q3-Q4 historical provenance and current disposition pointers; historical code/research claims are not independently rerun",
+  "snapshot_timing": "144faf03 at 2026-08-20T17:17:47Z is provisional Q3; e0613c2f at 2026-08-21T02:47:36Z first commits settled Q3 plus Q4; conversation settlement dates differ from Git capture dates"
+}

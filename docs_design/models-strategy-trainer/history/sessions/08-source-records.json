@@ -1,0 +1,94 @@
+{
+  "captured_at_utc": "2026-11-05T22:16:27.132751+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/d44b2ccb-strategy_contract_exchange_design.md",
+      "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 78262,
+      "sha256": "b01d39ca3e8395492ca1ba57ebfc4dd40504cc41fe3d6a573e1e137ef3c6ddb2",
+      "lines": 1368,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed register audit, preparation/identity settlement and origin correction; all included by Aug25 04:06:00Z, after the bounded conversation"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/d44b2ccb-notes.md",
+      "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 46722,
+      "sha256": "ae490c8e1d7826b66610ecda44dac23e2d72412db91022063c066901996743b4",
+      "lines": 870,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed register audit, preparation/identity settlement and origin correction; all included by Aug25 04:06:00Z, after the bounded conversation"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/d44b2ccb-strategy_system_implementation_mapping.md",
+      "commit": "d44b2ccbe7c4126c4e46c9be62161937740eb136",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "bytes": 4255,
+      "sha256": "f15bd6b964356b3ca344c91d29658d55c7abf20c0aa6f0cbc40aa2e48b2f1362",
+      "lines": 97,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed register audit, preparation/identity settlement and origin correction; all included by Aug25 04:06:00Z, after the bounded conversation"
+    }
+  ],
+  "attachments": [],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Code-derivation dependency path corrected (2026-08-24)",
+      "matching_commits": [
+        "d44b2ccbe7c4126c4e46c9be62161937740eb136\t2026-08-25T06:06:00+02:00\t2026-08-25T06:06:00+02:00\topen questions walked through"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Open-question audit separated design from code shape (2026-08-25)",
+      "matching_commits": [
+        "d44b2ccbe7c4126c4e46c9be62161937740eb136\t2026-08-25T06:06:00+02:00\t2026-08-25T06:06:00+02:00\topen questions walked through"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Remaining open-question audit (2026-08-25)",
+      "matching_commits": [
+        "d44b2ccbe7c4126c4e46c9be62161937740eb136\t2026-08-25T06:06:00+02:00\t2026-08-25T06:06:00+02:00\topen questions walked through"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Preparation reads and publication settled (2026-08-25)",
+      "matching_commits": [
+        "d44b2ccbe7c4126c4e46c9be62161937740eb136\t2026-08-25T06:06:00+02:00\t2026-08-25T06:06:00+02:00\topen questions walked through"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Durable participant identity and lineage settled (2026-08-25)",
+      "matching_commits": [
+        "d44b2ccbe7c4126c4e46c9be62161937740eb136\t2026-08-25T06:06:00+02:00\t2026-08-25T06:06:00+02:00\topen questions walked through"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    }
+  ],
+  "scope": "intended-consumer derivation, audit of fourteen open questions, attempt-scoped preparation and publication decisions, durable identity/restoration distinction and corrected metadata-origin chronology; stops before executable pressure-test discussion",
+  "snapshot_timing": "d44b2ccb committed Aug25 04:06:00Z, after the final identity correction was reported at04:03:44Z; it first adds the implementation mapping. The general notes date headings are distinct from exact UTC message times.",
+  "qualification": "Inline third-party feedback stays in its original user messages. Historical inspections are not freshly rerun. Exact type/placement choices and paper consistency checks do not establish production implementation. The August25 fallback from incomplete identity state to a new run is later tightened by the governing requirements to require an explicit separate new-run request.",
+  "later_disposition_introductions": [
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "literal": "Missing required identity or revision facts",
+      "matching_commits": [
+        "6db3f1ce83482e7d3a5fd22bd7b0dfa01b5eca48\t2026-10-04T06:39:22+02:00\t2026-10-04T06:39:22+02:00\t4.6"
+      ],
+      "qualification": "first committed appearance of the stronger missing-identity restoration wording; not a completed walkthrough of its later adoption"
+    }
+  ]
+}

@@ -1,0 +1,232 @@
+{
+  "captured_at_utc": "2026-11-06T07:21:48.863701+00:00",
+  "snapshots": [],
+  "attachments": [],
+  "section_introductions": [],
+  "scope": "separate orientation misstart; actual five-spec draft; user challenge to summary-based carry-forward; direct-source reconciliation begins and this root ends",
+  "snapshot_timing": "No committed copy of this draft established. Its nine files survive as ZIP entries, independently matched below to the original authoring patches.",
+  "qualification": "The archive explicitly gates production. The later claim that it was already implementation-ready is not supported by its design/tasks. Full source coverage and main-spec reconciliation were incomplete. ZIP storage is not OpenSpec archive/sync completion; creator, exact zipping/removal time and method are not established.",
+  "archived_draft": {
+    "original_path": "openspec/changes/mst_pre_astra.zip",
+    "sha256": "0a1125684ccb2a9d86e2c0ed79da7b66431aade267e63e98de3df01b3110769a",
+    "bytes": 17465,
+    "filesystem": {
+      "birth_display": "2026-09-19 20:23:12.664353973 +0200",
+      "mtime_ns": 1789842192732356288,
+      "ctime_ns": 1789844343363494541,
+      "qualification": "present inode metadata, not original authorship or proven ZIP/removal time"
+    },
+    "git_tracked": false,
+    "git_history": [],
+    "entries": [
+      {
+        "entry": "rework-model-strategy-trainer/.openspec.yaml",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/.openspec.yaml",
+        "bytes": 40,
+        "sha256": "dc276ca1f5af9fc6062b02d4253186f254288dcf61711e1a8ec3573e8587440a",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          11,
+          32
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": null
+      },
+      {
+        "entry": "rework-model-strategy-trainer/design.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/design.md",
+        "bytes": 13565,
+        "sha256": "801c1fa18322579a55ac8235c601dd7e6804faa61eaf39dc84ad24ef08e462e4",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          15,
+          0
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6210,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "801c1fa18322579a55ac8235c601dd7e6804faa61eaf39dc84ad24ef08e462e4"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/proposal.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/proposal.md",
+        "bytes": 3552,
+        "sha256": "c9185f3954a6702419fd353050205727fc9dd05d93c724ac9f1907601178d134",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          12,
+          10
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6195,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "c9185f3954a6702419fd353050205727fc9dd05d93c724ac9f1907601178d134"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/specs/loaded-model-components/spec.md",
+        "bytes": 2266,
+        "sha256": "7b93828f5374a3abdda3ffe41c9e859797109d63a95dc1e0660d8267b61bf8ca",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          16,
+          6
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6210,
+          "update_patch_raw_lines": [
+            6235
+          ],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "7b93828f5374a3abdda3ffe41c9e859797109d63a95dc1e0660d8267b61bf8ca"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/specs/run-participant-state/spec.md",
+        "bytes": 3729,
+        "sha256": "68aa2c097474097bd11bfd912c7ba2297cfc0d5f73fafc9fa0a78b3f801676f9",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          15,
+          0
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6210,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "68aa2c097474097bd11bfd912c7ba2297cfc0d5f73fafc9fa0a78b3f801676f9"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/specs/training-contract/spec.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/specs/training-contract/spec.md",
+        "bytes": 3141,
+        "sha256": "9f4ff47d83da4dc43e76f213915b07dd74db6eda626c2c19eb6c018e6f9583a7",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          15,
+          0
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6210,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "9f4ff47d83da4dc43e76f213915b07dd74db6eda626c2c19eb6c018e6f9583a7"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/specs/training-optimization/spec.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/specs/training-optimization/spec.md",
+        "bytes": 2734,
+        "sha256": "684ac76d262be1d9c588a445ff38dcab88ab5857944ba25e6d62f49b9d4312f3",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          15,
+          0
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6210,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "684ac76d262be1d9c588a445ff38dcab88ab5857944ba25e6d62f49b9d4312f3"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/specs/training-runtime-preparation/spec.md",
+        "bytes": 2046,
+        "sha256": "36dcfa785781dc476c227c59d5175182795f9970a923e93e6b394f60f7749e2f",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          15,
+          0
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6210,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "36dcfa785781dc476c227c59d5175182795f9970a923e93e6b394f60f7749e2f"
+        }
+      },
+      {
+        "entry": "rework-model-strategy-trainer/tasks.md",
+        "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-18-first-openspec-draft/tasks.md",
+        "bytes": 4072,
+        "sha256": "2c49e67714c7d39f1926b1e8885cdfde68643284719bb0968e5de7d8a50c0660",
+        "zip_timestamp": [
+          2026,
+          9,
+          18,
+          2,
+          15,
+          50
+        ],
+        "zip_timestamp_timezone": "unspecified; not an archive-creation timestamp",
+        "authoring_correspondence": {
+          "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+          "add_patch_raw_line": 6226,
+          "update_patch_raw_lines": [],
+          "comparison": "exact reconstructed Add File bytes after explicitly recorded Update File replacement",
+          "sha256": "2c49e67714c7d39f1926b1e8885cdfde68643284719bb0968e5de7d8a50c0660"
+        }
+      }
+    ],
+    "qualification": "The archive explicitly gates production. The later claim that it was already implementation-ready is not supported by its design/tasks. Full source coverage and main-spec reconciliation were incomplete. ZIP storage is not OpenSpec archive/sync completion; creator, exact zipping/removal time and method are not established.",
+    "git_history_scope": "HEAD ancestry only; an all-refs query failed on an unrelated broken refs/codex/turn-diffs/checkpoints object, so absence across all refs is not established"
+  },
+  "first_draft_failure": {
+    "raw_session_path": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+    "tool_input_raw_line": 6235,
+    "scope": "historical review request, not a new invocation; later raw6245/6253 report missing API key"
+  },
+  "next_fork": {
+    "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+    "id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+    "parent": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+    "forked_from_ordinal_exclusive": 6088,
+    "qualification": "fork before September18 draft; ordinals are not raw file line numbers; next chapter verifies the header and first prompt"
+  }
+}

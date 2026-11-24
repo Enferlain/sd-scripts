@@ -1,0 +1,991 @@
+{
+  "format_version": 1,
+  "captured_at_utc": "2026-11-05T18:00:27.008450+00:00",
+  "title": "Alternate-branch differences for the inventory passage",
+  "scope": "visible messages in inspected ancestor branches after the chapter01 start that are absent from the selected path; not a stitched chronological continuation",
+  "selection": "stable identity plus content hash, not text-only deduplication; repeated text in genuinely different turns remains",
+  "lineage": [
+    {
+      "id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-12T22-03-45-019f585b-9603-72c3-8ce7-d89324108d2e.jsonl",
+      "forked_from_id": null,
+      "header_timestamp": "2026-07-12T22:03:45.038Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 6804996,
+      "sha256": "90ca9151363c45c42bcbf59257c6076ec9c4f4fbc4fb077749279aa6d97481da"
+    },
+    {
+      "id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "path": "/home/imi/.codex/sessions/2026/07/16/rollout-2026-07-16T21-54-25-019f6cec-7e2a-7d41-9362-bf247eb3ffb3.jsonl",
+      "forked_from_id": "019f585b-9603-72c3-8ce7-d89324108d2e",
+      "header_timestamp": "2026-07-16T21:54:25.987Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 42138056,
+      "sha256": "7f2f8b0d79f95bff055fdc7892707c33e73059b67df0ae05adb00464e52f37af"
+    },
+    {
+      "id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "path": "/home/imi/.codex/sessions/2026/07/21/rollout-2026-07-21T22-17-24-019f86c1-533d-70d0-8e4d-90cd9e9b62de.jsonl",
+      "forked_from_id": "019f6cec-7e2a-7d41-9362-bf247eb3ffb3",
+      "header_timestamp": "2026-07-21T22:17:24.549Z",
+      "title": "Review project status (3)",
+      "bytes": 42084159,
+      "sha256": "417c28912a4c59b3e5f5ccca12dcaebae0e68282edc3228a9f518c61823ff895"
+    },
+    {
+      "id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+      "forked_from_id": "019f86c1-533d-70d0-8e4d-90cd9e9b62de",
+      "header_timestamp": "2026-07-21T22:38:05.739Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 45393528,
+      "sha256": "254bcf0d4f1293bed1bdd484b8d4c58df8eacf0510f9ceaf6889d12e10053f2f"
+    },
+    {
+      "id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+      "forked_from_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "header_timestamp": "2026-07-23T00:52:12.181Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 47375428,
+      "sha256": "47e32dd8ac93953ddd59b8fdb479f2c8c2b9a0c1c7bcf19c9ddfd52ee1ff2ae2"
+    },
+    {
+      "id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+      "forked_from_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "header_timestamp": "2026-07-28T02:43:05.109Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 48020515,
+      "sha256": "ea42ab61aa0512f5764a5a1c92101a31be9416c3cf9c12268e7927b10aff0b8b"
+    },
+    {
+      "id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+      "forked_from_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "header_timestamp": "2026-07-29T00:13:35.746Z",
+      "title": "Review project status (7)",
+      "bytes": 48974702,
+      "sha256": "5369fe7791aa9189d566ef591c2ee0b3140f232beb1d2b257b7ec1021bde6cb6"
+    },
+    {
+      "id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "path": "/home/imi/.codex/sessions/2026/07/29/rollout-2026-07-29T02-06-11-019fab9f-4de5-7951-9cf5-d8acfe3d4e2f.jsonl",
+      "forked_from_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "header_timestamp": "2026-07-29T02:06:11.949Z",
+      "title": "Hi. I haven't worked on the repo in a while but I feel like we can start getting back to it.",
+      "bytes": 64081338,
+      "sha256": "bc036d8ae0bebf72d8fbda35ff2f1cc4b6c9b9482525d1991ce96e48697a3bf9"
+    }
+  ],
+  "branch_stats": [
+    {
+      "session_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+      "visible_messages_in_episode_window": 3,
+      "shared_with_selected_path": 2,
+      "absent_from_selected_path": 1,
+      "start_source_line": 11422,
+      "stop_source_line": 11439
+    },
+    {
+      "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+      "visible_messages_in_episode_window": 18,
+      "shared_with_selected_path": 2,
+      "absent_from_selected_path": 16,
+      "start_source_line": 11422,
+      "stop_source_line": 11801
+    },
+    {
+      "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+      "visible_messages_in_episode_window": 17,
+      "shared_with_selected_path": 2,
+      "absent_from_selected_path": 15,
+      "start_source_line": 11422,
+      "stop_source_line": 11822
+    },
+    {
+      "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+      "visible_messages_in_episode_window": 21,
+      "shared_with_selected_path": 17,
+      "absent_from_selected_path": 4,
+      "start_source_line": 11422,
+      "stop_source_line": 11974
+    },
+    {
+      "session_id": "019fab9f-4de5-7951-9cf5-d8acfe3d4e2f",
+      "visible_messages_in_episode_window": 35,
+      "shared_with_selected_path": 35,
+      "absent_from_selected_path": 0,
+      "start_source_line": 11422,
+      "stop_source_line": 12192
+    }
+  ],
+  "messages": [
+    {
+      "role": "user",
+      "phase": null,
+      "body": "the preview button still goes out of the node sometimes and becomes unclickable until refreshing\n",
+      "body_sha256": "1e27c5a6465aae6644895bdafb6f9634ac6ddfa4a6d02ba15b4a3936456d32b0",
+      "content_sha256": "b5098c145cf0c37dac80b1b10178f6419b84512c595963165a8cb4bcc9b9bc2a",
+      "nontext_content_types": [
+        "input_image"
+      ],
+      "message_id": "msg_019f8c74-8e1e-7b33-8e4d-c9243634aa68",
+      "turn_id": "019f8c74-8cce-7473-b070-0a1bbd3e30ed",
+      "stable_key": "id:msg_019f8c74-8e1e-7b33-8e4d-c9243634aa68",
+      "selected_record": {
+        "session_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+        "line": 11435,
+        "record_timestamp": "2026-07-23T00:51:16.639Z"
+      },
+      "number": 1,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f86d4-43a2-73a2-a37a-ba7c5a26a4f5",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-21T22-38-05-019f86d4-43a2-73a2-a37a-ba7c5a26a4f5.jsonl",
+        "line": 11435,
+        "record_timestamp": "2026-07-23T00:51:16.639Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "before inventory, is codebase-memory working properly? just do a small check that you'd normally do\n",
+      "body_sha256": "d177870bd0b037b3f832f01f0cb88e3ce714aaa98986378e48d3324320fdb5a3",
+      "content_sha256": "20e90a0af7992332ebac48eb45a58f7ac8c27c872277665f4ae9e25d1ce3a958",
+      "nontext_content_types": [],
+      "message_id": "msg_019f9bec-1ac4-74c2-afa7-78c71dd4c210",
+      "turn_id": "019f9beb-7201-78f1-9486-6b4816338d64",
+      "stable_key": "id:msg_019f9bec-1ac4-74c2-afa7-78c71dd4c210",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11444,
+        "record_timestamp": "2026-07-26T00:56:09.668Z"
+      },
+      "number": 2,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11444,
+        "record_timestamp": "2026-07-26T00:56:09.668Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’ll do a small normal health check: confirm the indexed project/generation, look up one known strategy symbol, trace one call edge, and check coverage for the files used. I’m using the codebase-memory skill because this is specifically validating that exploration path.",
+      "body_sha256": "b23b0cacffc350770d7db88448aa325b7762fb4c96e99650491e6c79248dbc17",
+      "content_sha256": "932fd5d54c1d616270a40bd9d2dd6d654abfae25518e496c0ef219f4ade32543",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a655b2c9974819190f474427dd78cc1",
+      "turn_id": "019f9beb-7201-78f1-9486-6b4816338d64",
+      "stable_key": "id:msg_06b41252cc80bb65016a655b2c9974819190f474427dd78cc1",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11448,
+        "record_timestamp": "2026-07-26T00:56:14.429Z"
+      },
+      "number": 3,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11448,
+        "record_timestamp": "2026-07-26T00:56:14.429Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The index itself is healthy and current. One useful limitation showed up in the check: it finds the concrete SDXL method and source correctly, but an inbound trace to that override reports no caller because the trainer calls through the abstract `TrainingStrategy` surface. I’m checking that abstract edge now so we know whether this is normal dynamic-dispatch behavior or a broader trace problem.",
+      "body_sha256": "3d1cfe1311a78093330fe5d8d2d65ad0be0f10347599e6ff4f244ba3a162d938",
+      "content_sha256": "87da5aef2bd16302658653a685aeb4690908280ed75de6ad102f973b26c8dca2",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a655b52bb5081918ef5cb3329bdc028",
+      "turn_id": "019f9beb-7201-78f1-9486-6b4816338d64",
+      "stable_key": "id:msg_06b41252cc80bb65016a655b52bb5081918ef5cb3329bdc028",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11494,
+        "record_timestamp": "2026-07-26T00:56:53.389Z"
+      },
+      "number": 4,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11494,
+        "record_timestamp": "2026-07-26T00:56:53.389Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Mostly yes, with one important limitation.\n\n- Index is `ready`, full mode, current generation `2026-07-26T00:54:44Z`.\n- Symbol search correctly found the base, SD, SDXL, and SD3 `process_batch` implementations.\n- Source retrieval and coverage checks worked correctly with no recorded gaps.\n- Polymorphic call tracing is unreliable here: `_run_epoch_steps()` calls `strategies.process_batch(...)`, but the graph resolves that edge only to SD3 and misses the base/SD/SDXL implementations.\n\nSo codebase-memory is healthy for discovery, definitions, source retrieval, and most structural work. During the inventory, I’ll use it as intended but verify dynamically dispatched strategy calls against source rather than trusting that trace edge as exhaustive. No files were changed.",
+      "body_sha256": "c8d18d7a7b441436f44b2e043f578cad0456d12660641f39f1310f03abd874e7",
+      "content_sha256": "123895397692c5088c616c26a4f821e6912c5380d9344e35079ec1d4ec6867bc",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a655b6947d08191be083990e795fcc2",
+      "turn_id": "019f9beb-7201-78f1-9486-6b4816338d64",
+      "stable_key": "id:msg_06b41252cc80bb65016a655b6947d08191be083990e795fcc2",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11518,
+        "record_timestamp": "2026-07-26T00:57:17.755Z"
+      },
+      "number": 5,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11518,
+        "record_timestamp": "2026-07-26T00:57:17.755Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "treat low-confidence suffix_match edges with multiple candidates as provisional and expand OVERRIDE relationships for polymorphic calls\n\nlet's go through the inventory step, unless I'm forgetting something. new work docs location is docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "body_sha256": "6bb1ae19fa6a529971ad50320d40eebb5ddaccccff9248696d5452d1e0c9e96c",
+      "content_sha256": "7780b9865c71920b7374f56664fb2a8f0249ab4950dc3dd809789dec6751f879",
+      "nontext_content_types": [],
+      "message_id": "msg_019f9bfe-5ecc-7960-9fb4-2d656c58487c",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_019f9bfe-5ecc-7960-9fb4-2d656c58487c",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11525,
+        "record_timestamp": "2026-07-26T01:16:06.732Z"
+      },
+      "number": 6,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11525,
+        "record_timestamp": "2026-07-26T01:16:06.732Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "Yes—that is the right next step. I’ll inventory the existing contract surface, callers, implementations, state flow, and responsibility placement, treating ambiguous `suffix_match` call edges as provisional and expanding `OVERRIDE` relationships before drawing polymorphism conclusions. I’m using the OpenSpec exploration and codebase-memory exploration/tracing skills because this is pre-design architectural research, not implementation.",
+      "body_sha256": "603a59a1dcd22d00f6fb1c0042e15ea6f9815974e7fdb6ad0c0cd8fff62355be",
+      "content_sha256": "f25ebf616bbbd7fb0665b5a02c677c4891967b3d16e14fa45b5827ae6831c5e3",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a655fda17248191883ad7fc23c76336",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a655fda17248191883ad7fc23c76336",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11529,
+        "record_timestamp": "2026-07-26T01:16:12.755Z"
+      },
+      "number": 7,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11529,
+        "record_timestamp": "2026-07-26T01:16:12.755Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The direction document has already been moved into the new `docs_design/models-strategy-trainer/` area; Git sees that as the old path deleted plus the new folder untracked, which is expected until committed. I’ll keep the inventory beside it and won’t alter production code or the active metadata OpenSpec during this exploration.",
+      "body_sha256": "0e58fd951b1af3e2c3e1ac7b6d6e13d6488a77f6acb1f3e9dc1855320e472775",
+      "content_sha256": "a5ebcfe1d88e8b47b33dad48d2fe22f598ef87b0731f3ce0df6bb2036ebcba2d",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a655fea062481919a46946bb0064d63",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a655fea062481919a46946bb0064d63",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11542,
+        "record_timestamp": "2026-07-26T01:16:28.226Z"
+      },
+      "number": 8,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11542,
+        "record_timestamp": "2026-07-26T01:16:28.226Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m treating this as an Auditor-tier inventory over the active model/strategy/trainer path: bounded to the base contracts, SD/SDXL/SD3 strategies, `library/models`, training modes/phases/runner, objectives, and directly involved cache/sampling/checkpoint seams. That means complete pagination inside the scope, exact source for material boundaries, and explicit disclosure where dynamic dispatch or index coverage limits certainty.",
+      "body_sha256": "06db2b3bed984fb797f57199dd840005c34a94b65892018f5dd654b1f82f077f",
+      "content_sha256": "a751d6107dd24e0c01700af99ab6391ee1bb8e472f4f2cdca1ddd87fa3a851fe",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a655ff89520819183c65c611328ed12",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a655ff89520819183c65c611328ed12",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11552,
+        "record_timestamp": "2026-07-26T01:16:43.288Z"
+      },
+      "number": 9,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11552,
+        "record_timestamp": "2026-07-26T01:16:43.288Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The first strong inventory result is already clear: the graph’s low-confidence polymorphic edges really do collapse several calls onto SD3. Expanding `OVERRIDE` relations and checking source shows three implementations for most facets, while some sibling-mixin methods such as tokenization are not represented as overrides at all. I’m therefore using the graph for the contract/override set and literal source verification for every trainer-facing call site.",
+      "body_sha256": "5e24de93e987fed55a65e35db1b522a561034a333a355d5afa79cd60cd45c6b7",
+      "content_sha256": "6182cdb1b0b24ba3c3ed5bee0b87e7bfadf97a024540846f5744054ed779d54f",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a6560c7f0e08191a5232c774d491d6d",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a6560c7f0e08191a5232c774d491d6d",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11673,
+        "record_timestamp": "2026-07-26T01:20:11.010Z"
+      },
+      "number": 10,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11673,
+        "record_timestamp": "2026-07-26T01:20:11.010Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The inventory is exposing concrete state-boundary defects, not just aesthetic concerns: compatibility projections are sometimes passed where the contract requires lists, a fine-tune encoder wrapper assignment mutates a temporary projection rather than `loaded_components`, and some supposedly supported mode/family combinations fail only during checkpoint metadata or saving. I’m recording these as evidence and pressure points, not fixing them during exploration.",
+      "body_sha256": "6378691b095754f647e5d6d0b641ee3b9e7e972a4b43594b5d3cdfa2eef23931",
+      "content_sha256": "57e695b8000b2f102e71728796d07ced8d871251156fc0a9c614d31a5d54f013",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a656163967c819182fb652b947b0a39",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a656163967c819182fb652b947b0a39",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11718,
+        "record_timestamp": "2026-07-26T01:22:46.417Z"
+      },
+      "number": 11,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11718,
+        "record_timestamp": "2026-07-26T01:22:46.417Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The inventory pass is substantially complete; I’m checking that the interrupted write landed cleanly, then I’ll validate it against the direction document and finish the evidence-backed handoff. I’m keeping ambiguous `suffix_match` call edges provisional and relying on expanded `OVERRIDE` relationships plus source verification for polymorphic behavior.",
+      "body_sha256": "e3b240c461e8398f45961a20b611afe67ee0266d6c1e412dfbe599b92e2e8b23",
+      "content_sha256": "d476347468845d676490c6dc25b02585a9c8b5aab895030f5efeae2b1c2ca8c0",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a65624cd54c8191b66393d9298adb9d",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a65624cd54c8191b66393d9298adb9d",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11730,
+        "record_timestamp": "2026-07-26T01:26:38.830Z"
+      },
+      "number": 12,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11730,
+        "record_timestamp": "2026-07-26T01:26:38.830Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The inventory file is intact at 729 lines and the working tree reflects the intended document relocation: the old standalone path is deleted and the new folder contains the direction document plus the inventory. I’m now checking the inventory’s matrices and concrete defect claims, since those are the parts that should guide the next design rather than merely describe it.",
+      "body_sha256": "14fcef22d3d4d3bc6585d5510fb003f1a7c5f3ce02a47b3332b4abb2e3768341",
+      "content_sha256": "7014ab43ee8a11a07ff3a4389b31fe0cd04b3368c404c00dd5a80ab422ff0f63",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a65625921648191a67a2cd12278bb03",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a65625921648191a67a2cd12278bb03",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11740,
+        "record_timestamp": "2026-07-26T01:26:51.652Z"
+      },
+      "number": 13,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11740,
+        "record_timestamp": "2026-07-26T01:26:51.652Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "Two important outcomes are emerging from the check. First, the inventory confirms this is not mainly an inheritance problem: the current system lacks a single notion of “this selected run is fulfilled,” so unsupported combinations survive construction and fail later. Second, the strongest immediate design pressure is the live component surface—trainer compatibility projections already cause concrete replacement and sampling-shape defects. I found one Markdown fence error and am adding an explicit link between the direction and inventory documents before review.",
+      "body_sha256": "a2c2dc21ba94593ecdb3511d988e613a68734850fdc8cd3d278705d6677cb34f",
+      "content_sha256": "5a717dde2417759b40a6aa9133b501fd6a84071c893be639da601fb07b00a9c0",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a65626baeb081918dc48ced2fe3f190",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a65626baeb081918dc48ced2fe3f190",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11750,
+        "record_timestamp": "2026-07-26T01:27:11.356Z"
+      },
+      "number": 14,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11750,
+        "record_timestamp": "2026-07-26T01:27:11.356Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The document now cleanly distinguishes what this inventory completes from what remains design work. We have finished the current-code audit; we have not yet written the cross-scenario conformance cases or chosen the revised contract/state shape. I’m requesting a review focused only on factual accuracy against the active strategy/model/trainer code—not asking the reviewer to replace the architectural conclusions from our discussion.",
+      "body_sha256": "06c5a5cb1b46efb5f1c76bafdf64f02f9da358ba1604ef7f0ae26cdf5b852e48",
+      "content_sha256": "ed91d33965461ee2e5400e30cb39d3ea127909a9b33ecb8a46e3c62959612dcf",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a656298eccc8191b04b148d8d0231a5",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a656298eccc8191b04b148d8d0231a5",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11774,
+        "record_timestamp": "2026-07-26T01:27:56.016Z"
+      },
+      "number": 15,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11774,
+        "record_timestamp": "2026-07-26T01:27:56.016Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The review confirmed the contract count, family matrix, state hand-back, hidden validation dependency, sampling mismatches, projection defect, and fulfillment analysis. It flagged one detail worth resolving rather than accepting casually: the exact SD3 weighted-prompt failure type. I’m checking the actual conditioning path now and will correct the inventory if its exception label is too specific.",
+      "body_sha256": "57d7ad38a62781ef7971e14d92ee7202b8a08e332d19e4b8a260bcaf46a7fa82",
+      "content_sha256": "767c91df037546efebf085620b32c19bd3b04e8e783063611f94729cd83afed9",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a65634f6cc88191981dc341a4138979",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a65634f6cc88191981dc341a4138979",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11785,
+        "record_timestamp": "2026-07-26T01:30:57.589Z"
+      },
+      "number": 16,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11785,
+        "record_timestamp": "2026-07-26T01:30:57.589Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "The inventory step is complete and recorded in [strategy_system_inventory.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_inventory.md). The relocated [strategy_system_direction.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_direction.md) now links to it.\n\nThe main findings are:\n\n- The current contract contains 25 operations across 11 facets, mixing trainer-facing lifecycle operations with family-internal collaboration.\n- Strategy construction proves Python interface completeness, not that the chosen family, mode, objective, representation, and persistence paths form a valid training run.\n- The strategy/trainer relationship repeatedly passes loaded objects back and forth without one clear state owner.\n- Compatibility projections already cause concrete defects:\n  - element assignment through `Trainer.text_encoders` mutates a temporary list;\n  - sampling passes a single encoder where its declared contract expects a list.\n- Validation bypasses `process_batch()` and depends on undeclared sibling-MRO helpers.\n- Caching, sampling, checkpointing, and `process_batch()` each combine responsibilities belonging to several architectural areas.\n- The existing loaded-component declarations are the strongest basis for a better model boundary.\n- The models/strategies split remains valid, but orchestration, runtime policy, IO, and generic objective/loss behavior have leaked across it.\n\nCodebase-memory was used conservatively: ambiguous multi-candidate `suffix_match` calls were treated as provisional, `OVERRIDE` paths were expanded, and polymorphic claims were verified against source.\n\nReview confirmed the inventory’s factual accuracy. It raised one possible discrepancy about SD3 weighted-caption failure, but direct source verification confirmed the inventory is correct: SD3 explicitly raises `NotImplementedError`.\n\nWhat remains before proposing implementation is no longer “more general inventory.” It is focused design work:\n\n1. Write conformance scenarios for current latent diffusion, pixel diffusion, adapters, added components, distillation, and less image-shaped models.\n2. Decide the minimum trainer-facing contract.\n3. Decide how loaded component state is owned and safely replaced.\n4. Define what a fulfilled training strategy records and validates.\n5. Select a first bounded migration that fixes a real defect and proves the architecture.\n\nOnly documentation changed, so no runtime tests were needed. Markdown structure, local links, and whitespace checks passed.",
+      "body_sha256": "508989ae0fd2aaf795458216c822705cce0fc0b5ed0f19829fe59242e4c3b835",
+      "content_sha256": "d71008147c6dde61a0763a733c373d067bf2c1577a579ed92c6e7a6b419e77fa",
+      "nontext_content_types": [],
+      "message_id": "msg_06b41252cc80bb65016a65636fe7d08191a464150885342ba1",
+      "turn_id": "019f9bfe-5e77-7493-8f86-826403a7f40e",
+      "stable_key": "id:msg_06b41252cc80bb65016a65636fe7d08191a464150885342ba1",
+      "selected_record": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11799,
+        "record_timestamp": "2026-07-26T01:31:39.881Z"
+      },
+      "number": 17,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019f8c75-6709-7f02-9e99-a3d5d9e5fffd",
+        "path": "/home/imi/.codex/sessions/2026/07/23/rollout-2026-07-23T00-52-12-019f8c75-6709-7f02-9e99-a3d5d9e5fffd.jsonl",
+        "line": 11799,
+        "record_timestamp": "2026-07-26T01:31:39.881Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "then let's do the inventory before the other points. this is the working docs folder for this will be the area docs_design/models-strategy-trainer\n",
+      "body_sha256": "10e90a0bca0de0d37bffe3531bc35ccb343df0e41fb93be30fb727e570504a90",
+      "content_sha256": "7e24b4c72ce2bad1acb28cd0ba041e547d9641df2a85e95b63cf6c6b427c5e72",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab28-a1d3-7952-a679-396238ef829b",
+      "turn_id": "019fab28-9d2f-7f01-86fd-ef3c07337c88",
+      "stable_key": "id:msg_019fab28-a1d3-7952-a679-396238ef829b",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11445,
+        "record_timestamp": "2026-07-28T23:56:34.643Z"
+      },
+      "number": 18,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11445,
+        "record_timestamp": "2026-07-28T23:56:34.643Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’ll inventory the current model–strategy–trainer system before returning to the unresolved design questions. I’m using the OpenSpec exploration workflow to keep this as research rather than premature implementation, and codebase-memory for verified structural/call-path evidence. I’ll keep the working material under `docs_design/models-strategy-trainer/` and won’t use subagents.",
+      "body_sha256": "cfb425e0234c01107a36aa4001788db4419125af70ed81e40ca0f48a702a004b",
+      "content_sha256": "cdcdb590882aa1126174ddd7a4646e5f869daa2cffcee4e95969d4c3da74096a",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6941b713308191b80c7207e552f968",
+      "turn_id": "019fab28-9d2f-7f01-86fd-ef3c07337c88",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6941b713308191b80c7207e552f968",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11449,
+        "record_timestamp": "2026-07-28T23:56:41.440Z"
+      },
+      "number": 19,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11449,
+        "record_timestamp": "2026-07-28T23:56:41.440Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The repository already contains the discussion record at `docs_design/models-strategy-trainer/strategy_system_direction.md`; it was moved there from the old top-level location and is currently untracked, so I’ll preserve that move and add a separate evidence inventory rather than mixing observed facts into the direction document. The graph index is current at `de2dd0e` with no recorded gaps in the model/strategy/training Python scopes; I’m treating this as a Verify-tier inventory and will still check every cited path explicitly.",
+      "body_sha256": "db7e0c5a47325b9a2d1946afd88af0238411ad528e87085c28bb2a539abbf33c",
+      "content_sha256": "224d7ba2a8116ce1dcbad24830f35fc50f9bd757a25ac7f6ebb547126f18a916",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6941edc8908191bbd0a641009b933a",
+      "turn_id": "019fab28-9d2f-7f01-86fd-ef3c07337c88",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6941edc8908191bbd0a641009b933a",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11484,
+        "record_timestamp": "2026-07-28T23:57:37.345Z"
+      },
+      "number": 20,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11484,
+        "record_timestamp": "2026-07-28T23:57:37.345Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "I’m in the production inventory now: mapping the active launcher through trainer, modes, strategy facets, and model components. I’m keeping “observed current behavior,” “architectural pressure,” and “proposed direction” separate so the inventory doesn’t quietly become a design decision.",
+      "body_sha256": "6ea5cf8ed135d36e19a944447d5aa182b8cd1e43190ce0c020cf372439420d1c",
+      "content_sha256": "06be203374cf7ffa149374cb075f38906d5e899d57d0e334fa38809280b5600b",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a694370958c8191885da681fa48e36a",
+      "turn_id": "019fab28-9d2f-7f01-86fd-ef3c07337c88",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a694370958c8191885da681fa48e36a",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11671,
+        "record_timestamp": "2026-07-29T00:04:03.991Z"
+      },
+      "number": 21,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11671,
+        "record_timestamp": "2026-07-29T00:04:03.991Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "The inventory confirms the important shape: the repository already builds one aggregate family strategy, but it does not yet receive or own one coherent run binding. The trainer and modes repeatedly unwrap, mutate, and pass model state back into that aggregate, while several “contract” methods are only family-internal mixin seams. I’m recording that distinction explicitly rather than treating the current ABC list as the future contract.",
+      "body_sha256": "d465b29997d88b5129fb7b99463cf73984c95da79dc27472f4f50e6c5df80248",
+      "content_sha256": "1cf45787cd29e91ce70f2a68318a6998f21419d4e838fe8b1b4d4ad3541aac1d",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6943c8a06881919aecd5e14d14716e",
+      "turn_id": "019fab28-9d2f-7f01-86fd-ef3c07337c88",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6943c8a06881919aecd5e14d14716e",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11724,
+        "record_timestamp": "2026-07-29T00:05:31.665Z"
+      },
+      "number": 22,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11724,
+        "record_timestamp": "2026-07-29T00:05:31.665Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Inventory completed at [strategy_system_inventory.md](/home/imi/Projects/sd-scripts/docs_design/models-strategy-trainer/strategy_system_inventory.md).\n\nIt covers:\n\n- All 25 current strategy contract operations and their actual callers.\n- Trainer-facing operations versus family-internal mixin collaboration.\n- SD, SDXL, and SD3 fulfillment differences.\n- Loaded-component ownership and trainer/strategy/mode state flow.\n- Training, validation, caching, preparation, sampling, and saving paths.\n- Existing compatibility constraints.\n- Misplaced or mixed-responsibility code.\n- The concrete questions to resolve before designing the replacement contract.\n\nThe main conclusion is that we already construct one aggregate strategy, but it is simultaneously a trainer façade, internal mixin bus, and partial state holder. The loaded-component surface is useful; ownership and fulfillment semantics around it are what need redesign.\n\nNo production code changed and no tests were needed. `git diff --check` passed. The inventory Beads issue `sd-scripts-0pd` is closed. I skipped review because this is an exploratory research document, not an implementation/OpenSpec milestone.",
+      "body_sha256": "5cce9dcbd54cee99ced3b158ddb645f2e9d7facdee728cf295e58722273d9235",
+      "content_sha256": "d7ba4ca9a5fea19a0896cf2c3aacb761ee1ec85e5542c476c058af2c4782fad0",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6944b3258881919d7a71baa263a353",
+      "turn_id": "019fab28-9d2f-7f01-86fd-ef3c07337c88",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6944b3258881919d7a71baa263a353",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11760,
+        "record_timestamp": "2026-07-29T00:09:29.229Z"
+      },
+      "number": 23,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11760,
+        "record_timestamp": "2026-07-29T00:09:29.229Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "quick meta question. you spent a lot of time going through the relevant code, and then you hit context limit and it compacted the context. did you lose all the exploration details you got from before that? 019fa69a-b709-7b73-bb57-abe2021bfdb9 is this session\n",
+      "body_sha256": "7b2cf45370ce001c8dd5ad3f44c72b8785c7ca98a27f1248a80eb40a3efb2420",
+      "content_sha256": "5d889d9f412193c912898401800cb6e9f98e281f2a8c5e6680b74a81224ceaf8",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab34-8a63-7531-9da1-4c219f34324f",
+      "turn_id": "019fab34-89cd-7d13-a63f-90968815095d",
+      "stable_key": "id:msg_019fab34-8a63-7531-9da1-4c219f34324f",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11768,
+        "record_timestamp": "2026-07-29T00:09:35.075Z"
+      },
+      "number": 24,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11768,
+        "record_timestamp": "2026-07-29T00:09:35.075Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "No, I didn’t lose all of it—but I did lose the verbatim working context.\n\nWhen compaction happened, the earlier messages and raw tool outputs were replaced with a detailed structured summary. That summary retained:\n\n- The files and architecture paths inspected.\n- The graph-index generation and coverage state.\n- The complete contract-method classification.\n- Trainer/strategy/mode ownership findings.\n- Family-specific behavior and placement concerns.\n- Dirty-worktree and Beads state.\n- What still needed verification before writing the inventory.\n\nWhat was lost was the exact raw output, intermediate reasoning, and any minor observation the compaction summary didn’t preserve.\n\nAfter compaction, I used that summary as a handoff and reopened the important source files—contracts, family assembly, loading, checkpointing, modes, training/validation flows, component declarations—and reran the final coverage check. So the inventory wasn’t written solely from compressed recollection.\n\nThe durable record is now the inventory document. If some subtle detail had existed only in my pre-compaction reasoning and wasn’t summarized or written down, then yes, that detail could have been lost. Session `019fa69a-b709-7b73-bb57-abe2021bfdb9` is the session you’re referring to.",
+      "body_sha256": "087ee13c5cd627fb9937350e51a426dc36fc6ac237edb93bce8727f7d56af0dc",
+      "content_sha256": "234ee913df71dc70c76929bc4300920cb5e2db52fe56f183bf054e14cdba230b",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6944ca60408191a8c2d2f4380e5083",
+      "turn_id": "019fab34-89cd-7d13-a63f-90968815095d",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6944ca60408191a8c2d2f4380e5083",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11772,
+        "record_timestamp": "2026-07-29T00:09:53.492Z"
+      },
+      "number": 25,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11772,
+        "record_timestamp": "2026-07-29T00:09:53.492Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "that's not great\n",
+      "body_sha256": "08b4c47036a1eda50ce5018ee7947c67e30afbd3e4737878ea835768ccf92999",
+      "content_sha256": "fa1c58c6114a1f263a8f2661c31a1133d2b5daba62b8a104fce08688d1f0e912",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab34-eebf-7563-a898-2912a03e799f",
+      "turn_id": "019fab34-ee57-7b31-92b0-e1a3b751e599",
+      "stable_key": "id:msg_019fab34-eebf-7563-a898-2912a03e799f",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11778,
+        "record_timestamp": "2026-07-29T00:10:00.767Z"
+      },
+      "number": 26,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11778,
+        "record_timestamp": "2026-07-29T00:10:00.767Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "No, it isn’t ideal. Compaction is lossy: a good summary preserves conclusions, but it cannot guarantee every observation, caveat, or connection survives.\n\nThe better working method for investigations this large is to make the exploration durable as it happens:\n\n- Write findings progressively into the working research document.\n- Record exact paths, symbols, and unresolved questions before continuing.\n- Treat the conversation context as temporary working memory, not the only evidence store.\n- Break the investigation into bounded slices and checkpoint each slice.\n- After compaction, verify against those notes and source rather than relying on the generated summary.\n\nIn this case, the compaction summary happened to be unusually detailed, and I reread the important code afterward. So I’m confident the inventory’s major conclusions survived. But the process still exposed a real risk: smaller incidental findings could have disappeared unnoticed.\n\nFor future architecture research, I should begin the inventory document early and build it alongside exploration, rather than doing most of the investigation in context and writing afterward.",
+      "body_sha256": "c3b117e64bce9813228a64b06cbf9ae77c90676ed9306a1e2b366296ca4cb0e5",
+      "content_sha256": "b1b9d81f28b81475c910f7fef52bf193212f8337823d23d2de631829ba9bc344",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6944e1264081918ca2c8b34e153c03",
+      "turn_id": "019fab34-ee57-7b31-92b0-e1a3b751e599",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6944e1264081918ca2c8b34e153c03",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11782,
+        "record_timestamp": "2026-07-29T00:10:15.807Z"
+      },
+      "number": 27,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11782,
+        "record_timestamp": "2026-07-29T00:10:15.807Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "that's not the same thing\n",
+      "body_sha256": "6e69ea1b5af3806147bff50f0779eb1e58f831810ef7231413df28aeeee88cba",
+      "content_sha256": "f89694e7d1d504697c3b9ab4afbfd2ef36c5996c0947d9167ddb6afce70e1a27",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab35-524c-7880-b80d-c8e92762ac78",
+      "turn_id": "019fab35-51eb-74a2-baf6-5f86b44ef92b",
+      "stable_key": "id:msg_019fab35-524c-7880-b80d-c8e92762ac78",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11788,
+        "record_timestamp": "2026-07-29T00:10:26.252Z"
+      },
+      "number": 28,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11788,
+        "record_timestamp": "2026-07-29T00:10:26.252Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "You’re right. Writing notes or rereading the code is not the same as retaining the original exploration.\n\nAfter compaction, I no longer had the full pre-compaction reasoning and raw evidence in active context. I had a generated summary. It retained a lot, but anything omitted from that summary was unavailable to me. Reopening files can reconstruct facts, but it cannot guarantee reconstruction of every connection, doubt, or discarded interpretation from the original exploration.\n\nThe session ID does not automatically restore that context to me. The faithful remedy would be to retrieve and replay the earlier transcript for that session, if it is locally accessible—not substitute documentation or a second investigation and call them equivalent.",
+      "body_sha256": "ed0356e89e86b1025b9ff5f89b7c42bc2db04809adc50e99e18a64d838fd5f97",
+      "content_sha256": "a13e3b213d52bf38eff64c464fd80d999d272ceee6b9f5003296f36534fd505a",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a6944fdb4848191aaaeb1c61508f949",
+      "turn_id": "019fab35-51eb-74a2-baf6-5f86b44ef92b",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a6944fdb4848191aaaeb1c61508f949",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11792,
+        "record_timestamp": "2026-07-29T00:10:42.448Z"
+      },
+      "number": 29,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11792,
+        "record_timestamp": "2026-07-29T00:10:42.448Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "yes it does, go check the file for the session\n",
+      "body_sha256": "85f1f30c76607de74fba2585c420dda58fe8e6fbba052b80ba0d6018c580c385",
+      "content_sha256": "95e511d6fa946f095b338ae0d41c973d9302c4067ca5c52fcb69104a7702f331",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab35-e89b-7190-ab2a-03d0a6ccf23d",
+      "turn_id": "019fab35-e833-7803-9d44-9057a6b61d4f",
+      "stable_key": "id:msg_019fab35-e89b-7190-ab2a-03d0a6ccf23d",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11798,
+        "record_timestamp": "2026-07-29T00:11:04.731Z"
+      },
+      "number": 30,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11798,
+        "record_timestamp": "2026-07-29T00:11:04.731Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "commentary",
+      "body": "You’re right—I treated the session ID as merely descriptive when it can identify the persisted transcript. I’ll locate that session file and check what remains available beyond the compacted active context.",
+      "body_sha256": "f8424ea54de4d0bfbd8cd2cc7d5e3881b5bb12f5b0a263c745406251f11f0dfb",
+      "content_sha256": "f198baf26ad887c50131e0652ca15da136a8370337ecb335f28da02d102eb48e",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a69451ba8988191825fdd892e2bc420",
+      "turn_id": "019fab35-e833-7803-9d44-9057a6b61d4f",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a69451ba8988191825fdd892e2bc420",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11802,
+        "record_timestamp": "2026-07-29T00:11:09.615Z"
+      },
+      "number": 31,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11802,
+        "record_timestamp": "2026-07-29T00:11:09.615Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "You were right. I checked the session file:\n\n[rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl](/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl)\n\nIt is an append-only transcript containing the original exploration—not merely the compacted summary. At the time I checked, it contained:\n\n- 13,145 JSONL records / about 55 MB.\n- 2,492 reasoning records.\n- 1,733 custom tool calls and their outputs.\n- 445 function calls and 444 outputs.\n- The raw model/strategy/trainer exploration immediately preceding compaction.\n- Separate `compacted` records describing the replacement context.\n\nSo the accurate distinction is:\n\n- Compaction removed the details from my active context.\n- It did **not** remove them from the session.\n- I can recover the original reasoning and tool evidence from that file using the session ID.\n\nI was wrong to speak as though omitted details might be irretrievable without first checking the persisted session. The session ID is operationally useful, and I should use the transcript after compaction when earlier exploration materially affects the work.",
+      "body_sha256": "6a81c97ac1b8a5f03f2eed657464caaaab3c679652811f0459fb8cd17e9846ba",
+      "content_sha256": "21d0c8050fd7108801785fbccd59b008003c05cb962187f639bef2c059655974",
+      "nontext_content_types": [],
+      "message_id": "msg_075cbe1a7ec0f7d7016a69454b65fc81919206420e77c1516b",
+      "turn_id": "019fab35-e833-7803-9d44-9057a6b61d4f",
+      "stable_key": "id:msg_075cbe1a7ec0f7d7016a69454b65fc81919206420e77c1516b",
+      "selected_record": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11820,
+        "record_timestamp": "2026-07-29T00:12:02.735Z"
+      },
+      "number": 32,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fa69a-b709-7b73-bb57-abe2021bfdb9",
+        "path": "/home/imi/.codex/sessions/2026/07/28/rollout-2026-07-28T02-43-05-019fa69a-b709-7b73-bb57-abe2021bfdb9.jsonl",
+        "line": 11820,
+        "record_timestamp": "2026-07-29T00:12:02.735Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "the \"run\" doesn't select things, these are defined in the strategy build the same as today, just under the new contract. it might constrain or validate it (where this happens is not decided from what I've read so far). the contract defines what must be fulfilled and what is available to use whether it's a slot that needs to be filled or something that you're picking for yourself. we're not going for a super smart mind reader system that automatically picks things based on implication, at least not for now. strategies should be built with intent. we can validate that the choices are correct, but that's different from a feature dragging another with it, that should still be left to whoever is putting the strategy together. (and this is us, we make the default training strategies for models aka what you see currently)",
+      "body_sha256": "7658ad4ca65cae8d4c6fdd58a0c840bf7541c4d41c4753959a5b4aeffe9f1d37",
+      "content_sha256": "56db3ad0ed63c716715e74e78a1a0b72ceee3ec9f91f488f11960a4758e2dcae",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab9a-f074-7202-8949-a29bd7444a4a",
+      "turn_id": "019fab9a-f023-7da3-a800-1558d3d14350",
+      "stable_key": "id:msg_019fab9a-f074-7202-8949-a29bd7444a4a",
+      "selected_record": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11953,
+        "record_timestamp": "2026-07-29T02:01:25.877Z"
+      },
+      "number": 33,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11953,
+        "record_timestamp": "2026-07-29T02:01:25.877Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Correct. My “run selects concerns” framing was wrong. The strategy builder selects and assembles them intentionally; the run configuration only supplies inputs and constraints to that builder.\n\nThe intended flow is:\n\n```text\nCONTRACT\ndefines obligations, slots, extension seams, and semantics\n        │\n        ▼\nSTRATEGY BUILDER\nexplicitly chooses implementations and wires them together\n        │\n        ▼\nVALIDATION\nchecks completeness and compatibility without adding anything\n        │\n        ▼\nFULFILLED TRAINING STRATEGY\nthe complete executable plan handed to the trainer\n        │\n        ▼\nTRAINER\nexecutes it without knowing its internal parts\n```\n\nThere should be no dependency resolver that sees `LatentRepresentation` and automatically decides to attach a VAE, cache codec, objective, or anything else. Whoever writes the builder must do that deliberately.\n\nA future SDXL builder might conceptually resemble:\n\n```python\ndef build_sdxl_strategy(cfg) -> FulfilledTrainingStrategy:\n    representation = SdxlLatentRepresentation(\n        autoencoder=SdxlAutoencoderAdapter(...),\n    )\n\n    conditioning = SdxlClipConditioning(\n        clip_l=...,\n        clip_g=...,\n        weighted_prompts=SdxlWeightedPrompts(...),\n    )\n\n    if cfg.objective.path == \"ddpm\":\n        objective = DdpmObjectiveIntegration(...)\n        sampling = SdxlDdpmSampling(...)\n    elif cfg.objective.path == \"rectified_flow\":\n        objective = RectifiedFlowObjectiveIntegration(...)\n        sampling = SdxlFlowSampling(...)\n    else:\n        raise UnsupportedStrategyConfiguration(...)\n\n    definition = TrainingStrategyDefinition(\n        representation=representation,\n        conditioning=conditioning,\n        predictor=SdxlUnetPredictor(...),\n        objective=objective,\n        training_subject=...,\n        sampling=sampling,\n        persistence=SdxlPersistence(...),\n    )\n\n    return fulfill_training_strategy(definition)\n```\n\nThe builder explicitly made every choice. `fulfill_training_strategy()` would inspect and validate the result, not alter it.\n\nIf `SdxlFlowSampling` needs rectified-flow semantics, that relationship can be declared for validation:\n\n```text\nSdxlFlowSampling requires objective semantics: rectified_flow\n```\n\nBut that means:\n\n```text\ncheck that the builder supplied them\n```\n\nnot:\n\n```text\nautomatically locate and attach RectifiedFlowObjectiveIntegration\n```\n\n### Contract versus feature catalog\n\nI would narrow one part of the wording slightly: the contract should define what is available to fulfill conceptually, but it should not necessarily enumerate every concrete implementation.\n\nOtherwise, adding a new autoencoder adapter or conditioning implementation would mutate the core contract every time.\n\nA cleaner separation is:\n\n```text\nContract\n  defines:\n    required obligations\n    builder choice-points\n    accepted interfaces\n    lifecycle semantics\n    compatibility rules\n    trainer-visible results\n\nFeature/component catalog\n  provides:\n    LatentRepresentation\n    PixelRepresentation\n    SdxlClipConditioning\n    Sd3TextConditioning\n    DdpmObjectiveIntegration\n    RectifiedFlowObjectiveIntegration\n    ...\n```\n\nThe contract says, for example:\n\n```text\nthe strategy must provide model-input preparation\nthe strategy must provide a differentiable training step\nthe strategy may fulfill input preparation using any conforming representation\n```\n\nThe catalog says which representation implementations currently exist. The builder chooses one explicitly.\n\nThat distinction makes the contract stable while letting the grab box grow.\n\n### Three kinds of contract entries\n\nThe next design table should distinguish:\n\n1. Required obligations\n\n   Every build must fulfill them.\n\n   Examples:\n\n   - authoritative bound state;\n   - trainable parameter/optimization description;\n   - differentiable training-step execution;\n   - lifecycle preparation;\n   - trainer-facing result semantics.\n\n2. Builder choice-points\n\n   The builder must make an explicit choice, but the contract does not prescribe one implementation.\n\n   Examples:\n\n   - representation handling;\n   - objective integration;\n   - predictor invocation;\n   - training subject;\n   - perhaps conditioning, depending on how we represent unconditional models.\n\n3. Available extension seams\n\n   The contract defines how these participate if the builder deliberately includes them.\n\n   Examples:\n\n   - caching;\n   - sampling;\n   - validation;\n   - persistence formats;\n   - weighted prompts;\n   - additional trainable participants;\n   - metadata/query exposure.\n\nOnce included by the builder, these are not optional in any meaningful sense. They are part of that strategy and must work.\n\n### Validation timing remains open\n\nYou are also correct that we have not decided where validation happens. There are at least two kinds:\n\n```text\nconstruction validation\n  all required filings exist\n  declared feature semantics are compatible\n  configuration constraints are supported\n\nbound-state validation\n  expected components actually loaded\n  roles and types match\n  replacements remain coherent\n  required runtime facilities exist\n```\n\nThose could happen in one place or at two lifecycle boundaries. We should decide that later. The important present rule is that validation observes the builder’s choices; it does not make them.\n\nSo the next contract exercise should use a table like:\n\n| Concern | Contract obligation | Builder decision | Validation evidence | Trainer visibility |\n| --- | --- | --- | --- | --- |\n| bound state | required | component integration | loaded roles and lifecycle state | opaque |\n| training subject | required | base model, adapter, added components | parameter groups are valid | generic optimization description |\n| representation | explicit choice | latent, pixel, other | input/output tensor semantics agree | opaque |\n| conditioning | explicit filing where used | CLIP, T5, LLM, unconditional | predictor accepts payload | opaque |\n| objective | required | DDPM, RF, future | predictor/target/loss semantics agree | final loss only |\n| sampling | explicitly included by builder | family/objective implementation | compatible bound state | generic result |\n| persistence | explicitly included by builder | adapter/full-model formats | serializer supports bound state | generic artifact result |\n\nThat is the next useful addition to the direction document: intentional construction, validation without auto-wiring, and the first contract-obligation table.",
+      "body_sha256": "7db8929142cadc4487ad71e6b79a6fc332f7e863f16ca33ac39083828f67f862",
+      "content_sha256": "8230fe132fbf0643dc2085382fcb2a5072d5d9e2e03fc3f39aadc09be8861f0f",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a695f324b708191a7e806b134e600f2",
+      "turn_id": "019fab9a-f023-7da3-a800-1558d3d14350",
+      "stable_key": "id:msg_0291ff4185d624e2016a695f324b708191a7e806b134e600f2",
+      "selected_record": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11961,
+        "record_timestamp": "2026-07-29T02:02:57.021Z"
+      },
+      "number": 34,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11961,
+        "record_timestamp": "2026-07-29T02:02:57.021Z"
+      }
+    },
+    {
+      "role": "user",
+      "phase": null,
+      "body": "I think you maybe misread what I said. there is no \"builder\", builder is literally whoever writes the code for the strategy\n",
+      "body_sha256": "d6940edbec9fe614971cb71d84a7fc008f13f812edaa745b1e0217a2f5d68da8",
+      "content_sha256": "8acd63fd157cd4ea1faeaeed36ca2841afb2881142c9fe817edde685c27cc1ca",
+      "nontext_content_types": [],
+      "message_id": "msg_019fab9e-395b-7161-ab7b-4b45b69071ed",
+      "turn_id": "019fab9e-3904-7522-847c-05618f7231ca",
+      "stable_key": "id:msg_019fab9e-395b-7161-ab7b-4b45b69071ed",
+      "selected_record": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11967,
+        "record_timestamp": "2026-07-29T02:05:01.147Z"
+      },
+      "number": 35,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11967,
+        "record_timestamp": "2026-07-29T02:05:01.147Z"
+      }
+    },
+    {
+      "role": "assistant",
+      "phase": "final_answer",
+      "body": "Yes, I misread you. There is no proposed builder abstraction or generic runtime assembly step.\n\n“Building the strategy” means us writing the strategy implementation:\n\n```text\nCONTRACT\n    ↓ implemented deliberately by a developer\nSdxlTrainingStrategy / Sd3TrainingStrategy / FutureModelStrategy\n    ↓ instantiated by the existing factory\nTRAINER\n```\n\nThe human-authored strategy class is the fulfillment. `build_training_strategy()` remains essentially a factory that selects and instantiates that authored implementation; it does not compose features dynamically.\n\nThe feature grab box is for the person writing the strategy:\n\n```python\nclass SdxlTrainingStrategy(TrainingStrategy):\n    def __init__(self, cfg):\n        self.representation = SdxlLatentDiffusion(...)\n        self.conditioning = SdxlClipConditioning(...)\n        self.objective = SdxlObjectiveHandling(...)\n```\n\nOr it might use inheritance, decorators, direct function calls, or another organization we choose later. Regardless, the strategy author explicitly chose those pieces in source code.\n\nNothing sees `SdxlLatentDiffusion` and automatically attaches:\n\n- an autoencoder;\n- a cache codec;\n- CLIP;\n- DDPM;\n- sampling;\n- persistence.\n\nIf SDXL supports both DDPM and rectified flow, that support exists because its strategy author deliberately implemented the branch:\n\n```python\nif cfg.objective.path == \"ddpm\":\n    ...\nelif cfg.objective.path == \"rectified_flow\":\n    ...\nelse:\n    raise ...\n```\n\nThe configuration selects a path the strategy intentionally exposes; it does not assemble the strategy.\n\nSo the corrected distinction is:\n\n```text\ncontract\n  defines what a valid strategy implementation must provide\n  defines the vocabulary and feature seams available to strategy authors\n\nstrategy source code\n  explicitly chooses components and reusable features\n  implements every required contract behavior\n  deliberately exposes any supported configuration choices\n\nvalidation\n  checks that this authored strategy can handle its configuration and live state\n  does not add, select, or wire features\n\ntrainer\n  receives the completed strategy instance\n  does not know its internal parts\n```\n\nThat also changes how we should approach the next contract draft. We should not design a `TrainingStrategyDefinition`, fulfillment engine, dependency resolver, or strategy builder.\n\nWe should classify the contract surface into:\n\n- What every authored training strategy must implement for the trainer.\n- What reusable feature contracts are available to strategy authors.\n- What remains ordinary internal implementation with no base contract.\n- What configuration choices an individual strategy deliberately advertises.\n- What conformance tests prove that an implementation genuinely honors the contract.\n\nThe strongest concise statement is:\n\n```text\nA strategy is hand-authored code that fulfills the training contract.\nFeatures are tools for writing that strategy, not pieces selected by the run.\nThe trainer executes the resulting strategy as one opaque training plan.\n```\n\nThat is what should replace the builder-oriented language from my previous answer.",
+      "body_sha256": "36b0df8a7315b1ae5dae9d795cf601d6d066094314aa0e552fe63a4f980d0b61",
+      "content_sha256": "bff727778ccfed310b2e464c63fd03a74e30b054c02f24bf0cace17f0ac3e4e7",
+      "nontext_content_types": [],
+      "message_id": "msg_0291ff4185d624e2016a695fe172c08191999ac2c82ac5014c",
+      "turn_id": "019fab9e-3904-7522-847c-05618f7231ca",
+      "stable_key": "id:msg_0291ff4185d624e2016a695fe172c08191999ac2c82ac5014c",
+      "selected_record": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11972,
+        "record_timestamp": "2026-07-29T02:05:35.465Z"
+      },
+      "number": 36,
+      "earliest_matching_record_in_inspected_ancestry": {
+        "session_id": "019fab38-3678-72c3-b798-adb2e9e225b9",
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-07-29T00-13-35-019fab38-3678-72c3-b798-adb2e9e225b9.jsonl",
+        "line": 11972,
+        "record_timestamp": "2026-07-29T02:05:35.465Z"
+      }
+    }
+  ]
+}

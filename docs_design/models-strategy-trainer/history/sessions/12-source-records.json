@@ -1,0 +1,401 @@
+{
+  "captured_at_utc": "2026-11-06T07:24:08.964044+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/.openspec.yaml",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/.openspec.yaml",
+      "bytes": 40,
+      "sha256": "e461a5cd9c263851dbb46471f9e3afd45a09338ec7b15a042283644a5ef6972b",
+      "lines": 2,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/design.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "bytes": 45669,
+      "sha256": "446e2332d7d7696b3e2bca4a17f067bcd9589386680657a4c31859b9033d59c2",
+      "lines": 823,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/proposal.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+      "bytes": 6859,
+      "sha256": "7ad48155474942ea5b8673cde4932facbdab729719272688392f627e70109d6e",
+      "lines": 115,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "bytes": 7106,
+      "sha256": "d01ce60031ca0ad4d189eb0ac2672ed10c4fd2c3f179b2d6363828234d386c71",
+      "lines": 119,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "bytes": 3970,
+      "sha256": "83b3b6c4633ecda523d220db8082f6ff3e95883db4e76cdb3e254ccd3c807c4a",
+      "lines": 63,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "bytes": 4562,
+      "sha256": "cc9764ca48f6059c639eb30f95de0a0d2040cf7bc965031c1640467ff613dfb8",
+      "lines": 85,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "bytes": 4003,
+      "sha256": "94ac0c2bf11e196461945180da6b05cdaa8cabce5094f47382c6ce5a9792fe53",
+      "lines": 55,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "bytes": 1389,
+      "sha256": "4c7419d8de6841eba9edbbdba44eef36366482480c9ce815918b701555bce97c",
+      "lines": 21,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "bytes": 4443,
+      "sha256": "a48db5b545147205d78247343b421af6a8fb67be9e4bff5a12685f07a0fd9e07",
+      "lines": 74,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "bytes": 1215,
+      "sha256": "3d14a03d4259d1c0fbeef32f995d9ad8759a9220462f452fc094d82a246deba6",
+      "lines": 18,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "bytes": 1229,
+      "sha256": "e5d1e4f11235b458a8947c018f3821a02599efe44676cd2dd4349f3fc4861dac",
+      "lines": 18,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "bytes": 9997,
+      "sha256": "2e89d18e18878eeac8a24ab4f6b25fe0f00d8e2f9d0c2a458a0d4141aaba04b0",
+      "lines": 174,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "bytes": 6245,
+      "sha256": "ed5668cff072f270c9a227a92bd2c6c6879624b6dc081b0331a5b41d3a3d5531",
+      "lines": 111,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "bytes": 5579,
+      "sha256": "7d95c62fae084cf1239b48fa20fa329928d1725b9db3f47a3f2170d5ffd4f592",
+      "lines": 98,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "bytes": 10621,
+      "sha256": "6a339fc25fdd0da718ca6d98e27498a16e89b1a6fb4f25a319939792f689ba13",
+      "lines": 166,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "bytes": 3106,
+      "sha256": "47beed34197369e6157ab12951f3784ae87c317149baa4e49377f07664728125",
+      "lines": 51,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "bytes": 8237,
+      "sha256": "2d68e2e82904340f728b9d420e8bad43817c05534def694afeb4a92706c146aa",
+      "lines": 142,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "bytes": 7939,
+      "sha256": "7acacbe5afb78d9b666cd32e15944637b59c657a6dedd8f7ce6b31e6443d11f6",
+      "lines": 138,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-rework-model-strategy-trainer/tasks.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "bytes": 11455,
+      "sha256": "34ccf69aecdbe339cf8cb732b959c982df2690aa89a8048e28cabbd3a4581497",
+      "lines": 53,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed governing package, after rebuild, integration fixes, metadata-order correction and contract-system refinement; not an exact snapshot of earlier intermediate drafts"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-notes.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 71385,
+      "sha256": "2c7ddc191776d24d63ba62a9bb35c46971e6b5db8e316893e8e959a4c04b2025",
+      "lines": 1283,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed September rebuild handoff/status update; older dated history retained"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-strategy_system_direction.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 93405,
+      "sha256": "4fed32ebe00766d9ba62615c87f629f84628837c81e01d5fa7ddb877b9359172",
+      "lines": 2098,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed September rebuild handoff/status update; older dated history retained"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-strategy_contract_exchange_design.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "docs_design/models-strategy-trainer/strategy_contract_exchange_design.md",
+      "bytes": 101919,
+      "sha256": "613a0afd6e525b3c7931bab55e33b515a7bb73aa4810e5b9dd97c0b5da2b83d9",
+      "lines": 1738,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed September rebuild handoff/status update; older dated history retained"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-strategy_system_implementation_mapping.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_implementation_mapping.md",
+      "bytes": 26985,
+      "sha256": "e11eb5c3015d720bb79af3f5236b4a737774a92ab8dbbd116a3f1d225eeb5c6e",
+      "lines": 392,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed September rebuild handoff/status update; older dated history retained"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-expand-model-metadata-identity-and-structure/design.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/expand-model-metadata-identity-and-structure/design.md",
+      "bytes": 36826,
+      "sha256": "5c233ea9c8a7fcd085c90879bb019c5d9566410c700c6445daadad549e8952fe",
+      "lines": 320,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "reciprocal metadata integration gate and runtime-authority correction, not a new metadata implementation"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/8ec7249d-expand-model-metadata-identity-and-structure/tasks.md",
+      "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+      "original_path": "openspec/changes/expand-model-metadata-identity-and-structure/tasks.md",
+      "bytes": 18495,
+      "sha256": "5d43b94355eb6e04b0040d47a75fe07e679da71eedab1d6369a24d83501991d1",
+      "lines": 127,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "reciprocal metadata integration gate and runtime-authority correction, not a new metadata implementation"
+    }
+  ],
+  "attachments": [
+    {
+      "original_path": "/home/imi/.codex/attachments/5be6a9e5-c989-47b4-bc9e-d48e424b3ce5/pasted-text.txt",
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-20-contract-system-feedback.md",
+      "referenced_in_selected_raw_line": 1375,
+      "message_number": 73,
+      "role": "explicitly non-authoritative external opinion; corrected before adoption: preparation belongs inside realization and obligations are revisioned rather than permanently frozen",
+      "bytes": 9311,
+      "sha256": "cfc87df026eb77201ee0ab44f2e943197ac96f468992646ada2919f401397d5e",
+      "lines": 294,
+      "filesystem": {
+        "birth_display": "2026-09-20 04:53:02.028949482 +0200",
+        "birth_is_original_authorship_date": false,
+        "mtime_ns": 1789872782028949482,
+        "mtime_utc": "2026-09-20T02:53:02.028949+00:00",
+        "ctime_ns": 1789872782028949482,
+        "ctime_utc": "2026-09-20T02:53:02.028949+00:00",
+        "ctime_meaning": "inode metadata change, not creation"
+      },
+      "extraction": "exact original bytes; only filename and extension changed in readable copy"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Governing OpenSpec created from full design record (2026-09-19)",
+      "matching_commits": [
+        "8ec7249d340fc25d6674f10d009eff01a87449c9\t2026-09-20T05:23:38+02:00\t2026-09-20T05:23:38+02:00\topenspec work first"
+      ],
+      "qualification": "Git change events for literal, not dates for every paragraph or an assertion that working EX names became production APIs"
+    }
+  ],
+  "scope": "full-record rebuild, historical spec-integration reviews, metadata precedence correction, contract-guided checking and explicit adoption of one revisioned fulfillment-realization-authority model; ends at the first governing commit checkpoint",
+  "snapshot_timing": "8ec7249d340fc25d6674f10d009eff01a87449c9 committed Sep20 03:23:38Z, thirty-one seconds after the raw1569 handoff. Both author and committer dates are 2026-09-20T05:23:38+02:00. The checkpoint records the final refinement, not each earlier intermediate package.",
+  "qualification": "Historical validation/reviews are retained as evidence and not rerun or converted into current approval. The production gate remains closed. Supported old semantics survive the rebuild; ordinary checker implementation, concrete classes, authoring API and execution representation are not chosen in this passage.",
+  "historical_reviews": [
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-19-governing-integration-review.md",
+      "sha256": "76b212653dc54f3e494a319e6360442036265cfbcdbd524fcaaee6566c8c0293",
+      "bytes": 13459,
+      "lines": 143,
+      "historical_attribution": "first successful historical review; identifies renamed delta headers, metadata overlap and residual mode-owned scenarios",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+        "line": 716,
+        "content_block_index": 1,
+        "text_sha256": "76b212653dc54f3e494a319e6360442036265cfbcdbd524fcaaee6566c8c0293"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 13400
+      },
+      "extraction": "exact public returned report text, including its trace; no hidden reasoning or new review",
+      "scope": "historical planning review, not current production qualification"
+    },
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-19-governing-integration-follow-up.md",
+      "sha256": "38881c346392993995d90e0e3183a57b29d22a57a2a33dcd8ba98040f62c8519",
+      "bytes": 8288,
+      "lines": 87,
+      "historical_attribution": "historical follow-up; non-blocking with minor corrections; metadata-first order later superseded by user discussion",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+        "line": 823,
+        "content_block_index": 1,
+        "text_sha256": "38881c346392993995d90e0e3183a57b29d22a57a2a33dcd8ba98040f62c8519"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 8244
+      },
+      "extraction": "exact public returned report text, including its trace; no hidden reasoning or new review",
+      "scope": "historical planning review, not current production qualification"
+    },
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-20-contract-model-review.md",
+      "sha256": "38bbdd15edc5d7bf3f41942ed7d61273b06b0f55ef748e082044e305fab1603c",
+      "bytes": 9688,
+      "lines": 90,
+      "historical_attribution": "historical contract-system refinement review; precision findings followed by corrections, publication coordinator explicitly left for then-pending G1",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+        "line": 1522,
+        "content_block_index": 1,
+        "text_sha256": "38bbdd15edc5d7bf3f41942ed7d61273b06b0f55ef748e082044e305fab1603c"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 9635
+      },
+      "extraction": "exact public returned report text, including its trace; no hidden reasoning or new review",
+      "scope": "historical planning review, not current production qualification"
+    }
+  ],
+  "fork_boundary": {
+    "parent": "/home/imi/.codex/sessions/2026/08/22/rollout-2026-08-22T02-18-51-01a026d5-a88b-7843-a1c0-1b51047c8182.jsonl",
+    "parent_id": "01a026d5-a88b-7843-a1c0-1b51047c8182",
+    "child": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+    "child_id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+    "forked_from_ordinal_exclusive": 6088,
+    "parent_last_exported_before_draft": {
+      "raw_line": 6092,
+      "ordinal": 6091
+    },
+    "qualification": "record ordinals and raw lines are distinct; child branches before the draft window, as its header and new first user turn establish"
+  },
+  "next_reading": {
+    "selected_session": "01a0bb09-899f-7d32-957d-99b317e588ce",
+    "start_source_line": 1577,
+    "first_substantive_user_line": 1577,
+    "first_user_timestamp": "2026-09-20T16:48:48.460Z",
+    "scope": "rest of initial walkthrough: authority, binding, optimization intent versus model structure, then follow later forks without replay duplication"
+  },
+  "git_checkpoint": {
+    "commit": "8ec7249d340fc25d6674f10d009eff01a87449c9",
+    "dates": "2026-09-20T05:23:38+02:00\t2026-09-20T05:23:38+02:00\topenspec work first",
+    "capability_deltas": 15,
+    "new_capabilities": 7,
+    "modified_capabilities": 8,
+    "scope": "final first-commit state, not count at each intermediate review"
+  }
+}

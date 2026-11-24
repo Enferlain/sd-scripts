@@ -1,0 +1,66 @@
+{
+  "captured_at_utc": "2026-11-05T21:38:05.698726+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-strategy_system_direction.md",
+      "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "bytes": 67003,
+      "sha256": "27a0875abfdb02836fc9efc2e8ddd8d25633c6f922498ec4f980f09d98cdc519",
+      "lines": 1584,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Q1-Q2 checkpoint; also contains subsequent provisional Q3 material outside this chapter"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-strategy_system_inventory.md",
+      "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+      "original_path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "bytes": 71392,
+      "sha256": "6e4bee102630aa8d2569203290e7493ba1ac4d33e92bc0777bdc61e44dd05d22",
+      "lines": 1433,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Q1-Q2 checkpoint; also contains subsequent provisional Q3 material outside this chapter"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/144faf03-notes.md",
+      "commit": "144faf0312edff9e8d25b897a73c1337fc3cd15f",
+      "original_path": "docs_design/models-strategy-trainer/notes.md",
+      "bytes": 13738,
+      "sha256": "6dab5a9fe709765cdd854bcdfe09bb7348debc021c7f342c39f8210b40bc6f5f",
+      "lines": 260,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed Q1-Q2 checkpoint; also contains subsequent provisional Q3 material outside this chapter"
+    }
+  ],
+  "section_introductions": [
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_direction.md",
+      "literal": "## Settled Binding Semantics",
+      "matching_commits": [
+        "144faf0312edff9e8d25b897a73c1337fc3cd15f\t2026-08-20T19:17:47+02:00\t2026-08-20T19:17:47+02:00\tstrategy discussion checkpont adapter"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/strategy_system_inventory.md",
+      "literal": "## Milestone 7: Logical Identity And Execution-Route Semantics",
+      "matching_commits": [
+        "144faf0312edff9e8d25b897a73c1337fc3cd15f\t2026-08-20T19:17:47+02:00\t2026-08-20T19:17:47+02:00\tstrategy discussion checkpont adapter"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/notes.md",
+      "literal": "## Binding discussion resumed (2026-08-20)",
+      "matching_commits": [
+        "144faf0312edff9e8d25b897a73c1337fc3cd15f\t2026-08-20T19:17:47+02:00\t2026-08-20T19:17:47+02:00\tstrategy discussion checkpont adapter"
+      ],
+      "qualification": "Git change events for the literal, not origin dates for every claim in its section"
+    }
+  ],
+  "scope": "Q1-Q2 historical sources and later disposition pointers, not a fresh source-code/framework audit",
+  "snapshot_timing": "144faf03 records Q1-Q2 plus later provisional Q3; conversation dates remain distinct from its commit date"
+}

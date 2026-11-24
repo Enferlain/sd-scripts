@@ -1,0 +1,377 @@
+{
+  "captured_at_utc": "2026-11-06T07:42:55.864204+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/design.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "bytes": 54288,
+      "sha256": "d277fcb3d3054a7946d1c2ec4472c956013d47a9a10651d733b452347757969e",
+      "lines": 948,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/proposal.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+      "bytes": 7393,
+      "sha256": "81c9d97e6fd67a0c207c013c8a44250ebedb025ac17a0e0aecf9d27cc17e1026",
+      "lines": 123,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "bytes": 11004,
+      "sha256": "97c2f28fd5a1d0515eae27189ace4def93d6a7cbee89ebb71f0d0384c27c166a",
+      "lines": 167,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "bytes": 12795,
+      "sha256": "987430a9031be2d13b29b2945aed9fdae9869c30462368838ecac46e93790444",
+      "lines": 195,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "bytes": 10175,
+      "sha256": "33d8a3770a42e332924afa34e40f83704137254beb732685f57f2e1ccaa3f9b8",
+      "lines": 169,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "bytes": 4747,
+      "sha256": "3ac37805d743bb0845e9d9158dc4fb6e35704ed30ed443fd36e507f7fc14e664",
+      "lines": 77,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "bytes": 1271,
+      "sha256": "9f97f724882c6b794f9d0229f770ee36ffd9d6167d5f1e1a5e0a56a5336d519f",
+      "lines": 19,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "bytes": 1285,
+      "sha256": "857388a041b497769a8427aab09883e3d4967383ad970e6c2721af182a458b3a",
+      "lines": 20,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "bytes": 7431,
+      "sha256": "9768c40379f554b5088a47abe8955d8fa1a31db8cba48f434f7a1a0f4f33727c",
+      "lines": 128,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "bytes": 7278,
+      "sha256": "0857952d4c8cbbb2aca5df823519f6a1d19eee3a9514e7d74ab7fe1cb524a846",
+      "lines": 120,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "bytes": 11801,
+      "sha256": "2d6d31ca2750b0d83d42a9ed4f8d5095ecdecd88d98a9d14acc2f19b4168de4b",
+      "lines": 181,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/58ab91ce-rework-model-strategy-trainer/tasks.md",
+      "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "bytes": 14777,
+      "sha256": "c35e699948f1f105e8ae322295d9722efb4ce9154de0fabd03b8487232c72446",
+      "lines": 53,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed result of the walkthrough and spec double-check at Sep21 07:02:35Z; includes dynamic behavior, initialization, mode dissolution and adapter-targeting corrections, not the later evening migration/placement proposals"
+    }
+  ],
+  "attachments": [],
+  "section_introductions": [
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "literal": "### Requirement: Accepted execution preserves authored dynamic behavior",
+      "matching_commits": [
+        "58ab91ce47972ebf875c7ceb12ba5e3895f3616e\t2026-09-21T09:02:35+02:00\t2026-09-21T09:02:35+02:00\topenspec updates after doublecheck"
+      ],
+      "qualification": "literal introduction/change events, not writing dates for every paragraph"
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "literal": "### Requirement: Artifact products are independent from training treatment",
+      "matching_commits": [
+        "58ab91ce47972ebf875c7ceb12ba5e3895f3616e\t2026-09-21T09:02:35+02:00\t2026-09-21T09:02:35+02:00\topenspec updates after doublecheck"
+      ],
+      "qualification": "literal introduction/change events, not writing dates for every paragraph"
+    },
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "literal": "### Requirement: Governed PEFT realization resolves authored adapter target intent",
+      "matching_commits": [
+        "58ab91ce47972ebf875c7ceb12ba5e3895f3616e\t2026-09-21T09:02:35+02:00\t2026-09-21T09:02:35+02:00\topenspec updates after doublecheck"
+      ],
+      "qualification": "literal introduction/change events, not writing dates for every paragraph"
+    }
+  ],
+  "scope": "remaining initial OpenSpec walkthrough through its completed capability/spec audit and first double-check commit: authority, preparation, dynamic behavior, initialization, capabilities, shared PEFT, product independence, adapter target ownership and deferred production-shape questions",
+  "snapshot_timing": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e: author/committer Sep21 09:02:35+02:00, 07:02:35Z, after the raw1395 07:00:03Z cleanup. Its twelve changed governing files are preserved; the seven unchanged package files match the preceding first-commit snapshots. The unrelated committed .gitignore change is outside this provenance audit.",
+  "qualification": "Historical source-code inspections, strict validation and reviews are not rerun or promoted into fresh qualification. Ordinary authorized weight updates do not change participant binding identity/revision, but that does not waive state currency or retained-use protection. Execution representation, concrete code/API and production implementation remain future work at this historical checkpoint.",
+  "page_transitions": [
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-19T20-59-19-01a0bb09-899f-7d32-957d-99b317e588ce.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-42-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c057-b277-7b71-9ae6-bfcf6084d53a.jsonl",
+      "child_header_timestamp": "2026-09-20T19:42:47.927Z",
+      "reported_history_base": {
+        "thread_id": "01a0bb09-899f-7d32-957d-99b317e588ce",
+        "end_ordinal_exclusive": 7808,
+        "end_byte_offset": 13947078
+      },
+      "parent_last_included_raw_line": 1720,
+      "last_included_ordinal": 7807,
+      "prefix_bytes": 13947078,
+      "prefix_sha256": "45107e99247abe062fb41f8c18a3875709e11ec071f1373e814a7f848a60f966",
+      "qualification": "exact page prefix; logical session id and original fork metadata are distinct from history_base page identity"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-42-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c057-b277-7b71-9ae6-bfcf6084d53a.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-58-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c066-55db-7592-ad7c-c85ff0c7507f.jsonl",
+      "child_header_timestamp": "2026-09-20T19:58:47.259Z",
+      "reported_history_base": {
+        "thread_id": "01a0c057-b277-7b71-9ae6-bfcf6084d53a",
+        "end_ordinal_exclusive": 8094,
+        "end_byte_offset": 2612206
+      },
+      "parent_last_included_raw_line": 286,
+      "last_included_ordinal": 8093,
+      "prefix_bytes": 2612206,
+      "prefix_sha256": "578fcc19a0d341127515c3978085555179ec70953be44c22c5eb665f23b3d6a4",
+      "qualification": "exact page prefix; logical session id and original fork metadata are distinct from history_base page identity"
+    }
+  ],
+  "related_exports": [
+    {
+      "json_path": "13-branch-differences.json",
+      "markdown_path": "13-branch-differences.md",
+      "messages": 6,
+      "kind": "distinct branch suffixes outside selected history-base cutoffs"
+    }
+  ],
+  "historical_reviews": [
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-20-dynamic-behavior-review.md",
+      "sha256": "909e0ede8432bc0e93a91cf38e6ce1499d50b2845c80722673176d59f4beedb1",
+      "bytes": 7840,
+      "lines": 60,
+      "historical_attribution": "preserve dynamic behavior without arbitrary authority grants; permit equivalent schedule lowering and explicit owned-state validity",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-42-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c057-b277-7b71-9ae6-bfcf6084d53a.jsonl",
+        "line": 229,
+        "content_block_index": 1,
+        "text_sha256": "909e0ede8432bc0e93a91cf38e6ce1499d50b2845c80722673176d59f4beedb1"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 7804
+      },
+      "extraction": "exact public returned report text, no new review",
+      "scope": "historical planning review, not fresh validation or production approval"
+    },
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-20-mode-peft-review.md",
+      "sha256": "4dc2680931384d7791b868062ade3f221326bb0835c1200ac85de2c6a878354e",
+      "bytes": 11625,
+      "lines": 127,
+      "historical_attribution": "separate capability facts, shared PEFT and artifact choice; correct unconditional method selection and replacement-mode loophole",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-58-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c066-55db-7592-ad7c-c85ff0c7507f.jsonl",
+        "line": 568,
+        "content_block_index": 1,
+        "text_sha256": "4dc2680931384d7791b868062ade3f221326bb0835c1200ac85de2c6a878354e"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 11591
+      },
+      "extraction": "exact public returned report text, no new review",
+      "scope": "historical planning review, not fresh validation or production approval"
+    },
+    {
+      "copy_path": "docs_design/models-strategy-trainer/history/snapshots/2026-09-21-adapter-ownership-review.md",
+      "sha256": "f29ea866382ab839d57556d176cbe7ac9fc9e05e7d5403605d63f7c8ceab616c",
+      "bytes": 10267,
+      "lines": 68,
+      "historical_attribution": "targeting/persistence correction with config-selection, continuation and inherited guarantee fixes",
+      "corroborating_raw_record": {
+        "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-58-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c066-55db-7592-ad7c-c85ff0c7507f.jsonl",
+        "line": 1134,
+        "content_block_index": 1,
+        "text_sha256": "f29ea866382ab839d57556d176cbe7ac9fc9e05e7d5403605d63f7c8ceab616c"
+      },
+      "selection": {
+        "start_character": 0,
+        "end_character_exclusive": 10238
+      },
+      "extraction": "exact public returned report text, no new review",
+      "scope": "historical planning review, not fresh validation or production approval"
+    }
+  ],
+  "package_members": [
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/.openspec.yaml",
+      "sha256": "e461a5cd9c263851dbb46471f9e3afd45a09338ec7b15a042283644a5ef6972b",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "sha256": "d277fcb3d3054a7946d1c2ec4472c956013d47a9a10651d733b452347757969e",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/proposal.md",
+      "sha256": "81c9d97e6fd67a0c207c013c8a44250ebedb025ac17a0e0aecf9d27cc17e1026",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/accepted-training-execution/spec.md",
+      "sha256": "97c2f28fd5a1d0515eae27189ace4def93d6a7cbee89ebb71f0d0384c27c166a",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-module-targeting/spec.md",
+      "sha256": "987430a9031be2d13b29b2945aed9fdae9869c30462368838ecac46e93790444",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/adapter-system/spec.md",
+      "sha256": "33d8a3770a42e332924afa34e40f83704137254beb732685f57f2e1ccaa3f9b8",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/loaded-model-components/spec.md",
+      "sha256": "94ac0c2bf11e196461945180da6b05cdaa8cabce5094f47382c6ce5a9792fe53",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/model-family-metadata/spec.md",
+      "sha256": "4c7419d8de6841eba9edbbdba44eef36366482480c9ce815918b701555bce97c",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/optimization-target-refs/spec.md",
+      "sha256": "3ac37805d743bb0845e9d9158dc4fb6e35704ed30ed443fd36e507f7fc14e664",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-lora-method/spec.md",
+      "sha256": "9f97f724882c6b794f9d0229f770ee36ffd9d6167d5f1e1a5e0a56a5336d519f",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/repo-owned-vera-method/spec.md",
+      "sha256": "857388a041b497769a8427aab09883e3d4967383ad970e6c2721af182a458b3a",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/run-participant-state/spec.md",
+      "sha256": "2e89d18e18878eeac8a24ab4f6b25fe0f00d8e2f9d0c2a458a0d4141aaba04b0",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-artifact-persistence/spec.md",
+      "sha256": "9768c40379f554b5088a47abe8955d8fa1a31db8cba48f434f7a1a0f4f33727c",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-capability-coordination/spec.md",
+      "sha256": "0857952d4c8cbbb2aca5df823519f6a1d19eee3a9514e7d74ab7fe1cb524a846",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-contract/spec.md",
+      "sha256": "2d6d31ca2750b0d83d42a9ed4f8d5095ecdecd88d98a9d14acc2f19b4168de4b",
+      "changed_since_first_commit": true
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-observability/spec.md",
+      "sha256": "47beed34197369e6157ab12951f3784ae87c317149baa4e49377f07664728125",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-optimization/spec.md",
+      "sha256": "2d68e2e82904340f728b9d420e8bad43817c05534def694afeb4a92706c146aa",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/specs/training-runtime-preparation/spec.md",
+      "sha256": "7acacbe5afb78d9b666cd32e15944637b59c657a6dedd8f7ce6b31e6443d11f6",
+      "changed_since_first_commit": false
+    },
+    {
+      "original_path": "openspec/changes/rework-model-strategy-trainer/tasks.md",
+      "sha256": "c35e699948f1f105e8ae322295d9722efb4ce9154de0fabd03b8487232c72446",
+      "changed_since_first_commit": true
+    }
+  ],
+  "next_reading": {
+    "selected_session": "01a0bb09-899f-7d32-957d-99b317e588ce",
+    "start_source_line": 1405,
+    "first_substantive_user_line": 1405,
+    "first_user_timestamp": "2026-09-21T22:02:43.758Z",
+    "scope": "implementation map, rejection of mixed/runnable-slice migration, concrete placement sketches and renewed pressure-case research"
+  },
+  "git_checkpoint": {
+    "commit": "58ab91ce47972ebf875c7ceb12ba5e3895f3616e",
+    "dates": "2026-09-21T09:02:35+02:00\t2026-09-21T09:02:35+02:00\topenspec updates after doublecheck",
+    "governing_files_changed": 12,
+    "package_files": 19,
+    "scope": "committed initial walkthrough/double-check; subsequent migration and placement conversation not in this checkpoint"
+  }
+}

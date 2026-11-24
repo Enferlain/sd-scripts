@@ -1,0 +1,250 @@
+{
+  "captured_at_utc": "2026-11-06T08:06:35.223858+00:00",
+  "snapshots": [
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/722da952-provisional_tree.md",
+      "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+      "original_path": "docs_design/models-strategy-trainer/provisional_tree.md",
+      "bytes": 21512,
+      "sha256": "f5b6fd5be62f2dbc6e79bf24f2d1593f08593639dc1b900d0152ed6ef7db31ab",
+      "lines": 457,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first committed copy of the provisional combined package sketch plus training sweep; two whole message correspondences, provisional naming and stale compressed targeting wording remain visible"
+    },
+    {
+      "path": "docs_design/models-strategy-trainer/history/snapshots/722da952-rework-model-strategy-trainer/design.md",
+      "commit": "722da952bb3bac11285b06f753e100d38ac8dce2",
+      "original_path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "bytes": 118279,
+      "sha256": "2a1aff6dd938773fd45fa21a9a2cfc8bb255a1880bc18b8ffab7de282c9ab9c4",
+      "lines": 1439,
+      "reused_existing_copy": false,
+      "extraction": "exact Git blob bytes, no added header",
+      "coverage": "first commit containing the training-first source disposition and composed state clarification; also includes subsequent September23 research and reconciliation beyond this reading, not an exact September22-only draft"
+    }
+  ],
+  "attachments": [],
+  "section_introductions": [
+    {
+      "path": "openspec/changes/rework-model-strategy-trainer/design.md",
+      "literal": "#### Training-first source disposition",
+      "matching_commits": [
+        "722da952bb3bac11285b06f753e100d38ac8dce2\t2026-09-23T09:01:11+02:00\t2026-09-23T09:01:11+02:00\tdesign changes."
+      ],
+      "qualification": "first Git heading capture, not exact date of every paragraph"
+    }
+  ],
+  "scope": "implementation-map rejection, A-G responsibility correction, training process versus Trainer, provisional package adoption, readable/queryable contract, handoff placement, training-first sweep and coherent run-root/state clarification; stops at the programming-model question before the broader research phase",
+  "snapshot_timing": "Selected discussion ends Sep22 23:10:28Z. First commit722da952bb3bac11285b06f753e100d38ac8dce2 is Sep23 07:01:11Z (09:01:11+02:00), after later research discussion. provisional_tree.md current inode birth is Sep22 and mtime Sep23; neither is the conversation or first-commit date. Exact committed bytes are preserved without repairing the copied narrative.",
+  "qualification": "All source-code sweeps and validation claims are historical and not rerun. Provisional tree paths and A-G labels are not final APIs, rigid runtime stages, the IR grammar or additional state authorities. A copied sweep line collapsing adapter target and parameter resolution does not supersede the more precise governed-PEFT versus optimization split in the governing deltas. The main production design remains outside this history audit.",
+  "page_transitions": [
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-20T21-58-47-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c066-55db-7592-ad7c-c85ff0c7507f.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T01-08-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c63a-6b19-74a3-873d-77bfbfa86ee4.jsonl",
+      "child_header_timestamp": "2026-09-21T23:08:32.409Z",
+      "reported_history_base": {
+        "thread_id": "01a0c066-55db-7592-ad7c-c85ff0c7507f",
+        "end_ordinal_exclusive": 9927,
+        "end_byte_offset": 14543427
+      },
+      "parent_last_included_raw_line": 1833,
+      "last_included_ordinal": 9926,
+      "prefix_bytes": 14543427,
+      "prefix_sha256": "798d0a8b8380b28a72354aab56c77eaa05f740012252a1847c6da8a974cc0cfb"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T01-08-32-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c63a-6b19-74a3-873d-77bfbfa86ee4.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-11-07-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c673-b8dd-75b1-b78d-0d8d44d00efa.jsonl",
+      "child_header_timestamp": "2026-09-22T00:11:07.869Z",
+      "reported_history_base": {
+        "thread_id": "01a0c63a-6b19-74a3-873d-77bfbfa86ee4",
+        "end_ordinal_exclusive": 10031,
+        "end_byte_offset": 520484
+      },
+      "parent_last_included_raw_line": 104,
+      "last_included_ordinal": 10030,
+      "prefix_bytes": 520484,
+      "prefix_sha256": "4c27ac85f02c362e512c7f3893667f6ce1542bab6103f6383852f64f0a62b9a1"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-11-07-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c673-b8dd-75b1-b78d-0d8d44d00efa.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-56-50-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c69d-9103-7133-91b1-2eb35fa463b4.jsonl",
+      "child_header_timestamp": "2026-09-22T00:56:50.179Z",
+      "reported_history_base": {
+        "thread_id": "01a0c673-b8dd-75b1-b78d-0d8d44d00efa",
+        "end_ordinal_exclusive": 10125,
+        "end_byte_offset": 398982
+      },
+      "parent_last_included_raw_line": 94,
+      "last_included_ordinal": 10124,
+      "prefix_bytes": 398982,
+      "prefix_sha256": "c2613e05d9edd7d622db9d354fe3c0a698eb9a5f38082e2897ec61f6de611241"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T02-56-50-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c69d-9103-7133-91b1-2eb35fa463b4.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T03-06-36-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6a6-81dd-7c60-a2d5-bcd953128d4b.jsonl",
+      "child_header_timestamp": "2026-09-22T01:06:36.125Z",
+      "reported_history_base": {
+        "thread_id": "01a0c69d-9103-7133-91b1-2eb35fa463b4",
+        "end_ordinal_exclusive": 10127,
+        "end_byte_offset": 20921
+      },
+      "parent_last_included_raw_line": 2,
+      "last_included_ordinal": 10126,
+      "prefix_bytes": 20921,
+      "prefix_sha256": "dc39cc34bbd7020792397522a6932f5649673403094089dda814a9e4b3c6ae0b"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T03-06-36-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6a6-81dd-7c60-a2d5-bcd953128d4b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T04-16-59-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6e6-f376-7c93-90d3-5884ec6bc62b.jsonl",
+      "child_header_timestamp": "2026-09-22T02:16:59.510Z",
+      "reported_history_base": {
+        "thread_id": "01a0c6a6-81dd-7c60-a2d5-bcd953128d4b",
+        "end_ordinal_exclusive": 10129,
+        "end_byte_offset": 20920
+      },
+      "parent_last_included_raw_line": 2,
+      "last_included_ordinal": 10128,
+      "prefix_bytes": 20920,
+      "prefix_sha256": "b57da5cc224f70508fbf3d4b9688ddeec151e50c587fe539c40fb04259f15559"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T04-16-59-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6e6-f376-7c93-90d3-5884ec6bc62b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-43-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c758-3a3c-7ec1-afdb-5ef3b17a74d9.jsonl",
+      "child_header_timestamp": "2026-09-22T04:20:43.196Z",
+      "reported_history_base": {
+        "thread_id": "01a0c6e6-f376-7c93-90d3-5884ec6bc62b",
+        "end_ordinal_exclusive": 10246,
+        "end_byte_offset": 405452
+      },
+      "parent_last_included_raw_line": 117,
+      "last_included_ordinal": 10245,
+      "prefix_bytes": 405452,
+      "prefix_sha256": "05718831cfed2fa3e9bfcf8937589210070c26189d4287f71fd9d467cb826370"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-43-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c758-3a3c-7ec1-afdb-5ef3b17a74d9.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-01-21-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c77d-6d5c-7f61-bafa-98277f19b779.jsonl",
+      "child_header_timestamp": "2026-09-22T05:01:21.116Z",
+      "reported_history_base": {
+        "thread_id": "01a0c758-3a3c-7ec1-afdb-5ef3b17a74d9",
+        "end_ordinal_exclusive": 10510,
+        "end_byte_offset": 2769213
+      },
+      "parent_last_included_raw_line": 264,
+      "last_included_ordinal": 10509,
+      "prefix_bytes": 2769213,
+      "prefix_sha256": "e46042626bb02b7203368488f3c99d8bbd5cde86ef5c77f7ca0490e069390a10"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-01-21-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c77d-6d5c-7f61-bafa-98277f19b779.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-21-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c78f-9687-7450-9f3c-be7e6e0f25f9.jsonl",
+      "child_header_timestamp": "2026-09-22T05:21:11.303Z",
+      "reported_history_base": {
+        "thread_id": "01a0c77d-6d5c-7f61-bafa-98277f19b779",
+        "end_ordinal_exclusive": 10675,
+        "end_byte_offset": 1260008
+      },
+      "parent_last_included_raw_line": 165,
+      "last_included_ordinal": 10674,
+      "prefix_bytes": 1260008,
+      "prefix_sha256": "d6d2c0fef4c036d3453282b6b9d036fbceaf9764f84a7abce88e01acdc24a329"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T07-21-11-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c78f-9687-7450-9f3c-be7e6e0f25f9.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-11-09-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb63-2d70-7243-8dd6-5b2661ce7d5d.jsonl",
+      "child_header_timestamp": "2026-09-22T23:11:09.680Z",
+      "reported_history_base": {
+        "thread_id": "01a0c78f-9687-7450-9f3c-be7e6e0f25f9",
+        "end_ordinal_exclusive": 11507,
+        "end_byte_offset": 8765003
+      },
+      "parent_last_included_raw_line": 832,
+      "last_included_ordinal": 11506,
+      "prefix_bytes": 8765003,
+      "prefix_sha256": "878038b41905845a075da252d7ec5697fa1fe22d34929d0bfc57c3b22d63c0c6"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T04-16-59-01a0bb09-899f-7d32-957d-99b317e588ce_01a0c6e6-f376-7c93-90d3-5884ec6bc62b.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-16-05-01a0c753-fef3-7023-877b-14fee9308c8c.jsonl",
+      "child_header_timestamp": "2026-09-22T04:16:05.890Z",
+      "reported_history_base": {
+        "thread_id": "01a0c6e6-f376-7c93-90d3-5884ec6bc62b",
+        "end_ordinal_exclusive": 10227,
+        "end_byte_offset": 359991
+      },
+      "parent_last_included_raw_line": 98,
+      "last_included_ordinal": 10226,
+      "prefix_bytes": 359991,
+      "prefix_sha256": "5b341d9ca94cf4482b4b9547ff0a29d77aa7ba43438a41c9feec9e70cba3c8ab"
+    },
+    {
+      "parent_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-16-05-01a0c753-fef3-7023-877b-14fee9308c8c.jsonl",
+      "child_path": "/home/imi/.codex/archived_sessions/rollout-2026-09-22T06-20-08-01a0c753-fef3-7023-877b-14fee9308c8c_01a0c757-b282-7fe3-b5aa-c12163cd4aac.jsonl",
+      "child_header_timestamp": "2026-09-22T04:20:08.450Z",
+      "reported_history_base": {
+        "thread_id": "01a0c753-fef3-7023-877b-14fee9308c8c",
+        "end_ordinal_exclusive": 10230,
+        "end_byte_offset": 21563
+      },
+      "parent_last_included_raw_line": 3,
+      "last_included_ordinal": 10229,
+      "prefix_bytes": 21563,
+      "prefix_sha256": "cb4d42133d02f4511215b111343b26e5b394eb6f96aaca3b0384f6f7d9b49c54"
+    }
+  ],
+  "related_exports": [
+    {
+      "json_path": "14-branch-differences.json",
+      "markdown_path": "14-branch-differences.md",
+      "messages": 26,
+      "kind": "distinct suffixes plus short side-fork pages"
+    }
+  ],
+  "discussion_correspondence": [
+    {
+      "snapshot_path": "docs_design/models-strategy-trainer/history/snapshots/722da952-provisional_tree.md",
+      "comparison": "whole visible body substring after CRLF-to-LF normalization for comparison only; exact snapshot bytes unchanged",
+      "matching_episode_bodies": [
+        {
+          "episode_message": 76,
+          "selected_raw_line": 52,
+          "role": "assistant",
+          "body_sha256": "d33e215d14d36f4cdac337fe5782ef28cd455db4b8ae65a521131457811352a6"
+        },
+        {
+          "episode_message": 89,
+          "selected_raw_line": 598,
+          "role": "assistant",
+          "body_sha256": "7a1f150e40f85092f661f9b7c7d3103e97e9313b0cb81af5fb53e206d5981b38"
+        }
+      ],
+      "qualification": "proves text correspondence for the combined tree and sweep, not who created the file or acceptance of every copied claim"
+    }
+  ],
+  "provisional_tree_filesystem": {
+    "path": "docs_design/models-strategy-trainer/provisional_tree.md",
+    "birth_display": "2026-09-22 07:51:20.485118430 +0200",
+    "mtime_ns": 1790122077979768009,
+    "mtime_utc": "2026-09-23T00:07:57.979768+00:00",
+    "ctime_ns": 1790122077979768009,
+    "ctime_utc": "2026-09-23T00:07:57.979768+00:00",
+    "qualification": "present inode birth/modification/metadata dates, not substituted for conversation or Git capture dates"
+  },
+  "next_page_preview": {
+    "path": "/home/imi/.codex/archived_sessions/rollout-2026-09-23T01-11-09-01a0bb09-899f-7d32-957d-99b317e588ce_01a0cb63-2d70-7243-8dd6-5b2661ce7d5d.jsonl",
+    "sha256": "a599458edc80b214979fe8f3a3c4eaf45ae3df0d686fb846f4479972d8acb9ff",
+    "header": {
+      "thread_id": "01a0c78f-9687-7450-9f3c-be7e6e0f25f9",
+      "end_ordinal_exclusive": 11507,
+      "end_byte_offset": 8765003
+    },
+    "scope": "next programming-model/language and research pressure discussion; metadata only preview, its messages are not exported in this chapter"
+  },
+  "noted_stale_wording": {
+    "path": "docs_design/models-strategy-trainer/history/snapshots/722da952-provisional_tree.md",
+    "literal": "Concrete target and parameter resolution: training optimization realization.",
+    "disposition": "compressed sweep wording; does not override the governing specific adapter-target ownership split documented in H052 and the unchanged targeting delta"
+  }
+}
