@@ -193,7 +193,7 @@ def test_preparation_refuses_other_code_under_the_declaration_the_run_recorded()
     records = {m.name: m for m in result.manifest}
     assert records["b"].declaration == installed["b"].declaration.text and records["b"].source is not None, "a record keeps its parts"
     replaced = dict(installed)
-    replaced["b"] = type(installed["b"])(installed["b"].declaration, len)
+    replaced["b"] = type(installed["b"])(installed["b"].declaration, lambda *args: None)
     with pytest.raises(Rejection) as rejected:
         prepare(result.loaded, replaced, CUDA)
     assert rejected.value.codes == ("iro-run-003",) and "its source" in str(rejected.value), "the same declaration is not the same code"

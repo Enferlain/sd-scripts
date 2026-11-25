@@ -49,13 +49,12 @@ participant that owns the selected state.
 - **AND** a surviving parameter object or matching public selector MUST NOT establish current authority or revive a retired participant
 
 ### Requirement: Target refs preserve selector compatibility
-Targets with model-component provenance SHALL preserve the existing
-component-qualified selector surface exposed by model inspection and
-fine-grained grouping. Targets without that provenance SHALL expose their
+Targets with model-component provenance SHALL use the same
+component-qualified selectors that model inspection and fine-grained grouping
+use. Targets without that provenance SHALL expose their
 accepted participant/substructure selector meaning without impersonating a
 declared public model component. The concrete selector representation for that
-case SHALL preserve accepted subject selection without changing existing
-component-backed selector behavior.
+case SHALL preserve accepted subject selection.
 
 #### Scenario: Building a parameter target selector
 - **WHEN** a parameter target ref is built for a parameter inside a public
@@ -89,13 +88,13 @@ grouping, or adapter behavior.
 - **AND** neither the target refs nor their live handles may become an independent targeting policy or authoritative participant binding
 
 ### Requirement: Existing grouping behavior remains stable
-Introducing authority-qualified target refs SHALL preserve current
-component-qualified selector and learning-rate behavior unless another explicit
-delta changes it.
+Introducing authority-qualified target refs SHALL NOT change how grouping
+matches: learning-rate patterns SHALL match the component-qualified parameter
+selectors that inspection exposes, whatever paths the components define.
 
 #### Scenario: Fine-tune group matching remains parameter-selector based
 - **WHEN** learning-rate groups use `match` patterns
-- **THEN** those patterns MUST continue matching existing component-qualified parameter selectors for component-backed targets
+- **THEN** those patterns MUST match the component-qualified parameter selectors that inspection exposes for component-backed targets
 
 #### Scenario: Adapter grouping remains component-LR based in this change
 - **WHEN** adapter trainable refs are grouped before a later explicit adapter-grouping change

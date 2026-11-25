@@ -4,13 +4,13 @@
 The adapter system SHALL realize accepted adapter behavior against already
 resolved original-model targets and SHALL return typed participant,
 relationship, trainable-state, persistence, and lifecycle results required by
-the accepted arrangement and Trainer-owned mechanisms. Repository-maintained
+the accepted run and Trainer-owned mechanisms. Repository-maintained
 PEFT integration SHALL define the behavior shared across supported methods;
 each selected method SHALL provide only its method-specific implementation,
 settings, state representation, constraints, and specialized operations.
 
 #### Scenario: Instantiating an adapter type
-- **WHEN** the pipeline materializes an authored adapter participant with resolved targets
+- **WHEN** the run materializes an authored adapter participant with resolved targets
 - **THEN** the adapter system MUST instantiate the selected adapter implementation in the context of those targets
 - **AND** construction MUST NOT make the adapter system the run binding or optimization authority
 
@@ -91,7 +91,7 @@ state for the same logical run. Shared weight formats, serializers, or storage
 infrastructure SHALL NOT collapse these into one save/load lifecycle.
 
 #### Scenario: Publishing an adapter product
-- **WHEN** an accepted arrangement requests an adapter artifact product
+- **WHEN** an accepted run requests an adapter artifact product
 - **THEN** the product implementation MUST resolve augmentation state, dependencies, relationships, representation, and serialization contributions from coherent accepted state
 - **AND** persistence infrastructure MUST own timing, consistency, destination, retention, publication, and the actual artifact result
 
@@ -109,8 +109,8 @@ infrastructure SHALL NOT collapse these into one save/load lifecycle.
 - **WHEN** direct participant parameters and PEFT state are trained together
 - **THEN** adapter, merged-model, or other artifact support MUST follow explicit product declarations rather than a mutually exclusive adapter-training path
 
-### Requirement: Pipeline coordination replaces mode ownership
-Trainer/pipeline orchestration SHALL own when adapter materialization,
+### Requirement: Run coordination replaces mode ownership
+Run coordination SHALL own when adapter materialization,
 attachment, preparation, lifecycle actions, optimization participation,
 persistence, and restoration occur. Adapter-domain implementations SHALL own
 their specialized mechanics and return typed results. Adapter-domain
@@ -119,7 +119,7 @@ their own operations.
 
 #### Scenario: Adapter has a specialized post-step action
 - **WHEN** a selected adapter requires maximum-norm or another declared post-step behavior
-- **THEN** Trainer MUST invoke the accepted operation at its declared lifecycle point, or issue its named capability request when it is genuinely a pipeline-recognized capability
+- **THEN** Trainer MUST invoke the accepted operation at its declared lifecycle point, or issue its named capability request when it is genuinely a recognized capability
 - **AND** the behavior MUST return explicit state/metrics effects rather than mutate unrelated Trainer state
 
 #### Scenario: Adapter runtime contributes resume state
@@ -127,14 +127,14 @@ their own operations.
 - **THEN** the accepted adapter runtime MUST contribute that state through the restoration contract
 - **AND** it MUST NOT own overall run checkpoint coordination
 
-### Requirement: The accepted arrangement carries no mode authority
-The accepted arrangement SHALL NOT contain a replacement `TrainingMode`
+### Requirement: The accepted run carries no mode authority
+The accepted run SHALL NOT contain a replacement `TrainingMode`
 authority or a mode value that Trainer uses to select training behavior.
 
 #### Scenario: A preset selects an adapter strategy
 - **WHEN** a user-facing preset selects a maintained adapter strategy
 - **THEN** launch MUST resolve the preset before fulfillment
-- **AND** the accepted arrangement MUST NOT contain a `TrainingMode` authority or a mode value that the Trainer uses to select training behavior
+- **AND** the accepted run MUST NOT contain a `TrainingMode` authority or a mode value that the Trainer uses to select training behavior
 
 ## REMOVED Requirements
 
@@ -170,7 +170,7 @@ removes.
 **Migration**: Move authored treatment into the strategy's maintained PEFT
 integration, adapter mechanics into accepted domain realization and operations,
 and generic lifecycle, preparation, optimization, persistence, and restoration
-timing to the Trainer/pipeline owners defined above.
+timing to the owners defined above.
 
 ### Requirement: AdapterMode remains explicit orchestration
 

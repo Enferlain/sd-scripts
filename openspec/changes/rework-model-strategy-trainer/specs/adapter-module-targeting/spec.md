@@ -95,7 +95,7 @@ seams.
 #### Scenario: Export and merge use repo-owned seams
 - **WHEN** the runtime exports or merges adapter state
 - **THEN** it MUST use the repo-owned adapter product and merge/fold transition seams
-- **AND** Trainer/pipeline orchestration MUST own lifecycle timing rather than `AdapterMode`
+- **AND** run coordination MUST own lifecycle timing rather than `AdapterMode`
 
 ### Requirement: Method-local adapter config owns runtime settings translation
 Authored strategy construction SHALL select an adapter method that the active

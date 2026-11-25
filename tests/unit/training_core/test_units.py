@@ -74,23 +74,39 @@ BATCHES = [
 
 def networks() -> tuple[torch.nn.Module, torch.nn.Module]:
     torch.manual_seed(0)
-    return torch.nn.Sequential(torch.nn.Linear(4, 2), torch.nn.Dropout(0.0)), torch.nn.Sequential(
-        torch.nn.Linear(4, 4), torch.nn.Dropout(0.0)
-    )
+    net = torch.nn.Sequential(torch.nn.Linear(4, 2), torch.nn.Dropout(0.0))
+    enc = torch.nn.Sequential(torch.nn.Linear(4, 4), torch.nn.Dropout(0.0))
+    return observing(net), observing(enc)
 
 
-def implementations(seen: dict[str, list]) -> dict:
-    taken = iter(BATCHES)
+def observing(module: torch.nn.Module, observed: list | None = None, measured: list | None = None) -> torch.nn.Module:
+    """A participant that carries what the calls through its lease observed, its mode and grad mode.
+
+    The test's instrumentation lives on the participant, which a call reaches
+    through its lease, so no implementation captures mutable state (D16).
+    """
+    object.__setattr__(module, "observed", observed if observed is not None else getattr(module, "observed", []))
+    object.__setattr__(module, "measured", measured if measured is not None else getattr(module, "measured", []))
+    return module
+
+
+_TAKEN = iter(BATCHES)
+
+
+def implementations() -> dict:
+    """The test's implementations. ``@batch`` leases nothing, so the batches it hands out come from module state, which a code record does not cover."""
+    global _TAKEN
+    _TAKEN = iter(BATCHES)
 
     @implementation(outputs=("batch",), name="batch")
     def batch():
-        return next(taken)
+        return next(_TAKEN)
 
     @implementation(
         inputs=("protected_current lease", "batch"), outputs=("retained cond",), name="encode", relations={DERIVATIVE: [(0, 0)]}
     )
     def encode(encoder, batch):
-        seen["encoder"].append((encoder.training, torch.is_grad_enabled()))
+        encoder.observed.append((encoder.training, torch.is_grad_enabled()))
         return encoder(batch[0])
 
     @implementation(
@@ -100,7 +116,7 @@ def implementations(seen: dict[str, list]) -> dict:
         relations={DERIVATIVE: [(0, 0), (1, 0)]},
     )
     def predict(network, cond):
-        seen["network"].append((network.training, torch.is_grad_enabled()))
+        network.observed.append((network.training, torch.is_grad_enabled()))
         return network(cond)
 
     @implementation(inputs=("retained prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]})
@@ -109,7 +125,7 @@ def implementations(seen: dict[str, list]) -> dict:
 
     @implementation(inputs=("protected_current lease",), outputs=("int",), name="measure")
     def measure(network):
-        seen.setdefault("measure", []).append((network.training, torch.is_grad_enabled()))
+        network.measured.append((network.training, torch.is_grad_enabled()))
         return 1
 
     return {"batch": batch, "encode": encode, "predict": predict, "objective": objective, "measure": measure, **on_host()}
@@ -131,10 +147,13 @@ def on_host() -> dict:
 
 def trainer(text: str = STEP, net: torch.nn.Module | None = None, enc: torch.nn.Module | None = None, seen=None) -> Trainer:
     seen = seen if seen is not None else {"encoder": [], "network": []}
-    installed = implementations(seen)
+    installed = implementations()
     run = accepted_run(text, contract(), installed=installed)
     default_net, default_enc = networks()
-    supplied = {"net": net if net is not None else default_net, "enc": enc if enc is not None else default_enc}
+    supplied = {
+        "net": observing(net if net is not None else default_net, seen["network"], seen.setdefault("measure", [])),
+        "enc": observing(enc if enc is not None else default_enc, seen["encoder"]),
+    }
     return Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied=supplied)
 
 
@@ -210,7 +229,7 @@ def test_a_unit_that_cannot_build_its_optimizer_is_refused_with_why() -> None:
 
 
 def test_a_unit_has_no_prepared_unit_before_preparation() -> None:
-    installed = implementations({"encoder": [], "network": []})
+    installed = implementations()
     run = accepted_run(STEP, contract(), installed=installed)
     authority = RunAuthority.seed(run)
     plan = OptimizationPlan.derive(cold_load(run, contract(), installed=installed).strategy, authority.incarnation)
@@ -672,15 +691,15 @@ def test_the_trained_model_sampling_in_another_activity_runs_without_grad_mode_w
 
 
 def test_a_trained_participant_that_reaches_its_loss_by_no_path_is_refused() -> None:
-    def without_weights(seen):
-        found = implementations(seen)
+    def without_weights():
+        found = implementations()
         declared = found["predict"].declaration
         found["predict"] = implementation(
             inputs=declared.inputs, outputs=declared.outputs, name="predict", relations={DERIVATIVE: [(1, 0)]}
         )(found["predict"].function)
         return found
 
-    installed = without_weights({"encoder": [], "network": []})
+    installed = without_weights()
     run = accepted_run(STEP, contract(), installed=installed)
     net, enc = networks()
     made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc})
@@ -694,8 +713,8 @@ def test_a_call_on_a_path_from_trained_state_that_holds_a_lease_must_declare_its
         "iro.call @objective(%prediction, %batch) -> retained loss", "iro.call @objective(%prediction, %batch) -> retained loss"
     )
 
-    def plain(seen):
-        found = implementations(seen)
+    def plain():
+        found = implementations()
         found["predict"] = implementation(
             inputs=("protected_current lease", "retained cond"),
             outputs=("prediction",),
@@ -707,7 +726,7 @@ def test_a_call_on_a_path_from_trained_state_that_holds_a_lease_must_declare_its
         )(found["objective"].function)
         return found
 
-    installed = plain({"encoder": [], "network": []})
+    installed = plain()
     run = accepted_run(text, contract(), installed=installed)
     net, enc = networks()
     made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc})

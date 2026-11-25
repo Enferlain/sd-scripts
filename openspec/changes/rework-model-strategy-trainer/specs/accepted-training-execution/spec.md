@@ -1,7 +1,7 @@
 ## Purpose
 
 Define the authored meaning retained after strategy fulfillment and the
-verified, prepared executable state consumed by one Trainer engine. The shared
+verified, prepared executable state consumed by one Trainer. The shared
 region, flow, settlement, access-mode and ownership contracts that training
 composes are defined by `workflow-composition`; this capability adds the
 training-domain meanings.
@@ -18,7 +18,7 @@ is published.
 
 #### Scenario: Accepted participant is deliberately unbound
 - **WHEN** the contract permits a participant to materialize after strategy fulfillment
-- **THEN** the arrangement MAY be semantically accepted while that participant remains explicitly unready
+- **THEN** the run MAY be semantically accepted while that participant remains explicitly unready
 - **AND** no operation requiring it may execute until its materialization and preparation obligations are fulfilled
 
 #### Scenario: Prepared candidate fails final verification
@@ -26,7 +26,7 @@ is published.
 - **THEN** the candidate MUST NOT become executable or visible as current prepared state
 
 ### Requirement: Accepted execution survives the authoring object
-The accepted run arrangement SHALL retain the selected implementations,
+The accepted run SHALL retain the selected implementations,
 configuration, dependencies, operations, dynamic policies, runtime-state
 contributors, capability behavior, state authority, and permissions required
 to execute the authored training meaning without depending on the authored
@@ -36,7 +36,7 @@ authority.
 
 #### Scenario: Authoring object is released completely
 - **WHEN** strategy fulfillment succeeds and the authored strategy object is not retained in any capacity, including as a selected runtime implementation
-- **THEN** the arrangement MUST still support materialization, preparation, training, selected capabilities, persistence, and restoration
+- **THEN** the accepted run MUST still support materialization, preparation, training, selected capabilities, persistence, and restoration
 - **AND** ordinary execution MUST NOT call back into the authoring interface to recover choices already established during fulfillment
 
 #### Scenario: One object supplies separate authoring and runtime seams
@@ -46,7 +46,7 @@ authority.
 - **AND** retaining that implementation MUST NOT make the strategy's authoring interface a runtime peer
 
 ### Requirement: Accepted execution has explicit structure and effects
-The arrangement SHALL describe executable operations or regions, their
+The accepted run SHALL describe executable operations or regions, their
 dependencies, inputs, outputs, readiness requirements, declared effects,
 observations, owned-state definitions and transitions, permitted
 authority-governed transitions, failure meanings, and authority. It SHALL NOT
@@ -54,7 +54,7 @@ be only an all-purpose lifecycle object whose methods hide those meanings.
 
 #### Scenario: Maintained operations are composed
 - **WHEN** a maintained strategy requires representation, conditioning, objective, predictor, and loss behavior
-- **THEN** the accepted arrangement MUST preserve their required order and data dependencies
+- **THEN** the accepted run MUST preserve their required order and data dependencies
 - **AND** the Trainer MUST NOT reconstruct that model-family anatomy
 
 #### Scenario: Execution representation changes internally
@@ -160,6 +160,47 @@ engine, public tensor-operation graph, or continuation object for every call.
 - **THEN** preparation MAY rely on that realization
 - **AND** the system MUST NOT require a project-owned autodiff engine, public tensor-operation graph or continuation object for every call
 
+### Requirement: A call records gradients only on a path to a unit's loss
+Training SHALL decide from the strategy's dataflow whether each call records
+gradients. A call SHALL record them when its result reaches one of a unit's
+losses through inputs that implementations declare as carrying gradients,
+starting from a lease that reads live state the unit trains; every other
+call SHALL run without. A gradient of trained state SHALL NOT cross an
+activity: results that keep a lease on that state stay in their activity
+until their backward pass has run.
+
+#### Scenario: A frozen encoder feeds a trained denoiser
+- **WHEN** a frozen encoder's output reaches a unit's loss without carrying a gradient of state the unit trains
+- **THEN** the encoder's call MUST run without recording gradients
+- **AND** the denoiser's call on the path from the unit's trained state to its loss MUST record them
+
+#### Scenario: Another activity samples the trained model
+- **WHEN** an activity samples the trained participant and the training activity takes its outputs as data
+- **THEN** the sampling calls MUST run without recording gradients
+- **AND** their outputs MUST NOT carry a derivative of trained state into the training activity
+
+#### Scenario: A trained participant's path to its loss is cut
+- **WHEN** state a unit trains reaches none of the unit's losses, because an input on the path declares no gradient edge or the path would cross an activity
+- **THEN** the strategy MUST be refused before execution, naming what cut the path
+- **AND** a detached value MUST NOT stand in for the required path
+
+### Requirement: Each precision choice belongs to its owner
+Precision SHALL NOT be one property of a model or a run. Weight storage SHALL
+be the participant's materialization; mixed precision and low-precision
+compute SHALL be realizations of the route that declares them, applied only
+to calls through that route; optimizer numerics SHALL be the unit's optimizer
+policy; a process-wide device setting, such as TF32, SHALL be chosen once for
+the run; and a product's precision SHALL be its serializer's.
+
+#### Scenario: A route declares mixed precision
+- **WHEN** a participant declares mixed precision as its route's realization
+- **THEN** only the calls through that route MUST run in it
+- **AND** other calls in the same activity, such as the loss, MUST keep their own precision
+
+#### Scenario: A device does not offer a declared realization
+- **WHEN** a route declares a low-precision realization that the selected device does not offer
+- **THEN** preparation MUST reject it as a target limit rather than run the route at another precision
+
 ### Requirement: Participant identity and individual uses remain distinct
 The accepted structure SHALL distinguish one participant's identity from each
 invocation of that participant. Each use SHALL preserve its selected operation,
@@ -186,14 +227,14 @@ change a binding.
 ### Requirement: Accepted execution preserves authored dynamic behavior
 Completing strategy authoring SHALL NOT freeze behavior whose accepted meaning
 depends on changing inputs, coordinates, randomness, observations, or owned
-runtime state. The accepted arrangement SHALL retain the selected schedules,
+runtime state. The accepted run SHALL retain the selected schedules,
 decision policies, owned-state definitions, accepted initialization sources or
 rules, state transitions, observation inputs, and restoration contributions
 needed to execute that behavior within its accepted bounds.
 
 #### Scenario: Stateful behavior starts without restored state
 - **WHEN** an accepted stateful operation becomes ready without state restored from an earlier execution session
-- **THEN** its state MUST be initialized from the source or rule preserved by the accepted arrangement
+- **THEN** its state MUST be initialized from the source or rule preserved by the accepted run
 - **AND** initialization that depends on concrete runtime evidence MUST occur only after that evidence satisfies its applicable readiness obligation
 - **AND** neither the Trainer nor the former authoring role may invent a different initial value
 
@@ -224,7 +265,7 @@ needed to execute that behavior within its accepted bounds.
 
 #### Scenario: Runtime decision stays within accepted bounds
 - **WHEN** an operation selects among alternatives using current inputs or owned state
-- **THEN** every selectable alternative, required authority, and possible declared effect MUST already be permitted by the accepted arrangement
+- **THEN** every selectable alternative, required authority, and possible declared effect MUST already be permitted by the accepted run
 - **AND** a choice outside those bounds MUST be rejected rather than treated as ordinary dynamic execution
 
 ### Requirement: Static choices leave the hot path
@@ -242,11 +283,12 @@ transitions.
 - **AND** it MAY invoke accepted behavior whose result and owned state depend on the current runtime inputs and observations
 
 ### Requirement: The standard profile retains generic Trainer mechanics
-Under the standard execution/ownership profile, the Trainer engine SHALL retain
-training-action time and progress, accumulation, synchronization, backward,
-clipping, optimizer and scheduler advancement, zeroing, triggers, observation,
-interruption, and cleanup. Accepted operations SHALL perform only their
-declared computation and effects.
+Under the standard ownership profile, the Trainer SHALL retain each unit's
+progress, accumulation, synchronization, backward, clipping, optimizer and
+scheduler advancement, and zeroing, together with observation, interruption,
+and the cleanup of what it holds. The strategy's triggers SHALL decide when
+work is requested, and run coordination SHALL carry them out. Accepted
+operations SHALL perform only their declared computation and effects.
 
 #### Scenario: Standard operation produces optimization input
 - **WHEN** accepted model/objective operations produce the information required for optimization
@@ -265,7 +307,7 @@ an optimizer or certifying contribution completion.
 #### Scenario: Diffusion objective reports timesteps
 - **WHEN** a selected diffusion objective produces timestep observations
 - **THEN** those values MUST be available to accepted objective, logging, or adaptive-state consumers
-- **AND** non-diffusion arrangements MUST NOT provide placeholder timesteps
+- **AND** non-diffusion strategies MUST NOT provide placeholder timesteps
 
 #### Scenario: Selected computation has no latent or image batch
 - **WHEN** an accepted pixel, video/audio, packed-token, or other non-latent operation supplies its own input and output meaning
@@ -403,7 +445,7 @@ inputs, outputs, effects, readiness, failures, and standard Trainer ownership.
 ### Requirement: Imperative regions receive only accepted authority
 An imperative runtime region SHALL declare the state and actions it requires.
 Strategy fulfillment SHALL grant only authority supported by the selected
-execution/ownership profile. Each grant SHALL be scoped to its accepted region,
+ownership profile. Each grant SHALL be scoped to its accepted region,
 action phase, affected state, and transferred mechanics; the Trainer SHALL
 retain every mechanic not transferred for that scope.
 
@@ -457,7 +499,7 @@ arbitrary selected Python cannot perform a hidden mutation.
 
 #### Scenario: Region requests unsupported access
 - **WHEN** a region requests unrestricted run state or a retained Trainer action not granted by its profile
-- **THEN** strategy fulfillment MUST reject the arrangement before execution
+- **THEN** strategy fulfillment MUST reject the strategy before execution
 
 ### Requirement: Execution uses current prepared state
 An operation or region SHALL execute only while every required participant
@@ -469,7 +511,7 @@ accepted readiness and freshness dependencies.
 - **THEN** execution MUST stop using that route until an accepted current replacement is published
 
 #### Scenario: Behavior requests an authority-governed transition
-- **WHEN** accepted runtime behavior requests a change the accepted arrangement declares to participants, relationships, bindings, preparation, optimization, or capability state
+- **WHEN** accepted runtime behavior requests a change the accepted run declares to participants, relationships, bindings, preparation, optimization, or capability state
 - **THEN** the request MUST pass through the applicable run-authority transition and republication path
 - **AND** the operation MUST NOT mutate canonical run state merely because its ordinary computation is dynamic
 

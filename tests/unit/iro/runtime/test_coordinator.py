@@ -20,7 +20,7 @@ from library.iro.runtime import Coordinator, Fact
 from library.iro.diagnostics import Rejection
 from library.iro.seams import HoldNeed, annotate
 from tests.unit.iro.accepted_runs import accepted_run
-from tests.unit.iro.runtime.harness import Memory
+from tests.unit.iro.runtime.harness import PROBE, Memory
 
 CUDA = Target((HOST, DeviceFacts("cuda:0", "cuda")), workers=4)
 
@@ -85,11 +85,12 @@ CHAIN = """iro.strategy @s uses(@a, @b, @c) {
 
 def test_calls_run_on_worker_threads_and_a_fused_group_on_one() -> None:
     seen: list[tuple[str, int]] = []
+    PROBE.seen = seen
     loop_thread = threading.get_ident()
 
     def make(name, inputs, body):
         return implementation(inputs=inputs, outputs=("int",), name=name)(
-            lambda *args: (seen.append((name, threading.get_ident())), body(*args))[1]
+            lambda *args: (PROBE.seen.append((name, threading.get_ident())), body(*args))[1]
         )
 
     installed = {"a": make("a", (), lambda: 1), "b": make("b", ("int",), lambda x: x + 1), "c": make("c", ("int",), lambda y: y * 10)}
@@ -137,9 +138,10 @@ def test_a_failure_fails_the_run_and_closes_admission_for_its_siblings() -> None
 
 def test_cancellation_closes_admission_and_the_run_settles() -> None:
     holder: list[Coordinator] = []
+    PROBE.holder = holder
 
     def first():
-        holder[0].cancel()
+        PROBE.holder[0].cancel()
         return 1
 
     installed = {
@@ -181,14 +183,15 @@ TURNS = """iro.strategy @s uses(@work, @keep, @look, @solo) {
 def test_device_work_of_different_activities_takes_turns_and_a_turn_lasts_until_the_release() -> None:
     device = FakeDevice()
     order: list[str] = []
+    PROBE.order = order
 
     def keep(lease):
-        order.append("keep")
+        PROBE.order.append("keep")
         time.sleep(0.01)
         return 1
 
     def work():
-        order.append("work")
+        PROBE.order.append("work")
         time.sleep(0.01)
         return 2
 
@@ -196,9 +199,9 @@ def test_device_work_of_different_activities_takes_turns_and_a_turn_lasts_until_
         "keep": implementation(inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="keep")(keep),
         "work": implementation(outputs=("int",), effects=["device"], name="work")(work),
         "look": implementation(inputs=("retained int",), outputs=("int",), effects=["device"], name="look")(
-            lambda r: (order.append("look"), r)[1]
+            lambda r: (PROBE.order.append("look"), r)[1]
         ),
-        "solo": implementation(outputs=("int",), effects=["device"], name="solo")(lambda: (order.append("solo"), 3)[1]),
+        "solo": implementation(outputs=("int",), effects=["device"], name="solo")(lambda: (PROBE.order.append("solo"), 3)[1]),
     }
     outcome, facts, coordinator = execute(TURNS, installed, resources={"m": 1, "n": 2}, target=CUDA, devices={"cuda:0": device})
     assert outcome.status == "succeeded", outcome.error
@@ -327,23 +330,25 @@ KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict, @derive, @report, @hold
 
 def test_a_result_that_leaves_its_access_keeps_the_state_protected_after_what_it_keeps_is_released() -> None:
     derived = threading.Event()
+    PROBE.derived = derived
 
     holder: list[Coordinator] = []
+    PROBE.holder = holder
 
     def derive(pred):
-        derived.set()
+        PROBE.derived.set()
         return pred + 1
 
     def report(loss):
         # The loss is still alive here: hold it until the writer's access waits for @m.
         deadline = time.monotonic() + 5
-        while not holder[0].kernel._waiters.get(("resource", "m")):
+        while not PROBE.holder[0].kernel._waiters.get(("resource", "m")):
             assert time.monotonic() < deadline, "the writer's update waits for @m while the loss is alive"
             time.sleep(0.001)
         return loss
 
     def hold():
-        assert derived.wait(5), "the trainer derives its loss before the writer asks for its update"
+        assert PROBE.derived.wait(5), "the trainer derives its loss before the writer asks for its update"
         return 0
 
     def bump(cell):
@@ -374,9 +379,10 @@ def test_a_result_that_leaves_its_access_keeps_the_state_protected_after_what_it
 
 def test_cancellation_while_queued_for_a_turn_leaves_no_turn_behind() -> None:
     holder: list[Coordinator] = []
+    PROBE.holder = holder
 
     def keep(lease):
-        holder[0].cancel()
+        PROBE.holder[0].cancel()
         return 1
 
     installed = {
@@ -439,15 +445,17 @@ SHARED = """iro.strategy @s uses(@slow, @fast, @late, @pause) {
 
 def test_calls_not_safe_for_concurrent_use_run_one_at_a_time_on_a_participant_even_beside_safe_ones() -> None:
     lock, unsafe = threading.Lock(), {"now": 0, "most": 0}
+    PROBE.unsafe = unsafe
+    PROBE.lock = lock
 
     def tracked(seconds):
         def run(lease):
-            with lock:
-                unsafe["now"] += 1
-                unsafe["most"] = max(unsafe["most"], unsafe["now"])
+            with PROBE.lock:
+                PROBE.unsafe["now"] += 1
+                PROBE.unsafe["most"] = max(PROBE.unsafe["most"], PROBE.unsafe["now"])
             time.sleep(seconds)
-            with lock:
-                unsafe["now"] -= 1
+            with PROBE.lock:
+                PROBE.unsafe["now"] -= 1
             return 0
 
         return run
@@ -658,9 +666,10 @@ class OnDevice:
 
 def _between_updates(selection: str = "snapshot"):
     seen = []
+    PROBE.seen = seen
 
     def look(handle):
-        seen.append(handle)
+        PROBE.seen.append(handle)
         return 0
 
     installed = {
@@ -806,9 +815,10 @@ TWO_LEASES = (
 @pytest.mark.parametrize("shape", ["unsafe update", "safe update", "update beside another lease"])
 def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is_copied(shape: str) -> None:
     seen = []
+    PROBE.seen = seen
 
     def look(handle, x):
-        seen.append((x, handle))
+        PROBE.seen.append((x, handle))
         return 0
 
     update = ("owner_update lease", "int")
@@ -932,6 +942,7 @@ MOVED_WITHIN_A_USE = """iro.strategy @s uses(@swap, @pause, @look) {
 def test_a_capture_copies_storage_where_a_use_that_moves_it_leaves_it() -> None:
     """A read whose realization moves the storage within its use, as block swapping does, is never copied mid-move."""
     seen = []
+    PROBE.seen = seen
 
     def swap(owner):
         owner.box[0] = "elsewhere"  # moved within the use...
@@ -943,7 +954,7 @@ def test_a_capture_copies_storage_where_a_use_that_moves_it_leaves_it() -> None:
         "swap": implementation(inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="swap")(swap),
         "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
         # On the host, so the snapshot's access needs no device turn and is taken while the read runs.
-        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: seen.append(handle) or 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: PROBE.seen.append(handle) or 0),
     }
     log: list = []
     run = accepted_run(MOVED_WITHIN_A_USE, installed=installed)
@@ -1090,12 +1101,14 @@ MOVED_THROUGH_A_RETAINED_RESULT = """iro.strategy @s uses(@hold, @move, @pause, 
 def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_result() -> None:
     """As a backward pass reaches the weights through the prediction it is given, and may move them as it goes."""
     seen = []
+    PROBE.seen = seen
     owner = OnDevice([])
+    PROBE.owner = owner
 
     def move(retained):
-        owner.box[0] = "elsewhere"
+        PROBE.owner.box[0] = "elsewhere"
         time.sleep(0.1)
-        owner.box[0] = 0
+        PROBE.owner.box[0] = 0
         return 0
 
     installed = {
@@ -1104,7 +1117,7 @@ def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_resu
         ),
         "move": implementation(inputs=("retained int",), outputs=("int",), effects=["device"], name="move")(move),
         "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
-        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: seen.append(handle) or 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: PROBE.seen.append(handle) or 0),
     }
     run = accepted_run(MOVED_THROUGH_A_RETAINED_RESULT, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
@@ -1209,9 +1222,11 @@ class HoldingGrant:
 
 
 def differentiating_installed(order: list[str] | None = None, *, safe: bool = False) -> dict:
+    PROBE.order = order
+
     def predict(n):
-        if order is not None:
-            order.append("predict")
+        if PROBE.order is not None:
+            PROBE.order.append("predict")
         return 1.0
 
     return {
@@ -1282,13 +1297,15 @@ class HoldingOnce(Holding):
 @pytest.mark.parametrize("hold", [True, False])
 def test_a_group_that_applies_a_held_setup_runs_alone_even_beside_calls_safe_for_concurrent_use(hold: bool) -> None:
     spans: list[tuple[float, float]] = []
+    PROBE.spans = spans
     both = threading.Barrier(2, timeout=0.5)
+    PROBE.both = both
 
     def read(n):
         began = time.perf_counter()
         with contextlib.suppress(threading.BrokenBarrierError):
-            both.wait()  # passes only when the two calls run at once
-        spans.append((began, time.perf_counter()))
+            PROBE.both.wait()  # passes only when the two calls run at once
+        PROBE.spans.append((began, time.perf_counter()))
         return 1
 
     installed = {"read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read)}
@@ -1330,18 +1347,19 @@ HELD_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict, @learn, @read) {
 
 def test_a_held_setup_holds_until_the_retained_result_releases_the_lease_and_another_waits() -> None:
     events: list = []
+    PROBE.events = events
 
     def learn(u, loss):
         time.sleep(0.05)  # gives the other activity every chance to apply its setup in between
-        events.append("learned")
+        PROBE.events.append("learned")
 
     def read(n):
-        events.append("read")
+        PROBE.events.append("read")
         return 1
 
     installed = {
         "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
-            lambda n: events.append("predicted") or 1.0
+            lambda n: PROBE.events.append("predicted") or 1.0
         ),
         "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(learn),
         "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read),
@@ -1369,6 +1387,7 @@ class SameState(HeldRecording):
 def test_separate_setup_objects_that_need_the_same_state_share_a_hold() -> None:
     """Two routes' setups on one participant: a retained result of the first must not make the second wait on itself (D16)."""
     events: list = []
+    PROBE.events = events
     installed = {
         "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(lambda n: 1.0),
         "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
@@ -1403,7 +1422,7 @@ def test_separate_setup_objects_that_need_the_same_state_share_a_hold() -> None:
         def lease(self, uses, reserved=None):
             granted = Memory.lease(self, uses, reserved)
             self.granted += 1
-            return [HoldingGrant(lease, SameState(events)) if lease.use.resource == "net" else lease for lease in granted]
+            return [HoldingGrant(lease, SameState(PROBE.events)) if lease.use.resource == "net" else lease for lease in granted]
 
     owner = TwoRoutes({"net": 1, "w": 0})
     coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
@@ -1437,15 +1456,17 @@ ONE_ACCESS_TWO_STATES = """iro.strategy @s uses(@measure, @predict, @learn) {
 
 
 def two_states_installed(events: list, *, fail_predict: bool = False) -> dict:
+    PROBE.events = events
+
     def predict(n):
         if fail_predict:
             raise RuntimeError("the forward failed")
-        events.append("predicted")
+        PROBE.events.append("predicted")
         return 1.0
 
     return {
         "measure": implementation(inputs=("protected_current lease",), outputs=("int",), name="measure")(
-            lambda n: events.append("measured") or 1
+            lambda n: PROBE.events.append("measured") or 1
         ),
         "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(predict),
         "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
@@ -1561,6 +1582,7 @@ class RouteHolding(Memory):
 
 def test_a_storage_change_excludes_other_routes_until_its_undo() -> None:
     events: list = []
+    PROBE.events = events
     text = """iro.strategy @s uses(@evaluate, @read) {
   %net = iro.resource @net : participant
   iro.parallel @both capture(%net) {
@@ -1582,17 +1604,20 @@ def test_a_storage_change_excludes_other_routes_until_its_undo() -> None:
 """.replace("@read)", "@read, @pause)")
 
     started = threading.Event()
+    PROBE.started = started
 
     def evaluate(n):
-        started.set()
+        PROBE.started.set()
         time.sleep(0.05)  # the other route's read is asked for while the swap is in place
-        events.append("evaluated")
+        PROBE.events.append("evaluated")
         return 1
 
     installed = {
         "evaluate": implementation(inputs=("protected_current lease",), outputs=("int",), name="evaluate")(evaluate),
-        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: events.append("read") or 1),
-        "pause": implementation(outputs=("int",), name="pause")(lambda: started.wait(timeout=5) and 1),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read")(
+            lambda n: PROBE.events.append("read") or 1
+        ),
+        "pause": implementation(outputs=("int",), name="pause")(lambda: PROBE.started.wait(timeout=5) and 1),
     }
     run = accepted_run(text, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4))
@@ -1642,6 +1667,7 @@ SHARED_STATE = """iro.strategy @s uses(@predict, @read, @learn) {
 
 def test_setup_objects_of_one_name_and_code_on_one_handle_apply_the_state_once_and_undo_it_once() -> None:
     events: list = []
+    PROBE.events = events
     shared = object()
 
     class SharedHandle:
@@ -1660,7 +1686,7 @@ def test_setup_objects_of_one_name_and_code_on_one_handle_apply_the_state_once_a
         def lease(self, uses, reserved=None):
             granted = Memory.lease(self, uses, reserved)
             return [
-                SharedHandle(lease, Undoing(events)) if lease.use.resource == "net" and lease.use.mode != "owner_update" else lease
+                SharedHandle(lease, Undoing(PROBE.events)) if lease.use.resource == "net" and lease.use.mode != "owner_update" else lease
                 for lease in granted
             ]
 

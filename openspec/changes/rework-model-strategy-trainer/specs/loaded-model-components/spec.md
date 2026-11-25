@@ -24,10 +24,10 @@ collection.
 - **AND** central consumers MUST NOT require family-specific source fields or family-name branches
 
 #### Scenario: Trainer stores the primary loaded-component state
-- **WHEN** Trainer setup coordinates loading for an accepted arrangement
+- **WHEN** Trainer setup coordinates loading for an accepted run
 - **THEN** current participant bindings MUST be owned by the accepted run authority
 - **AND** Trainer MUST NOT retain a competing authoritative loaded-component collection or fixed family slots
-- **AND** the accepted arrangement or its scoped loading/provenance projection MUST retain the typed evidence required for catalog resolution and realization-composition filing
+- **AND** the accepted run or its scoped loading/provenance projection MUST retain the typed evidence required for catalog resolution and realization-composition filing
 
 #### Scenario: Deferred loading updates components
 - **WHEN** a deferred materialization boundary changes component presence or component-to-selection association
@@ -55,6 +55,6 @@ borrowing another participant's ownership.
 
 #### Scenario: Additional run participant is not one loaded-model component
 - **WHEN** a run declares an independently managed adapter, teacher, reward model, or other participant alongside a loaded model
-- **THEN** the accepted arrangement MUST represent it without redefining the source model family's component inventory
+- **THEN** the accepted run MUST represent it without redefining the source model family's component inventory
 - **AND** any accepted module or parameter subjects it owns MUST remain resolvable through shared participant-qualified target meanings even when it has no family-declared component provenance
 - **AND** actual host-component associations MUST remain provenance rather than replace that participant's ownership

@@ -227,6 +227,47 @@ def test_a_run_accepted_without_installed_implementations_never_passes_the_train
     assert raised.value.codes == ("iro-run-003",)
 
 
+def test_a_bare_compiled_function_is_refused_as_an_implementation() -> None:
+    compiled = {"work": implementation(name="work")(len)}
+    with pytest.raises(Rejection) as raised:
+        accepted_run(ONE_CALL, installed=compiled)
+    assert raised.value.codes == ("iro-run-004",) and "compiled code without source" in str(raised.value)
+    run = accepted_run(ONE_CALL, installed=_implementations(Declaration("work")))
+    with pytest.raises(Rejection) as raised:
+        check_implementations(run, compiled)
+    assert raised.value.codes == ("iro-run-004",), "the host check refuses it too"
+
+
+def test_an_implementation_that_captures_mutable_state_is_refused() -> None:
+    state: list[int] = []
+
+    @implementation(name="work")
+    def work() -> None:
+        state.append(1)
+
+    with pytest.raises(Rejection) as raised:
+        accepted_run(ONE_CALL, installed={"work": work})
+    assert raised.value.codes == ("iro-run-004",) and "closes over state" in str(raised.value)
+
+
+class Scale:
+    def __init__(self, factor: int) -> None:
+        self.factor = factor
+
+    def __call__(self) -> int:
+        return self.factor
+
+    def apply(self) -> int:
+        return self.factor
+
+
+@pytest.mark.parametrize("code", [Scale(2), Scale(2).apply], ids=["callable object", "bound method"])
+def test_an_implementation_with_state_its_source_does_not_show_is_refused(code) -> None:
+    with pytest.raises(Rejection) as raised:
+        accepted_run(ONE_CALL, installed={"work": implementation(name="work")(code)})
+    assert raised.value.codes == ("iro-run-004",) and "whose state the system cannot see" in str(raised.value).replace("\n  ", " ")
+
+
 def test_acceptance_refuses_an_implementation_the_strategy_uses_that_is_not_installed() -> None:
     with pytest.raises(Rejection) as raised:
         accepted_run(ONE_CALL, installed={})

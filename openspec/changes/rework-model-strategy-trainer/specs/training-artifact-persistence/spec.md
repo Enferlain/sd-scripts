@@ -7,16 +7,16 @@ distinct.
 ## ADDED Requirements
 
 ### Requirement: Artifact persistence has declaration, request, plan, and result stages
-Persistence SHALL distinguish the products an accepted arrangement supports,
+Persistence SHALL distinguish the products an accepted run supports,
 the lifecycle-specific request made by Trainer, the resolved semantic plan,
 and the actual result returned after writing or publication.
 
 #### Scenario: Trainer requests a declared product
-- **WHEN** a persistence trigger requests an artifact supported by the accepted arrangement
+- **WHEN** a persistence trigger requests an artifact supported by the accepted run
 - **THEN** the capability MUST resolve an artifact plan before physical writing begins
 
 #### Scenario: Unsupported product is requested
-- **WHEN** a request names a product or representation not declared by the accepted arrangement
+- **WHEN** a request names a product or representation not declared by the accepted run
 - **THEN** persistence MUST reject it before selecting live objects or creating output resources
 
 ### Requirement: Artifact plans select semantic state
@@ -114,25 +114,26 @@ and external references together.
 - **THEN** its plan and result MUST express all three dependency forms without one misleading completeness flag
 
 ### Requirement: Artifact products are independent from training treatment
-The products an accepted arrangement supports and their semantic coverage
+The products an accepted run supports and their semantic coverage
 SHALL come from explicit product declarations. Persistence SHALL NOT infer or
 restrict the product set solely from whether the run trains existing
 participant parameters, PEFT state, or a contract-compatible combination.
 
 #### Scenario: Direct parameter training declares a full-model product
-- **WHEN** an accepted arrangement trains selected parameters of existing participants and declares a compatible full-model product
+- **WHEN** an accepted run trains selected parameters of existing participants and declares a compatible full-model product
 - **THEN** persistence MUST resolve that product from its declared semantic coverage and dependencies
 - **AND** it MUST NOT require a separate fine-tune mode classification
 
 #### Scenario: PEFT training declares its products explicitly
-- **WHEN** an accepted arrangement trains PEFT state alone or together with existing participant parameters
+- **WHEN** an accepted run trains PEFT state alone or together with existing participant parameters
 - **THEN** adapter, merged full-model, or other product support MUST follow the arrangement's accepted product declarations
 - **AND** persistence MUST NOT infer one mandatory product category solely from the selected training subjects
 
 ### Requirement: Persistence uses one accepted boundary
-Every product member SHALL correspond to one accepted arrangement and one
-Trainer-established persistence boundary while satisfying each contributor's
-declared freshness and consistency relationship. A universal revision counter
+Every product member SHALL correspond to one accepted run and one
+persistence boundary, established when run coordination captures the
+product's state, while satisfying each contributor's declared freshness and
+consistency relationship. A universal revision counter
 SHALL NOT be required when explicit contributor relationships establish
 coherence.
 

@@ -14,8 +14,13 @@ backend handles authoritative.
 
 #### Scenario: Adapter and base parameters are selected
 - **WHEN** an authored strategy declares combined base-model and adapter training
-- **THEN** the strategy acceptance check MUST preserve both semantic selections and constraints
+- **THEN** fulfillment MUST preserve both semantic selections and constraints
 - **AND** Trainer optimization MUST resolve their current parameter realizations
+
+#### Scenario: A unit's members resolve to no parameters
+- **WHEN** a unit's members resolve to no parameters against the loaded structure
+- **THEN** resolution MUST refuse the unit, naming it and the declaration that lets it be empty, unless the strategy declares that the unit may be empty
+- **AND** a unit declared as possibly empty that resolves to no parameters MUST step nothing and advance no progress
 
 ### Requirement: Optimization units have run-scoped semantic identity
 An optimization unit SHALL distinguish its non-positional address, run-scoped
@@ -66,7 +71,7 @@ recognized capability or explicit extension with accepted coordination rules.
 
 #### Scenario: Deliberate overlap is requested
 - **WHEN** an experiment requires one parameter in multiple advancement responsibilities
-- **THEN** the strategy acceptance check MUST require accepted rules for ordering, cadence, gradients, clipping, zeroing, restoration, and backend support
+- **THEN** fulfillment MUST require accepted rules for ordering, cadence, gradients, clipping, zeroing, restoration, and backend support
 
 ### Requirement: Logical and execution groups remain distinct
 The optimization exchange SHALL preserve semantic logical groups separately
@@ -92,7 +97,7 @@ from that accepted meaning.
 - **AND** changing physical construction order MUST NOT itself revise the unit definition
 
 ### Requirement: Trainer owns standard realization and mechanics
-Under the standard profile, Trainer/optimization infrastructure SHALL realize
+Under the standard profile, Trainer optimization SHALL realize
 trainability, current parameters, logical/execution groups, clipping members,
 synchronization/accumulation members, optimizer/scheduler state, and ordinary
 backward, advancement, and zeroing mechanics. Specialized behavior SHALL NOT
@@ -105,13 +110,32 @@ transfer those responsibilities merely because it is selected.
 
 ### Requirement: Runtime lifecycle projections are coherent and separate
 Trainability, clipping, synchronization/accumulation, module runtime-mode
-needs, and unit-local optimizer transitions SHALL be published as coherent
-views rather than independent mode flags or repeated queries.
+needs, and unit-local optimizer transitions SHALL be derived as coherent
+views rather than independent mode flags or repeated queries. A module's
+runtime mode SHALL be set for each call through its participant's route
+from what that call's own work needs, never by a run-wide switch: train mode
+only for the modules of a unit whose loss the call reaches, and evaluation
+mode otherwise.
 
-#### Scenario: Validation enters evaluation mode
-- **WHEN** Trainer coordinates a validation boundary
-- **THEN** it MUST use accepted lifecycle projections for affected modules and unit runtimes
-- **AND** optimization membership alone MUST NOT own the timing of the transition
+#### Scenario: Validation runs beside training
+- **WHEN** validation calls a participant while training continues in another activity
+- **THEN** each call MUST run the participant's modules in the mode its own work needs
+- **AND** no switch made for one activity's calls MAY change the mode of another activity's calls
+
+#### Scenario: A frozen network lies on a gradient path
+- **WHEN** a call's path from a trained module to its unit's loss passes through a frozen network
+- **THEN** the frozen network MUST run in evaluation mode while the trained modules run in train mode
+- **AND** module mode MUST follow trainability rather than the flow of gradients
+
+#### Scenario: A later backward pass recomputes the forward
+- **WHEN** a call's forward will be recomputed inside a later backward pass, as checkpointing does
+- **THEN** the modes the call needed MUST stay in place until its results' backward pass no longer needs them
+- **AND** a call that needs another mode of the same modules MUST wait until then
+
+#### Scenario: An optimizer switches to its evaluation point
+- **WHEN** a unit's optimizer policy has an evaluation point, such as averaged weights or a schedule-free optimizer's
+- **THEN** reading it MUST go through a route on the participant whose dependencies are that unit state
+- **AND** the switch MUST belong to the unit and that route, never to a module mode set for a call
 
 ### Requirement: Realization and preparation form one publication attempt
 The system SHALL first resolve an accepted semantic optimization plan and SHALL
@@ -188,7 +212,7 @@ SHALL be completed, preserved, or discarded only under an accepted rule.
 - **AND** old contributions MUST NOT silently enter the new runtime
 
 ### Requirement: Advancement authority is profile-defined
-The active execution/ownership profile SHALL explicitly define supported
+The active ownership profile SHALL explicitly define supported
 advancement policies and which executor owns backward, gradient manipulation,
 advancement, and zeroing. A policy outside the standard Trainer-owned set SHALL
 require an accepted extension and SHALL NOT create dual ownership.

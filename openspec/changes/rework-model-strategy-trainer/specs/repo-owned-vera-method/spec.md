@@ -10,7 +10,7 @@ participant/relationship transitions rather than through `AdapterMode`
 ownership.
 
 #### Scenario: Building a VeRA runtime for training
-- **WHEN** the pipeline materializes an accepted adapter participant whose selected method is `vera`
+- **WHEN** the run materializes an accepted adapter participant whose selected method is `vera`
 - **THEN** the repo-owned VeRA runtime MUST construct VeRA state only from the resolved adapter targets in the realization request
 - **AND** it MUST NOT become the owner of target discovery, regex traversal, component-selection policy, or training orchestration
 

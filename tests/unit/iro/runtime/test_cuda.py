@@ -16,6 +16,7 @@ from library.iro.frontend import implementation
 from library.iro.prepare import HOST, DeviceFacts, Prepared, Target, prepare
 from library.iro.runtime import Coordinator, Fact
 from library.iro.seams import CallContext
+from tests.unit.iro.runtime.harness import PROBE
 from tests.unit.iro.accepted_runs import accepted_run
 
 pytestmark = [pytest.mark.requires_gpu, pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA device")]
@@ -180,6 +181,7 @@ def test_device_work_after_device_work_is_ordered_on_the_device_without_a_wait_o
     device = Cuda(gpu_index())
     owner = Weights(torch.zeros(2048, 2048, device=device.device))
     seen = {}
+    PROBE.seen = seen
 
     def first(weights):
         busy(torch.randn(2048, 2048, device=weights.tensor.device), 200)
@@ -188,7 +190,7 @@ def test_device_work_after_device_work_is_ordered_on_the_device_without_a_wait_o
 
     def second(weights):
         # Had the worker waited for the first call's completion, the stream would be idle by now.
-        seen["stream_busy"] = not torch.cuda.current_stream(weights.tensor.device).query()
+        PROBE.seen["stream_busy"] = not torch.cuda.current_stream(weights.tensor.device).query()
         weights.tensor.add_(1.0)
         return 0
 
@@ -428,6 +430,7 @@ def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_
     device = Cuda(gpu_index())
     owner = Captured(torch.zeros(2048, 2048, device=device.device))
     seen = {}
+    PROBE.seen = seen
 
     def first(weights):
         busy(torch.randn(2048, 2048, device=weights.tensor.device), 200)
@@ -435,8 +438,8 @@ def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_
         return 0
 
     def look(snapshot):
-        seen["stream_busy"] = not torch.cuda.current_stream(snapshot.device).query()
-        seen["snapshot"] = snapshot
+        PROBE.seen["stream_busy"] = not torch.cuda.current_stream(snapshot.device).query()
+        PROBE.seen["snapshot"] = snapshot
         return 0
 
     def second(weights):

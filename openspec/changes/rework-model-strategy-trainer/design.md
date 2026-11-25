@@ -333,7 +333,7 @@ stays normative.
 
 | Term | Meaning | Defined in |
 | --- | --- | --- |
-| Accepted arrangement | The specs' name for what fulfillment accepts: the strategy's meaning with its obligations and authority seed. The design calls it the accepted run | D4, D17 |
+| Accepted arrangement | Older text's name for what fulfillment accepts: the strategy's meaning with its obligations and authority seed. The design and the specs call it the accepted run | D4, D17 |
 | Accepted run | The accepted strategy with its obligations, the evidence recorded for the code it uses, and its authority seed; only fulfillment produces one | D17 |
 | Activity | A named piece of work with its own lifetime, such as a producer, repeat, handler or parallel | D16 |
 | Advancement | What one window's completion did to a unit: synchronize, clip, step, schedule and zero | D9, D20 |
@@ -359,14 +359,18 @@ stays normative.
 | Feature contract | What a feature offers and requires: the meaning and requirements in its declaration | D3, D21 |
 | Fulfillment | The IR system's acceptance step: read, normalize, verify and derive obligations. Launch runs it | D18 |
 | Generation | The coherent published state across owners | D19 |
+| Grant | An access mode, and what an ownership profile's extension hands a region: a mechanic or scoped state access that the standard profile keeps with the Trainer, such as backward or advancement | D16, G3.2 |
 | Guidance | What is known rather than required: provenance, tested combinations, recommended settings and community practice. It produces help and logs, never a refusal | D21 |
+| Imperative region | A region whose ownership profile grants it a mechanic that the standard profile keeps with the Trainer, such as its own backward passes | G2.5, G3.2 |
 | Implementation | Selected code that does the math, declared with its contract and selected by name | D16, D18 |
 | IR system | Kuroiro on xDSL: the language, its front end, fulfillment, reference semantics and runtime, in `library/iro`. Older text calls it the workflow layer | D14, D16 |
 | Lease | The handle an access scope gives its body for one resource; it cannot leave the scope | D16 |
 | Machinery | Code that runs whatever approach a strategy chooses, such as preparation, FP8 casting, optimizer construction and data loading | D21 |
+| Module mode | PyTorch's `training` flag on each module, set by `train()` and `eval()` and read by dropout, BatchNorm and some adapter methods. A participant's route sets it for each call; it is not a mode of the run | D20 |
 | Obligation | Something verification requires the run to discharge, attached to a readiness checkpoint | D7, `training-contract` |
 | Operation contracts | An operation's region, flow, resource, realization and decision contracts: the parts of its entry that the IR system checks. Always written with the qualifier | D14 |
 | Owner | Holds one kind of state and realizes access to it at the owner seam | D16, D19 |
+| Ownership profile | Which owner performs each mechanic: the standard profile's advancement policies and the extensions' grants | D18, G3.1, G3.2 |
 | Participant | A model resource with identity | D6, D16 |
 | Product | A declared kind of artifact for an intended use: what it covers, its representations and transformations, its dependencies and its completion conditions. The owners of what it saves, such as assemblies and adapter methods, declare the products they support | D11, D21 |
 | Projection | One consumer's coherent bundle of state, pinned to a generation or to exact dependencies | D6, D19 |
@@ -377,6 +381,8 @@ stays normative.
 | Route | A named way to call a participant | D6 |
 | Run | One execution of a strategy: first the accepted run, then the executable run as it executes | D17, D21 |
 | Run authority | The owner of participant and relationship state | D6, D19 |
+| Run coordination | The specs' name for the IR runtime's generic coordination of activities, triggers, handlers and requests, `persist` and `cut`. Older text says Trainer or delegated pipeline orchestration | D21 |
+| Scratch | State an implementation keeps of its own that never changes a result, such as a cache, a workspace or a compiled kernel. It is rebuilt when missing and never saved or restored | D16, D18 |
 | Snapshot | A fixed published version of some state, and the access mode that reads one | D16, D19 |
 | Strategy | Python that an author writes to define a run: a strategy function, its activities and any implementations of its own. Its read, accepted and prepared forms are the same strategy at later stages. Training, evaluation, caching and sampling runs all have strategies. A maintained strategy ships with the repository for one thing trained, with adapters, EMA and similar as choices inside it | D18, D21 |
 | Transfer | A claim moving with a capture into an activity or a yield out of one. It is not an operation; the verifier follows it to the claim's disposition | D16 |
@@ -387,6 +393,12 @@ stays normative.
 | Window | Contributions that advance a unit together | D17 |
 
 ## Decisions
+
+The decisions were settled in order, and the G-sections record the gates
+that led to them. Where a decision or a gate's text differs from a later
+decision, the later one governs, and the earlier text is corrected where the
+difference is found. D15–D21 give the production shapes, and the glossary
+maps earlier words to theirs.
 
 ### D1. Intended Trainer and pipeline capabilities shape the contract
 
@@ -827,8 +839,10 @@ exchange adds no execution-language construct or universal training sequence.
 Validation measures accepted behavior; sampling runs selected generation
 behavior. Neither requires another Trainer or an active strategy callback.
 Trainer/pipeline coordination owns due requests, outer input/request traversal,
-resource access, ordinary runtime projections, aggregation execution,
-destinations, and observation routing. Selected domain behavior owns the
+resource access, aggregation execution, destinations, and observation
+routing. Each call's runtime context, such as its participant's module mode,
+is set for that call by its route's setups, never switched for a validation
+phase (D16, D20). Selected domain behavior owns the
 evaluation or generation algorithm and its declared state. Coordination uses
 the existing obligation revision and readiness evidence, not new acceptance
 rules invented at the trigger.
@@ -904,12 +918,13 @@ completion, not merely the Python return. Actual provenance may be one
 protected state, a snapshot, or accepted structured state/segment evidence;
 recording mixed provenance does not itself authorize mixed-state work.
 
-Pipeline coordination establishes and restores ordinary model/optimizer
-runtime projections, placement, dtype, and RNG according to their declared
-owners and accepted numerical policy. It preserves the prior relevant state,
-including mixed module modes, rather than unconditionally calling
-`train(True)`. Cleanup covers partial setup, execution failure, cancellation,
-and asynchronous completion. RNG isolation must cover the relevant declared
+Each call's temporary context, its random state, grad mode, its route's
+precision and its participant's module mode, is set for that call by the
+runtime and the setups covering it, under the owners that decide them, and
+undone however the call ends (D16); nothing switches a whole model with
+`train(True)` or `eval()`. Cleanup covers partial setup, execution failure,
+cancellation, and asynchronous completion, and a setup or undo that fails
+fails the run with the state it changed reported uncertain. RNG isolation must cover the relevant declared
 generators/devices/activities or reject an unsupported overlap; saving one
 global generator is not proof of concurrent isolation or bitwise replay.
 
@@ -1351,9 +1366,10 @@ A flag or ordinary strategy mutation is insufficient.
 The accepted strategy declares training-subject intent and constraints.
 Trainer optimization resolves live parameters, logical and execution groups,
 trainability, clipping, synchronization/accumulation, optimizer/scheduler
-policy, and runtime. Module train/eval timing remains a pipeline lifecycle
-concern; optimizer-local transitions such as schedule-free modes are invoked at
-Trainer-owned lifecycle points.
+policy, and runtime. Module train/eval mode has no timing to own: each call
+through a participant's route runs its modules in the mode its own work
+needs (D20). Optimizer-local transitions, such as a schedule-free optimizer's
+switch to its evaluation point, remain with the unit (D20).
 
 Shared target references cover both component-backed and independently managed
 participant-owned module or parameter substructure. Genuine model-component
@@ -1438,8 +1454,9 @@ that cannot realize them must reject readiness before executing that policy.
 This is a backend conformance obligation, not a promise that current
 Accelerate/DeepSpeed preparation already supplies it.
 
-Trainer/pipeline owns action scheduling, progress, training/evaluation
-boundaries, and invocation of accepted lifecycle effects. A unit-local
+Trainer/pipeline owns action scheduling, progress, and invocation of accepted
+lifecycle effects; no training/evaluation boundary exists to own, since each
+call's module mode follows its own work (D20). A unit-local
 optimizer mode or scheduler transition runs at its accepted lifecycle point;
 selected post-advancement behavior (such as adapter regularization) remains
 selected behavior invoked under its declared effect authority. The policy
@@ -2551,7 +2568,7 @@ meaning:
 | Construct/load method state against resolved targets and attach it to hosts | Method-specific adapter realization plus authority-governed participant/relationship transitions |
 | Toggle trainability and resolve parameters/groups | Trainer optimization realization |
 | Precision and distributed preparation | Trainer/runtime infrastructure plus explicit component constraints |
-| Clip/sync participants and coordinate train/eval timing | Trainer optimization and lifecycle coordination over published projections |
+| Clip/sync participants and set each call's module mode | Trainer optimization for clipping and synchronization; the route's setup for module mode, from training's annotations (D20) |
 | Specialized method behavior | Accepted execution operation, or a narrow capability only when the pipeline requests a named operation |
 | Runtime checkpoint contributions | Restoration contributor under Trainer coordination |
 | Artifact semantics and serialization | Product capability plus domain serializer |
@@ -3243,10 +3260,11 @@ and launch device work. Owners hold state.
 - **Device adapters.** There is one adapter per PyTorch backend, named by
   PyTorch's device type (`cuda`, `xpu`, `mps` and others), beside the host
   adapter. What does not depend on the vendor lives in one base that every
-  PyTorch adapter uses: each call's random state and the setups that cover
-  it, completion and ordering through PyTorch's `torch.Stream` and
-  `torch.Event`, and the copies of owners' device storage that the runtime
-  queues. An adapter may use its vendor's own features, such as CUDA graphs,
+  PyTorch adapter uses: each call's random state and a neutral starting
+  point for the settings PyTorch keeps per thread, grad mode and autocast
+  off, inside which the runtime enters the call's setups (D16); completion
+  and ordering through PyTorch's `torch.Stream` and `torch.Event`; and the
+  copies of owners' device storage that the runtime queues. An adapter may use its vendor's own features, such as CUDA graphs,
   stream priorities, memory pools or direct copies between devices, and
   nothing in the structure assumes one vendor. Each adapter reports what it
   offers. Preparation checks what the run's implementations and permissions
@@ -3386,7 +3404,11 @@ and launch device work. Owners hold state.
   The component declares where it can checkpoint, `library/performance`
   holds the rules that read it, and a route checkpoints only in calls that
   run with grad mode, as the setup training attaches establishes it, since
-  only they run a backward.
+  only they run a backward. A component's own switch never decides it:
+  today's SDXL UNet checkpoints only while its modules' `training` flag is
+  on, which D20 leaves off on a frozen base, so under an adapter it would
+  silently stop checkpointing; the component declares its checkpoint
+  points, and the route's choice turns them on.
   The runtime itself moves only a participant's device storage
   off the device between uses:
   - A strategy may permit a participant to leave the device between uses.
@@ -3457,7 +3479,8 @@ and launch device work. Owners hold state.
     `torch.compile`'s GPU code generation or a Triton kernel. The run names
     each selection allowed to turn the GIL on, in the strategy or at launch,
     and the names are recorded with the run. Fulfillment refuses a selection
-    that needs such a module and is not named, with the reason. The system
+    that needs such a module and is not named, with the reason and the
+    declared way to go ahead, naming the selection (D18). The system
     never slows its own paths to suit a run that turns the GIL on.
   - **Checked, not trusted.** A run checks that the GIL is off when it
     starts. Outside the loads of named selections, CPython's warning that it
@@ -3970,8 +3993,46 @@ to accept it.
   - where it has no fixtures, such as a whole model: a hash of the source of
     the module that defines it and of its class's name.
 
-  A word's definition records a hash of its contracts, written form and
-  expansion, as a declaration does.
+  Every piece of state bound into a selected implementation must be
+  represented in its evidence, or acceptance refuses the implementation.
+  A plain function qualifies, and so does a wrapped one, with every layer
+  covered. A closure or a partial qualifies when every value it captures or
+  binds can be represented: a value that cannot change and reads the same
+  in every program, such as a number, a string or a tuple of them, is
+  written out, and captured code, a function or a class, is included by its
+  own evidence. Anything else, such as a list, a dict or a model object,
+  can change while staying the same object, and a callable object or a
+  method bound to an object carries state its class's source does not
+  show, so the system cannot establish what the code is. The refusal names
+  the declared way to go ahead (D18): configuration enters as written
+  settings in the strategy, and state that changes a later result sits
+  behind an owner's lease. Code the system cannot read, such as a compiled
+  function installed directly, is refused until evidence of the binary
+  exists; the declared way is a Python implementation that calls the
+  compiled code. State a function reads from its module at run time is not
+  covered, as code it calls in other modules is not.
+
+  An implementation may keep scratch of its own, such as a cache, a
+  workspace or a compiled kernel: state that never changes a result, that
+  it rebuilds when missing, and that is never saved or restored. It
+  declares its scratch (D18), and its evidence records the values that
+  hold it as scratch, never by their contents. State that changes a later
+  result is never private to an implementation: it is owned state, held by
+  an owner with an initial value rule and a part in each cut, and reached
+  through a lease (D19), as G2.6 requires of every stateful operation. A
+  callable object that keeps only declared scratch and is built from
+  settings written in the strategy is identified by its class's source and
+  those settings. Declaring scratch comes with the implementation
+  decorator, and building implementations from settings with the launcher
+  that installs them (`tasks.md` section 17), before which only tests build
+  accepted runs. Until then an implementation that holds a cache in a value
+  it captures, or as a callable object, is refused with the declared ways
+  above, and the refusal says that declaring scratch comes with section
+  17.
+
+  A word's definition records its declaration and the source of its word
+  and its written form; cold loading also derives its written form and
+  expansion again (D14).
 - **The repository's state.** The run also records the repository revision
   it was started from and any uncommitted changes, as the changed files with
   their hashes, so a run or product made from edited code is never mistaken
@@ -3990,14 +4051,17 @@ to accept it.
   declares a comparison policy for when exact outputs differ, which says
   what it establishes and over what, such as equal dtype and shape with
   stated `rtol` and `atol`, or ULP bounds, for floating-point values. The
-  policy and its revision are recorded with the comparison. A difference
+  policy's name and settings are recorded with the comparison. A difference
   within the policy is numerical or environment drift, not changed code; a
   difference beyond it is changed code. The comparison is not the core's,
   which defines no numerics (above). A comparison policy is code outside the
-  core, installed by name as implementations are. Its revision names its
-  definition, what its equivalence establishes, which a reader needs to read
-  a verdict; its code evidence identifies the code that applied it; both are
-  recorded with each verdict. Given both exact records, it returns yes or no
+  core, installed by name as implementations are. Its name says which
+  equivalence it establishes, so a policy that establishes another one gets
+  another name; its settings give that equivalence's parameters; the
+  evidence of its code identifies the comparator that ran. All three are
+  recorded with each verdict, and the policy carries no hand-kept revision:
+  what a reader needs to read a stored verdict belongs to the verdict's own
+  format. Given both exact records, it returns yes or no
   with the differences it found, which the core reports and never reads.
   The core carries the exact records, compares them byte for byte, calls the
   fixture's policy only when they differ, and records and uses the yes or no
@@ -4060,8 +4124,7 @@ to accept it.
   strategies.
 - **Where numbers remain.** A number belongs where a reader has to choose how
   to read something: the saved run's format, the strategy's written form,
-  metadata's payload and storage schemas, a fingerprint method, a comparison
-  policy. A reader
+  metadata's payload and storage schemas, a fingerprint method. A reader
   refuses a revision it does not know. A public interface, such as a
   published seam that code from outside the repository implements, gets
   protocol revisions the same way. A number is never a claim that code
@@ -4641,7 +4704,8 @@ into an accepted run (D17). It also places each piece of that logic.
 #### The contract
 
 The contract is the IR system's registered vocabulary: everything a strategy
-may use, in one versioned list that is read in one place. In xDSL, a parser
+may use, in one list that is read in one place and identified by the
+evidence of its code, never by a version number (D16). In xDSL, a parser
 and verifier know only the dialects registered with them, and the contract is
 that registration. The launcher makes it once, explicitly, before any
 strategy is read. `train.py`, help, the doctor and tests all use the same
@@ -4777,7 +4841,9 @@ access mode against them (D14). The decorator states only what the signature
 cannot show, such as use of randomness, external input or output,
 collectives, use of a device, a module it needs that turns the GIL on
 (D15), a result that keeps a dependency on a lease (D16), anything else kept
-beyond the call, and state private to the implementation. The decorator has no registration side effect;
+beyond the call, and scratch of its own, state that never changes a result
+(D16). State that changes a later result is never the implementation's own:
+it has an owner, and the implementation reaches it through a lease (D19). The decorator has no registration side effect;
 the launcher installs implementations explicitly (D2).
 
 ```python
@@ -4834,28 +4900,43 @@ Four aids help an author write a strategy that works with what is allowed:
 - **Guided construction, later.** Every entry declares what it connects to,
   so a guided builder can offer only the choices that fit at each point.
 
-Something the contract allows cannot fail a run just because a strategy uses
-it. Fulfillment refuses only what would fail, and each refusal is an early
-error that names the failure it prevents: an interface that cannot connect,
-an authority the profile does not grant, or a construct the language cannot
-express. Everything else runs. Guidance, such as provenance, tested
-combinations and community practice, produces help and logs, never a refusal
-(D21): an untested pairing, or a use that conflicts with a component's
-declared meaning, such as fine-tuning an eps model toward v-prediction, is
-allowed and logged. What depends on loaded state is checked at its readiness
-checkpoint: for loaded models before training starts, and for a capability
-when it is requested.
+What the contract covers is supported: something the contract allows cannot
+fail a run just because a strategy uses it. Going beyond what the contract
+covers is a choice the strategy declares, as custom behavior or through an
+extension, and a declared choice runs. Fulfillment refuses two things, each
+with an early error:
+
+- **What would fail.** The refusal names the failure it prevents: an
+  interface that cannot connect, an authority the profile does not grant,
+  or a construct the language cannot express.
+- **A departure from the contract that is not declared.** The refusal names
+  the departure and the declared way to make it, so a refusal never blocks
+  a declared experiment. A selection that needs a module that turns the GIL
+  on runs once the run names it (D15). An implementation whose state its
+  code evidence cannot represent runs once its configuration is written as
+  settings and any state that changes a later result sits behind an owner's
+  lease (D16).
+
+Everything else runs. Guidance, such as provenance, tested combinations and
+community practice, produces help and logs, never a refusal (D21): an
+untested pairing, or a use that conflicts with a component's declared
+meaning, such as fine-tuning an eps model toward v-prediction, is allowed
+and logged. Development that adds a concern extends the contract, so what it
+adds is covered, and supported, from then on. What depends on loaded state
+is checked at its readiness checkpoint: for loaded models before training
+starts, and for a capability when it is requested.
 
 The rejection-rule audit (task 5.7) reviewed every rejection in the delta
-specs under this rule. Two rules refused choices that would not fail, and
-both were changed. A PEFT method outside a strategy's maintained set is now
-allowed and reported when the hosts meet its declared requirements
-(`adapter-system`). Fulfillment no longer rejects behavior for being
-"unknown as maintained"; it rejects behavior that has no definition in the
-contract (`training-contract`). Every other rejection refuses a failure, in
-one of these groups:
+specs under the first kind alone. Two rules refused choices that would not
+fail, and both were changed. A PEFT method outside a strategy's maintained
+set is now allowed and reported when the hosts meet its declared
+requirements (`adapter-system`). Fulfillment no longer rejects behavior for
+being "unknown as maintained"; it rejects behavior that has no definition in
+the contract (`training-contract`). The audit of the delta specs on
+2026-11-25 added the second kind, which the GIL rule and code identity
+needed. Every rejection falls in one of these groups:
 
-| What is refused | The failure it prevents |
+| What is refused | What it prevents |
 | --- | --- |
 | Wiring that cannot connect or settle | A use before its definition, an unsettled claim, a lease that escapes, a producer stopped while a consumer still needs it |
 | Authority the profile does not grant | A second owner of a mechanic the Trainer keeps, an undeclared effect, a guarantee the profile cannot give |
@@ -4865,6 +4946,7 @@ one of these groups:
 | A silent substitution | A cached value standing in for a different computation, a detached gradient path (training's check, D15), another access mode than the one selected |
 | A target that cannot realize a valid strategy | A backend that cannot report or protect what the strategy needs, or ranks that cannot agree; reported as a target limit |
 | A combined effect nobody defined | Several adapter methods on overlapping targets with no declared way to compose |
+| A departure the strategy does not declare | Running on terms nobody chose: a selection that turns the GIL on, so the run's Python takes turns, without the run naming it (D15); an implementation whose state its code evidence cannot represent, so no later run could tell whether it runs the same code (D16). The refusal names the declared way to go ahead |
 
 #### From run config to accepted run
 
@@ -4920,7 +5002,10 @@ it has neither the contract nor that job. It checks only what it can know:
 that the installed implementations it receives give the evidence the
 accepted run records for them, computing the same records, with any
 acceptance of changed code the launcher recorded (D16). Otherwise it
-refuses to start.
+refuses to start. An installed object's fixtures run once in a process:
+the Trainer compares the records fulfillment or the launcher already
+computed for the same objects rather than running their fixtures again, and
+computes those of an object it has not seen.
 Tests may build accepted runs with a test-only builder, which the normal
 launcher never uses (D1). The builder lives under `tests/`, beside the IR
 system's conformance suite, and no production module imports it. Selected Python is trusted (D14), so this is a
@@ -5368,9 +5453,13 @@ optimizer step would likely expose that wait.
 
 #### Train and evaluation modes
 
-Module runtime mode is not unit state. Validation runs as its own activity
-alongside training (D17), so a run-wide switch into evaluation mode has no
-right moment. Module mode is the participant's realization: the setup of
+Module mode is PyTorch's own `training` flag, which every module carries and
+`Module.train()` and `Module.eval()` set. Dropout, BatchNorm's running
+statistics and some adapter methods, such as LoCon's dropouts, read it;
+autograd does not, since whether a call records gradients is grad mode. It
+is not a mode of the run, and it is not unit state. Validation runs as its
+own activity alongside training (D17), so a run-wide switch into evaluation
+mode has no right moment. Module mode is the participant's realization: the setup of
 each route that runs it sets its modules' mode for every call through it,
 evaluation mode unless the call's annotations ask for train mode in named
 modules, and changes it only where the previous call left a different mode.
@@ -5535,7 +5624,11 @@ code is.
     library release that renames them, as `transformers` did for
     `CLIPTextModel` between 4.54.1, which the baseline uses, and 5.19,
     changes the wrapper, never the paths. Adapter file formats map their
-    keys to these paths (`tasks.md` section 19).
+    keys to these paths (`tasks.md` section 19). Which paths a component
+    defines is chosen on merit when it is written (`tasks.md` 18.5), with
+    no promise to keep the strings today's code exposes; inspection,
+    parameter selectors and learning-rate grouping all use the paths it
+    defines, so they always agree.
   - **What the repository starts with.** Its own denoisers and autoencoders,
     and the text encoders from `transformers` behind their interface.
     Runtime code does not use Diffusers, since the components it would
@@ -5636,6 +5729,7 @@ Rules and guidance are different things:
 | Situation | Result |
 | --- | --- |
 | A use would fail: an interface that cannot connect, an authority the profile does not grant, or a construct the language cannot express | An error. Fulfillment may raise it early, and its diagnostic names the failure it prevents (D18) |
+| A use departs from the contract without declaring it, such as a selection that turns the GIL on that the run does not name | An error that names the departure and the declared way to make it; once declared, the use runs (D18) |
 | A use conflicts with a declared meaning, such as fine-tuning an eps model toward v-prediction | Allowed and logged |
 | Nobody has tested the combination | Allowed and logged |
 | The combination is known to work, maintained or recommended | Shown as guidance by help and the doctor |
@@ -5784,8 +5878,11 @@ the contract recognizes, such as sampling, validation, saving a product,
 resume or caching, with a defined request, result, readiness and failure; it
 is not training-specific. The IR runtime does the generic coordination
 through triggers, handlers and requests, `persist` and `cut`. Where the specs
-say Trainer or delegated pipeline orchestration, or a capability's
-coordination, they mean this coordination by the IR runtime. A strategy
+say run coordination, or a capability's coordination, they mean this
+coordination by the IR runtime; older text says Trainer or delegated
+pipeline orchestration. It carries out what the strategy's triggers and
+handlers say and decides nothing a domain owns, such as a call's module mode
+(D20). A strategy
 wires capabilities in, usually through the shared rhythm in
 `strategies/features/`, and exposes their settings as its parameters. Each
 capability's definition and implementations live with its domain: sampling
@@ -6136,9 +6233,10 @@ the two training treatments mutually exclusive.
    Trainer access. Today `library/training/modes/adapter_mode.py:318–371`
    supplies step, train/eval, clipping, and maximum-norm hooks, while
    `library/strategies/sdxl/diffusion.py:33–142` invokes the denoiser with
-   the currently attached behavior. Train/eval and backend projections are
-   Trainer-coordinated; the specialized operation remains adapter-domain
-   behavior, not a new generic Trainer algorithm.
+   the currently attached behavior. Module mode is set for each call by the
+   route's setup (D20) and backend projections are Trainer-coordinated; the
+   specialized operation remains adapter-domain behavior, not a new generic
+   Trainer algorithm.
 
 6. **Keep product, new-run loading, and exact resume separate.** An adapter
    export selects adapter state, relevant host relationships/dependencies,

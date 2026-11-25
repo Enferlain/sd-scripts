@@ -9,7 +9,7 @@ realization and later transitions.
 
 ### Requirement: The active contract guides strategy authoring
 The system SHALL make the active core contract, recognized capability
-contracts, feature contracts, and execution/ownership profiles available
+contracts, feature contracts, and ownership profiles available
 before a strategy is authored for that contract, with the evidence the
 system computes to identify each definition's code.
 
@@ -74,6 +74,11 @@ to judge that behavior.
 - **THEN** fulfillment MUST preserve the selected provider, consumer representation, state owner, dependency and admission meanings
 - **AND** it MUST NOT infer a universal image batch, epoch schedule, or hidden input fallback
 
+#### Scenario: An implementation keeps state between calls
+- **WHEN** an authored implementation keeps state from one call to the next
+- **THEN** state that can change a later result MUST be declared as owned state, with its owner, its initial value rule and its contribution to exact restoration, and the implementation MUST reach it through a lease
+- **AND** only scratch that never changes a result, such as a cache, a workspace or a compiled kernel, MAY be declared as the implementation's own, and it MUST NOT be saved or restored
+
 ### Requirement: Declarations preserve cross-owner relationships
 Where another owner, preparation, coordination, observation, or restoration
 depends on them, authored declarations SHALL also preserve work and handoff
@@ -93,26 +98,38 @@ merely because they exist.
 
 ### Requirement: Strategy fulfillment produces acceptance or rejection
 The training contract system SHALL evaluate one complete authored strategy using
-the active contract and execution/ownership profile. It SHALL return
+the active contract and ownership profile. It SHALL return
 useful acceptance or rejection information and SHALL produce an accepted run
-arrangement only on success. Fulfillment requirements do not prescribe whether
+only on success. Fulfillment requirements do not prescribe whether
 conformance rules are represented as contract data, shared validators,
 conformance implementations, or a combination.
 
 #### Scenario: Complete definition is accepted
 - **WHEN** every selected concern and bounded choice is mutually compatible under the active contract
-- **THEN** fulfillment MUST produce one semantically accepted run arrangement with its authoritative obligations and one authority seed
+- **THEN** fulfillment MUST produce one semantically accepted run with its authoritative obligations and one authority seed
 - **AND** it MUST distinguish that semantic acceptance from fulfilled executable readiness
 
 #### Scenario: Complete definition is rejected
 - **WHEN** selected behavior is missing, incompatible, has no definition in the active contract, or uses undeclared extension authority
 - **THEN** fulfillment MUST return detailed author-facing rejection information
-- **AND** no Trainer-acceptable arrangement or authority seed may be produced
+- **AND** no accepted run or authority seed may be produced
+
+### Requirement: Fulfillment refuses only failures and undeclared departures
+What the contract covers SHALL be supported, and going beyond it SHALL be a
+choice the strategy declares. Fulfillment SHALL refuse only what would fail
+and what departs from the contract without being declared. Each refusal SHALL
+name the failure it prevents, or the departure and the declared way to make
+it, so that no refusal blocks a declared experiment.
 
 #### Scenario: A choice is untested or conflicts with a declared meaning
-- **WHEN** a selected combination would run but is untested, lacks provenance, or conflicts with a component's declared meaning
+- **WHEN** a selected combination would run but is untested, lacks provenance such as a checkpoint of unknown origin, or conflicts with a component's declared meaning
 - **THEN** fulfillment MUST accept it and report it
 - **AND** it MUST NOT reject a choice for those reasons alone
+
+#### Scenario: A choice departs from the contract without declaring it
+- **WHEN** a selected choice would run but goes beyond what the contract covers without the strategy declaring it, such as a selection that turns the GIL on that the run does not name, or an implementation whose state its code evidence cannot represent
+- **THEN** fulfillment MUST refuse it, naming the departure and the declared way to make it
+- **AND** once the strategy declares the departure, through a named selection, declared custom behavior, owned state or an extension, fulfillment MUST NOT refuse it for that departure
 
 ### Requirement: Fulfillment specializes the contract into one run-specific obligation set
 Successful fulfillment SHALL specialize the general contract meanings into one
@@ -122,13 +139,13 @@ that governs those obligations.
 #### Scenario: Runtime evidence is intentionally deferred
 - **WHEN** the contract permits a declared participant or capability to become ready later
 - **THEN** fulfillment MUST establish every meaning and compatibility decision knowable from the authored definition
-- **AND** the accepted arrangement MUST retain the exact unsatisfied runtime obligation and evidence requirement
+- **AND** the accepted run MUST retain the exact unsatisfied runtime obligation and evidence requirement
 - **AND** dependent use MUST remain unavailable until accepted runtime evidence fulfills it
 
 #### Scenario: A decision is deliberately made during execution
 - **WHEN** authored behavior chooses among alternatives from changing inputs or accepted owned state
 - **THEN** fulfillment MUST evaluate the decision policy, the bounds of its alternatives, their authority, and their possible effects against the active contract and profile
-- **AND** when accepted, the arrangement MUST preserve that policy for execution rather than replacing it with one authoring-time outcome
+- **AND** when accepted, the accepted run MUST preserve that policy for execution rather than replacing it with one authoring-time outcome
 
 #### Scenario: The strategy declares a mid-run transition
 - **WHEN** an authored strategy declares a transition that changes the arrangement
@@ -149,18 +166,18 @@ derive compatibility rules.
 
 #### Scenario: Evidence requires a concrete realization
 - **WHEN** an obligation depends on an artifact, live object, resolved relationship, optimization realization, or backend result that does not yet exist
-- **THEN** the accepted arrangement MUST identify that obligation as unfulfilled at the applicable readiness checkpoint
+- **THEN** the accepted run MUST identify that obligation as unfulfilled at the applicable readiness checkpoint
 - **AND** the later producer MUST supply evidence to the same contract-governed authority rather than define another validity rule
 
 ### Requirement: Readiness checkpoints are derived during strategy fulfillment
 Strategy fulfillment SHALL derive and record the readiness checkpoints that
-apply to the accepted arrangement and SHALL associate every obligation with the
+apply to the accepted run and SHALL associate every obligation with the
 first checkpoint at which it must be fulfilled. A use SHALL remain unavailable
 while any obligation required by its checkpoint is unfulfilled.
 
 #### Scenario: Core execution requires a participant later
 - **WHEN** the contract permits a participant to remain declared and unbound after fulfillment but requires it for core execution
-- **THEN** the accepted arrangement MUST record that materialization and any required preparation as obligations of the core-execution readiness checkpoint
+- **THEN** the accepted run MUST record that materialization and any required preparation as obligations of the core-execution readiness checkpoint
 
 ### Requirement: Late choices are evaluated against current obligations
 A bounded configuration choice known during fulfillment SHALL be evaluated then;
@@ -173,8 +190,8 @@ begins against the run's current obligations.
 - **AND** later timing MUST NOT permit a choice that strategy fulfillment would have rejected under the same obligations
 
 ### Requirement: Normal Trainer construction cannot bypass strategy fulfillment
-The normal Trainer construction path SHALL accept only an established run
-arrangement, not an unchecked authored strategy or a separately assembled
+The normal Trainer construction path SHALL accept only an accepted run, not an
+unchecked authored strategy or a separately assembled
 strategy/mode/objective set.
 
 #### Scenario: Caller presents an authored strategy directly
@@ -182,8 +199,8 @@ strategy/mode/objective set.
 - **THEN** construction MUST fail before model materialization or optimization work begins
 
 ### Requirement: Contract surfaces remain consumer-defined
-The contract system SHALL distinguish the universal meanings required by the
-Trainer engine, named operations coordinated by the training pipeline, and
+The contract system SHALL distinguish the universal meanings the Trainer
+requires, the recognized capabilities that run coordination carries out, and
 reusable feature contracts consumed during strategy authoring. Selection of a
 feature or capability SHALL make its applicable obligations mandatory without
 making it a universal core field.
@@ -202,8 +219,9 @@ making it a universal core field.
 Acceptance of maintained library behavior SHALL use shared conformance
 knowledge consistent with the active contract. Ordinary strategy authors SHALL
 provide the declarations and evidence required by that knowledge but SHALL NOT
-have to redefine ordinary validity rules for each strategy. The exact
-representation and code ownership of checking logic remain to be derived.
+have to redefine ordinary validity rules for each strategy. Each rule's check
+SHALL live with the definition it checks, and the composed contract SHALL
+present every rule in one place, so no separate validator system holds them.
 
 #### Scenario: Maintained implementation is selected
 - **WHEN** an authored strategy selects a known maintained implementation
@@ -217,7 +235,7 @@ representation and code ownership of checking logic remain to be derived.
 - **AND** this MUST NOT require every leaf computation to become a separate owner or expose its private mathematics
 
 #### Scenario: Several strategies use the same supported coordination meaning
-- **WHEN** ordinary authored arrangements use an offered gradient, handoff, advancement, or ownership policy
+- **WHEN** ordinary authored strategies use an offered gradient, handoff, advancement, or ownership policy
 - **THEN** conformance MUST apply shared rules for that meaning
 - **AND** authors MUST NOT recreate its ordinary validators or accept a weaker meaning through strategy-local checking
 
@@ -240,7 +258,7 @@ representation and code ownership of checking logic remain to be derived.
 A custom implementation that preserves the active Trainer boundary SHALL file
 explicit conformance to that boundary. Behavior that changes Trainer
 responsibility or execution authority SHALL target an explicit supported
-contract extension or execution/ownership profile.
+contract extension or ownership profile.
 
 #### Scenario: Custom operation preserves standard ownership
 - **WHEN** a custom structured operation supplies model or objective computation while leaving standard Trainer mechanics intact
@@ -262,20 +280,20 @@ contract extension or execution/ownership profile.
 - **AND** governed realization MUST reject an incompatible backend before the imperative region executes
 
 ### Requirement: One accepted contract governs one run authority
-One contract and execution/ownership profile SHALL govern an accepted run
+One contract and ownership profile SHALL govern an accepted run
 authority for its lifetime. The authority SHALL identify the current
 arrangement and run-specific obligation revision. Permitted arrangement
-amendments SHALL be ones the accepted arrangement declares, with obligations
+amendments SHALL be ones the accepted run declares, with obligations
 derived at fulfillment under that same contract. A different contract or
-Trainer extension SHALL require new strategy fulfillment unless an explicit
-migration contract is later defined.
+Trainer extension SHALL require new strategy fulfillment, and continuing the
+same run under different code SHALL follow the code-evidence requirement.
 
 #### Scenario: Arrangement amendment retains the contract
 - **WHEN** an accepted run brings declared participants into use or retires them through a permitted amendment
 - **THEN** all affected obligations MUST be evaluated under the authority's existing contract and profile
 
-#### Scenario: A change the arrangement does not declare is requested
-- **WHEN** a running authority receives a change that its accepted arrangement does not declare
+#### Scenario: A change the accepted run does not declare is requested
+- **WHEN** a running authority receives a change that its accepted run does not declare
 - **THEN** the authority MUST reject it without deriving new obligations
 - **AND** making that change MUST require a new run with its own strategy fulfillment
 
@@ -290,8 +308,8 @@ identified by evidence the system computes and records with the accepted run,
 not by version numbers kept by hand. Installed code whose evidence differs
 from the run's records beyond a fixture's declared comparison policy is a
 different contract. Continuing a run under it SHALL require a person's
-recorded acceptance, and restoring its saved state SHALL follow the migration
-contract that restoration defines.
+recorded acceptance, and restoring its saved state SHALL follow the rules
+restoration defines for state saved under other code.
 
 #### Scenario: Installed code differs from the run's records
 - **WHEN** a saved run starts and the evidence computed for installed code differs from the run's records beyond any applicable fixture comparison policy
@@ -301,6 +319,11 @@ contract that restoration defines.
 #### Scenario: The Trainer receives code that differs from the accepted run's records
 - **WHEN** the Trainer is given installed implementations whose computed evidence differs from the accepted run's records beyond any applicable fixture comparison policy, without an acceptance recorded for that change
 - **THEN** the Trainer MUST refuse to start the run
+
+#### Scenario: The Trainer checks code that fulfillment has just identified
+- **WHEN** the Trainer checks installed implementations whose evidence was already computed in the same process, such as by the fulfillment that accepted the run
+- **THEN** it MUST compare those records rather than run the implementations' fixtures again
+- **AND** it MUST compute the evidence of an installed object not yet seen in that process before comparing
 
 #### Scenario: Fixture outputs drift within their comparison policy
 - **WHEN** installed code's fixture outputs differ from the run's exact records only within the fixture's declared comparison policy

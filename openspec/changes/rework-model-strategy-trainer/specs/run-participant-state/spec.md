@@ -7,7 +7,7 @@ routes, views, revisions, transitions, history, and lineage.
 ## ADDED Requirements
 
 ### Requirement: One authority owns canonical current run state
-Each accepted run arrangement SHALL contain one contract-governed authority for
+Each accepted run SHALL contain one contract-governed authority for
 canonical participant, relationship, binding, execution-route, access-view,
 arrangement, obligation, revision, dependency, and freshness state. Loaders,
 capabilities, Trainer projections, metadata, and observability SHALL NOT retain
@@ -140,7 +140,7 @@ invalidation changes together or none of them.
 - **THEN** no new participant, relationship, or retirement from that amendment may become current
 
 #### Scenario: Permitted amendment changes applicable obligations
-- **WHEN** an arrangement amendment that the accepted arrangement declares takes effect
+- **WHEN** an arrangement amendment that the accepted run declares takes effect
 - **THEN** the authority MUST bring the obligations derived for it at fulfillment into force and evaluate them as part of the same atomic transition
 - **AND** consumers MUST NOT use evidence or projections derived from the superseded obligation revision
 

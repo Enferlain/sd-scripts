@@ -48,7 +48,7 @@ a fix. Codes by area:
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
 | `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again; two derivers giving one call the same annotation or held state, a name claimed by two derivers or by setups with different code, a call that would wait on a hold its own activity keeps binding |
-| `iro-run-` | A recorded definition missing or with another declaration; parts of a saved run that do not follow from its strategy; an implementation the run uses not installed, or installed with a declaration or source other than the run recorded |
+| `iro-run-` | A recorded definition missing or with another declaration; parts of a saved run that do not follow from its strategy; an implementation the run uses not installed, or installed with a declaration or source other than the run recorded; an implementation whose code's identity the system cannot establish: a bare compiled function, a callable object or a method bound to an object, or one that captures or binds a value that can change while staying the same object |
 
 ## Modules
 

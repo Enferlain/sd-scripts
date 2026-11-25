@@ -1,7 +1,7 @@
 ## Purpose
 
-Define how the training pipeline selects, validates, schedules, and observes
-named capabilities without turning them into optional method discovery.
+Define how a run selects, validates, schedules, and observes named
+capabilities without turning them into optional method discovery.
 
 ## ADDED Requirements
 
@@ -13,8 +13,8 @@ semantics. Support SHALL be explicit rather than inferred from method presence,
 
 #### Scenario: Strategy provides validation
 - **WHEN** an authored strategy selects a validation capability
-- **THEN** the strategy acceptance check MUST record its accepted request/result and readiness contract
-- **AND** the pipeline MUST NOT discover support by calling a method and waiting for `NotImplementedError`
+- **THEN** fulfillment MUST record its accepted request/result and readiness contract
+- **AND** run coordination MUST NOT discover support by calling a method and waiting for `NotImplementedError`
 
 #### Scenario: Repository gains another implementation
 - **WHEN** the repository makes a new capability implementation available
@@ -32,8 +32,8 @@ earliest authoritative evidence point.
 - **AND** if the contract deliberately permits that bounded request to be supplied later, request validation MUST reject it before the persistence capability becomes ready or any checkpoint resources are created
 
 #### Scenario: Provided capability is not requested
-- **WHEN** an accepted arrangement provides a sampling capability but the run's accepted configuration or policy does not request sampling
-- **THEN** the pipeline MUST NOT schedule sampling merely because the capability is available
+- **WHEN** an accepted run provides a sampling capability but the run's accepted configuration or policy does not request sampling
+- **THEN** run coordination MUST NOT schedule sampling merely because the capability is available
 
 ### Requirement: Later capability requests are validated against current obligations
 Incompatibilities already knowable during strategy fulfillment SHALL be rejected
@@ -49,14 +49,14 @@ creation before request validation SHALL still apply.
 - **AND** the due decision MUST NOT authorize capability execution or resource creation prohibited before request validation
 
 ### Requirement: Capability coordination does not imply central implementation
-Trainer or delegated pipeline orchestration SHALL own capability trigger
-timing, request coordination, and result routing. Model-, objective-,
+The strategy's triggers SHALL decide when capability work is requested, and
+run coordination SHALL route its requests and results. Model-, objective-,
 representation-, adapter-, or serializer-specific behavior MAY remain in
 selected domain implementations behind the accepted capability exchange.
 
 #### Scenario: Sampling is triggered
-- **WHEN** the pipeline reaches an accepted sampling trigger
-- **THEN** pipeline orchestration MUST issue the typed sampling request and coordinate its destination
+- **WHEN** the run reaches an accepted sampling trigger
+- **THEN** run coordination MUST issue the typed sampling request and route its result to the selected destination
 - **AND** accepted generation behavior MUST perform model-specific inference without adding family branches to generic Trainer code
 
 ### Requirement: Capability readiness derives from accepted state
@@ -300,17 +300,23 @@ backend to implement every asynchronous/storage mode.
 - **AND** neither a saved cache index nor a paused producer alone may claim a coherent exact run snapshot
 
 ### Requirement: Validation separates evaluation semantics from traversal
-The pipeline SHALL own validation scheduling, data traversal, ordinary
-train/eval transitions, aggregation, and result routing. The selected validation
-capability SHALL own accepted model/objective evaluation semantics and return
-typed results. It SHALL define measurement contributions and reduction/weighting
-meaning; pipeline aggregation SHALL execute that meaning rather than invent a
-metric from returned batch values.
+The strategy's triggers SHALL decide when validation is requested, its
+handler SHALL traverse the evaluated inputs and aggregate their results, and
+run coordination SHALL route the request and its result. The selected
+validation capability SHALL own accepted model/objective evaluation semantics
+and return typed results. It SHALL define measurement contributions and
+reduction/weighting meaning; aggregation SHALL execute that meaning rather than
+invent a metric from returned batch values.
 
 #### Scenario: SDXL validation runs
-- **WHEN** Trainer coordinates validation for an accepted SDXL arrangement
+- **WHEN** validation runs for an accepted SDXL strategy
 - **THEN** the capability MUST reuse accepted prepared evaluation behavior
 - **AND** it MUST NOT require an active strategy object to repeat the training flow
+
+#### Scenario: Validation runs while training continues
+- **WHEN** a validation request is handled while the training activity continues
+- **THEN** the validation calls MUST run the participant's modules in evaluation mode, since they reach no unit's loss
+- **AND** validation MUST NOT switch the run into evaluation mode, so the training activity's calls keep the modes their own work needs (`training-optimization`)
 
 ### Requirement: Validation traversal leaves input-provider continuation alone
 Outer evaluation traversal SHALL NOT transfer a selected input provider's
@@ -319,7 +325,7 @@ that traversal.
 
 #### Scenario: Evaluation uses a bounded input stream
 - **WHEN** accepted evaluation has no finite dataset length and uses a bounded coverage/stopping rule
-- **THEN** pipeline coordination MUST honor that rule through the selected provider
+- **THEN** the evaluation's handler MUST honor that rule through the selected provider
 - **AND** evaluation MUST use its own continuation or an explicitly accepted sharing policy rather than silently advance the training input cursor
 - **AND** cache-backed evaluation inputs MUST satisfy current consumer admission obligations
 
@@ -333,7 +339,7 @@ outcomes.
 
 #### Scenario: Unequal batches or distributed contributions are reduced
 - **WHEN** evaluated inputs have unequal relevant weight, masks, or distributed coverage
-- **THEN** pipeline aggregation MUST apply the selected measurement's reduction and coverage rules
+- **THEN** aggregation MUST apply the selected measurement's reduction and coverage rules
 - **AND** it MUST NOT silently substitute an unweighted mean of batch means or claim missing contributions completed
 
 ### Requirement: Partial and empty validation results follow the accepted policy
@@ -360,15 +366,16 @@ evaluation logic.
 - **AND** measurement completion, adaptive-state effects, and a failed reaction MUST remain distinct wherever dependent work relies on them
 
 ### Requirement: Sampling separates generation semantics from orchestration
-The pipeline SHALL own sampling triggers, requests, destinations, and
-observation. The selected sampling capability SHALL own accepted conditioning,
-prediction, representation, and objective-compatible generation behavior.
-Pipeline coordination SHALL own outer request traversal and output handling
-through selected publication implementations.
+The strategy's triggers SHALL decide when sampling is requested, and run
+coordination SHALL route its requests, destinations, and observations. The
+selected sampling capability SHALL own accepted conditioning, prediction,
+representation, and objective-compatible generation behavior. The sampling
+handler SHALL own outer request traversal and output handling through
+selected publication implementations.
 
 #### Scenario: Objective-specific sampler is needed
 - **WHEN** a selected objective requires compatible sampling behavior
-- **THEN** the strategy acceptance check MUST validate that pairing
+- **THEN** fulfillment MUST validate that pairing
 - **AND** generic trigger orchestration MUST NOT branch on model family to choose it
 
 ### Requirement: Sampling requests identify the generator and its policies
@@ -449,16 +456,23 @@ be forced into one optimizer clock or a universal sample-then-validate sequence.
 - **AND** stale inference views or uncertain handback MUST NOT authorize dependent use
 
 ### Requirement: Capability temporary projections have scoped cleanup
-Pipeline coordination SHALL establish and restore ordinary runtime projections
-and relevant placement, dtype, and RNG state under their accepted owners and
-numerical policy. Cleanup SHALL cover partial setup, execution failure,
-cancellation, and actual backend completion and preserve the prior relevant
-state rather than assume every module/optimizer returns to training mode.
+A call's temporary context, such as its random state, grad mode, its route's
+precision and its participant's module mode, SHALL be established for that
+call by run coordination and the setups covering it, under the owners that
+decide them, and undone however the call ends. Cleanup SHALL cover partial
+setup, execution failure, cancellation, and actual backend completion, and
+SHALL preserve the prior relevant state rather than assume every module or
+optimizer returns to training mode.
 
 #### Scenario: Temporary setup fails after changing only some projections
-- **WHEN** validation or sampling changes a mode, placement, dtype, or RNG scope and then setup fails
-- **THEN** cleanup MUST restore the changed prior state or mark dependent use unsafe
-- **AND** later execution MUST NOT be admitted merely because cleanup released a scope
+- **WHEN** a call's setup or its undo fails after changing only some of the state it covers
+- **THEN** the run MUST fail with that state reported uncertain
+- **AND** later work MUST NOT be admitted on that state merely because the call's scope ended
+
+#### Scenario: A use changes a participant's state for its duration
+- **WHEN** a use needs a temporary change of a participant's state, such as an in-place swap to a unit's evaluation point
+- **THEN** the participant's other work MUST wait until the change is undone
+- **AND** the undo MUST run however the use ends
 
 ### Requirement: Uncertain cleanup keeps dependent use unavailable
 Unsupported RNG or mutable-state overlap SHALL NOT claim isolation or exact
@@ -486,8 +500,8 @@ snapshot.
 ### Requirement: Persistence and restoration remain distinct capabilities
 Trained-artifact persistence and exact runtime restoration SHALL use distinct
 accepted requests, results, and identity meanings even if they share a trigger
-or storage service. Trainer or delegated pipeline infrastructure SHALL
-coordinate restoration of the coherent run. Accepted operations, capabilities,
+or storage service. Run coordination SHALL coordinate restoration of the
+coherent run through the cut protocol. Accepted operations, capabilities,
 optimization, and backend integrations SHALL contribute only the continuation
 state they own.
 
@@ -509,7 +523,7 @@ state they own.
 The accepted restoration policy SHALL identify its continuation guarantee,
 required owner contributions, state definitions and relevant dependencies, and
 consistency and publication requirements. Coverage SHALL follow the accepted
-whole-run arrangement, including authority, operation/region, capability, input,
+run as a whole, including authority, operation/region, capability, input,
 optimization, backend, and infrastructure state required for continuation.
 
 #### Scenario: Required continuation state is missing
@@ -543,7 +557,7 @@ reported guarantee SHALL match the accepted policy and available evidence.
 - **AND** the continuation MUST NOT be reported as a bit-identical replay
 
 ### Requirement: Snapshot contributions form a coherent recoverable cut
-Trainer/pipeline infrastructure SHALL coordinate required contributions into
+Run coordination SHALL coordinate required contributions into
 positions compatible with the accepted activity relationships, revisions,
 handoffs, progress, and known effects. Required contributions across
 participating ranks or replicas SHALL belong to that same coherent recoverable

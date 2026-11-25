@@ -24,7 +24,7 @@ from tests.unit.training_core.test_units import ALSO_SCORED, SAMPLED, STEP, impl
 RECORDED = Path(__file__).parent / "recorded_derivations.json"
 
 FIXTURES: dict[str, Callable[[], tuple[str, dict]]] = {
-    "step": lambda: (STEP, implementations({"encoder": [], "network": []})),
+    "step": lambda: (STEP, implementations()),
     "sampled": lambda: (SAMPLED.replace("JUDGED", ALSO_SCORED), {**sampling(("protected_current lease", "prediction")), **on_host()}),
 }
 

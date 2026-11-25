@@ -3,7 +3,7 @@
 ### Requirement: Training observability uses repo-owned structured signals
 The training system SHALL expose repo-owned structured observability signals
 for human console summaries, tracker metrics, and report-generation paths.
-Signals SHALL derive from accepted arrangement, transition, optimization,
+Signals SHALL derive from accepted run, transition, optimization,
 capability, execution, and artifact facts rather than requiring each sink to
 reconstruct views independently from raw runtime objects.
 
@@ -13,13 +13,13 @@ reconstruct views independently from raw runtime objects.
 - **AND** console output and report-generation paths MUST be able to consume that shared structured summary data
 
 #### Scenario: Training layers do not define sink-local formats
-- **WHEN** Trainer, accepted behavior, capability, or pipeline code emits observability facts
+- **WHEN** Trainer, accepted behavior, capability, or run coordination code emits observability facts
 - **THEN** those producers MUST NOT be forced to own final sink-specific formatting rules for every consumer
 
 ### Requirement: Training and observability ownership stay separate
 Training execution SHALL own timing and accepted fact/result production.
 Observability SHALL own formatting, routing, buffering, and persistence of
-those observations. Observability SHALL consume accepted arrangement,
+those observations. Observability SHALL consume accepted run,
 transition, optimization, capability, execution, and artifact facts rather
 than introspecting an active strategy, `TrainingMode`, or unrestricted Trainer
 state.

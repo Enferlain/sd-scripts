@@ -27,7 +27,7 @@ from library.iro.frontend import implementation
 from library.iro.prepare import Target, prepare
 from library.iro.runtime import Coordinator
 from tests.unit.iro.accepted_runs import accepted_run
-from tests.unit.iro.runtime.harness import Memory
+from tests.unit.iro.runtime.harness import PROBE, Memory
 
 ROOT = Path(__file__).parents[4]
 
@@ -88,9 +88,10 @@ def run_long(times: int) -> tuple[dict[str, int], int]:
     owner = Memory({"m": 0})
     largest: dict[str, int] = {}
     holder: list[Coordinator] = []
+    PROBE.holder = holder
 
     def observe(fact) -> None:
-        for key, value in sizes(holder[0]).items():
+        for key, value in sizes(PROBE.holder[0]).items():
             largest[key] = max(largest.get(key, 0), value)
 
     coordinator = Coordinator(prepared, {"m": owner}, installed, {"host": Host()}, observe=observe)
@@ -189,22 +190,25 @@ PROGRESS = """iro.strategy @s uses(@spin, @tick) {
 
 def test_the_coordinator_keeps_progressing_while_a_worker_spins_in_python() -> None:
     finished: dict[str, float] = {}
+    PROBE.finished = finished
     ticks: list[float] = []
+    PROBE.ticks = ticks
 
     all_ticked = threading.Event()
+    PROBE.all_ticked = all_ticked
 
     def spin():
         deadline = time.perf_counter() + 30
         n = 0
-        while not all_ticked.is_set() and time.perf_counter() < deadline:
+        while not PROBE.all_ticked.is_set() and time.perf_counter() < deadline:
             n += 1  # pure Python work: it holds the interpreter whenever the GIL is on
-        finished["spin"] = time.perf_counter()
+        PROBE.finished["spin"] = time.perf_counter()
         return n
 
     def tick(i):
-        ticks.append(time.perf_counter())
-        if len(ticks) == 20:
-            all_ticked.set()
+        PROBE.ticks.append(time.perf_counter())
+        if len(PROBE.ticks) == 20:
+            PROBE.all_ticked.set()
         return i
 
     installed = {

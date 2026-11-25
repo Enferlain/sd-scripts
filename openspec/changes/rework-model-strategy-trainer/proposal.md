@@ -13,8 +13,7 @@ notes.
 
 - **BREAKING**: Replace the parallel strategy/mode/objective runtime topology
   with a pre-existing Trainer contract, an explicitly authored strategy,
-  contract-guided strategy acceptance, one accepted run arrangement, and one
-  Trainer engine.
+  contract-guided strategy acceptance, one accepted run, and one Trainer.
 - Derive the contract from the intended Trainer and deliberately supported
   pipeline capabilities without making it code-owned by a Trainer instance.
   The contract guides authoring; fulfillment, the IR system's acceptance step
@@ -26,7 +25,7 @@ notes.
   runtime that executes accepted strategies. Add `library/runstate` for the
   run authority and `library/launch` for contract composition and launch.
 - Preserve selected model-, objective-, capability-, and algorithm-specific
-  behavior in the accepted arrangement so ordinary execution does not retain
+  behavior in the accepted run so ordinary execution does not retain
   or call back into the authored strategy object.
 - Establish one accepted-run authority for participant and relationship
   identity, current bindings, access views, execution routes, revisions,
@@ -73,9 +72,9 @@ continuous-run bookkeeping reclamation.
 ### New Capabilities
 
 - `training-contract`: The Trainer/pipeline-derived contract surfaces, contract-guided
-  strategy authoring and acceptance boundary, execution/ownership profiles,
+  strategy authoring and acceptance boundary, ownership profiles,
   and explicit standard/custom/extension conformance boundary.
-- `accepted-training-execution`: The accepted run arrangement, structured and
+- `accepted-training-execution`: The accepted run, structured and
   imperative execution meanings, Trainer-retained authority, runtime inputs,
   results, effects, failures, and the eventual step exchange, composed from
   the shared `workflow-composition` contracts.

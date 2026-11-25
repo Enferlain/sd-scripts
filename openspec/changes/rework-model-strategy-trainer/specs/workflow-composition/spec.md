@@ -186,6 +186,56 @@ and SHALL report each at its earliest authoritative boundary.
 - **THEN** the first rejection MUST identify the violated semantic contract
 - **AND** the second MUST be reported as a realization limitation of that target without changing the accepted meaning or the language-wide rules
 
+### Requirement: Selected code is identified by evidence the system computes
+In one composition a name SHALL select exactly one installed implementation,
+setup, materializer or deriver. The system SHALL identify every piece of code
+a run selects by evidence it computes, never by a version kept by hand: a
+hash of its declaration, its exact outputs on fixtures it ships with the
+environment evidence that can change them, or, without fixtures, a hash of
+the source of the module that defines it.
+
+#### Scenario: Two installed pieces claim one name
+- **WHEN** a composition installs two pieces of code under one name
+- **THEN** the composition MUST be refused when it is put together
+
+#### Scenario: Exact fixture outputs differ
+- **WHEN** a piece's exact fixture outputs differ byte for byte from a record
+- **THEN** the core MUST ask the fixture's installed comparison policy for a verdict and record it beside both exact records, without reading the numbers itself
+- **AND** a fixture whose policy is not installed MUST count the difference as changed code, naming the missing policy
+
+### Requirement: An implementation's state is written down or owned
+Every piece of state bound into a selected implementation SHALL be
+represented in its evidence, or acceptance SHALL refuse the implementation,
+naming the declared way to go ahead: configuration as written settings, and
+state that changes a later result behind an owner's lease. An implementation
+MAY keep scratch of its own, state that never changes a result and is never
+saved or restored.
+
+#### Scenario: An implementation holds a value that can change
+- **WHEN** a selected implementation captures or binds a value that can change while staying the same object, such as a list, a dict or a model object, or is a callable object or a method bound to an object
+- **THEN** acceptance, and a host's check before it runs a run, MUST refuse it, naming the value and the declared way to go ahead
+- **AND** an implementation whose captured or bound values cannot change and read the same in every program, such as numbers, strings or tuples of them, MUST be accepted with those values written into its evidence
+
+#### Scenario: A selected implementation is compiled code
+- **WHEN** a selected implementation is compiled code installed directly, whose source the system cannot read
+- **THEN** acceptance, and a host's check before it runs a run, MUST refuse it until evidence of the binary exists
+- **AND** the refusal MUST name the declared way to go ahead: a Python implementation that calls the compiled code
+
+### Requirement: A run's code records are complete and readable
+A run SHALL record the repository revision it started from and any
+uncommitted changes. A code record SHALL keep its parts and print in full,
+its hash being only a short name for that printout, and a mismatch SHALL be
+reported part by part.
+
+#### Scenario: A run starts from edited code
+- **WHEN** a run starts with uncommitted changes in the repository
+- **THEN** its records MUST name the revision and the changed files with their hashes
+- **AND** nothing made from the edited code MAY be taken for something made from that revision
+
+#### Scenario: Installed code differs from a record
+- **WHEN** the evidence of installed code differs from a record
+- **THEN** the report MUST name each part that differs, such as the declaration, which fixture's outputs and by how much, or which file
+
 ### Requirement: Item claims and leases follow an ownership discipline
 Admitted item claims and leases SHALL be checked as owned values,
 not ordinary copyable results. Along every execution path an item claim SHALL be
@@ -236,6 +286,42 @@ Actual storage SHALL remain outside semantic IR.
 - **WHEN** cancellation closes admission while a consumer still physically uses a retained product
 - **THEN** cleanup MUST keep its dependencies protected until that consumer settles
 - **AND** neither diagnostic erasure nor producing-call completion may authorize early release
+
+### Requirement: The core knows only what its own promises need
+The core SHALL know a concept only where it needs it to decide when work may
+run, which state it may touch at which version, how long results and leases
+stay protected, when work is complete, how work is admitted to devices and
+ranks, and which outcomes the schedule can change. A domain SHALL use the
+program's structure through reachability over declared relations, annotations
+written as data, and setups, whose meaning the core never interprets.
+
+#### Scenario: A domain asks which calls lie on a path
+- **WHEN** a domain asks, for one declared relation, which calls lie on a path from sources to sinks it names
+- **THEN** the path MUST follow declared edges and every value the core's own constructs pass on, through captures, yields, repeat carries, every alternative of a choice, streams and requests
+- **AND** the path MUST stop only at an input whose implementation declares no edge for that relation, and what a path between activities means MUST be left to the asking domain
+
+#### Scenario: A saved prepared form carries annotations and setups
+- **WHEN** a saved prepared form is loaded
+- **THEN** its annotations and setups MUST be derived again and the form refused if they differ
+- **AND** calls MUST fuse only where their annotations and setups are the same
+
+### Requirement: Setups establish what calls need and undo it
+A call setup SHALL change only its worker's own context, such as grad mode or
+autocast, and undo it when the calls return. A held setup SHALL change only
+state reached through the handles of the resources it names, and its hold
+SHALL bind while a lease its calls use is in use by a running call or kept by
+a retained result. No setup SHALL change a version, take a lease, wait on
+another activity or issue collectives.
+
+#### Scenario: Calls in one access need different states of a resource
+- **WHEN** calls in one access body need different states of a resource that a held setup changes
+- **THEN** a later call MUST wait until no running call uses the hold's leases and no retained result keeps them
+- **AND** preparation MUST refuse a call that would wait on a hold its own activity keeps binding
+
+#### Scenario: A held setup changes a resource's storage
+- **WHEN** a held setup changes the storage of a resource, as an in-place swap does
+- **THEN** the resource's updates, its uses through other routes and the captures of their snapshots MUST wait while the change is in place and until it is undone
+- **AND** the undo MUST run however the calls end, at the latest when the last lease the hold covers is released
 
 ### Requirement: Lifecycle semantics have an executable reference
 The shared invocation protocols SHALL have a deterministic reference semantics
@@ -324,6 +410,11 @@ something that may need that device to progress.
 - **THEN** preparation MUST reject a combination whose wait cycle it can prove
 - **AND** at run time waiting work MUST obtain its state conditions and admitted inputs before the device, or give the device up while it waits
 
+#### Scenario: A frozen participant leaves the device between uses
+- **WHEN** a strategy permits a participant to leave the device between uses and the target moves it out
+- **THEN** moving it out and back MUST NOT change its version or publish anything, since its values stay identical
+- **AND** a permission the target cannot realize, such as for storage that a unit's optimizer state refers to, MUST be rejected as a target limit
+
 ### Requirement: Flow admission declares its version policy
 A flow whose products depend on versioned owner state SHALL declare an
 admission policy over the actual production version: exact current, bounded
@@ -382,6 +473,24 @@ schedule-dependent.
 - **WHEN** an operation's reproducibility declaration is absent
 - **THEN** verification MUST report the composition's class as unknown rather than reproducible
 
+### Requirement: Numerical choices are fixed for the run
+The core SHALL define no numerics: a call's numbers belong to what realizes
+it, such as its implementation, its route's realization, kernels and the
+device. Choices that can change a run's numbers, such as an implementation, a
+route's realization or a device setting such as TF32, SHALL be fixed for the
+run: the strategy states those it relies on, and those it leaves open SHALL
+be chosen at launch and recorded with the run.
+
+#### Scenario: A run resumes after leaving a device setting open
+- **WHEN** a run whose strategy left a device setting open is resumed
+- **THEN** the resume MUST apply the setting chosen and recorded at the run's launch
+- **AND** it MUST NOT choose the setting again
+
+#### Scenario: Devices and implementations report facts
+- **WHEN** devices and implementations report facts such as the device model and library versions
+- **THEN** the run MUST record them as reported, and a saved run that lacks a fact first recorded later MUST NOT be refused for lacking it
+- **AND** only the facts a reproducibility policy names MAY be compared
+
 ### Requirement: Regions declare quiescence boundaries
 Each maintained region contract SHALL declare where a consistent cut of its
 invocations, pending obligations and owned state may be taken, or declare that
@@ -418,3 +527,21 @@ SHALL be rejected for that target.
 #### Scenario: A single-process target runs the same composition
 - **WHEN** the selected target executes without replication
 - **THEN** rank-consistency declarations MUST NOT restrict otherwise valid decisions
+
+### Requirement: A run keeps the GIL off unless it names what turns it on
+A run SHALL keep the GIL off unless a selection it names needs a module that
+turns it on. Every piece a run loads SHALL declare any such module it needs,
+the run SHALL record the selections it names, and modules known to turn the
+GIL on SHALL stay unavailable unless a named selection needs them. The GIL
+SHALL never be a correctness mechanism: correctness rests on the ownership
+rules.
+
+#### Scenario: A selection needs a module that turns the GIL on
+- **WHEN** a strategy selects a piece that needs a module that turns the GIL on, and the run does not name that selection
+- **THEN** fulfillment MUST refuse it, naming the module and the declared way to go ahead, naming the selection
+- **AND** once the run names it, the run MUST load it and report that the GIL is on and which selection turned it on
+
+#### Scenario: The GIL turns on outside a named load
+- **WHEN** the GIL turns on while the run loads or runs anything other than a named selection
+- **THEN** the run MUST fail, naming the module that turned it on where that can be known
+- **AND** the run MUST check that the GIL is off when it starts, after each load, and periodically while it runs

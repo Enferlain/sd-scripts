@@ -449,20 +449,24 @@ SETTINGS = """iro.strategy @s uses(@load_one) {
 """
 
 
-def test_a_materializer_receives_the_settings_the_strategy_gives_it() -> None:
-    received = []
+@dataclasses.dataclass(frozen=True)
+class Received:
+    """What a materializer was given, returned as its participant's value so the test reads it without capturing a list."""
 
+    path: str
+    count: int
+
+
+def test_a_materializer_receives_the_settings_the_strategy_gives_it() -> None:
     @implementation(inputs=("str", "int"), outputs=("weights",), name="load_one")
     def load_one(path, count):
-        received.append((path, count))
-        return Box(count)
+        return Received(path, count)
 
     installed = {"load_one": load_one}
     authority = RunAuthority.seed(accepted_run(SETTINGS, installed=installed))
     assert isinstance(MaterializationAttempt(authority, ["m"], installed=installed, device=Host()).run(), Published)
-    assert received == [("weights.safetensors", 3)]
     binding = authority.section.at("m").binding
-    assert binding is not None and isinstance(binding.value, Box) and binding.value.value == 3
+    assert binding is not None and binding.value == Received("weights.safetensors", 3), "the materializer received the strategy's settings"
 
 
 def test_a_materializer_must_declare_one_input_per_setting() -> None:

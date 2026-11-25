@@ -27,6 +27,7 @@ from xdsl.ir import Attribute, Operation
 from library.iro.composition import Composition, core
 from library.iro.diagnostics import Problems, Stage
 from library.iro.evidence import CodeEvidence, source_evidence
+from library.iro.frontend import Declared
 from library.iro.normalize import Normalized, normalize
 from library.iro.operation_contracts import Reproducibility, origin, sym_name, symbol, symbols
 from library.iro.seams import Implementation
@@ -140,6 +141,8 @@ def accept(
         for name in used_implementations(strategy):
             if name not in installed:
                 problems.add("iro-run-003", f"@{name} is used and not installed", fix=_CODE_GONE)
+            else:
+                _refuse_unreadable(problems, implementation_evidence(name, installed[name]))
         problems.reject_if_any()
     verification = verify(normalize(strategy), replicated=replicated)
     evidence = {name: implementation_evidence(name, implementation) for name, implementation in (installed or {}).items()}
@@ -147,8 +150,15 @@ def accept(
 
 
 def implementation_evidence(name: str, implementation: Implementation) -> CodeEvidence:
-    """The record of an installed implementation under the name a strategy uses: its declaration and its source (D16)."""
-    return CodeEvidence(name, implementation.declaration.text, source_evidence(implementation))
+    """The record of an installed implementation under the name a strategy uses: its declaration and its source (D16).
+
+    The decorator's ``Declared`` holds the function it declares, whose
+    evidence is the implementation's; any other implementation object is
+    judged as itself, and as a callable object whose state its class does
+    not show, its evidence is opaque and acceptance refuses it.
+    """
+    code = implementation.function if isinstance(implementation, Declared) else implementation
+    return CodeEvidence(name, implementation.declaration.text, source_evidence(code, selected=True))
 
 
 def _derive(verification: Verification, contract: Composition, replicated: bool, evidence: Mapping[str, CodeEvidence]) -> AcceptedRun:
@@ -312,6 +322,35 @@ def cold_load(run: AcceptedRun, composition: Composition | None = None, *, insta
 _CODE_GONE = "resume from a revision that has the code the run recorded, or start a new run from its products (D16)"
 
 
+def _refuse_unreadable(problems: Problems, record: CodeEvidence) -> bool:
+    """Refuses an implementation whose code's identity the system cannot establish (D16).
+
+    That is one that is itself compiled code without source, or one that
+    captures or binds a value that can change while staying the same
+    object, such as a list or a model object.
+    """
+    source = record.source
+    if source is None or not (source.compiled or source.opaque):
+        return False
+    if source.compiled:
+        problems.add(
+            "iro-run-004",
+            f"@{record.name} is compiled code without source, so the system cannot tell whether it is the same code later",
+            fix="install a Python function as the implementation; it may call the compiled code",
+        )
+    else:
+        problems.add(
+            "iro-run-004",
+            f"@{record.name} {source.opaque}, so the system cannot establish what its code is",
+            fix=(
+                "pass configuration as constants in the strategy, or capture only values that cannot change, such as numbers, "
+                "strings or tuples of them; keep state that changes a later result behind an owner's lease; declaring scratch, "
+                "such as a cache, comes with the implementation decorator (tasks.md section 17)"
+            ),
+        )
+    return True
+
+
 def check_implementations(run: AcceptedRun, installed: Mapping[str, Implementation]) -> None:
     """A host's check before it runs a run, as the Trainer's is: every implementation the run records is installed and gives the evidence the run recorded (D16, D17).
 
@@ -330,8 +369,8 @@ def check_implementations(run: AcceptedRun, installed: Mapping[str, Implementati
                 f"the run holds no complete evidence of @{recorded.name}: it was accepted without the implementation installed",
                 fix="accept the strategy with its implementations installed",
             )
-        else:
-            changed = recorded.differences(implementation_evidence(recorded.name, found))
+        elif not _refuse_unreadable(problems, current := implementation_evidence(recorded.name, found)):
+            changed = recorded.differences(current)
             if changed:
                 problems.add(
                     "iro-run-003",

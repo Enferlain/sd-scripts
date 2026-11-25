@@ -4,7 +4,9 @@
 For parameters with genuine family-declared model-component provenance, the
 inspection tool SHALL expose selector names in the form `component.local_name`,
 where `component` is the declared public component prefix and `local_name` is
-the real runtime parameter path within that component. This component-qualified
+the parameter's path within that component as the component defines it, which
+every implementation of the component presents as its runtime path, whatever
+names an installed library uses for its own attributes. This component-qualified
 form SHALL NOT impose component ancestry on accepted participant-owned
 parameters without that provenance. Where such targets are exposed for
 inspection, their selectors SHALL preserve the accepted participant/substructure
@@ -12,7 +14,7 @@ meaning without fabricating a component prefix.
 
 #### Scenario: Dumping SDXL parameter selectors
 - **WHEN** the inspection tool dumps parameter selectors for an SDXL runtime
-- **THEN** the output SHALL use names such as `unet.input_blocks.0.0.weight` and `clip_l.text_model.embeddings.token_embedding.weight`
+- **THEN** the output SHALL use names such as `unet.input_blocks.0.0.weight` and `clip_l.<path>`, each path the one its component defines
 
 #### Scenario: Dumping SD3 parameter selectors
 - **WHEN** the inspection tool dumps parameter selectors for an SD3 runtime
@@ -29,9 +31,9 @@ evaluate `groups` and `groups_file` patterns against the same component-qualifie
 selector names exposed by the inspection dump. Where accepted grouping supports
 participant-owned parameters without component provenance, matching SHALL use
 their accepted participant/substructure selector meaning consistently with
-inspection, without requiring synthetic component ancestry. Existing
-component-backed selectors and learning-rate matching behavior SHALL remain
-unchanged.
+inspection, without requiring synthetic component ancestry. Inspection and
+matching SHALL always use the same names, the paths the components define,
+which carry no promise to keep the strings earlier code exposed.
 
 #### Scenario: Regex targets a specific component
 - **WHEN** a learning-rate group pattern matches `^unet\\.` or `^mmdit\\.`
@@ -52,7 +54,7 @@ SHALL use the component-qualified selector namespace. Shared refs for accepted
 participant-owned substructure without that provenance SHALL instead preserve
 the accepted participant/substructure selector meaning. Such refs SHALL NOT
 require an invented or borrowed public component prefix. These applicability
-rules SHALL preserve existing component-backed selector behavior without
+rules SHALL keep target refs on the same names as inspection without
 prescribing the concrete standalone selector syntax.
 
 #### Scenario: Parameter target selector matches inspection output

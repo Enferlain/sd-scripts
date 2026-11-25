@@ -12,6 +12,7 @@ from collections.abc import Callable, Mapping
 from copy import deepcopy
 from dataclasses import dataclass, field
 from functools import partial
+from types import SimpleNamespace
 
 from library.iro.accepted import cold_load
 from library.iro.devices import Host, Returned
@@ -25,6 +26,15 @@ from library.iro.runtime import Coordinator, Fact
 from library.iro.seams import Declaration, Use
 from library.iro.text import parse
 from tests.unit.iro.accepted_runs import accepted_run
+
+
+PROBE = SimpleNamespace()
+"""What test implementations record into or wait on: lists, events, locks and test owners.
+
+An implementation that captured these would leave its code's identity open
+and be refused (D16), so the tests reach them as module state, which a code
+record does not cover; each test sets what it uses before its run.
+"""
 
 
 @dataclass(frozen=True)
@@ -115,14 +125,15 @@ class Memory:
 
 def implementation(name: str, standin: StandIn) -> Declared:
     declaration = Declaration(name, standin.inputs, standin.outputs)
+    invoke, single = standin.invoke, len(standin.outputs) == 1  # captured as code and a value, so the record identifies them (D16)
 
     def run(*args):
-        result = standin.invoke(tuple(deepcopy(a.value) if isinstance(a, Cell | Frozen) else deepcopy(a) for a in args))
+        result = invoke(tuple(deepcopy(a.value) if isinstance(a, Cell | Frozen) else deepcopy(a) for a in args))
         for update in result.updates:
             handle = args[update.lease]
             assert isinstance(handle, Cell), "an update goes through an owner_update lease"
             handle.update(update.value)
-        if len(standin.outputs) == 1:
+        if single:
             return result.values[0]
         return result.values or None
 

@@ -219,3 +219,20 @@ synthesize missing identity and outcome evidence.
 - **WHEN** the accepted product policy requires durable provenance and that filing fails after a resource write
 - **THEN** the product MUST NOT claim complete required coverage
 - **AND** result reporting MUST preserve its known resource-write outcome as reached rather than rolled back or never attempted
+
+### Requirement: Code evidence records are metadata facts
+The records that identify a run's code by computed evidence SHALL be filed as
+metadata facts in metadata's append-only store, which holds their canonical
+copy, each identified by the hash of its content and stating the method and
+coverage that produced it. A saved run or product SHALL carry a copy of every
+record it depends on, so it can be checked where the store never saw them.
+
+#### Scenario: A saved run is checked on another machine
+- **WHEN** a saved run is started on a machine whose metadata store never filed its code records
+- **THEN** the run's own copies MUST serve the comparison, each first checked against its content hash
+- **AND** a copy that does not match its hash MUST NOT be used as evidence
+
+#### Scenario: A record claims only what it covers
+- **WHEN** a code record is filed or compared
+- **THEN** it MUST state its method and coverage, such as the fixtures by name or the files hashed
+- **AND** it MUST be compared only with a record of the same method and coverage

@@ -8,8 +8,8 @@ the interfaces here, which a domain fills in and the IR runtime calls:
   with versions and evidence: the run authority for participants, Trainer
   optimization for its units, a producer for its cursor;
 - an **implementation** is selected code with a declaration: its inputs,
-  outputs, effects, concurrency safety and completion at one implementation
-  version;
+  outputs, effects, concurrency safety and completion; a run identifies it
+  by the evidence of its code it records (D16);
 - a **device** supplies the execution context and physical completion for
   one backend, and what it knows of the device's capacity.
 
@@ -279,7 +279,6 @@ class Effect(StrEnum):
     RANDOMNESS = "randomness"  # draws random numbers; its call sets the random state it draws from
     EXTERNAL = "external"  # reads or writes outside the run, such as files or the network
     COLLECTIVES = "collectives"  # issues collectives, which every rank orders the same way (D15)
-    PRIVATE_STATE = "private_state"  # keeps state of its own beyond the call
 
 
 UPDATING_LEASES = (f"{AccessMode.OWNER_UPDATE} lease", f"{AccessMode.GRANT} lease")
