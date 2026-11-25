@@ -48,7 +48,6 @@ class ModuleModes:
     """
 
     name = "training.module_mode"
-    version = "1"
     undoes = False  # it leaves its mode for the next setup to set
     changes_storage = False
 

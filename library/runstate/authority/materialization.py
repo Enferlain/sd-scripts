@@ -17,6 +17,7 @@ section 15.
 
 from collections.abc import Iterable, Mapping
 
+from library.iro.accepted import implementation_evidence
 from library.iro.seams import CallContext, Device, Implementation
 from library.runstate.authority.authority import RunAuthority
 from library.runstate.authority.records import Lifecycle, ParticipantRef
@@ -26,7 +27,7 @@ from library.runstate.authority.transitions import Materialization, Materialized
 class MaterializationAttempt:
     """One governed job that binds the named participants.
 
-    ``installed`` holds the implementations the run pins, and ``device``
+    ``installed`` holds the implementations the run uses, and ``device``
     is where the materializers run. ``supplied`` holds the values for
     participants declared without a materializer, and ``supplier`` names
     who supplied them.
@@ -125,7 +126,9 @@ class MaterializationAttempt:
         if len(results) != len(members):
             reasons.append(f"@{materializer} returned {len(results)} values for {len(members)} participants ({names})")
             return []
-        evidence = Materialized(self.attempt.reference, self.attempt.basis, materializer, declared.version, declared.digest)
+        evidence = Materialized(
+            self.attempt.reference, self.attempt.basis, materializer, implementation_evidence(materializer, implementation)
+        )
         return [Materialization(member, value, evidence) for member, value in zip(members, results, strict=True)]
 
 

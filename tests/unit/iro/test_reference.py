@@ -73,7 +73,7 @@ def test_items_whose_production_did_not_observe_the_admission_owner_are_rejected
 
 # Requests and the version at the request.
 
-REQUESTED = """iro.strategy @s uses(@step v1, @measure v1) {
+REQUESTED = """iro.strategy @s uses(@step, @measure) {
   %m = iro.resource @m : participant
 
   iro.parallel @all capture(%m) {
@@ -140,7 +140,7 @@ def test_a_live_reservation_makes_owner_updates_wait_and_a_snapshot_does_not() -
 
 # Claims, choices and retained results.
 
-FORKED = """iro.strategy @s uses(@work v1, @keep v1) {
+FORKED = """iro.strategy @s uses(@work, @keep) {
   %items = iro.stream @items : item
              bounds(outstanding 1, ready 1)
 
@@ -175,7 +175,7 @@ def test_forks_captured_into_parallel_branches_settle_the_item_once_all_have() -
     assert [settled[0], settled[1]] == [("consumed", "filtered_out")] * 2
 
 
-CHOSEN = """iro.strategy @s uses(@look v1, @make v1, @use v1) {
+CHOSEN = """iro.strategy @s uses(@look, @make, @use) {
   iro.sequence @once {
     %found = iro.call @look() -> optional latents
     %latents = iro.choice %found {
@@ -208,7 +208,7 @@ def test_a_choice_on_an_optional_gives_the_first_alternative_the_value() -> None
         assert run.errors == [] and used == [expected]
 
 
-RETAINED = """iro.strategy @s uses(@objective v1, @report v1, @step v1) {
+RETAINED = """iro.strategy @s uses(@objective, @report, @step) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     %loss = iro.access %m protected_current {
@@ -240,7 +240,7 @@ def test_a_retained_result_keeps_its_lease_after_the_access_until_its_release() 
     assert kinds.index("updated") > released
 
 
-KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@objective v1, @derive v1, @report v1, @step v1) {
+KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@objective, @derive, @report, @step) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     %loss = iro.access %m protected_current {
@@ -340,7 +340,7 @@ def test_cancellation_at_any_point_leaves_no_lease_or_retained_result() -> None:
         assert all(not r.readers and r.writer is None for r in run.resources.values()), after
 
 
-UPDATED_WHILE_REQUESTED = """iro.strategy @s uses(@step v1, @measure v1) {
+UPDATED_WHILE_REQUESTED = """iro.strategy @s uses(@step, @measure) {
   %m = iro.resource @m : participant
 
   iro.parallel @p capture(%m) {
@@ -384,7 +384,7 @@ def test_a_request_made_during_an_update_reserves_the_updated_version() -> None:
     assert [ordinal(f.values[0]) for f in run.facts_of("reserved")] == [1]
 
 
-UNTAKEN_SOURCE = """iro.strategy @s uses(@flag v1, @measure v1) {
+UNTAKEN_SOURCE = """iro.strategy @s uses(@flag, @measure) {
   iro.parallel @p {
     iro.sequence @gate {
       %go = iro.call @flag() -> bool
@@ -413,7 +413,7 @@ def test_a_handler_whose_source_never_starts_settles_once_it_cannot_start() -> N
         assert len(run.facts_of("request_settled")) == (1 if taken else 0)
 
 
-TWO_UPDATES_IN_ONE_CALL = """iro.strategy @s uses(@twice v1) {
+TWO_UPDATES_IN_ONE_CALL = """iro.strategy @s uses(@twice) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {

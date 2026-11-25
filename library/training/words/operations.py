@@ -19,8 +19,8 @@ into core words and the runtime needs no new lifecycle protocol (D17):
 
 Normalization expands later words first, so a window, and a contribution
 inside it, expand while the unit they name is still a unit and its members
-can be read. The standard profile's implementations are pinned like any
-other implementation the strategy selects.
+can be read. The standard profile's implementations are recorded like any
+other implementation the strategy selects (D16).
 """
 
 from collections.abc import Sequence

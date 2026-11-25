@@ -62,7 +62,7 @@ def test_every_obligation_names_its_kind_and_evaluator() -> None:
     assert requested.use == Use("unet", AccessMode.PROTECTED_CURRENT, VersionSelection.AT_REQUEST), "a lease obligation carries its use"
 
 
-OTHER_RESOURCE = """iro.strategy @s uses(@read v1) {
+OTHER_RESOURCE = """iro.strategy @s uses(@read) {
   %m = iro.resource @m : participant
   %p = iro.resource @p
   iro.sequence @once capture(%m, %p) {
@@ -101,7 +101,7 @@ def test_verification_reads_normalized_strategies_only() -> None:
 
 # Claims.
 
-STREAM = """iro.strategy @s uses(@work v1) {
+STREAM = """iro.strategy @s uses(@work) {
   %items = iro.stream @items : item
              bounds(outstanding 1, ready 1)
 
@@ -183,7 +183,7 @@ iro.choice %keep {
 
 # Leases and retained results.
 
-MODEL = """iro.strategy @s uses(@objective v1, @step v1, @report v1) {
+MODEL = """iro.strategy @s uses(@objective, @step, @report) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     BODY
@@ -268,7 +268,7 @@ def test_a_call_reaches_a_resource_through_a_lease() -> None:
 
 # Lifecycles.
 
-REQUESTS = """iro.strategy @s uses(@work v1, @measure v1) {
+REQUESTS = """iro.strategy @s uses(@work, @measure) {
   %items = iro.stream @items : item
              bounds(outstanding 1, ready 1)
 
@@ -355,7 +355,7 @@ def test_admission_compares_owners_production_reads() -> None:
 
 # Decisions.
 
-DECLARED = """iro.strategy @s uses(@work v1) {
+DECLARED = """iro.strategy @s uses(@work) {
   iro.sequence @once {
     iro.call @work() reproducibility(schedule_independent) rank_rule(RANK)
   }
@@ -387,7 +387,7 @@ iro.parallel @outer capture(%c) {
 
 
 def test_a_result_kept_by_another_may_be_released_first_and_its_state_stays_protected() -> None:
-    text = """iro.strategy @s uses(@objective v1, @derive v1, @report v1, @step v1) {
+    text = """iro.strategy @s uses(@objective, @derive, @report, @step) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     %a = iro.access %m protected_current {
@@ -411,7 +411,7 @@ def test_a_result_kept_by_another_may_be_released_first_and_its_state_stays_prot
     assert rejected(between).codes == ("iro-lease-004",), "%b keeps the lease %a kept"
 
 
-KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@objective v1, @derive v1, @report v1, @step v1) {
+KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@objective, @derive, @report, @step) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     %loss = iro.access %m protected_current {
@@ -451,7 +451,7 @@ def test_a_producer_needs_a_stop_that_always_runs() -> None:
 
 
 def test_admission_by_a_concurrently_updated_owner_may_depend_on_scheduling() -> None:
-    text = """iro.strategy @s uses(@work v1, @step v1) {
+    text = """iro.strategy @s uses(@work, @step) {
   %m = iro.resource @m : participant
   %items = iro.stream @items : item
              bounds(outstanding 1, ready 1)

@@ -8,8 +8,6 @@ materializer that needs another participant's structure reads its inspection
 view (D17).
 """
 
-from typing import ClassVar
-
 from xdsl.dialects.builtin import ArrayAttr, StringAttr, SymbolRefAttr, UnitAttr
 from xdsl.irdl import irdl_op_definition, operand_def, opt_prop_def, prop_def, result_def, traits_def, var_operand_def
 from xdsl.utils.exceptions import VerifyException
@@ -34,7 +32,6 @@ class ResourceOp(Word):
     """
 
     name = "iro.resource"
-    DEFINITION_VERSION: ClassVar[int] = 3  # 2: may_leave_device; 3: materializer settings
 
     sym_name = prop_def(StringAttr)
     materialize = opt_prop_def(SymbolRefAttr)

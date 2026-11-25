@@ -56,7 +56,6 @@ class GradMode:
     """The call setup that turns grad mode on for the calls on a path from trained state into a unit's loss."""
 
     name: str = "training.grad_mode"
-    version: str = "1"
 
     def entered(self, annotations: Annotations, handles: object) -> AbstractContextManager[object]:
         return torch.enable_grad()
@@ -82,7 +81,6 @@ class TrainingDerivation:
     participants: frozenset[str] = frozenset()
     contributions: Mapping[str, tuple[int, int]] = field(default_factory=lambda: MappingProxyType({CONTRIBUTE: (0, 1)}))
     name: str = "training.derive"
-    version: str = "1"
 
     def derive(self, program: Program) -> Mapping[CallOp, Derived]:
         losses = self._losses(program)

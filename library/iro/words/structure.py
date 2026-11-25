@@ -18,8 +18,8 @@ def _activity(protocol: LifecycleProtocol, *extra):
 class StrategyOp(Word):
     """The accepted strategy: the root operation, which one run executes.
 
-    Its ``uses`` header pins each implementation's version, once for the
-    whole strategy (D16). A ``normalized`` strategy has its derived words
+    Its ``uses`` header names each implementation the strategy selects, once
+    for the whole strategy (D16). A ``normalized`` strategy has its derived words
     expanded and its releases placed; an accepted one has neither.
     """
 
@@ -28,18 +28,14 @@ class StrategyOp(Word):
     sym_name = prop_def(StringAttr)
     normalized = opt_prop_def(UnitAttr)
     uses = opt_prop_def(ArrayAttr[SymbolRefAttr])
-    use_versions = opt_prop_def(ArrayAttr[StringAttr])
     body = region_def("single_block")
 
     traits = traits_def(OrderedBody(), IsolatedFromAbove(), NoTerminator(), DeclaredFields())
 
     def verify_(self) -> None:
         names = [ref.root_reference.data for ref in self.uses or ()]
-        versions = list(self.use_versions or ())
-        if len(names) != len(versions):
-            raise VerifyException(f"@{self.sym_name.data}: each implementation in uses needs one version")
         if len(set(names)) != len(names):
-            raise VerifyException(f"@{self.sym_name.data}: an implementation is pinned twice in uses")
+            raise VerifyException(f"@{self.sym_name.data}: an implementation is named twice in uses")
 
 
 @irdl_op_definition

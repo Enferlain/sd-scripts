@@ -27,6 +27,7 @@ from collections.abc import Mapping, Sequence
 from contextlib import ExitStack
 from typing import Any
 
+from library.iro.evidence import setup_digest
 from library.iro.prepare.lowered import Call, Calls
 from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.protection import Applied, Hold, Protections
@@ -132,7 +133,7 @@ class CallRunner:
             # What realization state each resource needs, as its setups say; a group's key on a resource covers all its leases there.
             keys = {
                 r: frozenset(
-                    (lease.setup.name, lease.setup.version, lease.setup.key(annotations))
+                    (lease.setup.name, setup_digest(lease.setup), lease.setup.key(annotations))
                     for lease in holding
                     if lease.resource == r and lease.setup
                 )
@@ -226,7 +227,7 @@ class CallRunner:
         A hold the group needs another state of, or no state while it holds a
         storage change, no longer binds: it ends, its change undone first
         where its setup undoes it. A setup is applied only to a handle no
-        setup of its name and version has been applied to under the hold.
+        setup of its name and code has been applied to under the hold.
         """
         holds = self.protections.holds
         undo: list[Applied] = []
@@ -254,9 +255,8 @@ class CallRunner:
                 hold.leases.add(lease.token)
                 hold.routes.add(lease.lease.use.route)
                 setup = lease.setup
-                if not any(
-                    (a.setup.name, a.setup.version) == (setup.name, setup.version) and a.handle is lease.handle for a in hold.applied
-                ):
+                code = (setup.name, setup_digest(setup))
+                if not any((a.setup.name, setup_digest(a.setup)) == code and a.handle is lease.handle for a in hold.applied):
                     applied = Applied(resource, setup, lease.handle, device, lease.token)
                     hold.applied.append(applied)
                     apply.append(applied)

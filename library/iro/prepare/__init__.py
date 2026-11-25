@@ -6,7 +6,7 @@ its cold loading; and lowering, the form the runtime executes.
 """
 
 from library.iro.prepare.lowered import Lowered, lower
-from library.iro.prepare.prepared import Admission, Group, ManifestEntry, Prepared, code_identity, load_prepared, prepare
+from library.iro.prepare.prepared import Admission, Group, Prepared, load_prepared, prepare
 from library.iro.prepare.target import HOST, DeviceFacts, Target
 
 __all__ = [
@@ -15,10 +15,8 @@ __all__ = [
     "DeviceFacts",
     "Group",
     "Lowered",
-    "ManifestEntry",
     "Prepared",
     "Target",
-    "code_identity",
     "load_prepared",
     "lower",
     "prepare",

@@ -274,7 +274,9 @@ free_threaded = pytest.mark.skipif(not sysconfig.get_config_var("Py_GIL_DISABLED
 def test_importing_the_new_system_keeps_the_gil_off() -> None:
     names = [dotted(file) for entry in NEW_SYSTEM for file in modules(entry)]
     culprit = gil_turned_on_by(names)
-    assert culprit is None, f"importing {culprit} turns the GIL on; load what it needs only where a selected implementation uses it (D15)"
+    assert culprit is None, (
+        f"importing {culprit} turns the GIL on; nothing turns it on unless a run names the selection that needs it, so load it only there (D15)"
+    )
 
 
 @free_threaded

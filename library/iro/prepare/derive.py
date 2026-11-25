@@ -8,9 +8,10 @@ grad mode. It may refuse the program instead, naming why.
 
 Derivation runs on the normalized program before fusion, and calls fuse only
 where what was derived for them is the same, compared and never merged. A
-deriver is pinned by name and version: the version covers what it derives,
-from the sources and sinks it names to what it attaches, so a change to that
-is a new version, and the prepared form, which prints both, shows it.
+deriver is recorded by its name and the evidence of its source, and since
+what it derives can change while no declaration does, its outputs on small
+fixture strategies are checked in the repository; the prepared form prints
+the record (D16).
 """
 
 from collections.abc import Callable, Collection, Iterable, Mapping
@@ -101,13 +102,10 @@ class Program:
 
 @runtime_checkable
 class Deriver(Protocol):
-    """A domain's derivation at preparation, pinned by name and version."""
+    """A domain's derivation at preparation, recorded by its name and the evidence of its source (D16)."""
 
     @property
     def name(self) -> str: ...
-
-    @property
-    def version(self) -> str: ...
 
     def derive(self, program: Program) -> Mapping[CallOp, Derived]: ...
 

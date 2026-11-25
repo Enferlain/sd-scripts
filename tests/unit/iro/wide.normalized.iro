@@ -1,7 +1,6 @@
 iro.strategy @wide normalized
-    uses(@load_sdxl v1, @build_lora v1, @read_latent_cache v1,
-         @encode_latent v1, @pack v1, @encode_text v1, @denoise v1, @keep v1,
-         @measure v1) {
+    uses(@load_sdxl, @build_lora, @read_latent_cache, @encode_latent, @pack,
+         @encode_text, @denoise, @keep, @measure) {
   %vae  = iro.resource @vae : participant materialize(@load_sdxl)
   %te1  = iro.resource @te1 : participant materialize(@load_sdxl)
   %te2  = iro.resource @te2 : participant materialize(@load_sdxl)

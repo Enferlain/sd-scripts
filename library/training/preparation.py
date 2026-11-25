@@ -26,8 +26,8 @@ from collections.abc import Callable, Mapping, Sequence
 
 import torch
 
+from library.iro.evidence import CodeEvidence
 from library.runstate.authority import NORMAL, ParticipantRef, Published, Rejected, RunAuthority
-from library.runstate.authority.records import SetupPin
 from library.runstate.owners import Mutation
 from library.runstate.preparation import PreparationAttempt, PreparationRequest, PreparationResult, PreparedRoute
 from library.training.units import TRAINER, ModuleModes, TrainerOptimization, resolve
@@ -41,12 +41,12 @@ def prepare_training(
     optimization: TrainerOptimization,
     routes: Sequence[tuple[str, str]],
     preparations: Mapping[tuple[str, str], RoutePreparation] | None = None,
-    pinned: tuple[SetupPin, ...] = (),
+    recorded: tuple[CodeEvidence, ...] = (),
 ) -> Published | Rejected:
     """Prepares the routes, given as ``(participant, route)``, and every unit of the plan, in one in-place attempt.
 
-    ``pinned`` are setups the run already pins, such as the prepared form's; a
-    route setup claiming one of their names and versions with other code is
+    ``recorded`` are setups the run already records, such as the prepared
+    form's; a route setup claiming one of their names with other code is
     refused (D16).
     """
     preparations = preparations or {}
@@ -60,7 +60,7 @@ def prepare_training(
         participants=tuple(sorted(trained - {reference for reference, _ in requested}, key=str)),
         mutation=Mutation.IN_PLACE,
         contributors=(TRAINER,),
-        pinned=pinned,
+        recorded=recorded,
     )
     attempt = PreparationAttempt.derive(authority, request)
     if isinstance(attempt, Rejected):

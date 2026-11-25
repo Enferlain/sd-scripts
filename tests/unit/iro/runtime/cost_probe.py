@@ -37,7 +37,7 @@ ITERATIONS = 2000
 
 
 def _op(name: str):
-    return implementation(version=1, inputs=("int",), outputs=("int",), name=name, concurrency_safe=True)(lambda x: x + 1)
+    return implementation(inputs=("int",), outputs=("int",), name=name, concurrency_safe=True)(lambda x: x + 1)
 
 
 def cheap(operations: int, dormant: int = 0, rounds: int = ITERATIONS) -> str:
@@ -47,7 +47,7 @@ def cheap(operations: int, dormant: int = 0, rounds: int = ITERATIONS) -> str:
         f"    iro.handler @idle{d} sources [@loop] max 1 {{\n    ^(%x{d}: int):\n      %y{d} = iro.call @op0(%x{d}) -> int\n    }}\n"
         for d in range(dormant)
     )
-    uses = ", ".join(f"@{n} v1" for n in names)
+    uses = ", ".join(f"@{n}" for n in names)
     return (
         f"iro.strategy @cost uses({uses}) {{\n"
         "  iro.parallel @all {\n"
@@ -67,7 +67,7 @@ def leases(resources: int) -> str:
     uses = ", ".join(f"%{n} protected_current" for n in names)
     arguments = ", ".join(f"%l{i}" for i in range(resources))
     return (
-        "iro.strategy @cost uses(@touch v1) {\n"
+        "iro.strategy @cost uses(@touch) {\n"
         f"{declared}\n"
         f"  iro.repeat @loop {ITERATIONS} times capture({', '.join('%' + n for n in names)}) {{\n"
         "  ^(%i: int):\n"

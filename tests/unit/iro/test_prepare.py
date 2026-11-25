@@ -29,10 +29,9 @@ def installed_for(text: str, effects: dict[str, list[str]] | None = None, **decl
         if isinstance(op, CallOp):
             shapes[symbol(op.implementation)] = (tuple(written(v.type) for v in op.operands), tuple(written(r.type) for r in op.results))
     installed = {}
-    for name, version in zip((s.root_reference.data for s in loaded.strategy.uses or ()), loaded.strategy.use_versions or (), strict=True):
+    for name in (s.root_reference.data for s in loaded.strategy.uses or ()):
         inputs, outputs = shapes.get(name, ((), ()))
         options: dict[str, Any] = {
-            "version": version.data,
             "inputs": inputs,
             "outputs": outputs,
             "effects": (effects or {}).get(name, ()),
@@ -86,7 +85,7 @@ def test_each_access_body_with_device_work_is_one_admission_ending_at_its_releas
     assert all(a.device == "cuda:0" for a in result.admissions)
 
 
-CHAIN = """iro.strategy @s uses(@a v1, @b v1, @c v1) {
+CHAIN = """iro.strategy @s uses(@a, @b, @c) {
   iro.sequence @once {
     %x = iro.call @a() -> int
     %y = iro.call @b(%x) -> int
@@ -117,13 +116,13 @@ def test_a_boundary_or_another_device_interrupts_a_chain(target, effects, expect
 
 
 def test_an_implementation_with_its_own_completion_is_not_fused() -> None:
-    result, _ = prepared(CHAIN, b={"version": "1", "inputs": ("int",), "outputs": ("int",), "completion": "own", "name": "b"})
+    result, _ = prepared(CHAIN, b={"inputs": ("int",), "outputs": ("int",), "completion": "own", "name": "b"})
     assert [g.implementations for g in result.groups] == [("a",), ("b",), ("c",)]
 
 
 def test_a_call_that_disagrees_with_its_implementation_is_invalid_meaning() -> None:
     installed = installed_for(CHAIN)
-    installed["b"] = implementation(version=1, inputs=("float",), outputs=("int",), name="b")(lambda x: x)
+    installed["b"] = implementation(inputs=("float",), outputs=("int",), name="b")(lambda x: x)
     run = accepted_run(CHAIN, installed=installed)
     with pytest.raises(Rejection) as raised:
         prepare(cold_load(run, installed=installed), installed, CUDA)
@@ -145,7 +144,7 @@ def test_collectives_on_several_ranks_are_a_target_limit_for_now() -> None:
     assert raised.value.codes == ("iro-prep-003",) and raised.value.target_limits_only
 
 
-TAKE_INSIDE = """iro.strategy @s uses(@make v1, @use v1, @more v1) {
+TAKE_INSIDE = """iro.strategy @s uses(@make, @use, @more) {
   %m = iro.resource @m : participant
   %items = iro.stream @items : item bounds(outstanding 1, ready 1)
   iro.parallel @all capture(%items, %m) {
@@ -189,14 +188,15 @@ def test_a_saved_prepared_form_loads_only_when_it_derives_again() -> None:
         load_prepared(result.text(), loaded, installed, Target(CUDA.devices, device="cuda:1"))
 
 
-def test_the_manifest_keys_on_code_not_on_the_implementation_version() -> None:
+def test_preparation_refuses_other_code_under_the_declaration_the_run_recorded() -> None:
     result, installed = prepared(CHAIN)
+    records = {m.name: m for m in result.manifest}
+    assert records["b"].declaration == installed["b"].declaration.text and records["b"].source is not None, "a record keeps its parts"
     replaced = dict(installed)
     replaced["b"] = type(installed["b"])(installed["b"].declaration, len)
-    again = prepare(result.loaded, replaced, CUDA)
-    codes = {m.name: m.code for m in result.manifest}
-    assert {m.name: m.code for m in again.manifest}["b"] != codes["b"], "same declaration and version, other code"
-    assert [m.digest for m in again.manifest] == [m.digest for m in result.manifest]
+    with pytest.raises(Rejection) as rejected:
+        prepare(result.loaded, replaced, CUDA)
+    assert rejected.value.codes == ("iro-run-003",) and "its source" in str(rejected.value), "the same declaration is not the same code"
     with pytest.raises(Rejection):
         load_prepared(result.text(), result.loaded, replaced, CUDA)
 
@@ -204,14 +204,14 @@ def test_the_manifest_keys_on_code_not_on_the_implementation_version() -> None:
 def test_the_printout_shows_groups_devices_and_admissions() -> None:
     text = prepared(WIDE, effects=DEVICE)[0].text()
     assert text.startswith("prepared @wide\n")
-    assert "on cuda:0" in text and "admissions\n  cuda:0 from" in text and "@denoise v1 digest" in text
+    assert "on cuda:0" in text and "admissions\n  cuda:0 from" in text and "  @denoise\n    declares name denoise\n" in text
 
 
 def test_preparing_twice_gives_the_same_form() -> None:
     assert prepared(WIDE, effects=DEVICE)[0].text() == prepared(WIDE, effects=DEVICE)[0].text()
 
 
-BOUNDED = """iro.strategy @s uses(@a v1, @b v1, @c v1, @d v1) {
+BOUNDED = """iro.strategy @s uses(@a, @b, @c, @d) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     %x = iro.call @a() -> int
@@ -283,7 +283,7 @@ def test_a_take_inside_an_activity_of_its_own_is_not_the_accesss_take() -> None:
           %claim = iro.take %items
           iro.dispose %claim consumed
         }""",
-    ).replace("uses(@make v1, @use v1, @more v1)", "uses(@make v1, @use v1)")
+    ).replace("uses(@make, @use, @more)", "uses(@make, @use)")
     result, _ = prepared(nested, effects={"use": ["device"]})
     assert len(result.admissions) == 1
 
@@ -324,26 +324,7 @@ def test_a_device_of_any_pytorch_backend_is_named_by_its_device_type_and_shows_w
     assert "xpu:0 (xpu; memory; ordering)" in target.describe()
 
 
-class Callable:
-    def __call__(self, *args):
-        return None
-
-
-def test_code_identity_follows_the_code_and_never_merges_unknown_code() -> None:
-    import functools
-
-    from library.iro.prepare import code_identity
-
-    def local(x):
-        return x
-
-    assert code_identity(functools.partial(local, 1)) == code_identity(local), "a partial is its function's code"
-    assert code_identity(Callable()) == code_identity(local), "a callable object is identified by its class's module"
-    assert code_identity(len) != code_identity(abs), "builtins have no source and never share an identity"
-    assert code_identity(len) == code_identity(len)
-
-
-RETAINED_ACROSS_TAKE = """iro.strategy @s uses(@make v1, @keep v1, @look v1) {
+RETAINED_ACROSS_TAKE = """iro.strategy @s uses(@make, @keep, @look) {
   %m = iro.resource @m : participant
   %items = iro.stream @items : item bounds(outstanding 1, ready 1)
   iro.parallel @all capture(%items, %m) {
@@ -375,7 +356,7 @@ def test_a_take_while_a_device_holding_result_is_live_is_a_target_limit() -> Non
     assert prepared(RETAINED_ACROSS_TAKE, effects={"look": ["device"]})[0], "host work holds no device"
 
 
-REQUEST_IN_ADMISSION = """iro.strategy @s uses(@work v1, @see v1) {
+REQUEST_IN_ADMISSION = """iro.strategy @s uses(@work, @see) {
   %m = iro.resource @m : participant
   iro.parallel @all capture(%m) {
     iro.sequence @driver capture(%m) {
@@ -401,7 +382,7 @@ def test_a_request_made_while_an_admission_holds_the_device_is_a_target_limit() 
     assert prepared(REQUEST_IN_ADMISSION)[0], "without device work there is no admission to hold"
 
 
-CARRY = """iro.strategy @s uses(@first v1, @peek v1, @step v1) {
+CARRY = """iro.strategy @s uses(@first, @peek, @step) {
   iro.sequence @once {
     %f = iro.call @first() -> int
     %last = iro.repeat @loop 3 times carry(%c = %f) {
@@ -428,7 +409,7 @@ def test_a_device_result_a_repeat_carries_only_to_device_work_on_its_device_is_n
     assert not group.sync, "the carried value only feeds device work on the same device"
 
 
-LEAVING = """iro.strategy @s uses(@encode v1) {
+LEAVING = """iro.strategy @s uses(@encode) {
   %vae = iro.resource @vae : participant may_leave_device
   iro.sequence @first capture(%vae) {
     iro.access %vae protected_current {
@@ -466,7 +447,7 @@ def test_a_participant_no_device_work_uses_has_nothing_to_leave() -> None:
     ("text", "target", "code"),
     [
         (
-            LEAVING.replace("uses(@encode v1)", "uses(@encode v1, @tune v1)").replace(
+            LEAVING.replace("uses(@encode)", "uses(@encode, @tune)").replace(
                 "  iro.sequence @second",
                 "  iro.access %vae owner_update {\n  ^(%lease):\n    %u = iro.call @tune(%lease) -> int\n  }\n  iro.sequence @second",
             ),
@@ -486,7 +467,7 @@ def test_a_permission_to_leave_the_device_that_cannot_be_realized_is_a_target_li
 
 # Reachability over named relations, and what domains derive (D16).
 
-LEARNING = """iro.strategy @s uses(@batch v1, @encode v1, @measure v1, @predict v1, @objective v1, @learn v1) {
+LEARNING = """iro.strategy @s uses(@batch, @encode, @measure, @predict, @objective, @learn) {
   %net = iro.resource @net : participant
   %enc = iro.resource @enc : participant
   %w = iro.resource @w
@@ -563,16 +544,16 @@ def test_an_input_with_no_edge_stops_the_path() -> None:
 
 def test_a_relation_declaration_names_positions_that_exist_and_its_digest_covers_it() -> None:
     with pytest.raises(ValueError, match="declares 1 inputs"):
-        implementation(version=1, inputs=("retained loss",), outputs=("loss",), relations={"flows": [(1, 0)]})(lambda *a: None)
+        implementation(inputs=("retained loss",), outputs=("loss",), relations={"flows": [(1, 0)]})(lambda *a: None)
     with pytest.raises(ValueError, match="declares 1 outputs"):
-        implementation(version=1, inputs=("owner_update lease",), outputs=("loss",), relations={"flows": [(0, 1)]})(lambda *a: None)
-    plain = implementation(version=1, inputs=("retained loss",), outputs=("loss",))(lambda *a: None).declaration
-    marked = implementation(version=1, inputs=("retained loss",), outputs=("loss",), relations={"flows": [(0, 0)]})(lambda *a: None)
+        implementation(inputs=("owner_update lease",), outputs=("loss",), relations={"flows": [(0, 1)]})(lambda *a: None)
+    plain = implementation(inputs=("retained loss",), outputs=("loss",))(lambda *a: None).declaration
+    marked = implementation(inputs=("retained loss",), outputs=("loss",), relations={"flows": [(0, 0)]})(lambda *a: None)
     assert plain.digest != marked.declaration.digest, "the declaration's digest covers its relations"
     assert marked.declaration.edges("flows") == ((0, 0),) and marked.declaration.edges("other") == ()
 
 
-CARRIED_INTO_LEARNING = """iro.strategy @s uses(@first v1, @step v1, @learn v1) {
+CARRIED_INTO_LEARNING = """iro.strategy @s uses(@first, @step, @learn) {
   %w = iro.resource @w
   iro.sequence @once capture(%w) {
     %f = iro.call @first() -> loss
@@ -600,7 +581,7 @@ def test_reach_follows_a_value_into_a_repeat_as_its_carry_and_out_as_its_result(
     )
 
 
-FILTERED_INTO_LEARNING = """iro.strategy @s uses(@make v1, @keep v1, @predict v1, @learn v1) {
+FILTERED_INTO_LEARNING = """iro.strategy @s uses(@make, @keep, @predict, @learn) {
   %w = iro.resource @w
   %items = iro.stream @items : item bounds(outstanding 1, ready 1)
   iro.parallel @all capture(%items, %w) {
@@ -645,7 +626,6 @@ def test_reach_crosses_a_stream_unless_the_query_keeps_to_one_activity() -> None
 class Annotating:
     given: dict
     name: str = "test.annotating"
-    version: str = "1"
 
     def derive(self, program):
         return {call: self.given[program.implementation(call)] for call in program.calls() if program.implementation(call) in self.given}
@@ -662,7 +642,7 @@ def test_calls_fuse_only_where_what_was_derived_for_them_is_the_same() -> None:
     (predict,) = [g for g in result.groups if "predict" in g.implementations]
     assert measure.index != predict.index, "calls with different annotations are not fused"
     assert predict.implementations == ("predict", "objective") and predict.annotations == (("units", ("w",)),)
-    assert "@predict, @objective (units w, sync)" in result.text() and "@test.annotating v1" in result.text()
+    assert "@predict, @objective (units w, sync)" in result.text() and "derived by\n  @test.annotating\n" in result.text()
 
 
 def test_two_derivers_never_give_one_call_the_same_annotation() -> None:
@@ -675,25 +655,24 @@ def test_two_derivers_never_give_one_call_the_same_annotation() -> None:
     assert rejected.value.codes == ("iro-prep-014",)
 
 
-def test_a_name_and_version_claimed_twice_is_refused_since_its_code_is_pinned_once() -> None:
+def test_one_name_claimed_by_two_derivers_or_by_setups_with_different_code_is_refused() -> None:
     installed = installed_for(LEARNING)
     run = accepted_run(LEARNING, installed=installed)
     loaded = cold_load(run, installed=installed)
     twice = [Annotating({"predict": Derived(annotate({"a": ["x"]}))}), Annotating({"objective": Derived(annotate({"b": ["x"]}))})]
     with pytest.raises(Rejection) as rejected:
         prepare(loaded, installed, CUDA, twice)
-    assert rejected.value.codes == ("iro-prep-015",), "two derivers under one name and version"
-    elsewhere = type("Recording", (), {"name": "test.setup", "version": "1", "entered": lambda self, a, h: None, "__module__": "elsewhere"})
+    assert rejected.value.codes == ("iro-prep-015",), "two derivers under one name"
+    elsewhere = type("Recording", (), {"name": "test.setup", "entered": lambda self, a, h: None, "__module__": "elsewhere"})
     setups = Annotating({"predict": Derived((), (Setup(),)), "objective": Derived((("c", ("x",)),), (elsewhere(),))})  # ty: ignore[invalid-argument-type]
     with pytest.raises(Rejection) as rejected:
         prepare(loaded, installed, CUDA, [setups])
-    assert rejected.value.codes == ("iro-prep-015",), "two call setups claiming one name and version with different code"
+    assert rejected.value.codes == ("iro-prep-015",), "two call setups claiming one name with different code"
 
 
 @dataclass(frozen=True)
 class Setup:
     name: str = "test.setup"
-    version: str = "1"
 
     def entered(self, annotations, handles):
         return None

@@ -1,7 +1,7 @@
 """Call words: call, constant and yield (D16).
 
-A call names an implementation; the strategy's ``uses`` header pins its
-version. A retained result keeps a dependency on every lease and retained
+A call names an implementation, which the strategy's ``uses`` header lists
+(D16). A retained result keeps a dependency on every lease and retained
 input of its call until its last use. A constant prints inline where it is
 used, with Python's type names for its value.
 """

@@ -114,7 +114,7 @@ class Memory:
 
 
 def implementation(name: str, standin: StandIn) -> Declared:
-    declaration = Declaration(name, standin.version, standin.inputs, standin.outputs)
+    declaration = Declaration(name, standin.inputs, standin.outputs)
 
     def run(*args):
         result = standin.invoke(tuple(deepcopy(a.value) if isinstance(a, Cell | Frozen) else deepcopy(a) for a in args))

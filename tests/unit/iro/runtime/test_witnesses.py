@@ -31,7 +31,7 @@ from tests.unit.iro.runtime.harness import Memory
 
 ROOT = Path(__file__).parents[4]
 
-LONG = """iro.strategy @long uses(@make v1, @use v1, @see v1, @step v1, @check v1) {
+LONG = """iro.strategy @long uses(@make, @use, @see, @step, @check) {
   %m = iro.resource @m : participant
   %items = iro.stream @items : item bounds(outstanding 2, ready 1)
   iro.parallel @all capture(%items, %m) {
@@ -72,13 +72,11 @@ def _installed():
         return 0
 
     return {
-        "make": implementation(version=1, inputs=("int",), outputs=("item",), name="make")(lambda i: i),
-        "use": implementation(version=1, inputs=("protected_current lease", "item"), outputs=("retained int",), name="use")(
-            lambda lease, v: v
-        ),
-        "see": implementation(version=1, inputs=("retained int",), outputs=("int",), name="see")(lambda r: r),
-        "step": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="step")(step),
-        "check": implementation(version=1, inputs=("int",), outputs=("int",), name="check")(lambda x: x),
+        "make": implementation(inputs=("int",), outputs=("item",), name="make")(lambda i: i),
+        "use": implementation(inputs=("protected_current lease", "item"), outputs=("retained int",), name="use")(lambda lease, v: v),
+        "see": implementation(inputs=("retained int",), outputs=("int",), name="see")(lambda r: r),
+        "step": implementation(inputs=("owner_update lease",), outputs=("int",), name="step")(step),
+        "check": implementation(inputs=("int",), outputs=("int",), name="check")(lambda x: x),
     }
 
 
@@ -175,7 +173,7 @@ def test_the_runtime_keeps_the_gil_off_on_a_free_threaded_interpreter() -> None:
     assert enabled == ("False" if free_threaded else "True")
 
 
-PROGRESS = """iro.strategy @s uses(@spin v1, @tick v1) {
+PROGRESS = """iro.strategy @s uses(@spin, @tick) {
   iro.parallel @both {
     iro.sequence @long {
       %x = iro.call @spin() -> int
@@ -210,8 +208,8 @@ def test_the_coordinator_keeps_progressing_while_a_worker_spins_in_python() -> N
         return i
 
     installed = {
-        "spin": implementation(version=1, outputs=("int",), name="spin")(spin),
-        "tick": implementation(version=1, inputs=("int",), outputs=("int",), name="tick")(tick),
+        "spin": implementation(outputs=("int",), name="spin")(spin),
+        "tick": implementation(inputs=("int",), outputs=("int",), name="tick")(tick),
     }
     run = accepted_run(PROGRESS, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=2))

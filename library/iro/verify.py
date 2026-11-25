@@ -581,17 +581,17 @@ class Analysis:
     # Calls (D16).
 
     def calls(self) -> None:
-        pinned = set(symbols(self.strategy, "uses"))
+        listed = set(symbols(self.strategy, "uses"))
         for op in self.strategy.walk():
             if op.get_trait(RealizationSemantics) is not None:
                 implementation = symbol(op.properties["implementation"])
-                if implementation not in pinned:
+                if implementation not in listed:
                     self.problem(
                         "iro-call-001",
                         op,
-                        f"@{implementation} is not pinned in the strategy's uses",
+                        f"@{implementation} is not named in the strategy's uses",
                         names=(f"@{implementation}",),
-                        fix=f"add @{implementation} with its version to uses(...)",
+                        fix=f"add @{implementation} to uses(...)",
                     )
                 for value in op.operands:
                     if isinstance(value.type, ResourceType):
@@ -605,14 +605,14 @@ class Analysis:
                     if isinstance(value.type, ClaimType | StreamType | LeaseType | ResourceType):
                         self.problem("iro-call-003", op, "a call returns values, not claims, streams, leases or resources")
             if isinstance(op, ResourceOp):
-                if op.materialize is not None and symbol(op.materialize) not in pinned:
+                if op.materialize is not None and symbol(op.materialize) not in listed:
                     implementation = symbol(op.materialize)
                     self.problem(
                         "iro-call-001",
                         op,
-                        f"@{implementation} materializes @{op.sym_name.data} and is not pinned in the strategy's uses",
+                        f"@{implementation} materializes @{op.sym_name.data} and is not named in the strategy's uses",
                         names=(f"@{implementation}",),
-                        fix=f"add @{implementation} with its version to uses(...)",
+                        fix=f"add @{implementation} to uses(...)",
                     )
                 kind = op.handle.type.kind.data if isinstance(op.handle.type, ResourceType) else "resource"
                 how = f"materialized by @{symbol(op.materialize)}" if op.materialize is not None else "supplied by its owner"

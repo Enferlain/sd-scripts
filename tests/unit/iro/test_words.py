@@ -224,13 +224,9 @@ def test_a_materializer_reads_only_inspection_views() -> None:
         ).verify()
 
 
-def test_a_strategy_pins_each_implementation_once() -> None:
-    fields = {
-        "sym_name": StringAttr("s"),
-        "uses": ArrayAttr([SymbolRefAttr("a"), SymbolRefAttr("a")]),
-        "use_versions": ArrayAttr([StringAttr("1")] * 2),
-    }
-    with pytest.raises(VerifyException, match="pinned twice"):
+def test_a_strategy_names_each_implementation_once() -> None:
+    fields = {"sym_name": StringAttr("s"), "uses": ArrayAttr([SymbolRefAttr("a"), SymbolRefAttr("a")])}
+    with pytest.raises(VerifyException, match="named twice"):
         StrategyOp.create(properties=fields, regions=[Region(Block())]).verify()
 
 

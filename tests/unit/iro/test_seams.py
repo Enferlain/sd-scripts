@@ -73,7 +73,7 @@ class Host:
         return {}
 
 
-DOUBLE = Declaration("double", "1", ("int",), ("int",), concurrency_safe=True)
+DOUBLE = Declaration("double", ("int",), ("int",), concurrency_safe=True)
 
 
 @dataclass(frozen=True)

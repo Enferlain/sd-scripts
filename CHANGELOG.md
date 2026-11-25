@@ -10,6 +10,26 @@ Rules:
 - Keep proper track of days for where entries should go
 - Be concise but mention all changes without necessarily detailing each one
 
+## [2026-11-25]
+
+### Added
+
+- **Code evidence (D16)** — `library/iro/evidence.py`: `CodeEvidence` records a piece of code by its name, its declaration's canonical text and its `SourceEvidence` (defining module and qualified name with a digest of the module's source, through every layer that wraps a function, with the values a partial binds, or with the release of compiled code). Records print in full and report differences part by part; no part alone counts as the same code. The source is the strict stand-in until fixture records exist.
+
+### Changed
+
+- **No hand-kept versions in the new system (D16)** — `uses(@a, @b)` names implementations without versions; `Declaration`, setups, derivers, definitions, the contract and the reference stand-ins lose their versions. An accepted run records definitions and implementations by declaration and source; `check_implementations`, cold loading, preparation, materializer evidence (`judge_bound`) and the runtime's held-setup keys compare that evidence, and one name stands for one code in a run. Run state's `SetupPin` became setup records. Training's derivation check records fixture outputs by the deriver's name (`IRO_RECORD_FIXTURES=1`).
+- **A strategy's identity and revision ignore source locations** — a moved line keeps them; a reordered operation changes them.
+- **The rework design** — D16 "Code identity, selection and reuse" follow-ups: comparison policies are code outside the core whose verdict the core records without reading numbers; a record prints in full; the run records the repository revision and uncommitted changes; changes the person running makes. D15 "No-GIL": nothing turns the GIL on unless the run names the selection that needs it, Triton stays unavailable otherwise, and an undeclared turn fails the run. D21 "Several implementations of one component" with implementations keeping both checkpoint correspondence and component-local paths; `evidence.py` in the module map. Tasks 16.5, 17.5, 18.5 and 26.3 track the pieces.
+
+### Removed
+
+- The recorded-version tests (`tests/unit/iro/test_versions.py`, `tests/unit/training_core/test_versions.py` and their `recorded_versions.json`).
+
+### Fixed
+
+- **Tests broken by the 2026-11-24 design commit** — the design's `@score_records` example, which the conformance tests parse, dropped `v1` ahead of the parser; the parser now matches.
+
 ## [2026-11-23]
 
 ### Added

@@ -90,7 +90,7 @@ def test_a_failing_implementation_fails_the_run_and_still_empties_its_bookkeepin
     assert not coordinator.turns.admissions and coordinator._records.empty() and coordinator._all_records.empty()
 
 
-NESTED_HANDLERS = """iro.strategy @s uses(@step v1, @look v1, @peek v1) {
+NESTED_HANDLERS = """iro.strategy @s uses(@step, @look, @peek) {
   %m = iro.resource @m : participant
   %n = iro.resource @n : participant
 
@@ -147,7 +147,7 @@ def test_a_request_reserves_only_what_its_own_handler_reads_at_the_request() -> 
     assert runtime == reference == Counter({"m": 2, "n": 2}), "each of the two outer and two inner requests reserves only its own reads"
 
 
-TWICE_AT_REQUEST = """iro.strategy @s uses(@step v1, @look v1) {
+TWICE_AT_REQUEST = """iro.strategy @s uses(@step, @look) {
   %m = iro.resource @m : participant
 
   iro.parallel @all capture(%m) {
@@ -196,7 +196,7 @@ def test_every_use_in_a_handler_reads_its_requests_one_snapshot() -> None:
     assert all(not lease.active for lease in result.reference.leases.values())
 
 
-UPDATES_THAT_CHANGE_NOTHING = """iro.strategy @s uses(@keep v1, @look v1) {
+UPDATES_THAT_CHANGE_NOTHING = """iro.strategy @s uses(@keep, @look) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {

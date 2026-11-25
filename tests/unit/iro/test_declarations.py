@@ -1,4 +1,4 @@
-"""Implementation declarations: what follows from the written types, the digest a pin records, and the decorator."""
+"""Implementation declarations: what follows from the written types, the text a run records, and the decorator."""
 
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
@@ -50,7 +50,6 @@ class Host:
 
 DENOISE = Declaration(
     "denoise",
-    "1",
     ("protected_current lease", "owner_update lease", "retained loss", "latents"),
     ("retained loss",),
     frozenset({Effect.DEVICE}),
@@ -79,25 +78,26 @@ def test_any_change_to_the_declaration_changes_its_digest(change) -> None:
     assert change(DENOISE).digest != DENOISE.digest
 
 
-def test_the_implementation_version_is_not_part_of_the_digest() -> None:
-    assert replace(DENOISE, version="2").digest == DENOISE.digest
+def test_the_digest_is_a_short_name_for_the_declaration_s_text() -> None:
+    assert replace(DENOISE).digest == DENOISE.digest
+    assert DENOISE.text.splitlines()[0] == "name denoise", "the text names the implementation and everything it declares"
 
 
-def test_a_declaration_names_itself_and_its_version_and_a_known_completion() -> None:
-    with pytest.raises(ValueError, match="implementation version"):
-        Declaration("denoise", "")
+def test_a_declaration_names_itself_and_a_known_completion() -> None:
+    with pytest.raises(ValueError, match="its name"):
+        Declaration("")
     with pytest.raises(ValueError, match="completion"):
-        Declaration("denoise", "1", completion="later")
+        Declaration("denoise", completion="later")
     with pytest.raises(ValueError):
-        Declaration("denoise", "1", effects=frozenset({"teleport"}))  # ty: ignore[invalid-argument-type]
+        Declaration("denoise", effects=frozenset({"teleport"}))  # ty: ignore[invalid-argument-type]
 
 
 def test_the_decorator_records_the_declaration_without_registering_anything() -> None:
-    @implementation(version=2, inputs=("int", "int"), outputs=("int",), effects=["device"])
+    @implementation(inputs=("int", "int"), outputs=("int",), effects=["device"])
     def add(a, b):
         return a + b
 
-    assert add.declaration == Declaration("add", "2", ("int", "int"), ("int",), frozenset({Effect.DEVICE}))
+    assert add.declaration == Declaration("add", ("int", "int"), ("int",), frozenset({Effect.DEVICE}))
     host = Host()
     with host.context():
         results, completion = add(host, 2, 3)
@@ -112,20 +112,20 @@ def test_retained_inputs_match_what_a_call_retains() -> None:
     args = Block(arg_types=types).args
     result = retained(value("loss"))
     call = CallOp.create(operands=list(args), result_types=[result], properties={"implementation": SymbolRefAttr("f")})
-    declared = Declaration("f", "1", tuple(written(t) for t in types), ("retained loss",))
+    declared = Declaration("f", tuple(written(t) for t in types), ("retained loss",))
     assert declared.retains == retained_positions(call)
 
 
 def test_results_come_back_in_the_declared_arity() -> None:
-    @implementation(version=1, outputs=("int", "int"))
+    @implementation(outputs=("int", "int"))
     def pair():
         return 1, 2
 
-    @implementation(version=1)
+    @implementation()
     def nothing():
         return None
 
-    @implementation(version=1, outputs=("int", "int"))
+    @implementation(outputs=("int", "int"))
     def short():
         return 1
 
@@ -135,11 +135,11 @@ def test_results_come_back_in_the_declared_arity() -> None:
 
 
 def test_an_implementation_with_its_own_completion_returns_it() -> None:
-    @implementation(version=1, outputs=("int",), completion="own")
+    @implementation(outputs=("int",), completion="own")
     def submitted():
         return 7, Done()
 
-    @implementation(version=1, outputs=("int",), completion="own")
+    @implementation(outputs=("int",), completion="own")
     def forgot():
         return 7
 

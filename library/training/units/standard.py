@@ -1,6 +1,6 @@
 """The standard profile's implementations: contribution and the end of a window (D17, D18).
 
-Training's words call them, and a strategy pins them in its uses like any
+Training's words call them, and a strategy names them in its uses like any
 other implementation. Each delegates to the unit's live state, which its
 update lease hands it; Trainer optimization performs the mechanics. A
 contribution's loss is a sink of training's ``derivative`` relation: the
@@ -21,12 +21,12 @@ from library.training.units.prepared import LiveUnit
 from library.training.words import ADVANCE, CONTRIBUTE
 
 
-@implementation(version=2, name=CONTRIBUTE, inputs=("owner_update lease", "retained loss"), effects=[Effect.DEVICE])
+@implementation(name=CONTRIBUTE, inputs=("owner_update lease", "retained loss"), effects=[Effect.DEVICE])
 def contribute(unit: LiveUnit, loss: object) -> None:
     unit.contribute(loss)
 
 
-@implementation(version=2, name=ADVANCE, inputs=("owner_update lease", "owner_update lease"), effects=[Effect.DEVICE])
+@implementation(name=ADVANCE, inputs=("owner_update lease", "owner_update lease"), effects=[Effect.DEVICE])
 def advance(unit: LiveUnit, participant: object) -> None:
     unit.advance((participant,))
 

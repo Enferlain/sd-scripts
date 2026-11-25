@@ -226,7 +226,6 @@ class RealizationContract:
     """What a call requires of the implementation it names."""
 
     implementation: str
-    version: str
     inputs: tuple[Attribute, ...]
     outputs: tuple[Attribute, ...]
     decision: Decision
@@ -566,7 +565,7 @@ class FlowSemantics(OpTrait):
 class RealizationSemantics(OpTrait):
     """The realization contract of a call: the implementation it names and what it returns.
 
-    The implementation's version is pinned once, in the strategy's ``uses``
+    The strategy names each implementation it selects once, in its ``uses``
     header (D16), not on each call.
     """
 
@@ -576,9 +575,9 @@ class RealizationSemantics(OpTrait):
             raise VerifyException(f"{path(op)}: retained positions must be integers")
         retains = tuple(x.value.data for x in declared if isinstance(x, IntegerAttr)) if isinstance(declared, ArrayAttr) else ()
         name = symbol(op.properties["implementation"])
+        _require_listed(op, name)
         return RealizationContract(
             name,
-            pinned_version(op, name),
             tuple(x.type for x in op.operands),
             tuple(x.type for x in op.results),
             decision(op),
@@ -586,18 +585,15 @@ class RealizationSemantics(OpTrait):
         )
 
 
-def pinned_version(op: Operation, implementation: str) -> str:
-    """The version the enclosing strategy's ``uses`` header pins for an implementation."""
+def _require_listed(op: Operation, implementation: str) -> None:
+    """Refuses a call whose implementation the enclosing strategy's ``uses`` header does not name."""
     root: Operation | None = op
     while root is not None and root.name != "iro.strategy":
         root = root.parent_op()
     if root is None:
         raise VerifyException(f"{path(op)}: a call must be inside a strategy")
-    names, versions = symbols(root, "uses"), strings(root, "use_versions")
-    pins = dict(zip(names, versions, strict=False))
-    if implementation not in pins:
-        raise VerifyException(f"{path(op)}: @{implementation} is not pinned in the strategy's uses header")
-    return pins[implementation]
+    if implementation not in symbols(root, "uses"):
+        raise VerifyException(f"{path(op)}: @{implementation} is not named in the strategy's uses header")
 
 
 @dataclass(frozen=True)
@@ -759,7 +755,6 @@ __all__ = [
     "optional_text",
     "origin",
     "path",
-    "pinned_version",
     "provider",
     "resource_uses",
     "strings",

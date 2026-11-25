@@ -38,7 +38,8 @@ from types import MappingProxyType
 
 from library.iro.seams import CallSetup, HeldSetup
 from library.runstate.authority.authority import RunAuthority
-from library.runstate.authority.records import ParticipantRef, SetupPin
+from library.iro.evidence import CodeEvidence, SourceEvidence, setup_evidence
+from library.runstate.authority.records import ParticipantRef
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import Prepared, Published, Rejected, RouteRebinding
 from library.runstate.generation import Publication, Section
@@ -60,7 +61,7 @@ class PreparationRequest:
     participants: tuple[ParticipantRef, ...] = ()
     mutation: Mutation = Mutation.REPLACES
     contributors: tuple[str, ...] = ()
-    pinned: tuple[SetupPin, ...] = ()  # setups the run already pins elsewhere, such as the prepared form's (D16)
+    recorded: tuple[CodeEvidence, ...] = ()  # setups the run already records elsewhere, such as the prepared form's (D16)
 
     @property
     def required(self) -> tuple[ParticipantRef, ...]:
@@ -139,30 +140,30 @@ class PreparationAttempt:
             if self.attempt.mutation == Mutation.IN_PLACE:
                 self.authority.end_in_place(self.attempt.reference)
 
-    def _conflicting_pins(self, result: PreparationResult) -> list[str]:
-        """Setups that claim one name and version with different code (D16).
+    def _conflicting_setups(self, result: PreparationResult) -> list[str]:
+        """Setups that claim one name with different code: one name stands for one code in a run (D16).
 
         It compares the routes this result prepares, the routes it keeps, and
-        the setups the run pins elsewhere, such as the prepared form's. Every
-        route in the record is live: withdrawal, which takes one out, comes
-        with the second pass of section 15.
+        the setups the run records elsewhere, such as the prepared form's.
+        Every route in the record is live: withdrawal, which takes one out,
+        comes with the second pass of section 15.
         """
         replaced = {(route.participant, route.route) for route in result.routes}
-        codes: dict[tuple[str, str], set[str]] = {}
-        for pin in self.request.pinned:
-            codes.setdefault((pin.name, pin.version), set()).add(pin.code)
+        codes: dict[str, set[SourceEvidence | None]] = {}
+        for record in self.request.recorded:
+            codes.setdefault(record.name, set()).add(record.source)
         for reference, participant in self.authority.section.participants.items():
             for name, route in participant.routes.items():
                 if (reference, name) not in replaced:
-                    for pin in route.pins:
-                        codes.setdefault((pin.name, pin.version), set()).add(pin.code)
+                    for record in route.setup_records:
+                        codes.setdefault(record.name, set()).add(record.source)
         for route in result.routes:
             for setup in (*((route.setup,) if route.setup else ()), *route.call_setups):
-                pin = SetupPin.of(setup)
-                codes.setdefault((pin.name, pin.version), set()).add(pin.code)
+                record = setup_evidence(setup)
+                codes.setdefault(record.name, set()).add(record.source)
         return [
-            f"@{name} v{version} is claimed by setups with different code; give changed code a new version"
-            for (name, version), found in sorted(codes.items())
+            f"@{name} is claimed by setups with different code; one name stands for one code in a run"
+            for name, found in sorted(codes.items())
             if len(found) > 1
         ]
 
@@ -196,7 +197,7 @@ class PreparationAttempt:
         ]
         contributed = {section.owner for section in result.contributed}
         reasons += [f"{owner} did not contribute its section" for owner in self.request.contributors if owner not in contributed]
-        reasons += self._conflicting_pins(result)
+        reasons += self._conflicting_setups(result)
         if reasons:
             return Rejected(tuple(reasons))
         transitions = []

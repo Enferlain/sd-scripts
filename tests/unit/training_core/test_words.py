@@ -16,7 +16,7 @@ from library.iro.words.structure import RepeatOp
 from library.training.words import ADVANCE, CONTRIBUTE, UnitOp, contract
 from tests.unit.iro.accepted_runs import accepted_run
 
-STEP = """iro.strategy @step uses(@batch v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {
+STEP = """iro.strategy @step uses(@batch, @predict, @objective, @standard.contribute, @standard.advance) {
   %unet = iro.resource @unet : participant
   %unit = iro.train.unit @denoiser of %unet optimizer @adamw8bit(lr 1e-05, eps 1e-08) max_grad_norm 1.0
   iro.sequence @once capture(%unet, %unit) {
@@ -36,8 +36,7 @@ STEP = """iro.strategy @step uses(@batch v1, @predict v1, @objective v1, @standa
 
 def installed() -> dict:
     def declared(name: str, inputs=(), outputs=()):
-        version = 2 if name.startswith("standard.") else 1  # the standard profile's implementations are at version 2
-        return implementation(version=version, inputs=inputs, outputs=outputs, name=name)(lambda *args: None)
+        return implementation(inputs=inputs, outputs=outputs, name=name)(lambda *args: None)
 
     return {
         "batch": declared("batch", outputs=("batch",)),
@@ -94,8 +93,13 @@ def test_the_loss_is_released_after_its_contribution() -> None:
 
 def test_a_strategy_with_training_words_is_accepted_with_its_pins_and_cold_loads() -> None:
     run = accepted_run(STEP, contract(), installed=installed())
-    assert {name for name, _, _ in run.definitions} >= {"iro.train.unit", "iro.train.window", "iro.train.contribute", "iro.train.profile"}
-    assert {name for name, _, _ in run.implementations} >= {CONTRIBUTE, ADVANCE}
+    assert {record.name for record in run.definitions} >= {
+        "iro.train.unit",
+        "iro.train.window",
+        "iro.train.contribute",
+        "iro.train.profile",
+    }
+    assert {record.name for record in run.implementations} >= {CONTRIBUTE, ADVANCE}
     assert [p.name for p in run.seed.participants] == ["unet"], "a unit is not a participant"
     bound = [o for o in run.obligations if o.kind == ObligationKind.BOUND]
     assert {o.names for o in bound} == {("@unet",), ("@denoiser",)}
@@ -137,7 +141,7 @@ def test_verification_of_the_expanded_strategy_owes_the_unit_to_its_owner() -> N
     assert unit.evaluator == "the resource's owner"
 
 
-TWO_WINDOWS = """iro.strategy @s uses(@batch v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {
+TWO_WINDOWS = """iro.strategy @s uses(@batch, @predict, @objective, @standard.contribute, @standard.advance) {
   %unet = iro.resource @unet : participant
   %unit = iro.train.unit @denoiser of %unet optimizer @sgd
   iro.sequence @first capture(%unet, %unit) {
@@ -194,7 +198,7 @@ def test_every_window_that_cannot_expand_is_reported() -> None:
 
 
 def test_a_loss_is_contributed_only_to_a_unit() -> None:
-    text = """iro.strategy @s uses(@objective v1) {
+    text = """iro.strategy @s uses(@objective) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     %loss = iro.access %m protected_current {

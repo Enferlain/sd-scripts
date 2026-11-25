@@ -3435,19 +3435,44 @@ and launch device work. Owners hold state.
   rank-consistency declarations. A single loop gets this ordering for free;
   concurrent activities must establish it. Activities that issue no collectives
   stay independent.
-- **No-GIL.** Running without the GIL is the performance target, never a
-  correctness mechanism. Correctness rests on the ownership rules, which hold
-  either way: one writer, protected access, explicit hand-offs and affine
-  claims. A selected implementation is presumed unsafe for concurrent use of
-  the same participant unless its declaration says otherwise, and the runtime
-  serializes such uses. Imports that would re-enable the GIL stay off the
-  default path and load only when a selected implementation needs them. A
-  selection that needs the GIL, such as an optimizer whose library loads
-  Triton, costs the run that selected it, and the system never slows its
-  own paths to suit it. A run reports its actual GIL state and, when the GIL
-  is on, the first selection whose loading turned it on, which the host
-  observes around each piece it loads: materializers, optimizers and
-  installed implementations. No backend or numerical compiler is required;
+- **No-GIL.** The runtime relies on running without the GIL: its
+  coordinator, producers and device workers run Python in parallel, which
+  the GIL would turn into taking turns. So nothing turns the GIL on unless a
+  run explicitly wants it. The GIL is never a correctness mechanism.
+  Correctness rests on the ownership rules, which hold either way: one
+  writer, protected access, explicit hand-offs and affine claims. A selected
+  implementation is presumed unsafe for concurrent use of the same
+  participant unless its declaration says otherwise, and the runtime
+  serializes such uses.
+  - **Known causes stay unavailable.** A module known to turn the GIL on,
+    today Triton, cannot be imported in a run unless a selection the run
+    names needs it. Libraries that only check whether it exists then take
+    their other paths: with Triton unavailable, building `torch.optim` and
+    bitsandbytes optimizers and importing `transformers` and Diffusers model
+    classes leave the GIL off, and bitsandbytes' 8-bit AdamW gives
+    bit-identical steps (checked 2026-11-25).
+  - **Explicitly wanted.** Every piece a run loads, such as a materializer,
+    optimizer, implementation, setup or comparison policy, declares any
+    module it needs that turns the GIL on, such as Triton for
+    `torch.compile`'s GPU code generation or a Triton kernel. The run names
+    each selection allowed to turn the GIL on, in the strategy or at launch,
+    and the names are recorded with the run. Fulfillment refuses a selection
+    that needs such a module and is not named, with the reason. The system
+    never slows its own paths to suit a run that turns the GIL on.
+  - **Checked, not trusted.** A run checks that the GIL is off when it
+    starts. Outside the loads of named selections, CPython's warning that it
+    has enabled the GIL is an error, so the import that turns it on fails at
+    once, in any thread, naming the module and the calls that reached it.
+    For code that swallows that error, the host also reads the GIL state
+    after each load, and the runtime reads it periodically, off the per-call
+    path. Any of these fails the run. CPython warns only for the first module
+    that turns the GIL on, so each piece's declaration is also checked in a
+    fresh process, when the piece is written and in section 26's
+    qualification, and the dependency test checks that importing the new
+    system's packages leaves the GIL off.
+
+  A run reports its actual GIL state and, when the GIL is on, the named
+  selection that turned it on. No backend or numerical compiler is required;
   each integration serves the work it can realize. The
   [blockers report](../../../docs_design/archive/cpython-314t-blockers-report.md) records the
   current Triton, OpenCV and gRPC limits.
@@ -3947,6 +3972,10 @@ to accept it.
 
   A word's definition records a hash of its contracts, written form and
   expansion, as a declaration does.
+- **The repository's state.** The run also records the repository revision
+  it was started from and any uncommitted changes, as the changed files with
+  their hashes, so a run or product made from edited code is never mistaken
+  for one made from that revision.
 - **What a record claims.** Each record says how it was computed and what it
   covers: its method and the method's revision, the fixtures by name, the
   files hashed. It claims nothing beyond that, as the metadata change
@@ -3963,12 +3992,33 @@ to accept it.
   stated `rtol` and `atol`, or ULP bounds, for floating-point values. The
   policy and its revision are recorded with the comparison. A difference
   within the policy is numerical or environment drift, not changed code; a
-  difference beyond it is changed code.
+  difference beyond it is changed code. The comparison is not the core's,
+  which defines no numerics (above). A comparison policy is code outside the
+  core, installed by name as implementations are. Its revision names its
+  definition, what its equivalence establishes, which a reader needs to read
+  a verdict; its code evidence identifies the code that applied it; both are
+  recorded with each verdict. Given both exact records, it returns yes or no
+  with the differences it found, which the core reports and never reads.
+  The core carries the exact records, compares them byte for byte, calls the
+  fixture's policy only when they differ, and records and uses the yes or no
+  without interpreting a number. The verdict is a further record; it never
+  replaces either exact one. A fixture whose policy is not installed gets no
+  verdict, so a difference in its outputs counts as changed code, and the
+  refusal names the missing policy.
 - **Where records live.** A record's identity is the hash of its content.
   Records are filed as metadata facts in metadata's append-only store, which
   holds the canonical copy, and a saved run carries a copy of every record it
   depends on, so it can be checked on a machine whose store never saw it.
   The copy checks itself against its identity.
+- **Printing a record.** A record keeps its parts, not only their hash: the
+  declaration's canonical text, each fixture's exact outputs, the files and
+  class name it hashed with their hashes, and the environment facts. It
+  prints in full, and its hash is only a short name for that printout. The
+  accepted run and the prepared form print the records of the code they
+  use, a cached value or a saved product carries those of the code that
+  made it, an implementation can print its own, and a mismatch is reported
+  part by part, such as which fixture's outputs differ and by how much, or
+  which file changed.
 - **Checking a run that starts later.** Starting a saved run computes the
   same records for the installed code and compares them with the run's, each
   only with a record of the same method and coverage. If they match, the run
@@ -3993,6 +4043,14 @@ to accept it.
   reuse records which. A
   refactor that leaves a piece's fixture outputs unchanged keeps its caches;
   for a piece known only by its source, any edit rebuilds them.
+- **Changes the person running makes.** People who run training often
+  change code themselves. A new run records the code as it is, their change
+  included, with no version to bump. Continuing something made under other
+  code shows what changed: a cache rebuilds by itself, and only when the code
+  that computed it changed, and a resume asks once and records the answer
+  (above). A changed piece meant to sit beside the original gets a name of
+  its own. The repository's state that the run records (above) shows that a
+  run or product came from edited code.
 - **Checks in the repository.** A test records each piece's exact fixture
   outputs. A change beyond the fixture's comparison policy fails the test,
   so the system detects the change and the developer confirms it is meant
@@ -4717,9 +4775,9 @@ participants a call reads or updates is not written a second time. The lease
 types in the signature say it, and verification checks each call site's
 access mode against them (D14). The decorator states only what the signature
 cannot show, such as use of randomness, external input or output,
-collectives, use of a device, a result that keeps a dependency on a lease
-(D16), anything else kept beyond the call, and state private to the
-implementation. The decorator has no registration side effect;
+collectives, use of a device, a module it needs that turns the GIL on
+(D15), a result that keeps a dependency on a lease (D16), anything else kept
+beyond the call, and state private to the implementation. The decorator has no registration side effect;
 the launcher installs implementations explicitly (D2).
 
 ```python
@@ -5443,8 +5501,10 @@ code is.
   `UNetModel` in the CompVis and Stability code, `UNet2DConditionModel` in
   Diffusers), so `library/models/denoisers/` holds that UNet with the
   reference's parameters, and the SD and SDXL assemblies ship their values.
-  Its native state layout is the released checkpoints' own; other layouts,
-  such as Diffusers', go through conversion. A configuration's values are
+  Its native state layout, what it loads and saves, is the original released
+  checkpoints' own; other layouts, such as Diffusers', go through
+  conversion. The paths that features address are a separate matter
+  (below). A configuration's values are
   implemented when its release is written, and the others are refused with
   the reason until then. Designing architectures beyond the released ones
   is a different matter, closer to strategies.
@@ -5453,18 +5513,43 @@ code is.
   code or a class from an installed library behind that interface, and one
   component may have several, each selected by name with its own code
   evidence and its own materializer from the released checkpoints (D16).
-  Which one a run uses is a selection, so adding or replacing one changes no
-  strategy's meaning. What an implementation offers, such as checkpoint
-  points, it declares, so a strategy's need it does not meet is found before
-  the run (D15). The repository starts with its own denoisers and
-  autoencoders, and with the text encoders from `transformers` behind their
-  interface, with whatever wrapper or key mapping keeps the released
-  checkpoints' names and layout. Runtime code does not use Diffusers, since
-  the components it would supply are repository code; it serves tests as a
-  reference implementation. Importing either library's model classes turns
-  the GIL on today, through `torch._dynamo` loading Triton, as building any
-  `torch.optim` optimizer does; a selection that needs the GIL costs only
-  the run that selected it (D15).
+  Which one a run uses is a selection. Adding another implementation changes
+  no strategy's meaning; changing the code behind an existing
+  implementation's name changes its code evidence, so it never silently
+  replaces the implementation an accepted run recorded (D16). What an
+  implementation offers, such as checkpoint points, it declares, so a
+  strategy's need it does not meet is found before the run (D15).
+  - **What every implementation keeps.** The component defines two things,
+    and every implementation keeps both: its correspondence with the
+    original released checkpoints' state, for loading and saving, and the
+    component-local module and parameter paths that adapters, parameter
+    selectors, sharding, quantization and checkpoint points address
+    (`component-qualified-selectors`, `optimization-target-refs`). The two
+    are separate and can differ. SDXL's original single-file release stores
+    each OpenCLIP-G layer's attention projections fused into one, while the
+    adapter files made today address the query, key and value projections
+    one by one, because today's loader splits them. An implementation's
+    runtime module tree presents the component's paths as its real runtime
+    paths; for a library class that tree is its wrapper's, so the library's
+    own attribute names never become part of the component's interface. A
+    library release that renames them, as `transformers` did for
+    `CLIPTextModel` between 4.54.1, which the baseline uses, and 5.19,
+    changes the wrapper, never the paths. Adapter file formats map their
+    keys to these paths (`tasks.md` section 19).
+  - **What the repository starts with.** Its own denoisers and autoencoders,
+    and the text encoders from `transformers` behind their interface.
+    Runtime code does not use Diffusers, since the components it would
+    supply are repository code; it serves tests as a reference
+    implementation.
+  - **The GIL.** Either library's model classes reach Triton through
+    `torch._dynamo`. A run keeps Triton unavailable unless a selection it
+    names needs it, so these imports leave the GIL off (D15). The module
+    that defines a library-backed implementation imports the library only
+    when the implementation is used, so installing it imports nothing. The
+    dependency test checks, in a fresh process, that importing each package
+    on its list of the new system's packages leaves the GIL off;
+    `library/models` joins that list with its first module of the new
+    system, as every new package does.
 - **Model code** is a component's or an assembly's intrinsic meaning and
   canonical interface, whatever a strategy does with it: its modules, its
   weights and their canonical formats, and the conventions it was trained
@@ -5648,6 +5733,7 @@ edited to follow them.
 | `words/` | Kuroiro's core operations and types: structure, lifetimes, data, access, calls and model use | `dialects.py`, `filter_contracts.py`, `product_contracts.py` |
 | `operation_contracts.py` | Region, flow, resource, realization and decision contracts | `contracts.py` |
 | `composition.py` | The contract: registration of definitions and declarations, queries, and the readable form written to `library/strategies/CONTRACT.md` | New (D18, D21) |
+| `evidence.py` | Code evidence: what a run records of each piece of code it uses, printable in full and compared part by part | New (D16) |
 | `frontend/` | The `iro` namespace, the one entry point authors import, with its decorators; and the reader that reads a strategy into Kuroiro | New (D18) |
 | `normalize.py` | Expansion of derived words, and explicit captures, requests and stops | `normalize.py` |
 | `verify.py` | Verification, the `Obligations` type and readiness checkpoints | `verify.py` |
@@ -5752,7 +5838,7 @@ The libraries below the strategy system:
 
 | Package | Holds once the rework is done |
 | --- | --- |
-| `library/models` | Components arranged by kind, for example `autoencoders/`, `text_encoders/` and `denoisers/`, each with its implementations (repository modules, or an installed library's class behind the component's interface), materializer and materialization evidence, canonical serialization and conversion, repository-owned interface and declaration; and assemblies, the models as released, such as SD, SDXL and SD3, whose materializers load a released checkpoint into its components |
+| `library/models` | Components arranged by kind, for example `autoencoders/`, `text_encoders/` and `denoisers/`, each with its implementations (repository modules, or an installed library's class behind the component's interface, presenting the component-local paths the component defines), materializer and materialization evidence, canonical serialization and conversion, repository-owned interface and declaration; and assemblies, the models as released, such as SD, SDXL and SD3, whose materializers load a released checkpoint into its components |
 | `library/conditioning` | Conditioning techniques, such as long prompts, prompt weighting, clip-skip and per-encoder dropout, and the meaning of cached conditioning values: their schema and dependencies. It uses the components' interfaces and the assemblies' conventions, and holds no storage or traversal |
 | `library/objectives`, `losses`, `timesteps` | Formulations such as DDPM and rectified flow, losses and their weightings such as EDM2's, and timestep sampling |
 | `library/data` | Sources, manifests, bucketing, realized captions and their transforms, augmentation, image facts, cache storage and the traversal that produces caches, with the caching capability |
@@ -6660,8 +6746,9 @@ Trainer responsibility
   and the written form is the project's own.
 - **The runtime model is unproven on GPU and without the GIL** → The CUDA
   adapter and one real SDXL training action land in the earliest milestones
-  (D15). Running without the GIL is a performance target, never a
-  correctness mechanism, and every run reports its actual GIL state.
+  (D15). The runtime relies on running without the GIL, never as a
+  correctness mechanism; nothing turns it on unless a run names the
+  selection that needs it, and every run reports its actual GIL state.
 
 ## Migration Plan
 

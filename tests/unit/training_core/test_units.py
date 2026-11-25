@@ -44,7 +44,7 @@ from library.training.units.standard import installed as standard
 from library.training.words import contract
 from tests.unit.iro.accepted_runs import accepted_run
 
-STEP = """iro.strategy @step uses(@batch v1, @encode v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {
+STEP = """iro.strategy @step uses(@batch, @encode, @predict, @objective, @standard.contribute, @standard.advance) {
   %net = iro.resource @net : participant
   %enc = iro.resource @enc : participant
   %unit = iro.train.unit @learner of %net optimizer @adamw(lr 0.1, weight_decay 0.0) max_grad_norm 0.5
@@ -82,19 +82,18 @@ def networks() -> tuple[torch.nn.Module, torch.nn.Module]:
 def implementations(seen: dict[str, list]) -> dict:
     taken = iter(BATCHES)
 
-    @implementation(version=1, outputs=("batch",), name="batch")
+    @implementation(outputs=("batch",), name="batch")
     def batch():
         return next(taken)
 
     @implementation(
-        version=1, inputs=("protected_current lease", "batch"), outputs=("retained cond",), name="encode", relations={DERIVATIVE: [(0, 0)]}
+        inputs=("protected_current lease", "batch"), outputs=("retained cond",), name="encode", relations={DERIVATIVE: [(0, 0)]}
     )
     def encode(encoder, batch):
         seen["encoder"].append((encoder.training, torch.is_grad_enabled()))
         return encoder(batch[0])
 
     @implementation(
-        version=1,
         inputs=("protected_current lease", "retained cond"),
         outputs=("retained prediction",),
         name="predict",
@@ -104,13 +103,11 @@ def implementations(seen: dict[str, list]) -> dict:
         seen["network"].append((network.training, torch.is_grad_enabled()))
         return network(cond)
 
-    @implementation(
-        version=1, inputs=("retained prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]}
-    )
+    @implementation(inputs=("retained prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]})
     def objective(prediction, batch):
         return Massive(torch.nn.functional.mse_loss(prediction, batch[1]), float(batch[1].numel()))  # its mean divides by every element
 
-    @implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="measure")
+    @implementation(inputs=("protected_current lease",), outputs=("int",), name="measure")
     def measure(network):
         seen.setdefault("measure", []).append((network.training, torch.is_grad_enabled()))
         return 1
@@ -124,7 +121,6 @@ def on_host() -> dict:
     for name, made in standard().items():
         declared = made.declaration
         found[name] = implementation(
-            version=declared.version,
             inputs=declared.inputs,
             outputs=declared.outputs,
             name=name,
@@ -188,8 +184,8 @@ def test_the_unit_s_prepared_run_shows_what_training_derived() -> None:
     made = trainer()
     executable = made.realize()
     text = executable.prepared.text()
-    assert re.search(r"derived by\n  @training\.derive v1 code \w+\n  @training\.grad_mode v1 code \w+\n", text)
-    assert "@predict, @objective (setups @training.grad_mode v1, units learner, hold @net (learner))" in text
+    assert re.search(r"derived by\n  @training\.derive\n    \S+ source \w+\n  @training\.grad_mode\n    \S+ source \w+\n", text)
+    assert "@predict, @objective (setups @training.grad_mode, units learner, hold @net (learner))" in text
     assert re.search(r": @encode \(hold @enc \(\)\)\n", text), "the frozen encoder's route needs no unit's modules in train mode"
     assert re.search(r": @batch\n", text), "it leases nothing and no trained state reaches it, so nothing is derived for it"
     assert executable.readiness.judges == ("run authority", TRAINER)
@@ -243,7 +239,7 @@ WINDOW_BODY = """      %batch = iro.call @batch() -> batch
         iro.call @objective(%prediction, %batch) -> retained loss
       }"""
 
-TWO_UNITS = f"""iro.strategy @two uses(@batch v1, @encode v1, @predict v1, @objective v1, @standard.contribute v2, @standard.advance v2) {{
+TWO_UNITS = f"""iro.strategy @two uses(@batch, @encode, @predict, @objective, @standard.contribute, @standard.advance) {{
   %net = iro.resource @net : participant
   %enc = iro.resource @enc : participant
   %a = iro.train.unit @a of %net optimizer @adamw(lr 0.1)
@@ -608,7 +604,7 @@ def said(rejection: Rejection) -> str:
     return " ".join(str(rejection).split())
 
 
-SAMPLED = """iro.strategy @sampled uses(@sample v1, @judge v1, @standard.contribute v2, @standard.advance v2) {
+SAMPLED = """iro.strategy @sampled uses(@sample, @judge, @standard.contribute, @standard.advance) {
   %net = iro.resource @net : participant
   %unit = iro.train.unit @learner of %net optimizer @adamw(lr 0.1)
   %items = iro.stream @items : prediction
@@ -648,10 +644,9 @@ ALSO_SCORED = """%loss = iro.access %net protected_current {
 
 def sampling(judge_inputs: tuple[str, ...]) -> dict:
     sample = implementation(
-        version=1, inputs=("protected_current lease", "int"), outputs=("prediction",), name="sample", relations={DERIVATIVE: [(0, 0)]}
+        inputs=("protected_current lease", "int"), outputs=("prediction",), name="sample", relations={DERIVATIVE: [(0, 0)]}
     )(lambda n, index: None)
     judge = implementation(
-        version=1,
         inputs=judge_inputs,
         outputs=("retained loss",),
         name="judge",
@@ -673,7 +668,7 @@ def test_the_trained_model_sampling_in_another_activity_runs_without_grad_mode_w
     assert re.search(r"in @sampled/@all/@sampling: @sample \(hold @net \(\)\)\n", text), (
         "sampling's outputs are data to the training activity"
     )
-    assert "@judge (setups @training.grad_mode v1, units learner, hold @net (learner))" in text
+    assert "@judge (setups @training.grad_mode, units learner, hold @net (learner))" in text
 
 
 def test_a_trained_participant_that_reaches_its_loss_by_no_path_is_refused() -> None:
@@ -681,7 +676,7 @@ def test_a_trained_participant_that_reaches_its_loss_by_no_path_is_refused() -> 
         found = implementations(seen)
         declared = found["predict"].declaration
         found["predict"] = implementation(
-            version=1, inputs=declared.inputs, outputs=declared.outputs, name="predict", relations={DERIVATIVE: [(1, 0)]}
+            inputs=declared.inputs, outputs=declared.outputs, name="predict", relations={DERIVATIVE: [(1, 0)]}
         )(found["predict"].function)
         return found
 
@@ -702,14 +697,13 @@ def test_a_call_on_a_path_from_trained_state_that_holds_a_lease_must_declare_its
     def plain(seen):
         found = implementations(seen)
         found["predict"] = implementation(
-            version=1,
             inputs=("protected_current lease", "retained cond"),
             outputs=("prediction",),
             name="predict",
             relations={DERIVATIVE: [(0, 0), (1, 0)]},
         )(found["predict"].function)
         found["objective"] = implementation(
-            version=1, inputs=("prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]}
+            inputs=("prediction", "batch"), outputs=("retained loss",), name="objective", relations={DERIVATIVE: [(0, 0)]}
         )(found["objective"].function)
         return found
 
@@ -820,7 +814,7 @@ def test_a_backward_that_fails_counts_no_contribution() -> None:
     assert live.position == 0 and live._mass == 0.0, "the window still holds nothing, so its end steps nothing rather than hide the failure"
 
 
-MEASURED_FIRST = STEP.replace("@objective v1,", "@objective v1, @measure v1,").replace(
+MEASURED_FIRST = STEP.replace("@objective,", "@objective, @measure,").replace(
     "        %prediction = iro.call @predict(%n, %cond) -> retained prediction",
     "        %seen = iro.call @measure(%n) -> int\n        %prediction = iro.call @predict(%n, %cond) -> retained prediction",
 )
@@ -836,7 +830,7 @@ def test_a_measurement_before_the_forward_in_one_access_runs_in_evaluation_mode_
 
 
 def test_a_measurement_while_the_forward_s_result_is_retained_is_refused_since_it_would_wait_on_itself() -> None:
-    text = STEP.replace("@objective v1,", "@objective v1, @measure v1,").replace(
+    text = STEP.replace("@objective,", "@objective, @measure,").replace(
         "        iro.call @objective(%prediction, %batch) -> retained loss",
         "        %seen = iro.call @measure(%n) -> int\n        iro.call @objective(%prediction, %batch) -> retained loss",
     )

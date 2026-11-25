@@ -183,14 +183,12 @@ class CallSetup(Protocol):
     to, entered with that lease's handle (:class:`Enters`). It changes only its worker's own
     context, such as PyTorch's grad mode or autocast, both kept per thread;
     a switch the whole process shares can never be a call setup. Its code is
-    pinned by name and version, as an implementation's is.
+    recorded by name and the evidence of its source, as an implementation's
+    is (:mod:`library.iro.evidence`).
     """
 
     @property
     def name(self) -> str: ...
-
-    @property
-    def version(self) -> str: ...
 
     def entered(self, annotations: Annotations, handles: Sequence[object]) -> AbstractContextManager[object]: ...
 
@@ -204,7 +202,7 @@ class HeldSetup(Protocol):
     changes only state reachable through that handle, such as a
     participant's module mode. :meth:`key` says, for a call's annotations,
     which realization state the setup needs, as written data the core only
-    compares, together with the setup's name and version.
+    compares, together with the setup's name and the evidence of its source.
 
     Its hold on the resource covers the leases its calls use, and binds while
     one of them is in use by a running call or kept by a retained result:
@@ -222,9 +220,6 @@ class HeldSetup(Protocol):
 
     @property
     def name(self) -> str: ...
-
-    @property
-    def version(self) -> str: ...
 
     @property
     def undoes(self) -> bool: ...
@@ -292,7 +287,7 @@ UPDATING_LEASES = (f"{AccessMode.OWNER_UPDATE} lease", f"{AccessMode.GRANT} leas
 
 @dataclass(frozen=True)
 class Declaration:
-    """What an implementation declares about itself at one implementation version (D16, D18).
+    """What an implementation declares about itself (D16, D18).
 
     ``inputs`` and ``outputs`` are types as the written form prints them, such
     as ``latents``, ``protected_current lease`` or ``retained loss``. Which
@@ -312,7 +307,6 @@ class Declaration:
     """
 
     name: str
-    version: str
     inputs: tuple[str, ...] = ()
     outputs: tuple[str, ...] = ()
     effects: frozenset[Effect] = frozenset()
@@ -321,8 +315,8 @@ class Declaration:
     relations: tuple[tuple[str, tuple[tuple[int, int], ...]], ...] = ()
 
     def __post_init__(self) -> None:
-        if not self.name or not self.version:
-            raise ValueError("an implementation declares its name and its implementation version")
+        if not self.name:
+            raise ValueError("an implementation declares its name")
         if self.completion not in ("device", "own"):
             raise ValueError(f"{self.name}: completion is 'device' or 'own', not {self.completion!r}")
         object.__setattr__(self, "effects", frozenset(Effect(effect) for effect in self.effects))
@@ -367,13 +361,13 @@ class Declaration:
         return tuple(i for i, t in enumerate(self.inputs) if t.endswith(" lease") or t.startswith("retained "))
 
     @property
-    def digest(self) -> str:
-        """A digest of the declaration, which a pin records beside the implementation version (D16).
+    def text(self) -> str:
+        """The declaration's canonical text, which the run's evidence of the implementation records (D16).
 
-        It covers everything declared except the version. Value types are
-        covered by name: they carry no declared structure yet.
+        It covers everything declared. Value types are covered by name: they
+        carry no declared structure yet.
         """
-        listing = "\n".join(
+        return "\n".join(
             (
                 f"name {self.name}",
                 f"inputs {', '.join(self.inputs)}",
@@ -384,7 +378,11 @@ class Declaration:
                 *(f"relation {relation} {', '.join(f'{s}>{t}' for s, t in edges)}" for relation, edges in self.relations),
             )
         )
-        return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
+
+    @property
+    def digest(self) -> str:
+        """A short name for the declaration's canonical text."""
+        return hashlib.blake2s(self.text.encode(), digest_size=8).hexdigest()
 
 
 @runtime_checkable

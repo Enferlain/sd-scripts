@@ -63,7 +63,6 @@ def _results(declared: Declaration, returned: object) -> tuple[object, ...]:
 
 def implementation(
     *,
-    version: int | str,
     inputs: Iterable[str] = (),
     outputs: Iterable[str] = (),
     effects: Iterable[Effect | str] = (),
@@ -72,18 +71,17 @@ def implementation(
     name: str | None = None,
     relations: Mapping[str, Iterable[tuple[int, int]]] | None = None,
 ) -> Callable[[Callable[..., object]], Declared]:
-    """Declares the decorated function as an implementation at one implementation version.
+    """Declares the decorated function as an implementation.
 
-    D16 says what a version covers: change it whenever the declaration or the
-    results change. ``relations`` maps a relation's name to the
-    ``(input, output)`` positions it propagates through
-    (:class:`~library.iro.seams.Declaration`).
+    A run identifies it by its name and the evidence of its code, which the
+    system computes: its declaration and its source (D16). ``relations`` maps
+    a relation's name to the ``(input, output)`` positions it propagates
+    through (:class:`~library.iro.seams.Declaration`).
     """
 
     def declare(function: Callable[..., object]) -> Declared:
         declaration = Declaration(
             name or getattr(function, "__name__", ""),
-            str(version),
             tuple(inputs),
             tuple(outputs),
             frozenset(Effect(e) for e in effects),

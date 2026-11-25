@@ -73,7 +73,7 @@ def execute(text: str, installed: dict, *, resources=None, target: Target = Targ
     return outcome, facts, coordinator
 
 
-CHAIN = """iro.strategy @s uses(@a v1, @b v1, @c v1) {
+CHAIN = """iro.strategy @s uses(@a, @b, @c) {
   iro.sequence @once {
     %x = iro.call @a() -> int
     %y = iro.call @b(%x) -> int
@@ -88,7 +88,7 @@ def test_calls_run_on_worker_threads_and_a_fused_group_on_one() -> None:
     loop_thread = threading.get_ident()
 
     def make(name, inputs, body):
-        return implementation(version=1, inputs=inputs, outputs=("int",), name=name)(
+        return implementation(inputs=inputs, outputs=("int",), name=name)(
             lambda *args: (seen.append((name, threading.get_ident())), body(*args))[1]
         )
 
@@ -101,7 +101,7 @@ def test_calls_run_on_worker_threads_and_a_fused_group_on_one() -> None:
     assert len(threads) == 1, "a fused group is one submission on one worker"
 
 
-PARALLEL = """iro.strategy @s uses(@slow v1, @boom v1) {
+PARALLEL = """iro.strategy @s uses(@slow, @boom) {
   iro.parallel @both {
     iro.sequence @left {
       %x = iro.call @slow() -> int
@@ -124,8 +124,8 @@ def test_a_failure_fails_the_run_and_closes_admission_for_its_siblings() -> None
         raise ValueError("selected code failed")
 
     installed = {
-        "slow": implementation(version=1, outputs=("int",), name="slow")(slow),
-        "boom": implementation(version=1, outputs=("int",), name="boom")(boom),
+        "slow": implementation(outputs=("int",), name="slow")(slow),
+        "boom": implementation(outputs=("int",), name="boom")(boom),
     }
     outcome, facts, coordinator = execute(PARALLEL, installed, target=Target(workers=4, fuse=False))
     assert outcome.status == "failed" and "selected code failed" in (outcome.error or "")
@@ -143,9 +143,9 @@ def test_cancellation_closes_admission_and_the_run_settles() -> None:
         return 1
 
     installed = {
-        "a": implementation(version=1, outputs=("int",), name="a")(first),
-        "b": implementation(version=1, inputs=("int",), outputs=("int",), name="b")(lambda x: x),
-        "c": implementation(version=1, inputs=("int",), outputs=("int",), name="c")(lambda x: x),
+        "a": implementation(outputs=("int",), name="a")(first),
+        "b": implementation(inputs=("int",), outputs=("int",), name="b")(lambda x: x),
+        "c": implementation(inputs=("int",), outputs=("int",), name="c")(lambda x: x),
     }
     outcome, facts, coordinator = execute(CHAIN, installed, target=Target(fuse=False), before=holder.append)
     assert outcome.status == "cancelled"
@@ -153,7 +153,7 @@ def test_cancellation_closes_admission_and_the_run_settles() -> None:
     assert not coordinator.outcomes
 
 
-TURNS = """iro.strategy @s uses(@work v1, @keep v1, @look v1, @solo v1) {
+TURNS = """iro.strategy @s uses(@work, @keep, @look, @solo) {
   %m = iro.resource @m : participant
   %n = iro.resource @n : participant
   iro.parallel @both capture(%m, %n) {
@@ -193,14 +193,12 @@ def test_device_work_of_different_activities_takes_turns_and_a_turn_lasts_until_
         return 2
 
     installed = {
-        "keep": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="keep")(
-            keep
-        ),
-        "work": implementation(version=1, outputs=("int",), effects=["device"], name="work")(work),
-        "look": implementation(version=1, inputs=("retained int",), outputs=("int",), effects=["device"], name="look")(
+        "keep": implementation(inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="keep")(keep),
+        "work": implementation(outputs=("int",), effects=["device"], name="work")(work),
+        "look": implementation(inputs=("retained int",), outputs=("int",), effects=["device"], name="look")(
             lambda r: (order.append("look"), r)[1]
         ),
-        "solo": implementation(version=1, outputs=("int",), effects=["device"], name="solo")(lambda: (order.append("solo"), 3)[1]),
+        "solo": implementation(outputs=("int",), effects=["device"], name="solo")(lambda: (order.append("solo"), 3)[1]),
     }
     outcome, facts, coordinator = execute(TURNS, installed, resources={"m": 1, "n": 2}, target=CUDA, devices={"cuda:0": device})
     assert outcome.status == "succeeded", outcome.error
@@ -220,9 +218,9 @@ def test_a_fused_group_that_fails_midway_reports_only_the_calls_that_ran() -> No
         raise ValueError("b failed")
 
     installed = {
-        "a": implementation(version=1, outputs=("int",), name="a")(lambda: 1),
-        "b": implementation(version=1, inputs=("int",), outputs=("int",), name="b")(boom),
-        "c": implementation(version=1, inputs=("int",), outputs=("int",), name="c")(lambda y: y),
+        "a": implementation(outputs=("int",), name="a")(lambda: 1),
+        "b": implementation(inputs=("int",), outputs=("int",), name="b")(boom),
+        "c": implementation(inputs=("int",), outputs=("int",), name="c")(lambda y: y),
     }
     outcome, facts, coordinator = execute(CHAIN, installed)
     calls = [(f.owner.rsplit("/", 1)[-1], f.kind) for f in facts if f.kind.startswith("call_")]
@@ -230,7 +228,7 @@ def test_a_fused_group_that_fails_midway_reports_only_the_calls_that_ran() -> No
     assert outcome.status == "failed" and not coordinator.outcomes
 
 
-TWO_UPDATES = """iro.strategy @s uses(@bump v1) {
+TWO_UPDATES = """iro.strategy @s uses(@bump) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {
@@ -248,13 +246,13 @@ def test_each_owner_update_is_observed_after_the_call_that_made_it() -> None:
         cell.update(cell.value + 1)
         return cell.value
 
-    installed = {"bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(bump)}
+    installed = {"bump": implementation(inputs=("owner_update lease",), outputs=("int",), name="bump")(bump)}
     outcome, facts, _ = execute(TWO_UPDATES, installed, resources={"m": 0})
     assert outcome.status == "succeeded"
     assert [f.values[0].ordinal for f in facts if f.kind == "updated"] == [1, 2]
 
 
-LEASE_AND_TURN = """iro.strategy @s uses(@keep v1, @write v1, @read v1, @look v1) {
+LEASE_AND_TURN = """iro.strategy @s uses(@keep, @write, @read, @look) {
   %m = iro.resource @m : participant
   %n = iro.resource @n : participant
   iro.parallel @both capture(%m, %n) {
@@ -291,12 +289,10 @@ def test_an_access_never_waits_for_the_device_while_holding_its_leases() -> None
 
     device = ["device"]
     installed = {
-        "keep": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), effects=device, name="keep")(
-            keep
-        ),
-        "write": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=device, name="write")(write),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), effects=device, name="read")(lambda c: 2),
-        "look": implementation(version=1, inputs=("retained int",), outputs=("int",), effects=device, name="look")(lambda r: r),
+        "keep": implementation(inputs=("protected_current lease",), outputs=("retained int",), effects=device, name="keep")(keep),
+        "write": implementation(inputs=("owner_update lease",), outputs=("int",), effects=device, name="write")(write),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), effects=device, name="read")(lambda c: 2),
+        "look": implementation(inputs=("retained int",), outputs=("int",), effects=device, name="look")(lambda r: r),
     }
     for _ in range(5):
         outcome, _, coordinator = execute(
@@ -306,7 +302,7 @@ def test_an_access_never_waits_for_the_device_while_holding_its_leases() -> None
         assert not coordinator.turns.admissions and all(t.holder is None for t in coordinator.turns.by_device.values())
 
 
-KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict v1, @derive v1, @report v1, @hold v1, @bump v1) {
+KEPT_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict, @derive, @report, @hold, @bump) {
   %m = iro.resource @m : participant
   iro.parallel @both capture(%m) {
     iro.sequence @trainer capture(%m) {
@@ -355,13 +351,13 @@ def test_a_result_that_leaves_its_access_keeps_the_state_protected_after_what_it
         return cell.value
 
     installed = {
-        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), name="predict")(
+        "predict": implementation(inputs=("protected_current lease",), outputs=("retained int",), name="predict")(
             lambda lease: lease.value
         ),
-        "derive": implementation(version=1, inputs=("retained int",), outputs=("retained int",), name="derive")(derive),
-        "report": implementation(version=1, inputs=("retained int",), outputs=("int",), name="report")(report),
-        "hold": implementation(version=1, outputs=("int",), name="hold")(hold),
-        "bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(bump),
+        "derive": implementation(inputs=("retained int",), outputs=("retained int",), name="derive")(derive),
+        "report": implementation(inputs=("retained int",), outputs=("int",), name="report")(report),
+        "hold": implementation(outputs=("int",), name="hold")(hold),
+        "bump": implementation(inputs=("owner_update lease",), outputs=("int",), name="bump")(bump),
     }
     outcome, facts, coordinator = execute(
         KEPT_PAST_ITS_ACCESS, installed, resources={"m": 0}, target=Target(workers=4), before=holder.append
@@ -384,12 +380,10 @@ def test_cancellation_while_queued_for_a_turn_leaves_no_turn_behind() -> None:
         return 1
 
     installed = {
-        "keep": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="keep")(
-            keep
-        ),
-        "work": implementation(version=1, outputs=("int",), effects=["device"], name="work")(lambda: 2),
-        "look": implementation(version=1, inputs=("retained int",), outputs=("int",), effects=["device"], name="look")(lambda r: r),
-        "solo": implementation(version=1, outputs=("int",), effects=["device"], name="solo")(lambda: 3),
+        "keep": implementation(inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="keep")(keep),
+        "work": implementation(outputs=("int",), effects=["device"], name="work")(lambda: 2),
+        "look": implementation(inputs=("retained int",), outputs=("int",), effects=["device"], name="look")(lambda r: r),
+        "solo": implementation(outputs=("int",), effects=["device"], name="solo")(lambda: 3),
     }
     outcome, _, coordinator = execute(
         TURNS, installed, resources={"m": 1, "n": 2}, target=CUDA, devices={"cuda:0": FakeDevice()}, before=holder.append
@@ -400,8 +394,8 @@ def test_cancellation_while_queued_for_a_turn_leaves_no_turn_behind() -> None:
 
 
 def test_a_run_where_every_activity_waits_reports_a_stall_instead_of_hanging() -> None:
-    installed = {"a": implementation(version=1, outputs=("int",), name="a")(lambda: 1)}
-    text = "iro.strategy @s uses(@a v1) {\n  iro.sequence @once {\n    %x = iro.call @a() -> int\n  }\n}\n"
+    installed = {"a": implementation(outputs=("int",), name="a")(lambda: 1)}
+    text = "iro.strategy @s uses(@a) {\n  iro.sequence @once {\n    %x = iro.call @a() -> int\n  }\n}\n"
     run = accepted_run(text, installed=installed)
     coordinator = Coordinator(prepare(cold_load(run, installed=installed), installed, Target()), {}, installed, {"host": Host()})
 
@@ -416,7 +410,7 @@ def test_a_run_where_every_activity_waits_reports_a_stall_instead_of_hanging() -
         asyncio.run(wait_forever())
 
 
-SHARED = """iro.strategy @s uses(@slow v1, @fast v1, @late v1, @pause v1) {
+SHARED = """iro.strategy @s uses(@slow, @fast, @late, @pause) {
   %m = iro.resource @m : participant
   iro.parallel @all capture(%m) {
     iro.sequence @one capture(%m) {
@@ -460,11 +454,11 @@ def test_calls_not_safe_for_concurrent_use_run_one_at_a_time_on_a_participant_ev
 
     lease = ("protected_current lease",)
     installed = {
-        "slow": implementation(version=1, inputs=lease, outputs=("int",), name="slow")(tracked(0.3)),
+        "slow": implementation(inputs=lease, outputs=("int",), name="slow")(tracked(0.3)),
         # A call declared safe for concurrent use finishing must not let another unsafe call in.
-        "fast": implementation(version=1, inputs=lease, outputs=("int",), concurrency_safe=True, name="fast")(lambda lease: 0),
-        "late": implementation(version=1, inputs=lease, outputs=("int",), name="late")(tracked(0.05)),
-        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.1) or 0),
+        "fast": implementation(inputs=lease, outputs=("int",), concurrency_safe=True, name="fast")(lambda lease: 0),
+        "late": implementation(inputs=lease, outputs=("int",), name="late")(tracked(0.05)),
+        "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.1) or 0),
     }
     outcome, _, coordinator = execute(SHARED, installed, resources={"m": 0}, target=Target(workers=4))
     assert outcome.status == "succeeded", outcome.error
@@ -472,7 +466,7 @@ def test_calls_not_safe_for_concurrent_use_run_one_at_a_time_on_a_participant_ev
     assert not coordinator.calls.busy
 
 
-TWO_WRITERS = """iro.strategy @s uses(@write v1) {
+TWO_WRITERS = """iro.strategy @s uses(@write) {
   %m = iro.resource @m : participant
   iro.parallel @both capture(%m) {
     iro.sequence @left capture(%m) {
@@ -498,7 +492,7 @@ def test_checked_mode_fails_a_run_that_loses_a_wake() -> None:
         cell.update(cell.value + 1)
         return 0
 
-    installed = {"write": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="write")(write)}
+    installed = {"write": implementation(inputs=("owner_update lease",), outputs=("int",), name="write")(write)}
     from library.iro.runtime.kernel import Kernel
 
     original = Kernel.changed
@@ -534,8 +528,8 @@ def test_a_host_call_that_loads_torch_itself_fails_instead_of_running_under_the_
 def test_the_coordinator_refuses_adapters_that_differ_from_what_the_run_was_prepared_for() -> None:
     import pytest
 
-    installed = {"a": implementation(version=1, outputs=("int",), name="a")(lambda: 1)}
-    text = "iro.strategy @s uses(@a v1) {\n  iro.sequence @once {\n    %x = iro.call @a() -> int\n  }\n}\n"
+    installed = {"a": implementation(outputs=("int",), name="a")(lambda: 1)}
+    text = "iro.strategy @s uses(@a) {\n  iro.sequence @once {\n    %x = iro.call @a() -> int\n  }\n}\n"
     run = accepted_run(text, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"ordering"}))))
     prepared = prepare(cold_load(run, installed=installed), installed, target)
@@ -551,7 +545,7 @@ def test_the_coordinator_refuses_adapters_that_differ_from_what_the_run_was_prep
     assert Coordinator(prepared, {}, installed, {"host": Host(), "cuda:0": offering}).devices["cuda:0"] is offering
 
 
-LEAVING = """iro.strategy @s uses(@encode v1) {
+LEAVING = """iro.strategy @s uses(@encode) {
   %vae = iro.resource @vae : participant may_leave_device
   iro.sequence @once capture(%vae) {
     iro.access %vae protected_current {
@@ -567,9 +561,7 @@ def test_a_participant_that_may_leave_needs_an_owner_that_names_its_storage_and_
     import pytest
 
     installed = {
-        "encode": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="encode")(
-            lambda lease: 1
-        )
+        "encode": implementation(inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="encode")(lambda lease: 1)
     }
     run = accepted_run(LEAVING, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))))
@@ -587,7 +579,7 @@ def test_a_participant_that_may_leave_needs_an_owner_that_names_its_storage_and_
         Coordinator(prepared, {"vae": Named({"vae": 0})}, installed, {"host": Host(), "cuda:0": device})
 
 
-SNAPSHOT_BETWEEN_UPDATES = """iro.strategy @s uses(@first v1, @look v1, @second v1) {
+SNAPSHOT_BETWEEN_UPDATES = """iro.strategy @s uses(@first, @look, @second) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {
@@ -672,11 +664,11 @@ def _between_updates(selection: str = "snapshot"):
         return 0
 
     installed = {
-        "first": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(
+        "first": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(
             lambda owner: owner.update(1) or 0
         ),
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(look),
-        "second": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(look),
+        "second": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(
             lambda owner: owner.update(2) or 0
         ),
     }
@@ -706,12 +698,18 @@ def test_a_capture_copies_live_storage_so_an_older_version_of_device_storage_fai
     assert "capture" not in log and not seen
 
 
+def _listed(text: str) -> set[str]:
+    """The implementations a written strategy's uses header names."""
+    start = text.index("uses(")
+    return set(re.findall(r"@([\w.]+)", text[start : text.index(")", start)]))
+
+
 def _host_only(text: str, owner) -> tuple:
     installed = {
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: handle),
-        "bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(lambda o: o.update(5) or 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: handle),
+        "bump": implementation(inputs=("owner_update lease",), outputs=("int",), name="bump")(lambda o: o.update(5) or 0),
     }
-    installed = {k: v for k, v in installed.items() if f"@{k} v1" in text}
+    installed = {k: v for k, v in installed.items() if k in _listed(text)}
     run = accepted_run(text, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, Target())
     facts: list[Fact] = []
@@ -719,7 +717,7 @@ def _host_only(text: str, owner) -> tuple:
     return asyncio.run(coordinator.run()), coordinator, prepared, facts
 
 
-ONLY_A_SNAPSHOT = """iro.strategy @s uses(@look v1) {
+ONLY_A_SNAPSHOT = """iro.strategy @s uses(@look) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m snapshot {
@@ -730,7 +728,7 @@ ONLY_A_SNAPSHOT = """iro.strategy @s uses(@look v1) {
 }
 """
 
-UPDATED_THEN_SNAPSHOT = ONLY_A_SNAPSHOT.replace("uses(@look v1)", "uses(@bump v1, @look v1)").replace(
+UPDATED_THEN_SNAPSHOT = ONLY_A_SNAPSHOT.replace("uses(@look)", "uses(@bump, @look)").replace(
     "    iro.access %m snapshot {",
     "    iro.access %m owner_update {\n    ^(%u):\n      %b = iro.call @bump(%u) -> int\n    }\n    iro.access %m snapshot {",
 )
@@ -754,13 +752,9 @@ def test_a_snapshot_of_a_participant_the_run_never_updates_is_its_live_storage_w
 
 def test_the_prepared_form_marks_participants_the_run_never_updates() -> None:
     installed = {
-        "first": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(
-            lambda owner: 0
-        ),
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
-        "second": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(
-            lambda owner: 0
-        ),
+        "first": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(lambda owner: 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
+        "second": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(lambda owner: 0),
     }
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))))
     updated = prepare(
@@ -774,7 +768,7 @@ def test_the_prepared_form_marks_participants_the_run_never_updates() -> None:
     assert prepared.updated == () and "  @m on cuda:0, frozen\n" in prepared.text()
 
 
-REQUESTED_SNAPSHOTS = """iro.strategy @s uses(@step v1, @look v1) {
+REQUESTED_SNAPSHOTS = """iro.strategy @s uses(@step, @look) {
   %m = iro.resource @m : participant
   iro.parallel @all capture(%m) {
     iro.repeat @train 3 times capture(%m) {
@@ -798,7 +792,7 @@ REQUESTED_SNAPSHOTS = """iro.strategy @s uses(@step v1, @look v1) {
 
 
 TWO_LEASES = (
-    REQUESTED_SNAPSHOTS.replace("@step v1", "@step2 v1")
+    REQUESTED_SNAPSHOTS.replace("@step,", "@step2,")
     .replace("%m = iro.resource @m : participant", "%m = iro.resource @m : participant\n  %n = iro.resource @n : participant")
     .replace("iro.repeat @train 3 times capture(%m)", "iro.repeat @train 3 times capture(%m, %n)")
     .replace("iro.parallel @all capture(%m)", "iro.parallel @all capture(%m, %n)")
@@ -819,17 +813,17 @@ def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is
 
     update = ("owner_update lease", "int")
     installed = {
-        "step": implementation(
-            version=1, inputs=update, outputs=("int",), effects=["device"], concurrency_safe=shape == "safe update", name="step"
-        )(lambda owner, k: owner.update(k + 1) or 0),
-        "step2": implementation(version=1, inputs=("protected_current lease", *update), outputs=("int",), effects=["device"], name="step2")(
+        "step": implementation(inputs=update, outputs=("int",), effects=["device"], concurrency_safe=shape == "safe update", name="step")(
+            lambda owner, k: owner.update(k + 1) or 0
+        ),
+        "step2": implementation(inputs=("protected_current lease", *update), outputs=("int",), effects=["device"], name="step2")(
             lambda other, owner, k: owner.update(k + 1) or 0
         ),
         # On the host, so the handler holds no device turn the loop's update would wait behind instead.
-        "look": implementation(version=1, inputs=("snapshot lease", "int"), outputs=("int",), name="look")(look),
+        "look": implementation(inputs=("snapshot lease", "int"), outputs=("int",), name="look")(look),
     }
     text = TWO_LEASES if shape == "update beside another lease" else REQUESTED_SNAPSHOTS
-    installed = {k: v for k, v in installed.items() if f"@{k} v1" in text}
+    installed = {k: v for k, v in installed.items() if k in _listed(text)}
     log: list = []
     owner = OnDevice(log)
     run = accepted_run(text, installed=installed)
@@ -853,18 +847,16 @@ def test_an_update_after_a_request_waits_until_its_snapshot_of_device_storage_is
 
 def _requested(text: str, owners: dict, device) -> Coordinator:
     installed = {
-        "step": implementation(version=1, inputs=("owner_update lease", "int"), outputs=("int",), effects=["device"], name="step")(
+        "step": implementation(inputs=("owner_update lease", "int"), outputs=("int",), effects=["device"], name="step")(
             lambda owner, k: owner.update(k + 1) or 0
         ),
-        "look": implementation(version=1, inputs=("snapshot lease", "int"), outputs=("int",), name="look")(lambda handle, x: 0),
-        "both": implementation(version=1, inputs=("snapshot lease", "snapshot lease", "int"), outputs=("int",), name="both")(
+        "look": implementation(inputs=("snapshot lease", "int"), outputs=("int",), name="look")(lambda handle, x: 0),
+        "both": implementation(inputs=("snapshot lease", "snapshot lease", "int"), outputs=("int",), name="both")(
             lambda first, second, x: 0
         ),
-        "bump": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), name="bump")(
-            lambda owner: owner.update(0) or 0
-        ),
+        "bump": implementation(inputs=("owner_update lease",), outputs=("int",), name="bump")(lambda owner: owner.update(0) or 0),
     }
-    installed = {k: v for k, v in installed.items() if f"@{k} v1" in text}
+    installed = {k: v for k, v in installed.items() if k in _listed(text)}
     run = accepted_run(text, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
     prepared = prepare(cold_load(run, installed=installed), installed, target)
@@ -881,7 +873,7 @@ def _clean(coordinator: Coordinator) -> None:
 def test_a_request_whose_second_snapshot_cannot_be_captured_releases_the_first() -> None:
     # @n is updated, on the host only, so its snapshot needs a copy and no device holds its storage.
     text = (
-        REQUESTED_SNAPSHOTS.replace("@look v1", "@look v1, @both v1, @bump v1")
+        REQUESTED_SNAPSHOTS.replace("@look)", "@look, @both, @bump)")
         .replace(
             "      iro.request @sample(%k) from @train at settled_success",
             "      iro.access %n owner_update {\n      ^(%u):\n        %c = iro.call @bump(%u) -> int\n      }\n"
@@ -916,7 +908,7 @@ def test_a_capture_that_fails_on_the_device_fails_the_run_and_leaves_nothing_beh
     _clean(coordinator)
 
 
-MOVED_WITHIN_A_USE = """iro.strategy @s uses(@swap v1, @pause v1, @look v1) {
+MOVED_WITHIN_A_USE = """iro.strategy @s uses(@swap, @pause, @look) {
   %m = iro.resource @m : participant
   iro.parallel @both capture(%m) {
     iro.sequence @reading capture(%m) {
@@ -948,12 +940,10 @@ def test_a_capture_copies_storage_where_a_use_that_moves_it_leaves_it() -> None:
         return 0
 
     installed = {
-        "swap": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="swap")(swap),
-        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
+        "swap": implementation(inputs=("protected_current lease",), outputs=("int",), effects=["device"], name="swap")(swap),
+        "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
         # On the host, so the snapshot's access needs no device turn and is taken while the read runs.
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(
-            lambda handle: seen.append(handle) or 0
-        ),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: seen.append(handle) or 0),
     }
     log: list = []
     run = accepted_run(MOVED_WITHIN_A_USE, installed=installed)
@@ -971,13 +961,9 @@ def test_a_capture_is_refused_for_an_adapter_without_copies_and_for_a_lease_that
     from tests.unit.iro.runtime.harness import Granted
 
     installed = {
-        "first": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(
-            lambda owner: 0
-        ),
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
-        "second": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(
-            lambda owner: 0
-        ),
+        "first": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="first")(lambda owner: 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
+        "second": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="second")(lambda owner: 0),
     }
     run = accepted_run(SNAPSHOT_BETWEEN_UPDATES.replace("SELECTION", "snapshot"), installed=installed)
     bare = Target((HOST, DeviceFacts("cuda:0", "cuda")), workers=4)
@@ -1002,7 +988,7 @@ def test_a_capture_is_refused_for_an_adapter_without_copies_and_for_a_lease_that
     _clean(coordinator)
 
 
-SNAPSHOTS_OF_A_LEAVING_PARTICIPANT = """iro.strategy @s uses(@look v1, @pause v1) {
+SNAPSHOTS_OF_A_LEAVING_PARTICIPANT = """iro.strategy @s uses(@look, @pause) {
   %m = iro.resource @m : participant may_leave_device
   iro.sequence @once capture(%m) {
     iro.access %m snapshot {
@@ -1038,8 +1024,8 @@ class LeavingOnDevice(OnDevice):
 
 def _leaving_snapshots() -> tuple[Coordinator, list]:
     installed = {
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
-        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.05) or 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(lambda handle: 0),
+        "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.05) or 0),
     }
     log: list = []
     run = accepted_run(SNAPSHOTS_OF_A_LEAVING_PARTICIPANT, installed=installed)
@@ -1079,7 +1065,7 @@ def test_a_capture_cancelled_before_it_begins_leaves_nothing_behind() -> None:
     asyncio.run(cancel_at_once())
 
 
-MOVED_THROUGH_A_RETAINED_RESULT = """iro.strategy @s uses(@hold v1, @move v1, @pause v1, @look v1) {
+MOVED_THROUGH_A_RETAINED_RESULT = """iro.strategy @s uses(@hold, @move, @pause, @look) {
   %m = iro.resource @m : participant
   iro.parallel @both capture(%m) {
     iro.sequence @reading capture(%m) {
@@ -1113,14 +1099,12 @@ def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_resu
         return 0
 
     installed = {
-        "hold": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="hold")(
+        "hold": implementation(inputs=("protected_current lease",), outputs=("retained int",), effects=["device"], name="hold")(
             lambda lease: 0
         ),
-        "move": implementation(version=1, inputs=("retained int",), outputs=("int",), effects=["device"], name="move")(move),
-        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), name="look")(
-            lambda handle: seen.append(handle) or 0
-        ),
+        "move": implementation(inputs=("retained int",), outputs=("int",), effects=["device"], name="move")(move),
+        "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.03) or 0),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), name="look")(lambda handle: seen.append(handle) or 0),
     }
     run = accepted_run(MOVED_THROUGH_A_RETAINED_RESULT, installed=installed)
     target = Target((HOST, DeviceFacts("cuda:0", "cuda", frozenset({"copies"}))), workers=4)
@@ -1133,7 +1117,7 @@ def test_a_capture_waits_for_a_call_reaching_the_storage_through_a_retained_resu
 
 # Setups and annotations (D16).
 
-DIFFERENTIATING = """iro.strategy @s uses(@predict v1, @learn v1, @step v1) {
+DIFFERENTIATING = """iro.strategy @s uses(@predict, @learn, @step) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1160,7 +1144,6 @@ class Recording:
 
     seen: list
     name: str = "test.recording"
-    version: str = "1"
 
     def entered(self, annotations, handles):
         self.seen.append(("entered", annotations, tuple(handles), threading.current_thread().name))
@@ -1173,7 +1156,6 @@ class Annotating:
 
     given: dict
     name: str = "test.annotating"
-    version: str = "1"
 
     def derive(self, program):
         return {call: self.given[program.implementation(call)] for call in program.calls() if program.implementation(call) in self.given}
@@ -1183,7 +1165,6 @@ class HeldRecording:
     """A held setup that records what it is applied with; its state is the call's annotations, written out."""
 
     name = "test.held"
-    version = "1"
     undoes = False
     changes_storage = False
 
@@ -1234,11 +1215,11 @@ def differentiating_installed(order: list[str] | None = None, *, safe: bool = Fa
         return 1.0
 
     return {
-        "predict": implementation(
-            version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict", concurrency_safe=safe
-        )(predict),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
-        "step": implementation(version=1, inputs=("owner_update lease", "owner_update lease"), name="step")(lambda u, m: None),
+        "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict", concurrency_safe=safe)(
+            predict
+        ),
+        "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+        "step": implementation(inputs=("owner_update lease", "owner_update lease"), name="step")(lambda u, m: None),
     }
 
 
@@ -1248,9 +1229,9 @@ def test_setups_are_entered_on_the_worker_with_the_call_s_annotations_and_handle
     seen: list = []
     annotated = Derived(annotate({"units": ["w"]}), (Recording(seen),))
     prepared = prepare(cold_load(run, installed=installed), installed, Target(), [Annotating({"predict": annotated})])
-    assert "@predict (setups @test.recording v1, units w)" in prepared.text()
-    assert re.search(r"derived by\n  @test\.annotating v1 code \w+\n  @test\.recording v1 code \w+\n", prepared.text()), (
-        "the deriver and the call setup are pinned by version and code identity"
+    assert "@predict (setups @test.recording, units w)" in prepared.text()
+    assert re.search(r"derived by\n  @test\.annotating\n    \S+ source \w+\n  @test\.recording\n    \S+ source \w+\n", prepared.text()), (
+        "the deriver and the call setup are recorded by name and source"
     )
     owner = Holding({"net": 1, "w": 0}, holding=("net",), seen=seen)
     coordinator = Coordinator(prepared, {"net": owner, "w": owner}, installed, {"host": Host()}, checked=True)
@@ -1263,7 +1244,7 @@ def test_setups_are_entered_on_the_worker_with_the_call_s_annotations_and_handle
     assert all(thread != threading.main_thread().name for *_, thread in seen), "it runs on the worker, as the calls do"
 
 
-TWO_READERS = """iro.strategy @s uses(@read v1) {
+TWO_READERS = """iro.strategy @s uses(@read) {
   %net = iro.resource @net : participant
   iro.parallel @both capture(%net) {
     iro.sequence @left capture(%net) {
@@ -1310,9 +1291,7 @@ def test_a_group_that_applies_a_held_setup_runs_alone_even_beside_calls_safe_for
         spans.append((began, time.perf_counter()))
         return 1
 
-    installed = {
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read)
-    }
+    installed = {"read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read)}
     run = accepted_run(TWO_READERS, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4))
     owner = HoldingOnce({"net": 1}, hold=hold)
@@ -1324,7 +1303,7 @@ def test_a_group_that_applies_a_held_setup_runs_alone_even_beside_calls_safe_for
     assert len(owner.seen) == (1 if hold else 0)
 
 
-HELD_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict v1, @learn v1, @read v1) {
+HELD_PAST_ITS_ACCESS = """iro.strategy @s uses(@predict, @learn, @read) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.parallel @both capture(%net, %w) {
@@ -1361,11 +1340,11 @@ def test_a_held_setup_holds_until_the_retained_result_releases_the_lease_and_ano
         return 1
 
     installed = {
-        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
+        "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
             lambda n: events.append("predicted") or 1.0
         ),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(learn),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read),
+        "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(learn),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read", concurrency_safe=True)(read),
     }
     run = accepted_run(HELD_PAST_ITS_ACCESS, installed=installed)
     deriver = Annotating({"predict": Derived(annotate({"units": ["w"]}))})
@@ -1391,13 +1370,11 @@ def test_separate_setup_objects_that_need_the_same_state_share_a_hold() -> None:
     """Two routes' setups on one participant: a retained result of the first must not make the second wait on itself (D16)."""
     events: list = []
     installed = {
-        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
-            lambda n: 1.0
-        ),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
+        "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(lambda n: 1.0),
+        "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
     }
-    text = """iro.strategy @s uses(@predict v1, @read v1, @learn v1) {
+    text = """iro.strategy @s uses(@predict, @read, @learn) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1441,7 +1418,7 @@ class Undoing(HeldRecording):
     undoes = True
 
 
-ONE_ACCESS_TWO_STATES = """iro.strategy @s uses(@measure v1, @predict v1, @learn v1) {
+ONE_ACCESS_TWO_STATES = """iro.strategy @s uses(@measure, @predict, @learn) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1467,11 +1444,11 @@ def two_states_installed(events: list, *, fail_predict: bool = False) -> dict:
         return 1.0
 
     return {
-        "measure": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="measure")(
+        "measure": implementation(inputs=("protected_current lease",), outputs=("int",), name="measure")(
             lambda n: events.append("measured") or 1
         ),
-        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(predict),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+        "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(predict),
+        "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
     }
 
 
@@ -1524,7 +1501,7 @@ def test_an_undo_that_fails_fails_the_run_with_the_state_reported_uncertain() ->
 
 
 def test_preparation_refuses_a_call_that_would_wait_on_a_hold_its_own_activity_keeps_binding() -> None:
-    text = """iro.strategy @s uses(@predict v1, @measure v1, @learn v1) {
+    text = """iro.strategy @s uses(@predict, @measure, @learn) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1584,7 +1561,7 @@ class RouteHolding(Memory):
 
 def test_a_storage_change_excludes_other_routes_until_its_undo() -> None:
     events: list = []
-    text = """iro.strategy @s uses(@evaluate v1, @read v1) {
+    text = """iro.strategy @s uses(@evaluate, @read) {
   %net = iro.resource @net : participant
   iro.parallel @both capture(%net) {
     iro.sequence @evaluation capture(%net) {
@@ -1602,7 +1579,7 @@ def test_a_storage_change_excludes_other_routes_until_its_undo() -> None:
     }
   }
 }
-""".replace("@read v1)", "@read v1, @pause v1)")
+""".replace("@read)", "@read, @pause)")
 
     started = threading.Event()
 
@@ -1613,11 +1590,9 @@ def test_a_storage_change_excludes_other_routes_until_its_undo() -> None:
         return 1
 
     installed = {
-        "evaluate": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="evaluate")(evaluate),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(
-            lambda n: events.append("read") or 1
-        ),
-        "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: started.wait(timeout=5) and 1),
+        "evaluate": implementation(inputs=("protected_current lease",), outputs=("int",), name="evaluate")(evaluate),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: events.append("read") or 1),
+        "pause": implementation(outputs=("int",), name="pause")(lambda: started.wait(timeout=5) and 1),
     }
     run = accepted_run(text, installed=installed)
     prepared = prepare(cold_load(run, installed=installed), installed, Target(workers=4))
@@ -1631,7 +1606,7 @@ def test_a_change_a_retained_result_keeps_past_a_failure_is_undone_at_the_run_s_
     """The loss is never released, so its lease never is: only the run's end undoes the forward's change (D16)."""
     events: list = []
     installed = two_states_installed(events)
-    installed["learn"] = implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(
+    installed["learn"] = implementation(inputs=("owner_update lease", "retained loss"), name="learn")(
         lambda u, loss: (_ for _ in ()).throw(RuntimeError("the backward failed"))
     )
     run = accepted_run(ONE_ACCESS_TWO_STATES, installed=installed)
@@ -1644,7 +1619,7 @@ def test_a_change_a_retained_result_keeps_past_a_failure_is_undone_at_the_run_s_
     assert kinds(events)[-2:] == ["predicted", "undo ()"], "the forward's change is undone though its loss was never released"
 
 
-SHARED_STATE = """iro.strategy @s uses(@predict v1, @read v1, @learn v1) {
+SHARED_STATE = """iro.strategy @s uses(@predict, @read, @learn) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1665,7 +1640,7 @@ SHARED_STATE = """iro.strategy @s uses(@predict v1, @read v1, @learn v1) {
 """
 
 
-def test_setup_objects_of_one_name_and_version_on_one_handle_apply_the_state_once_and_undo_it_once() -> None:
+def test_setup_objects_of_one_name_and_code_on_one_handle_apply_the_state_once_and_undo_it_once() -> None:
     events: list = []
     shared = object()
 
@@ -1690,11 +1665,9 @@ def test_setup_objects_of_one_name_and_version_on_one_handle_apply_the_state_onc
             ]
 
     installed = {
-        "predict": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(
-            lambda n: 1.0
-        ),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+        "predict": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="predict")(lambda n: 1.0),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
+        "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
     }
     run = accepted_run(SHARED_STATE, installed=installed)
     serving = Derived(annotate({"units": ["w"]}))
@@ -1716,7 +1689,7 @@ def test_a_storage_change_that_is_not_undone_is_refused() -> None:
 
 
 def test_calls_in_two_alternatives_of_a_choice_never_wait_on_each_other() -> None:
-    text = """iro.strategy @s uses(@decide v1, @predict v1, @measure v1, @learn v1) {
+    text = """iro.strategy @s uses(@decide, @predict, @measure, @learn) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1738,7 +1711,7 @@ def test_calls_in_two_alternatives_of_a_choice_never_wait_on_each_other() -> Non
   }
 }
 """
-    installed = {**two_states_installed([]), "decide": implementation(version=1, outputs=("bool",), name="decide")(lambda: True)}
+    installed = {**two_states_installed([]), "decide": implementation(outputs=("bool",), name="decide")(lambda: True)}
     run = accepted_run(text, installed=installed)
     deriver = Annotating(
         {
@@ -1752,7 +1725,7 @@ def test_calls_in_two_alternatives_of_a_choice_never_wait_on_each_other() -> Non
 
 
 def test_preparation_refuses_an_access_a_binding_storage_change_excludes() -> None:
-    text = """iro.strategy @s uses(@evaluate v1, @read v1, @learn v1) {
+    text = """iro.strategy @s uses(@evaluate, @read, @learn) {
   %net = iro.resource @net : participant
   %w = iro.resource @w
   iro.sequence @once capture(%net, %w) {
@@ -1772,11 +1745,9 @@ def test_preparation_refuses_an_access_a_binding_storage_change_excludes() -> No
 }
 """
     installed = {
-        "evaluate": implementation(version=1, inputs=("protected_current lease",), outputs=("retained loss",), name="evaluate")(
-            lambda n: 1.0
-        ),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
-        "learn": implementation(version=1, inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
+        "evaluate": implementation(inputs=("protected_current lease",), outputs=("retained loss",), name="evaluate")(lambda n: 1.0),
+        "read": implementation(inputs=("protected_current lease",), outputs=("int",), name="read")(lambda n: 1),
+        "learn": implementation(inputs=("owner_update lease", "retained loss"), name="learn")(lambda u, loss: None),
     }
     run = accepted_run(text, installed=installed)
     deriver = Annotating({"evaluate": Derived((), (), (HoldNeed("net", ("eval",), changes_storage=True),))})

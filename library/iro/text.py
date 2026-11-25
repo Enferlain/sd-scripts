@@ -928,15 +928,10 @@ def parse(text: str, composition: Composition | None = None, *, source: str = "<
     name = reader.symbol()
     normalized = reader.accept("normalized")
     names: list[SymbolRefAttr] = []
-    versions: list[StringAttr] = []
     if reader.accept("uses"):
         reader.expect("(")
         while not reader.at(")"):
             names.append(SymbolRefAttr(reader.symbol()))
-            version = reader.word("a version such as v1")
-            if not re.fullmatch(r"v\d+", version):
-                raise reader.error(f"expected a version such as v1, found {version}")
-            versions.append(StringAttr(version[1:]))
             if not reader.accept(","):
                 break
         reader.expect(")")
@@ -957,7 +952,7 @@ def parse(text: str, composition: Composition | None = None, *, source: str = "<
     if normalized:
         properties["normalized"] = UnitAttr()
     if names:
-        properties |= {"uses": ArrayAttr(names), "use_versions": ArrayAttr(versions)}
+        properties["uses"] = ArrayAttr(names)
     if origin is not None:
         properties["origin"] = StringAttr(origin)
     strategy = StrategyOp.create(properties=properties, regions=[Region(body)])
@@ -1581,9 +1576,7 @@ def print_strategy(strategy: StrategyOp, composition: Composition | None = None,
     writer = Writer(strategy, composition or core(), locations=locations)
     names = Names()
     head = f"iro.strategy @{strategy.sym_name.data}" + (" normalized" if strategy.normalized is not None else "")
-    uses = [
-        f"@{ref.root_reference.data} v{version.data}" for ref, version in zip(strategy.uses or (), strategy.use_versions or (), strict=True)
-    ]
+    uses = [f"@{ref.root_reference.data}" for ref in strategy.uses or ()]
     clause = f" uses({', '.join(uses)})" if uses else ""
     tail = writer.tail(strategy) + " {"
     if len(head + clause + tail) <= WIDTH or not clause:

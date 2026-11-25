@@ -1,11 +1,11 @@
-"""Training's deriver keeps the derivations it was recorded with under its version (D16).
+"""Training's deriver keeps deriving what was recorded for it on fixture strategies (D16).
 
 A derivation is part of how the prepared run came to be, as a declaration is,
 and what it derives can change while no declaration does. So its outputs on
-small fixture strategies are recorded under the deriver's version, as a light
-implementation's results are: a change in what it derives under a recorded
-version fails here; give the deriver a new version. New versions are
-recorded with ``IRO_RECORD_VERSIONS=1``, which only adds entries.
+small fixture strategies are recorded, as a light implementation's fixture
+outputs are: a change in what it derives fails here, and the developer
+confirms the change is meant by recording the new outputs with
+``IRO_RECORD_FIXTURES=1``.
 """
 
 import hashlib
@@ -33,27 +33,23 @@ def derived(text: str, installed: dict, deriver: TrainingDerivation) -> str:
     """A digest of what the deriver gave each group: its calls, setups and annotations."""
     run = accepted_run(text, contract(), installed=installed)
     prepared = prepare(cold_load(run, contract(), installed=installed), installed, Target(), [deriver])
-    lines = [f"{g.calls} {[(s.name, s.version) for s in g.setups]} {g.annotations}" for g in prepared.groups]
+    lines = [f"{g.calls} {[s.name for s in g.setups]} {g.annotations}" for g in prepared.groups]
     return hashlib.blake2s("\n".join(lines).encode(), digest_size=8).hexdigest()
 
 
-def test_no_derivation_changes_under_a_recorded_deriver_version() -> None:
+def test_the_deriver_derives_what_was_recorded_on_its_fixture_strategies() -> None:
     deriver = TrainingDerivation({"learner": frozenset({"net"})})
     recorded = json.loads(RECORDED.read_text()) if RECORDED.exists() else {}
-    versions = recorded.setdefault(deriver.name, {}).setdefault(deriver.version, {})
-    changed, unrecorded = [], []
-    for name, fixture in FIXTURES.items():
-        digest = derived(*fixture(), deriver)
-        if name not in versions:
-            unrecorded.append(name)
-            versions[name] = digest
-        elif versions[name] != digest:
-            changed.append(name)
-    assert not changed, (
-        f"@{deriver.name} v{deriver.version} derives differently for {changed}: give it a new version (D16), "
-        "or, if a fixture strategy in test_units.py changed, record the fixture again under a new name"
-    )
-    if unrecorded and os.environ.get("IRO_RECORD_VERSIONS") == "1":
+    outputs = recorded.setdefault(deriver.name, {})
+    found = {name: derived(*fixture(), deriver) for name, fixture in FIXTURES.items()}
+    changed = sorted(name for name in found if name in outputs and outputs[name] != found[name])
+    unrecorded = sorted(name for name in found if name not in outputs)
+    if (changed or unrecorded) and os.environ.get("IRO_RECORD_FIXTURES") == "1":
+        outputs |= found
         RECORDED.write_text(json.dumps(recorded, indent=1, sort_keys=True) + "\n")
         return
-    assert not unrecorded, f"unrecorded derivations, record them with IRO_RECORD_VERSIONS=1: {unrecorded}"
+    assert not changed, (
+        f"@{deriver.name} derives differently for {changed} (D16): if the change is meant, record it with IRO_RECORD_FIXTURES=1; "
+        "if a fixture strategy in test_units.py changed, record that fixture again under a new name"
+    )
+    assert not unrecorded, f"unrecorded derivations, record them with IRO_RECORD_FIXTURES=1: {unrecorded}"

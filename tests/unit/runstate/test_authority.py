@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from library.iro.accepted import implementation_evidence
 from library.iro.accepted import cold_load
 from library.iro.devices import Host
 from library.iro.frontend import implementation
@@ -32,7 +33,7 @@ from library.runstate.owners import Refused, Version
 from library.runstate.projections import Execution
 from tests.unit.iro.accepted_runs import accepted_run
 
-STRATEGY = """iro.strategy @s uses(@load v1, @look v1, @step v1, @peek v1) {
+STRATEGY = """iro.strategy @s uses(@load, @look, @step, @peek) {
   %m = iro.resource @m : participant materialize(@load)
   %k = iro.resource @k : participant materialize(@load)
   %n = iro.resource @n : participant
@@ -68,23 +69,23 @@ class Box:
 LOADS: list[int] = []
 
 
-@implementation(version=1, outputs=("weights", "weights"), name="load")
+@implementation(outputs=("weights", "weights"), name="load")
 def load():
     LOADS.append(1)
     return Box(1), Box(2)
 
 
-@implementation(version=1, inputs=("protected_current lease",), name="look")
+@implementation(inputs=("protected_current lease",), name="look")
 def look(box):
     return None
 
 
-@implementation(version=1, inputs=("owner_update lease",), name="step")
+@implementation(inputs=("owner_update lease",), name="step")
 def step(box):
     box.value += 1
 
 
-@implementation(version=1, inputs=("snapshot lease",), name="peek")
+@implementation(inputs=("snapshot lease",), name="peek")
 def peek(box):
     return None
 
@@ -152,17 +153,26 @@ def test_one_materializer_supplies_its_participants_in_one_call_under_distinct_r
     values = [participant.binding.value if participant.binding is not None else None for participant in (m, k, n)]
     assert [box.value if isinstance(box, Box) else None for box in values] == [1, 2, 3]
     assert m.binding is not None and n.binding is not None
-    assert isinstance(m.binding.evidence, Materialized) and m.binding.evidence.digest == load.declaration.digest
+    assert isinstance(m.binding.evidence, Materialized) and m.binding.evidence.code == implementation_evidence("load", load)
     assert isinstance(n.binding.evidence, Supplied)
     assert all(participant.lifecycle == Lifecycle.BOUND for participant in (m, k, n))
 
 
-def test_a_binding_counts_only_from_the_declared_materializer_at_its_pinned_version() -> None:
+def test_a_binding_counts_only_from_the_declared_materializer_with_the_code_the_run_recorded() -> None:
     authority = seeded()
-    other = implementation(version=2, outputs=("weights", "weights"), name="load")(lambda: (Box(1), Box(2)))
+    other = implementation(outputs=("weights", "weights"), name="load")(lambda: (Box(1), Box(2)))
     result = MaterializationAttempt(authority, ["m", "k"], installed={"load": other}, device=Host()).run()
-    assert isinstance(result, Rejected) and "the run pins v1" in str(result)
+    assert isinstance(result, Rejected) and "its source" in str(result) and "differing from what the run recorded" in str(result), (
+        "the same declaration with other code is not what the run recorded"
+    )
     assert authority.section.revision == 1 and authority.section.at("m").binding is None, "nothing changed"
+
+
+def test_a_binding_from_the_same_code_under_another_declaration_does_not_count() -> None:
+    authority = seeded()
+    redeclared = implementation(outputs=("weights", "weights"), name="load", concurrency_safe=True)(load.function)
+    result = MaterializationAttempt(authority, ["m", "k"], installed={"load": redeclared}, device=Host()).run()
+    assert isinstance(result, Rejected) and "what it takes or returns" in str(result) and "its source" not in str(result)
 
 
 def test_a_failing_materializer_changes_nothing() -> None:
@@ -171,7 +181,7 @@ def test_a_failing_materializer_changes_nothing() -> None:
     def broken():
         raise OSError("checkpoint not found")
 
-    failing = implementation(version=1, outputs=("weights", "weights"), name="load")(broken)
+    failing = implementation(outputs=("weights", "weights"), name="load")(broken)
     result = MaterializationAttempt(authority, ["m", "k"], installed={"load": failing}, device=Host()).run()
     assert isinstance(result, Rejected) and "checkpoint not found" in str(result)
     assert authority.section.revision == 1
@@ -388,7 +398,7 @@ def test_the_runtime_runs_a_strategy_against_the_authority() -> None:
     assert not authority._outstanding, "every lease came back"
 
 
-UPDATE_THEN_SNAPSHOT = """iro.strategy @s uses(@load v1, @step v1, @peek v1) {
+UPDATE_THEN_SNAPSHOT = """iro.strategy @s uses(@load, @step, @peek) {
   %m = iro.resource @m : participant materialize(@load)
   %k = iro.resource @k : participant materialize(@load)
   iro.sequence @once capture(%m) {
@@ -433,7 +443,7 @@ def test_a_use_the_authority_refuses_fails_the_run_with_its_reason() -> None:
     assert not authority._outstanding, "the refused access holds nothing"
 
 
-SETTINGS = """iro.strategy @s uses(@load_one v1) {
+SETTINGS = """iro.strategy @s uses(@load_one) {
   %m = iro.resource @m : participant materialize(@load_one, "weights.safetensors", 3)
 }
 """
@@ -442,7 +452,7 @@ SETTINGS = """iro.strategy @s uses(@load_one v1) {
 def test_a_materializer_receives_the_settings_the_strategy_gives_it() -> None:
     received = []
 
-    @implementation(version=1, inputs=("str", "int"), outputs=("weights",), name="load_one")
+    @implementation(inputs=("str", "int"), outputs=("weights",), name="load_one")
     def load_one(path, count):
         received.append((path, count))
         return Box(count)
@@ -456,36 +466,36 @@ def test_a_materializer_receives_the_settings_the_strategy_gives_it() -> None:
 
 
 def test_a_materializer_must_declare_one_input_per_setting() -> None:
-    wrong = implementation(version=1, inputs=("str",), outputs=("weights",), name="load_one")(lambda path: Box(0))
+    wrong = implementation(inputs=("str",), outputs=("weights",), name="load_one")(lambda path: Box(0))
     authority = RunAuthority.seed(accepted_run(SETTINGS))
     result = MaterializationAttempt(authority, ["m"], installed={"load_one": wrong}, device=Host()).run()
     assert isinstance(result, Rejected) and "declares 1 inputs, and the strategy gives it 2 settings" in str(result)
 
 
 def test_participants_sharing_one_materializer_call_give_it_the_same_settings() -> None:
-    text = """iro.strategy @s uses(@load_two v1) {
+    text = """iro.strategy @s uses(@load_two) {
   %a = iro.resource @a : participant materialize(@load_two, "one.safetensors")
   %b = iro.resource @b : participant materialize(@load_two, "two.safetensors")
 }
 """
-    two = implementation(version=1, inputs=("str",), outputs=("weights", "weights"), name="load_two")(lambda path: (Box(1), Box(2)))
+    two = implementation(inputs=("str",), outputs=("weights", "weights"), name="load_two")(lambda path: (Box(1), Box(2)))
     authority = RunAuthority.seed(accepted_run(text, installed={"load_two": two}))
     result = MaterializationAttempt(authority, ["a", "b"], installed={"load_two": two}, device=Host()).run()
     assert isinstance(result, Rejected) and "different settings" in str(result)
 
 
 def test_settings_that_differ_only_in_type_are_different_and_must_match_the_declared_inputs() -> None:
-    text = """iro.strategy @s uses(@load_two v1) {
+    text = """iro.strategy @s uses(@load_two) {
   %a = iro.resource @a : participant materialize(@load_two, 1)
   %b = iro.resource @b : participant materialize(@load_two, true)
 }
 """
-    two = implementation(version=1, inputs=("int",), outputs=("weights", "weights"), name="load_two")(lambda n: (Box(1), Box(2)))
+    two = implementation(inputs=("int",), outputs=("weights", "weights"), name="load_two")(lambda n: (Box(1), Box(2)))
     authority = RunAuthority.seed(accepted_run(text, installed={"load_two": two}))
     result = MaterializationAttempt(authority, ["a", "b"], installed={"load_two": two}, device=Host()).run()
     assert isinstance(result, Rejected) and "different settings" in str(result), "1 and true are not the same setting"
 
-    wrong_type = implementation(version=1, inputs=("int", "int"), outputs=("weights",), name="load_one")(lambda path, count: Box(0))
+    wrong_type = implementation(inputs=("int", "int"), outputs=("weights",), name="load_one")(lambda path, count: Box(0))
     authority = RunAuthority.seed(accepted_run(SETTINGS))
     result = MaterializationAttempt(authority, ["m"], installed={"load_one": wrong_type}, device=Host()).run()
     assert isinstance(result, Rejected) and "setting 1 is str, and @load_one declares int" in str(result)

@@ -24,8 +24,8 @@ def accepted_run(
 ) -> AcceptedRun:
     """The accepted run of a written strategy, or a rejection naming every problem.
 
-    With ``installed``, every implementation the strategy pins must be
-    installed, and the run's pins carry their declaration digests.
+    With ``installed``, every implementation the strategy uses must be
+    installed, and the run records the evidence of each one's code.
     """
     return accept(parse(text, composition, source=source), composition, installed=installed, replicated=replicated)
 

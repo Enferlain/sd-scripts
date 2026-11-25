@@ -1,15 +1,15 @@
-"""The contract: the composed, versioned vocabulary a strategy may use (D18, D21).
+"""The contract: the composed vocabulary a strategy may use (D18, D21).
 
-A composition holds definitions: each word's operation or type, the area of
-the vocabulary it belongs to and its definition version. It is built by
+A composition holds definitions: each word's operation or type and the area
+of the vocabulary it belongs to. It is built by
 explicit composition (D2). The core vocabulary is one composition; a domain
 vocabulary, training first, extends it with its own definitions. Nothing
 registers itself on import.
 
-An accepted run pins only the definitions its strategy uses, each with its
-definition version and a digest of its declaration (D16), so a definition
-added elsewhere does not stop a saved run from loading. The composition's own
-version identifies the whole vocabulary, for the printout.
+An accepted run records evidence of only the definitions its strategy uses,
+each one's declaration and source (D16), so a definition added elsewhere does not stop a
+saved run from loading. The composition's digest identifies the whole
+vocabulary, for the printout.
 """
 
 import dataclasses
@@ -24,12 +24,14 @@ from xdsl.dialects.builtin import Builtin
 from xdsl.ir import Attribute, Dialect, Operation, ParametrizedAttribute
 from xdsl.irdl import IRDLOperation
 
+from library.iro.evidence import CodeEvidence, source_evidence
+
 AREAS = ("structure", "lifetimes", "data", "access", "calls", "model")
 
 
 @dataclass(frozen=True)
 class Definition:
-    """One contract entry: a word's operation or type, its area and its definition version.
+    """One contract entry: a word's operation or type and its area.
 
     ``form`` is how the word prints and parses, for words outside the core
     vocabulary, whose forms the written-form module holds itself.
@@ -37,7 +39,6 @@ class Definition:
 
     definition: type[Operation] | type[Attribute]
     area: str
-    version: int = 1
     form: object | None = None
 
     @property
@@ -54,18 +55,18 @@ class Definition:
         return issubclass(self.definition, Operation)
 
     @property
-    def digest(self) -> str:
-        """A digest of the declaration, which a pin records beside the definition version (D16).
+    def text(self) -> str:
+        """The definition's canonical declaration, which a run's evidence of the word records (D16).
 
         For an operation it covers the operands, results, properties, regions
         and traits; for a type its parameters; and the written form's code,
         by name, for a word outside the core vocabulary. A change in how a
         word prints or parses, or in a derived word's expansion, is not in
-        the digest: cold loading derives a saved run again and refuses one
-        whose forms differ, and the conformance fixtures show it in tests.
-        The printout comes from xDSL's definition objects, so an xDSL
-        upgrade that prints them differently changes every digest; the
-        repository test then fails for every definition at once.
+        it: cold loading derives a saved run again and refuses one whose
+        forms differ, and the conformance fixtures show it in tests. The text
+        comes from xDSL's definition objects, so an xDSL upgrade that prints
+        them differently changes every definition's text, and saved runs
+        refuse to load until they are fulfilled again.
         """
         if self.is_operation:
             irdl = cast(type[IRDLOperation], self.definition).get_irdl_definition()
@@ -83,8 +84,26 @@ class Definition:
             parts = [f"parameters {[(n, repr(d)) for n, d in parameters]}"]
         if self.form is not None:
             parts.append(f"form {_stable(self.form)}")
-        listing = f"{self.name}\n" + "\n".join(parts)
-        return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
+        return f"{self.name}\n" + "\n".join(parts)
+
+    @property
+    def digest(self) -> str:
+        """A short name for the definition's canonical declaration."""
+        return hashlib.blake2s(self.text.encode(), digest_size=8).hexdigest()
+
+    @property
+    def evidence(self) -> CodeEvidence:
+        """The run's record of this definition: its declaration and the source of its word and its written form (D16).
+
+        The source covers what the declaration does not show, such as the
+        word's verifier and expansion, until words carry fixtures of their
+        own; it is strict, so any edit to the module that defines the word
+        or its written form counts as a change.
+        """
+        source = source_evidence(self.definition)
+        if self.form is not None:
+            source = source.joined(source_evidence(self.form), "written form")
+        return CodeEvidence(self.name, self.text, source)
 
 
 def _stable(value: object) -> str:
@@ -100,13 +119,11 @@ def _stable(value: object) -> str:
 
 
 class Composition:
-    """An immutable set of definitions with queries, a version and a readable printout."""
+    """An immutable set of definitions with queries, a digest and a readable printout."""
 
     def __init__(self, definitions: Iterable[Definition], *, name: str = "kuroiro"):
         entries: dict[str, Definition] = {}
         for entry in definitions:
-            if entry.version < 1:
-                raise ValueError(f"{entry.name}: definition versions start at 1")
             if entry.name in entries:
                 raise ValueError(f"{entry.name} is defined twice")
             entries[entry.name] = entry
@@ -118,9 +135,9 @@ class Composition:
         return self._entries
 
     @property
-    def version(self) -> str:
-        """A digest of every definition's name, area and version."""
-        listing = "\n".join(f"{e.name} {e.area} {e.version}" for e in sorted(self._entries.values(), key=lambda e: e.name))
+    def digest(self) -> str:
+        """A digest of every definition's name, area and declaration."""
+        listing = "\n".join(f"{e.name} {e.area} {e.digest}" for e in sorted(self._entries.values(), key=lambda e: e.name))
         return hashlib.blake2s(listing.encode(), digest_size=8).hexdigest()
 
     def __contains__(self, name: object) -> bool:
@@ -129,9 +146,9 @@ class Composition:
     def __getitem__(self, name: str) -> Definition:
         return self._entries[name]
 
-    def pins(self, names: Iterable[str]) -> tuple[tuple[str, int, str], ...]:
-        """The named definitions as an accepted run pins them: name, definition version and digest, by name."""
-        return tuple((e.name, e.version, e.digest) for e in sorted((self._entries[n] for n in set(names)), key=lambda e: e.name))
+    def evidence(self, names: Iterable[str]) -> tuple[CodeEvidence, ...]:
+        """The run's records of the named definitions, by name (D16)."""
+        return tuple(self._entries[n].evidence for n in sorted(set(names)))
 
     def operation(self, name: str) -> type[Operation] | None:
         entry = self._entries.get(name)
@@ -156,8 +173,8 @@ class Composition:
         return context
 
     def printout(self) -> str:
-        """The readable contract: every word by area, with its version and meaning."""
-        lines = [f"# {self.name} contract {self.version}"]
+        """The readable contract: every word by area, with its meaning."""
+        lines = [f"# {self.name} contract {self.digest}"]
         areas = list(AREAS) + sorted({e.area for e in self._entries.values()} - set(AREAS))
         for area in areas:
             words = sorted((e for e in self.words(area)), key=lambda e: e.name)
@@ -165,7 +182,7 @@ class Composition:
                 continue
             lines += ["", f"## {area}", ""]
             width = max(len(e.name) for e in words)
-            lines += [f"{e.name.ljust(width)}  v{e.version}  {e.meaning}" for e in words]
+            lines += [f"{e.name.ljust(width)}  {e.meaning}" for e in words]
         return "\n".join(lines) + "\n"
 
 
@@ -183,8 +200,7 @@ def core() -> Composition:
         "calls": calls.OPERATIONS,
         "model": model.OPERATIONS,
     }
-    # A word whose declaration changed carries its new definition version beside its definition (D16).
-    entries = [Definition(op, area, getattr(op, "DEFINITION_VERSION", 1)) for area, ops in areas.items() for op in ops]
+    entries = [Definition(op, area) for area, ops in areas.items() for op in ops]
     entries += [Definition(t, "types") for t in (*TYPES, ResourceUseAttr)]
     return Composition(entries)
 

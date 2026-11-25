@@ -36,7 +36,8 @@ from library.iro.operation_contracts import AccessMode
 from library.iro import seams
 from library.iro.seams import CallSetup, HeldSetup, Use
 from library.iro.verify import UPDATE_MODES, Checkpoint, ObligationKind, Obligations
-from library.runstate.authority.records import NORMAL, Binding, Lifecycle, SetupPin, Participant, ParticipantRef, Route
+from library.iro.evidence import setup_evidence
+from library.runstate.authority.records import NORMAL, Binding, Lifecycle, Participant, ParticipantRef, Route
 from library.runstate.authority.section import AUTHORITY, AuthoritySection
 from library.runstate.authority.transitions import (
     Declaration,
@@ -113,7 +114,7 @@ class RunAuthority:
         self.accepted = run
         self.generations = generations
         self.obligations: Obligations = run.obligations
-        self._pins = {name: (version, digest) for name, version, digest in run.implementations}
+        self._recorded = {record.name: record for record in run.implementations}
         self._declared = {participant.name: participant for participant in run.seed.participants}
         self._updated = frozenset(
             o.use.resource for o in run.obligations if o.kind == ObligationKind.LEASE and o.use is not None and o.use.mode in UPDATE_MODES
@@ -293,7 +294,7 @@ class RunAuthority:
             evidence,
             transition.setup,
             tuple(transition.call_setups),
-            tuple(SetupPin.of(s) for s in (*((transition.setup,) if transition.setup else ()), *transition.call_setups)),
+            tuple(setup_evidence(s) for s in (*((transition.setup,) if transition.setup else ()), *transition.call_setups)),
         )
         routes = {**participant.routes, transition.route: route}
         participants[participant.reference] = replace(participant, routes=MappingProxyType(routes))
@@ -302,7 +303,7 @@ class RunAuthority:
         reasons = []
         for obligation in affected(self.obligations, kind, participant.address):
             if kind == ObligationKind.BOUND:
-                reason = judge_bound(participant, self._pins)
+                reason = judge_bound(participant, self._recorded)
             else:
                 assert obligation.use is not None
                 if route is not None and (obligation.use.view is not None or (obligation.use.route or NORMAL) != route):
@@ -328,7 +329,7 @@ class RunAuthority:
                     if obligation.checkpoint != checkpoint:
                         continue
                     if kind == ObligationKind.BOUND:
-                        reason = judge_bound(participant, self._pins)
+                        reason = judge_bound(participant, self._recorded)
                     else:
                         reason = judge_lease(obligation, participant, section, updated=participant.address in self._updated)
                     if reason is not None:

@@ -4,8 +4,8 @@ It consumes exactly an accepted run, the installed implementations, the
 target it runs on with its device adapters, and the composition the run was
 accepted under, which launch composes (D17, D18). Its host sequence:
 
-1. **check** that every implementation the run pins is installed at its
-   version and declaration, and cold-load the run;
+1. **check** that every implementation the run uses is installed with the
+   code evidence the run recorded (D16), and cold-load the run;
 2. **seed** the run authority from the strategy's declarations;
 3. **materialize** every declared participant as one governed job;
 4. **plan**: Trainer optimization derives its units from the strategy;
@@ -31,7 +31,6 @@ from library.iro.runtime import Observer, Outcome
 from library.iro.seams import Device, Implementation, Owner
 from library.iro.verify import ObligationKind
 from library.runstate.authority import AUTHORITY, NORMAL, MaterializationAttempt, Rejected, RunAuthority
-from library.runstate.authority.records import SetupPin
 from library.runstate.generation import ExecutableRun
 from library.runstate.owners import Refused
 from library.runstate.projections import Execution
@@ -92,8 +91,7 @@ class Trainer:
                 if o.kind == ObligationKind.LEASE and o.use is not None and o.use.resource in participants and o.use.view is None
             }
         )
-        pinned = tuple(SetupPin(m.name, m.version, m.code) for m in prepared.derivers)
-        published = prepare_training(authority, optimization, routes, self.preparations, pinned)
+        published = prepare_training(authority, optimization, routes, self.preparations, prepared.derivers)
         if isinstance(published, Rejected):
             raise Refused(_reasons("preparation", published))
         execution = Execution(authority)

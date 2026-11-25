@@ -28,7 +28,7 @@ class CallResult:
 
 @dataclass(frozen=True)
 class StandIn:
-    """A stand-in for one implementation at one version.
+    """A stand-in for one implementation.
 
     ``inputs`` and ``outputs`` are type names as the written form prints
     them, such as ``int``, ``latents``, ``protected_current lease`` or
@@ -40,13 +40,10 @@ class StandIn:
     inputs: tuple[str, ...]
     outputs: tuple[str, ...]
     invoke: Callable[[tuple[object, ...]], CallResult]
-    version: str = "1"
     updates: tuple[int, ...] = ()
     retains: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
-        if not self.version:
-            raise ValueError("a stand-in names its version")
         for position in (*self.updates, *self.retains):
             if not 0 <= position < len(self.inputs):
                 raise ValueError(f"stand-in position {position} is not one of its {len(self.inputs)} inputs")

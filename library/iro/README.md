@@ -20,11 +20,11 @@ fulfillment come in later sections.
      |                        resolve what requests, stops and streams name
      |  verify.verify         claims, leases, accesses, calls, lifecycles,
      |                        streams, decisions -> obligations, or a rejection
-     |  accepted.accept       -> AcceptedRun: written forms, pins, obligations,
-     |                        authority seed
-     |  accepted.cold_load    re-derive everything under the pins
+     |  accepted.accept       -> AcceptedRun: written forms, code evidence,
+     |                        obligations, authority seed
+     |  accepted.cold_load    re-derive everything under the recorded definitions
      |  prepare.prepare       match implementations and a target: placement,
-     |                        fused groups, device admissions, manifest
+     |                        fused groups, device admissions, code records
      |  prepare.lower         slots, steps bound to their fixed data, end
      |                        checks and scope records only where needed
   runtime.Coordinator         execute the lowered run against owners,
@@ -43,12 +43,12 @@ a fix. Codes by area:
 | `iro-claim-` | A claim settled zero or several times, used after settling, captured into a body that does not run once, used by more than one parallel branch, or used without a claim contract |
 | `iro-lease-` | A lease leaving its access; a retained result leaving its activity, released wrongly, or keeping state that an update needs |
 | `iro-access-` | `at_request` outside requested work, a nested access that waits for itself, an access to something that is not a resource |
-| `iro-call-` | An implementation or materializer not pinned in `uses`, a resource passed without a lease, a call returning claims or leases |
+| `iro-call-` | An implementation or materializer not named in `uses`, a resource passed without a lease, a call returning claims or leases |
 | `iro-life-` | A request outside its source, a stop of something that is not a producer, a producer nothing stops, a stop that does not cover a consumer, points that wait for each other |
 | `iro-flow-` | A stream without exactly one producer, admission by an owner production never reads |
 | `iro-decide-` | On several ranks, a decision that does not agree |
-| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again; two derivers giving one call the same annotation or held state, a name and version claimed by two derivers or setups, a call that would wait on a hold its own activity keeps binding |
-| `iro-run-` | A pinned definition missing, at another definition version or with another declaration; parts of a saved run that do not follow from its strategy; a pinned implementation not installed at its version and declaration |
+| `iro-prep-` | A call that disagrees with its implementation's declaration; a placement naming no activity; device work without a device, collectives across ranks, one access body's device work on two devices, a take after device work in an access body or while a device-holding result is live, a request made while an admission holds the device (target limits); a saved prepared form that does not derive again; two derivers giving one call the same annotation or held state, a name claimed by two derivers or by setups with different code, a call that would wait on a hold its own activity keeps binding |
+| `iro-run-` | A recorded definition missing or with another declaration; parts of a saved run that do not follow from its strategy; an implementation the run uses not installed, or installed with a declaration or source other than the run recorded |
 
 ## Modules
 
@@ -56,7 +56,8 @@ a fix. Codes by area:
 | --- | --- |
 | `words/` | Kuroiro's core operations and types by area: structure, lifetimes, data, access, calls and model use |
 | `operation_contracts.py` | Region, flow, resource, realization and decision contracts, read by every stage through traits |
-| `composition.py` | The contract: definitions with area, definition version and declaration digest, pins for a run, `extend` for domain vocabularies, the readable printout |
+| `composition.py` | The contract: definitions with their area and canonical declaration, the run's records of the definitions it uses, `extend` for domain vocabularies, the readable printout |
+| `evidence.py` | Code evidence (D16): `CodeEvidence`, a piece's name, declaration text and `SourceEvidence` (its defining module and qualified name with a digest of the module's source), printable in full and compared part by part |
 | `text.py` | The written form: printer and parser with exact round trip; a domain word brings its own form through its definition, built on `write_leaf`, `with_body`, `local_inner`, `yield_of` and `literal_text` |
 | `normalize.py` | Normalization and the relationships it resolves |
 | `verify.py` | Verification, `Obligations` and readiness checkpoints (core execution, or a handler's first request), and the reproducibility report. Each obligation names its kind and its evaluator: the run authority for participants, a resource's own owner for its other resources, or the IR runtime for lifecycles; a lease obligation carries the use its owner must realize |
@@ -67,22 +68,29 @@ a fix. Codes by area:
 | `reference/` | The reference semantics and declared stand-ins |
 | `runtime/` | The coordinator and its control state, one component per concern: `kernel.py` (facts, failure, waits and wakes, tasks, the one handoff to workers), `turns.py` (device turns and admissions), `storage.py` (snapshot copies and leaving the device), `protection.py` (leases, protection, retained results, reservations), `requests.py` (requests, handlers, stops), `flow.py` (streams, claims, producers, filters), `calls.py` (the call path); `coordinator.py` runs the strategy: lifecycles, bodies and the structural protocols |
 | `devices/` | Device adapters: the host, and one per PyTorch backend on the shared base in `pytorch.py` (per-call settings, one stream per device, completion as events); so far `cuda.py`. Each reports what it offers, the target records it, and the coordinator refuses adapters that differ from what the run was prepared for. Other backends are untested until someone runs them |
-| `prepare/` | Preparation for a `Target`: matching, placement, the domains' derivations (`derive.py`) over the core's reachability (`flow.py`), fused groups, device admissions, the implementation manifest keyed on code, and loading a saved prepared form; lowering to the form the coordinator executes |
+| `prepare/` | Preparation for a `Target`: matching, placement, the domains' derivations (`derive.py`) over the core's reachability (`flow.py`), fused groups, device admissions, the records of the implementations, derivers and setups it uses, and loading a saved prepared form; lowering to the form the coordinator executes |
 
-## Pins
+## Code evidence
 
-An accepted run pins the definitions its strategy uses and the
-implementations it selects, each with its version and a digest of its
-declaration (D16). Cold loading refuses a run whose pinned definitions are
-missing or changed, and ignores definitions it does not use, so new
-vocabulary never stops a saved run from loading. `check_implementations` is
-a host's check of installed implementations against the pins, as the
-Trainer's is; a run accepted without installed implementations never passes
-it.
-`tests/unit/iro/test_versions.py` keeps the digest of every definition
-version and implementation version in `recorded_versions.json`: a
-declaration that changes under a recorded version fails it, and
-`IRO_RECORD_VERSIONS=1` records only new versions.
+No version numbers are kept by hand (D16). A strategy names the
+implementations it selects in its `uses` header, and an accepted run records
+evidence of the code it uses: each definition and each implementation by
+its declaration and its source, the defining module and qualified name with
+a digest of the module's source, through every layer that wraps a function,
+with the values a partial binds, or with the library release of compiled
+code. The source
+stands in for the outputs of a piece's own fixtures until pieces carry them,
+so any edit to the defining module counts as changed code; no part alone
+says two pieces are the same code. Cold loading refuses a run whose recorded
+definitions are missing or changed, and ignores definitions it does not use,
+so new vocabulary never stops a saved run from loading.
+`check_implementations` is a host's check of installed implementations
+against the records, as the Trainer's is, and reports what changed part by
+part; a run accepted without installed implementations never passes it.
+Preparation records derivers and setups by name and source, and refuses a
+name that two different codes claim. The strategy's identity and revision
+leave source locations out, so a moved line keeps them while a reordered
+operation changes them.
 
 ## Preparation
 

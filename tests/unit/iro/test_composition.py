@@ -18,19 +18,19 @@ def test_the_core_contract_holds_every_core_word_by_area() -> None:
     assert "iro.once" not in contract
 
 
-def test_a_domain_extends_the_contract_and_changes_its_version() -> None:
+def test_a_domain_extends_the_contract_and_changes_its_digest() -> None:
     base = core()
     training = base.extend([Definition(WindowOp, "training")], name="training")
     assert "iro.train.window" in training and "iro.train.window" not in base
-    assert training.version != base.version
-    assert core().version == base.version
+    assert training.digest != base.digest
+    assert core().digest == base.digest
     assert training.context().get_optional_op("iro.train.window") is WindowOp
 
 
-def test_a_definition_version_changes_the_contract_version() -> None:
-    first = Composition([Definition(WindowOp, "training", 1)])
-    second = Composition([Definition(WindowOp, "training", 2)])
-    assert first.version != second.version
+def test_a_changed_definition_changes_the_contract_s_digest() -> None:
+    first = Composition([Definition(WindowOp, "training")])
+    assert first.digest != Composition([Definition(WindowOp, "training", form=print)]).digest, "its written form's code is declared"
+    assert first.digest != Composition([Definition(WindowOp, "later")]).digest, "so is its area"
 
 
 def test_a_word_is_defined_once() -> None:
@@ -40,9 +40,9 @@ def test_a_word_is_defined_once() -> None:
 
 def test_the_printout_lists_words_by_area_with_their_meaning() -> None:
     text = core().printout()
-    assert text.startswith(f"# kuroiro contract {core().version}\n")
+    assert text.startswith(f"# kuroiro contract {core().digest}\n")
     assert "## access" in text
-    assert "iro.fork     v1  Splits a claim into forks" in text
+    assert "iro.fork     Splits a claim into forks" in text
 
 
 def test_a_word_s_form_digests_by_its_code_never_by_an_object_s_address() -> None:

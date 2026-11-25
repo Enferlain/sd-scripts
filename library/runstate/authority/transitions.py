@@ -18,6 +18,7 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import ClassVar
 
+from library.iro.evidence import CodeEvidence
 from library.iro.operation_contracts import AccessMode
 from library.iro.verify import Evaluator, Obligation, ObligationKind, Obligations
 from library.iro.seams import CallSetup, HeldSetup
@@ -45,11 +46,10 @@ class TransitionKind(StrEnum):
 
 @dataclass(frozen=True)
 class Materialized(Evidence):
-    """That a binding came from the participant's declared materializer, at a version and declaration digest (bound)."""
+    """That a binding came from the participant's declared materializer, with the evidence of the materializer's code (bound)."""
 
     materializer: str
-    version: str
-    digest: str
+    code: CodeEvidence
 
 
 @dataclass(frozen=True)
@@ -66,12 +66,12 @@ class Prepared(Evidence):
     binding: int
 
 
-def judge_bound(participant: Participant, pins: Mapping[str, tuple[str, str]]) -> str | None:
+def judge_bound(participant: Participant, recorded: Mapping[str, CodeEvidence]) -> str | None:
     """The evaluator of a participant's ``bound`` obligation: why it does not hold, or None.
 
     A participant declared with a materializer is bound by that
-    materializer at the implementation version and declaration digest the
-    run pins; one declared without is bound to what its owner supplied.
+    materializer, with the evidence of its code the run recorded (D16); one
+    declared without is bound to what its owner supplied.
     """
     name = f"@{participant.address}"
     binding = participant.binding
@@ -85,11 +85,13 @@ def judge_bound(participant: Participant, pins: Mapping[str, tuple[str, str]]) -
         return None
     if not isinstance(evidence, Materialized) or evidence.materializer != declared:
         return f"{name} is materialized by @{declared}"
-    pinned = pins.get(declared)
-    if pinned is None:
-        return f"@{declared} materializes {name} and the run does not pin it"
-    if (evidence.version, evidence.digest) != pinned:
-        return f"@{declared} materialized {name} at v{evidence.version}, and the run pins v{pinned[0]} with its declaration"
+    expected = recorded.get(declared)
+    if expected is None:
+        return f"@{declared} materializes {name} and the run does not record it"
+    if evidence.code != expected:
+        return (
+            f"@{declared} materialized {name} with {' and '.join(expected.differences(evidence.code))} differing from what the run recorded"
+        )
     return None
 
 

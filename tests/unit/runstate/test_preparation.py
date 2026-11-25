@@ -9,7 +9,8 @@ from library.iro.operation_contracts import AccessMode, VersionSelection
 from library.iro.seams import Use
 from library.iro.verify import CORE_EXECUTION
 from library.runstate.authority import NORMAL, AuthoritySection, Prepared, Published, Rejected, RouteRebinding
-from library.runstate.authority.records import ParticipantRef, SetupPin
+from library.iro.evidence import CodeEvidence, SourceEvidence, setup_evidence
+from library.runstate.authority.records import ParticipantRef
 from library.runstate.generation import Publication
 from library.runstate.owners import Mutation, Refused
 from library.runstate.preparation import PreparationAttempt, PreparationRequest, PreparationResult, PreparedRoute
@@ -309,11 +310,10 @@ def test_in_place_work_on_a_participant_with_a_lease_out_is_refused_before_it_st
     lease.release()
 
 
-class Pinned:
-    """A held setup pinned by its name, version and code identity (D16)."""
+class Recorded:
+    """A held setup, recorded by its name and the evidence of its source (D16)."""
 
     name = "test.mode"
-    version = "1"
     undoes = False
     changes_storage = False
 
@@ -328,28 +328,28 @@ class Pinned:
 Elsewhere = type(
     "Elsewhere",
     (),
-    {"name": "test.mode", "version": "1", "key": lambda self, a: (), "hold": lambda self, a, h: None, "__module__": "elsewhere"},
+    {"name": "test.mode", "key": lambda self, a: (), "hold": lambda self, a, h: None, "__module__": "elsewhere"},
 )
 
 
-def test_routes_pin_their_setups_and_one_name_and_version_with_two_codes_is_refused() -> None:
+def test_routes_record_their_setups_and_one_name_with_two_codes_is_refused() -> None:
     authority = materialized()
     m, k = refs(authority, "m", "k")
     attempt = derived(authority, PreparationRequest(routes=((m, NORMAL), (k, NORMAL))))
-    clashing = (PreparedRoute(m, NORMAL, "x", Pinned()), PreparedRoute(k, NORMAL, "y", Elsewhere()))  # ty: ignore[invalid-argument-type]
+    clashing = (PreparedRoute(m, NORMAL, "x", Recorded()), PreparedRoute(k, NORMAL, "y", Elsewhere()))  # ty: ignore[invalid-argument-type]
     result = attempt.publish(PreparationResult(attempt.attempt.reference, clashing))
-    assert isinstance(result, Rejected) and "@test.mode v1 is claimed by setups with different code" in str(result)
+    assert isinstance(result, Rejected) and "@test.mode is claimed by setups with different code" in str(result)
     attempt = derived(authority, PreparationRequest(routes=((m, NORMAL), (k, NORMAL))))
-    agreeing = (PreparedRoute(m, NORMAL, "x", Pinned()), PreparedRoute(k, NORMAL, "y", Pinned()))
+    agreeing = (PreparedRoute(m, NORMAL, "x", Recorded()), PreparedRoute(k, NORMAL, "y", Recorded()))
     assert isinstance(attempt.publish(PreparationResult(attempt.attempt.reference, agreeing)), Published)
-    (pin,) = authority.section.at("m").routes[NORMAL].pins
-    assert (pin.name, pin.version) == ("test.mode", "1") and pin.code, "the route records its setup's version and code identity"
+    (record,) = authority.section.at("m").routes[NORMAL].setup_records
+    assert record == setup_evidence(Recorded()), "the route records its setup by its name and the evidence of its source"
 
 
-def test_a_route_setup_claiming_a_name_and_version_the_prepared_form_pins_with_other_code_is_refused() -> None:
+def test_a_route_setup_claiming_a_name_the_prepared_form_records_with_other_code_is_refused() -> None:
     authority = materialized()
     (m,) = refs(authority, "m")
-    pinned = (SetupPin("test.mode", "1", "the prepared form's code"),)
-    attempt = derived(authority, PreparationRequest(routes=((m, NORMAL),), pinned=pinned))
-    result = attempt.publish(PreparationResult(attempt.attempt.reference, (PreparedRoute(m, NORMAL, "x", Pinned()),)))
-    assert isinstance(result, Rejected) and "@test.mode v1 is claimed by setups with different code" in str(result)
+    recorded = (CodeEvidence("test.mode", source=SourceEvidence("elsewhere", "Other", "0")),)
+    attempt = derived(authority, PreparationRequest(routes=((m, NORMAL),), recorded=recorded))
+    result = attempt.publish(PreparationResult(attempt.attempt.reference, (PreparedRoute(m, NORMAL, "x", Recorded()),)))
+    assert isinstance(result, Rejected) and "@test.mode is claimed by setups with different code" in str(result)

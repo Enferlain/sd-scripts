@@ -1099,8 +1099,8 @@ class Reference:
         op, args = command.op, command.args
         contract = RealizationSemantics().describe(op)
         standin = self.standins.get(contract.implementation)
-        if standin is None or standin.version != contract.version:
-            raise ReferenceLimit(f"{path(op)}: no stand-in for @{contract.implementation} v{contract.version}")
+        if standin is None:
+            raise ReferenceLimit(f"{path(op)}: no stand-in for @{contract.implementation}")
         inputs = tuple(written(v.type) for v in op.operands)
         outputs = tuple(written(r.type) for r in op.results)
         if (standin.inputs, standin.outputs, standin.retains) != (inputs, outputs, contract.retains):

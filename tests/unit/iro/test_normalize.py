@@ -332,7 +332,7 @@ def test_an_accepted_strategy_has_no_releases_and_a_normalized_one_no_derived_wo
 
 
 def test_an_accepted_strategy_names_no_expansion() -> None:
-    text = "iro.strategy @s uses(@work v1) {\n  iro.sequence @q from(iro.derived @q) {\n    iro.call @work()\n  }\n}\n"
+    text = "iro.strategy @s uses(@work) {\n  iro.sequence @q from(iro.derived @q) {\n    iro.call @work()\n  }\n}\n"
     with pytest.raises(Rejection) as raised:
         parse(text)
     assert raised.value.codes == ("iro-text-012",)
@@ -340,7 +340,7 @@ def test_an_accepted_strategy_names_no_expansion() -> None:
 
 
 def test_a_retained_result_is_released_after_every_result_that_keeps_it() -> None:
-    text = """iro.strategy @s uses(@objective v1, @derive v1, @report v1) {
+    text = """iro.strategy @s uses(@objective, @derive, @report) {
   %m = iro.resource @m : participant
   iro.sequence @train capture(%m) {
     %a = iro.access %m protected_current {

@@ -13,7 +13,7 @@ AREA = "training"
 
 
 def definitions() -> tuple[Definition, ...]:
-    """Training's definitions, each with its definition version and written form."""
+    """Training's definitions, each with its written form."""
     return (
         Definition(UnitOp, AREA, form=UnitForm),
         Definition(WindowOp, AREA, form=WindowForm),

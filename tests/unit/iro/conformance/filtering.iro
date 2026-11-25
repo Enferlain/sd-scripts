@@ -1,6 +1,4 @@
-iro.strategy @run
-    uses(@produce v1, @even v1, @extract v1, @offset v1, @double v1,
-         @publish v1) {
+iro.strategy @run uses(@produce, @even, @extract, @offset, @double, @publish) {
   %config   = iro.resource @config
   %products = iro.resource @products
   %raw      = iro.stream @raw : record

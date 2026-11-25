@@ -40,7 +40,7 @@ def test_the_designs_cache_example_is_the_canonical_form() -> None:
     snippet = design_example("@read_latent_cache")
     body = "\n".join(f"      {line}" if line else line for line in snippet.splitlines())
     text = (
-        "iro.strategy @s uses(@read_latent_cache v1, @encode_latent v1, @encode_sdxl_text v1, @use v1) {\n"
+        "iro.strategy @s uses(@read_latent_cache, @encode_latent, @encode_sdxl_text, @use) {\n"
         "  %vae   = iro.resource @vae : participant\n"
         "  %te1   = iro.resource @te1 : participant\n"
         "  %te2   = iro.resource @te2 : participant\n"
@@ -113,7 +113,7 @@ def test_carried_values_and_forks_read_back_as_written() -> None:
 
 def test_source_locations_print_only_on_request_and_round_trip() -> None:
     text = (
-        "iro.strategy @s uses(@f v1) {\n"
+        "iro.strategy @s uses(@f) {\n"
         '  %x = iro.resource @x loc("strategies/s.py":3)\n'
         "\n"
         "  iro.sequence @once capture(%x) {\n"
@@ -149,7 +149,7 @@ def test_reading_problems_name_their_rule_and_line(text: str, code: str, line: i
 
 
 def test_an_uncaptured_value_points_at_the_capture_clause() -> None:
-    text = "iro.strategy @s uses(@f v1) {\n  %x = iro.resource @x\n  iro.sequence @once {\n    iro.call @f(%x)\n  }\n}\n"
+    text = "iro.strategy @s uses(@f) {\n  %x = iro.resource @x\n  iro.sequence @once {\n    iro.call @f(%x)\n  }\n}\n"
     found = rejected(text).diagnostics[0]
     assert found.code == "iro-text-003" and found.source == "s.iro:4"
     assert found.fix == "add %x to the activity's capture(...)"
@@ -169,7 +169,7 @@ def test_an_entry_of_the_wrong_type_is_rejected_where_written() -> None:
 
 def test_a_shape_problem_reads_in_the_written_forms_types() -> None:
     text = (
-        "iro.strategy @s uses(@keep v1) {\n"
+        "iro.strategy @s uses(@keep) {\n"
         "  %r = iro.stream @r : record\n"
         "         bounds(outstanding 1, ready 1)\n"
         "  iro.parallel @p capture(%r) {\n"
@@ -207,7 +207,7 @@ def test_reading_back_the_printed_form_builds_the_same_operations() -> None:
 
 def test_a_local_body_that_yields_nothing_after_a_result_keeps_its_yield() -> None:
     text = (
-        "iro.strategy @s uses(@f v1) {\n"
+        "iro.strategy @s uses(@f) {\n"
         "  %x = iro.resource @x\n"
         "  iro.access %x snapshot {\n"
         "  ^(%l):\n"
@@ -223,7 +223,7 @@ def test_a_local_body_that_yields_nothing_after_a_result_keeps_its_yield() -> No
 
 @pytest.mark.parametrize("literal", ["1e-05", "1e+16", "0.00001", "2.5e-3", "1e5"])
 def test_exponent_floats_round_trip(literal: str) -> None:
-    text = f"iro.strategy @s uses(@f v1) {{\n  iro.call @f({literal})\n}}\n"
+    text = f"iro.strategy @s uses(@f) {{\n  iro.call @f({literal})\n}}\n"
     printed = print_strategy(parse(text))
     assert round_trips(printed)
     constant = op_named(parse(printed), ConstantOp)
@@ -231,7 +231,7 @@ def test_exponent_floats_round_trip(literal: str) -> None:
 
 
 @pytest.mark.parametrize(
-    "text", ["iro.strategy @s {\n  %0 = iro.resource @r\n}\n", 'iro.strategy @s uses(@f v1) {\n  iro.call @f("a\\q")\n}\n']
+    "text", ["iro.strategy @s {\n  %0 = iro.resource @r\n}\n", 'iro.strategy @s uses(@f) {\n  iro.call @f("a\\q")\n}\n']
 )
 def test_malformed_names_and_strings_are_reading_problems(text: str) -> None:
     assert rejected(text).diagnostics[0].code == "iro-text-001"
@@ -349,7 +349,7 @@ def test_a_participant_may_be_permitted_to_leave_the_device_and_nothing_else_may
         parse("iro.strategy @s {\n  %p = iro.resource @policy may_leave_device\n}\n")
 
 
-NAMED_RESULTS_LAST = """iro.strategy @s uses(@both v1) {
+NAMED_RESULTS_LAST = """iro.strategy @s uses(@both) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m protected_current {

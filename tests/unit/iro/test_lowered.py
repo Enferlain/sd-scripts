@@ -17,7 +17,7 @@ from tests.unit.iro.accepted_runs import accepted_run
 from tests.unit.iro.runtime.harness import Memory
 from tests.unit.iro.runtime.test_witnesses import LONG, _installed
 
-CHAIN = """iro.strategy @s uses(@a v1, @b v1) {
+CHAIN = """iro.strategy @s uses(@a, @b) {
   iro.sequence @once {
     %x = iro.call @a() -> int
     %y = iro.call @b(%x, 2) -> int
@@ -28,8 +28,8 @@ CHAIN = """iro.strategy @s uses(@a v1, @b v1) {
 
 def _chain_installed():
     return {
-        "a": implementation(version=1, outputs=("int",), name="a")(lambda: 5),
-        "b": implementation(version=1, inputs=("int", "int"), outputs=("int",), name="b")(lambda x, k: x * k),
+        "a": implementation(outputs=("int",), name="a")(lambda: 5),
+        "b": implementation(inputs=("int", "int"), outputs=("int",), name="b")(lambda x, k: x * k),
     }
 
 
@@ -131,7 +131,7 @@ def test_checked_mode_fails_a_run_whose_lowering_dropped_scope_records(monkeypat
     assert any("scope records" in error for error in coordinator.errors)
 
 
-POLICY = """iro.strategy @s uses(@a v1) {
+POLICY = """iro.strategy @s uses(@a) {
   iro.repeat @loop until @schedule {
   ^(%i: int):
     %x = iro.call @a(%i) -> int
@@ -141,7 +141,7 @@ POLICY = """iro.strategy @s uses(@a v1) {
 
 
 def test_a_step_lowering_cannot_realize_fails_when_it_runs() -> None:
-    installed = {"a": implementation(version=1, inputs=("int",), outputs=("int",), name="a")(lambda i: i)}
+    installed = {"a": implementation(inputs=("int",), outputs=("int",), name="a")(lambda i: i)}
     prepared = _prepared(POLICY, installed)
     loop = _invokes(lower(prepared, installed).root)["@loop"]
     assert loop.kind == INVOKE and loop.problem is not None and "until a policy" in loop.problem
@@ -175,7 +175,7 @@ def test_execution_reads_nothing_of_the_strategy() -> None:
     assert run(strip=True) == run(strip=False)
 
 
-TWO_RESULTS = """iro.strategy @s uses(@both v1) {
+TWO_RESULTS = """iro.strategy @s uses(@both) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m protected_current {
@@ -189,9 +189,7 @@ TWO_RESULTS = """iro.strategy @s uses(@both v1) {
 
 def test_a_retaining_call_that_returns_more_than_its_retained_result_fails_when_it_runs() -> None:
     installed = {
-        "both": implementation(version=1, inputs=("protected_current lease",), outputs=("retained int", "int"), name="both")(
-            lambda lease: (1, 2)
-        )
+        "both": implementation(inputs=("protected_current lease",), outputs=("retained int", "int"), name="both")(lambda lease: (1, 2))
     }
     prepared = _prepared(TWO_RESULTS, installed)
     coordinator = Coordinator(prepared, {"m": Memory({"m": 0})}, installed, {"host": Host()}, checked=True)

@@ -3,9 +3,9 @@
 :func:`prepare` takes a cold-loaded accepted run, the installed
 implementations and a target, and derives the prepared run:
 
-- **matching**: every call's implementation is installed at its pinned
-  implementation version and declaration, and the declaration agrees with the
-  call's input and output types;
+- **matching**: every call's implementation is installed with the evidence
+  the run recorded, and its declaration agrees with the call's input and
+  output types;
 - **placement**: a call that declares device use goes to the device placed
   for its activity, or the target's device for device work; any other call
   runs on the host;
@@ -33,8 +33,8 @@ implementations and a target, and derives the prepared run:
 - **leaving the device** (D15): each participant permitted to leave the
   device between uses, with the device its storage leaves from. Only frozen
   storage leaves, from one device, whose adapter offers storage copies;
-- the **implementation manifest**: each pinned implementation with its
-  implementation version, declaration digest and code identity.
+- the **implementation records**: each implementation the run uses, with the
+  evidence of its code: its declaration and its source (D16).
 
 The prepared run is inspectable and never an authority. Its printout is saved
 for inspection; :func:`load_prepared` derives it again and refuses a saved one
@@ -42,18 +42,14 @@ that differs. A call that disagrees with its implementation is invalid
 meaning; work the target cannot realize is a target limit, reported apart.
 """
 
-import functools
-import hashlib
-import inspect
-import marshal
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from pathlib import Path
 
 from xdsl.ir import BlockArgument, Operation, SSAValue
 
-from library.iro.accepted import Loaded, check_implementations
+from library.iro.accepted import Loaded, check_implementations, implementation_evidence
 from library.iro.diagnostics import Kind, Problems, Stage
+from library.iro.evidence import CodeEvidence, SourceEvidence, setup_evidence, source_evidence
 from library.iro.operation_contracts import (
     AccessMode,
     LifecycleProtocol,
@@ -88,21 +84,6 @@ _NOTHING = Derived()
 _OWN_LIFETIME = frozenset(
     {LifecycleProtocol.PARALLEL, LifecycleProtocol.PRODUCER, LifecycleProtocol.HANDLER, LifecycleProtocol.REPEAT, LifecycleProtocol.FILTER}
 )
-
-
-@dataclass(frozen=True)
-class ManifestEntry:
-    """A pinned implementation as the prepared run uses it.
-
-    ``code`` identifies the code itself, which caches of prepared and compiled
-    forms are keyed on; the implementation version is a promise about
-    behavior and never stands in for it (D16).
-    """
-
-    name: str
-    version: str
-    digest: str
-    code: str
 
 
 @dataclass(frozen=True)
@@ -146,13 +127,17 @@ class Prepared:
     strategy: str
     run: str
     target: Target
-    manifest: tuple[ManifestEntry, ...]
+    manifest: tuple[
+        CodeEvidence, ...
+    ]  # each implementation the run uses, as installed; prepared and compiled forms are keyed on its source (D16)
     groups: tuple[Group, ...]
     admissions: tuple[Admission, ...]
     placed: tuple[tuple[str, str], ...]  # (participant, the one device whose work uses it, where its device storage lives)
     leaving: tuple[tuple[str, str], ...]  # (participant, the device its storage leaves from)
     updated: tuple[str, ...]  # the resources some access updates or grants; the others never change in the run
-    derivers: tuple[ManifestEntry, ...]  # each domain's deriver, in the order they ran, and each call setup derived (D16)
+    derivers: tuple[
+        CodeEvidence, ...
+    ]  # each domain's deriver, in the order they ran, and each call setup derived, by name and source (D16)
     loaded: Loaded = field(compare=False, repr=False)
 
     def group_of(self, call: str) -> Group:
@@ -161,14 +146,14 @@ class Prepared:
     def text(self) -> str:
         """The readable prepared form, saved with the run for inspection."""
         lines = [f"prepared @{self.strategy}", f"  run {self.run}", f"  target {self.target.describe()}", "implementations"]
-        lines += [f"  @{m.name} v{m.version} digest {m.digest} code {m.code}" for m in self.manifest]
+        lines += [f"  {line}" for m in self.manifest for line in m.printout().splitlines()]
         if self.derivers:
             lines.append("derived by")
-            lines += [f"  @{m.name} v{m.version} code {m.code}" for m in self.derivers]
+            lines += [f"  {line}" for m in self.derivers for line in m.printout().splitlines()]
         lines.append("groups")
         for g in self.groups:
             names = ", ".join(f"@{name}" for name in g.implementations)
-            settings = [f"setups {', '.join(f'@{s.name} v{s.version}' for s in g.setups)}"] if g.setups else []
+            settings = [f"setups {', '.join(f'@{s.name}' for s in g.setups)}"] if g.setups else []
             settings += [f"{key} {', '.join(values)}" for key, values in g.annotations]
             settings += [f"hold @{h.resource} ({', '.join(h.key)}){' storage' if h.changes_storage else ''}" for h in g.holds]
             settings += [f"random {g.context.random}"] if g.context.random else []
@@ -187,49 +172,6 @@ class Prepared:
             lines.append("leaving the device")
             lines += [f"  @{participant} from {device}" for participant, device in self.leaving]
         return "\n".join(lines) + "\n"
-
-
-def code_identity(implementation: object) -> str:
-    """The identity of an implementation's code.
-
-    It is the source of the module that defines the function, or of the
-    object's class, which changes with any edit there; else the compiled
-    code. Code it cannot identify gets an identity of this one object, so a
-    cache keyed on it is never reused in another process.
-    """
-    function = getattr(implementation, "function", implementation)
-    while True:
-        if isinstance(function, functools.partial):
-            function = function.func
-        elif inspect.ismethod(function):
-            function = function.__func__
-        else:
-            break
-    data: bytes | None = None
-    for candidate in (function, type(function)):
-        try:
-            source = inspect.getsourcefile(candidate)  # ty: ignore[invalid-argument-type]
-            data = Path(source).read_bytes() if source else None
-        except TypeError, OSError:
-            data = None
-        if data is not None:
-            break
-    if data is None:
-        code = getattr(function, "__code__", None)
-        data = marshal.dumps(code) if code is not None else f"unknown {id(function)}".encode()
-    return hashlib.blake2s(data, digest_size=8).hexdigest()
-
-
-def setup_identity(setup: object) -> str:
-    """The identity of a deriver's or setup's code: its module's source, as an implementation's, and its class's qualified name.
-
-    The class's name tells apart two setups defined in one module; what a
-    setup is configured with is pinned with the realization's settings, not
-    here (D16).
-    """
-    kind = type(setup)
-    named = f"{code_identity(setup)} {kind.__module__}.{kind.__qualname__}"
-    return hashlib.blake2s(named.encode(), digest_size=8).hexdigest()
 
 
 def prepare(loaded: Loaded, installed: Mapping[str, Implementation], target: Target, derivers: Sequence[Deriver] = ()) -> Prepared:
@@ -283,9 +225,7 @@ class _Preparation:
         derivation = self._derivation_manifest(groups)
         self.problems.reject_if_any()
         run = self.loaded.run
-        manifest = tuple(
-            ManifestEntry(name, version, digest, code_identity(self.installed[name])) for name, version, digest in run.implementations
-        )
+        manifest = tuple(implementation_evidence(record.name, self.installed[record.name]) for record in run.implementations)
         return Prepared(
             self.strategy.sym_name.data,
             run.identity,
@@ -302,24 +242,28 @@ class _Preparation:
 
     # Derivation (D16).
 
-    def _derivation_manifest(self, groups: tuple[Group, ...]) -> tuple[ManifestEntry, ...]:
-        """Each deriver, then each call setup the groups use, with its version and code identity: their code is pinned as an implementation's is."""
-        entries = [ManifestEntry(d.name, d.version, "", setup_identity(d)) for d in self.derivers]
-        found: dict[tuple[str, str], set[str]] = {}
-        for entry in entries:
-            found.setdefault((entry.name, entry.version), set()).add(entry.code)
+    def _derivation_manifest(self, groups: tuple[Group, ...]) -> tuple[CodeEvidence, ...]:
+        """Each deriver, then each call setup the groups use, by name and the evidence of its source (D16).
+
+        One name stands for one code in a run, so a name that two derivers or
+        setups with different code claim is refused.
+        """
+        entries = [setup_evidence(d) for d in self.derivers]
+        found: dict[str, set[SourceEvidence]] = {}
+        for deriver in self.derivers:
+            found.setdefault(deriver.name, set()).add(source_evidence(deriver))
         for setup in (s for g in groups for s in g.setups):
-            found.setdefault((setup.name, setup.version), set()).add(setup_identity(setup))
-        for (name, version), codes in sorted(found.items()):
-            if len(codes) > 1 or len({id(d) for d in self.derivers if (d.name, d.version) == (name, version)}) > 1:
+            found.setdefault(setup.name, set()).add(source_evidence(setup))
+        for name, codes in sorted(found.items()):
+            if len(codes) > 1 or len({id(d) for d in self.derivers if d.name == name}) > 1:
                 self.problems.add(
                     "iro-prep-015",
-                    f"@{name} v{version} is claimed by more than one deriver or setup, and its code is pinned once",
+                    f"@{name} is claimed by more than one deriver or setup, and one name stands for one code in a run",
                     names=(f"@{name}",),
-                    fix="give each deriver and setup a name of its own, and changed code a new version",
+                    fix="give each deriver and setup a name of its own",
                 )
-        setups = sorted({(s.name, s.version) for g in groups for s in g.setups} - {(d.name, d.version) for d in self.derivers})
-        entries += [ManifestEntry(name, version, "", next(iter(found[name, version]))) for name, version in setups]
+        setups = sorted({s.name for g in groups for s in g.setups} - {d.name for d in self.derivers})
+        entries += [CodeEvidence(name, source=next(iter(found[name]))) for name in setups]
         return tuple(entries)
 
     def _derive(self) -> None:
@@ -460,10 +404,10 @@ class _Preparation:
             self.problems.add(
                 "iro-prep-001",
                 f"the call passes ({', '.join(inputs)}) -> ({', '.join(outputs)}), and @{declared.name} "
-                f"v{declared.version} declares ({', '.join(declared.inputs)}) -> ({', '.join(declared.outputs)})",
+                f"declares ({', '.join(declared.inputs)}) -> ({', '.join(declared.outputs)})",
                 names=(f"@{declared.name}",),
                 path=path(call),
-                fix="call the implementation as it is declared, or pin a version that declares this call",
+                fix="call the implementation as it is declared, or select one that declares this call",
             )
         if Effect.COLLECTIVES in declared.effects and self.loaded.run.replicated:
             self.problems.add(
@@ -842,4 +786,4 @@ def _enclosing_access(op: Operation) -> AccessOp | None:
     return None
 
 
-__all__ = ["Admission", "Group", "ManifestEntry", "Prepared", "code_identity", "load_prepared", "prepare", "setup_identity"]
+__all__ = ["Admission", "Group", "Prepared", "load_prepared", "prepare"]

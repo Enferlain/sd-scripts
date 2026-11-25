@@ -61,7 +61,7 @@ def test_work_on_another_stream_follows_its_completion_on_the_device() -> None:
     assert total.item() == 7.0 * y.numel(), "the other stream waited on the event before reading"
 
 
-UPDATE_THEN_READ = """iro.strategy @s uses(@update v1, @read v1) {
+UPDATE_THEN_READ = """iro.strategy @s uses(@update, @read) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {
@@ -116,8 +116,8 @@ def test_a_host_read_after_device_work_waits_for_its_completion_not_for_python_t
         return float(weights.tensor[0, 0].item())
 
     installed = {
-        "update": implementation(version=1, inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="update")(update),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("float",), name="read")(read),
+        "update": implementation(inputs=("owner_update lease",), outputs=("int",), effects=["device"], name="update")(update),
+        "read": implementation(inputs=("protected_current lease",), outputs=("float",), name="read")(read),
     }
     run = accepted_run(UPDATE_THEN_READ, installed=installed)
     target = Target((HOST, DeviceFacts(device.name, "cuda")), device=device.name)
@@ -154,7 +154,7 @@ def test_a_call_starts_from_a_neutral_baseline_and_its_own_random_state_on_the_d
     assert not torch.equal(first.cpu(), second.cpu()) and not torch.equal(first.cpu(), other.cpu())
 
 
-TWO_UPDATES_THEN_READ = """iro.strategy @s uses(@first v1, @second v1, @read v1) {
+TWO_UPDATES_THEN_READ = """iro.strategy @s uses(@first, @second, @read) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {
@@ -194,9 +194,9 @@ def test_device_work_after_device_work_is_ordered_on_the_device_without_a_wait_o
 
     update = ("owner_update lease",)
     installed = {
-        "first": implementation(version=1, inputs=update, outputs=("int",), effects=["device"], name="first")(first),
-        "second": implementation(version=1, inputs=update, outputs=("int",), effects=["device"], name="second")(second),
-        "read": implementation(version=1, inputs=("protected_current lease",), outputs=("float",), name="read")(
+        "first": implementation(inputs=update, outputs=("int",), effects=["device"], name="first")(first),
+        "second": implementation(inputs=update, outputs=("int",), effects=["device"], name="second")(second),
+        "read": implementation(inputs=("protected_current lease",), outputs=("float",), name="read")(
             lambda weights: float(weights.tensor[0, 0].item())
         ),
     }
@@ -247,7 +247,7 @@ def test_threads_entering_one_adapter_at_once_each_get_its_stream_and_restore_th
     assert not wrong, wrong[:3]
 
 
-TWO_USES = """iro.strategy @s uses(@encode v1, @pause v1) {
+TWO_USES = """iro.strategy @s uses(@encode, @pause) {
   %vae = iro.resource @vae : participant may_leave_device
   iro.sequence @once capture(%vae) {
     iro.access %vae protected_current {
@@ -303,10 +303,10 @@ def test_a_frozen_participant_leaves_the_device_between_uses_and_comes_back_exac
 
     def run(text: str, tensor: torch.Tensor, device) -> tuple[list[tuple[object, ...]], Prepared]:
         installed = {
-            "encode": implementation(version=1, inputs=("protected_current lease",), outputs=("float",), effects=["device"], name="encode")(
+            "encode": implementation(inputs=("protected_current lease",), outputs=("float",), effects=["device"], name="encode")(
                 lambda weights: float(weights.sum().item())
             ),
-            "pause": implementation(version=1, outputs=("int",), name="pause")(lambda: time.sleep(0.05) or 0),
+            "pause": implementation(outputs=("int",), name="pause")(lambda: time.sleep(0.05) or 0),
         }
         accepted = accepted_run(text, installed=installed)
         target = Target((HOST, DeviceFacts.of(device)), device=device.name)
@@ -386,7 +386,7 @@ def test_a_capture_copies_whole_storage_after_the_work_queued_and_before_later_w
     assert not any(c.requires_grad for c in copies)
 
 
-SNAPSHOT_BETWEEN_UPDATES = """iro.strategy @s uses(@first v1, @look v1, @second v1) {
+SNAPSHOT_BETWEEN_UPDATES = """iro.strategy @s uses(@first, @look, @second) {
   %m = iro.resource @m : participant
   iro.sequence @once capture(%m) {
     iro.access %m owner_update {
@@ -445,9 +445,9 @@ def test_a_snapshot_of_device_state_is_a_copy_queued_after_the_update_before_it_
 
     update = ("owner_update lease",)
     installed = {
-        "first": implementation(version=1, inputs=update, outputs=("int",), effects=["device"], name="first")(first),
-        "look": implementation(version=1, inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(look),
-        "second": implementation(version=1, inputs=update, outputs=("int",), effects=["device"], name="second")(second),
+        "first": implementation(inputs=update, outputs=("int",), effects=["device"], name="first")(first),
+        "look": implementation(inputs=("snapshot lease",), outputs=("int",), effects=["device"], name="look")(look),
+        "second": implementation(inputs=update, outputs=("int",), effects=["device"], name="second")(second),
     }
     run = accepted_run(SNAPSHOT_BETWEEN_UPDATES, installed=installed)
     target = Target((HOST, DeviceFacts.of(device)), device=device.name)
