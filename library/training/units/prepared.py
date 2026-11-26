@@ -116,6 +116,7 @@ class PreparedUnit:
     optimizer: torch.optim.Optimizer = field(repr=False, compare=False)
     dependencies: Dependencies
     attempt: AttemptRef
+    default_stream: bool = False  # the optimizer steps on its device's default stream (``steps_on_default_stream``)
 
     @property
     def parameters(self) -> list[torch.nn.Parameter]:
@@ -199,7 +200,7 @@ class LiveUnit:
         checked = norm if norm is not None else self._window_loss
         if checked is not None:
             self._fold(self.progress.attempted + 1, checked)
-        prepared.optimizer.step()
+        _step(prepared)
         prepared.optimizer.zero_grad(set_to_none=True)
         self.progress = Progress(self.progress.attempted + 1, self.progress.advanced + 1)
         record = Advancement(
@@ -242,6 +243,23 @@ class LiveUnit:
         if self._bad is None:
             self._bad = torch.full((), -1, dtype=torch.int64, device=value.device)
         self._bad = torch.where(torch.isfinite(value) | (self._bad >= 0), self._bad, window)
+
+
+def _step(prepared: PreparedUnit) -> None:
+    """Steps the unit's optimizer, on the device's default stream where its optimizer needs it, ordered after and before the current stream's work."""
+    if not prepared.default_stream or not torch.cuda.is_available():
+        prepared.optimizer.step()
+        return
+    device = next((p.device for p in prepared.parameters if p.device.type == "cuda"), None)
+    current = torch.cuda.current_stream(device) if device is not None else None
+    default = torch.cuda.default_stream(device) if device is not None else None
+    if current is None or default is None or current == default:
+        prepared.optimizer.step()
+        return
+    default.wait_stream(current)
+    with torch.cuda.stream(default):
+        prepared.optimizer.step()
+    current.wait_stream(default)
 
 
 def _split(loss: object) -> tuple[torch.Tensor, float | torch.Tensor]:

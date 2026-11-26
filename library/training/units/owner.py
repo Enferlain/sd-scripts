@@ -26,7 +26,7 @@ from library.iro import seams
 from library.iro.operation_contracts import AccessMode
 from library.iro.seams import Use
 from library.iro.verify import Checkpoint, Evaluator, ObligationKind, Obligations
-from library.optimization.construction import build
+from library.optimization.construction import build, steps_on_default_stream
 from library.runstate.authority import Unavailable
 from library.runstate.generation import Generations, Publication, Section
 from library.runstate.owners import AttemptRef, Mint, Refused, Version
@@ -135,6 +135,7 @@ class TrainerOptimization:
                 optimizer,
                 candidate.dependencies,
                 attempt,
+                default_stream=steps_on_default_stream(policy.name),
             )
         missing = [name for name in self.plan.units if name not in units and not any(r.startswith(f"@{name}:") for r in reasons)]
         reasons += [f"@{name}: the attempt resolved no candidate for it" for name in missing]

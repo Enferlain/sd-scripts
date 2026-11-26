@@ -31,10 +31,23 @@ def optimizer_class(name: str) -> type[torch.optim.Optimizer]:
     return found
 
 
+def steps_on_default_stream(name: str) -> bool:
+    """Whether the named optimizer's step must run on the device's default stream to compute what it would there.
+
+    bitsandbytes' optimizers queue part of their update outside the current
+    stream: on another stream, their step races with itself, and on the
+    16.2 SDXL step (bitsandbytes 0.50.2, RTX 3080) a different few dozen of
+    1,680 parameters came out different on each run. On the default stream
+    the step is exact and repeatable.
+    """
+    registration = get_optimizer_registration(name)
+    return registration is not None and registration.backend == "bitsandbytes"
+
+
 def build(name: str, parameters: Iterable[torch.nn.Parameter], settings: Mapping[str, Any]) -> torch.optim.Optimizer:
     """The named optimizer over the parameters, in their order, with the settings as its keyword arguments."""
     built: Any = optimizer_class(name)
     return built(list(parameters), **settings)
 
 
-__all__ = ["build", "optimizer_class"]
+__all__ = ["build", "optimizer_class", "steps_on_default_stream"]

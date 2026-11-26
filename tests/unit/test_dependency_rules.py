@@ -81,8 +81,23 @@ NEW_SYSTEM = (
     "library/training/preparation.py",
     "library/training/trainer.py",
     "library/optimization/construction.py",
+    "library/objectives/schedules.py",
+    "library/objectives/formulations",
+    "library/losses/elementwise.py",
+    "library/losses/reductions.py",
+    "library/losses/weightings.py",
+    "library/models/sdxl/assembly.py",
+    "library/models/denoisers",
 )
-NEW_TESTS = ("tests/unit/iro", "tests/unit/runstate", "tests/unit/training_core", "tests/unit/test_dependency_rules.py")
+NEW_TESTS = (
+    "tests/unit/iro",
+    "tests/unit/runstate",
+    "tests/unit/training_core",
+    "tests/unit/objectives",
+    "tests/unit/losses/test_loss_pieces.py",
+    "tests/unit/denoisers",
+    "tests/unit/test_dependency_rules.py",
+)
 
 # Code the new system replaces or must not depend on (D21's coverage of today's code).
 REPLACED = (
@@ -101,6 +116,8 @@ REPLACED = (
     "library.strategies.factory",
     "library.strategies.shared",
     "library.config",
+    "library.losses.loss",
+    "library.losses.loss_modifiers",
 )
 TEST_ONLY = "tests"
 
