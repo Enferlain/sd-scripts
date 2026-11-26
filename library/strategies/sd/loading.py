@@ -7,7 +7,7 @@ import library.models.sd.conversion
 from library.models import LoadedModelComponent, build_loaded_components
 from library.models.runtime_utils import replace_unet_modules
 from library.models.sd.loader import load_target_model
-from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
+from library.objectives._deprecated.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
 from library.strategies.base.contracts import ModelLoadingStrategy
 
 try:

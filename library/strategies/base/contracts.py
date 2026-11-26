@@ -11,7 +11,7 @@ from library.metadata.dataclasses.model import (
     ModelArtifactResolutionContext,
 )
 from library.models import LoadedModelComponent
-from library.objectives.base import ObjectiveRuntime
+from library.objectives._deprecated.base import ObjectiveRuntime
 from library.strategies.base.context import StrategyPhase
 
 

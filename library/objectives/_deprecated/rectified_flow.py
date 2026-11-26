@@ -8,7 +8,7 @@ import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
 from library.losses.loss_modifiers import NoOpLossModifier
-from library.objectives.base import ObjectiveDefinition, ObjectiveRuntime
+from library.objectives._deprecated.base import ObjectiveDefinition, ObjectiveRuntime
 from library.timesteps.continuous_sampling import apply_training_shift, sample_continuous_timesteps
 
 RECTIFIED_FLOW_PREDICTION_TYPE_FLOW = "flow"

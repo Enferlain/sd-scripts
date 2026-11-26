@@ -34,7 +34,7 @@ from library.strategies.base.contracts import (
     ValidationStrategy,
 )
 from library.strategies.base.features import WeightedPromptStrategy
-from library.objectives.ddpm import build_ddpm_noise_scheduler
+from library.objectives._deprecated.ddpm import build_ddpm_noise_scheduler
 from library.training.diffusion import prepare_latents
 from library.training.trainer_utils import all_reduce_trainable, restore_rng_state, switch_rng_state
 

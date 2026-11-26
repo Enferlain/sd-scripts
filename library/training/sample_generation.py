@@ -36,7 +36,7 @@ from library.config.dataclasses.output import SamplingConfig
 from library.config.dataclasses.loss import LossConfig
 from library.config.dataclasses.output import SavingConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V
+from library.objectives._deprecated.ddpm import DDPM_PREDICTION_TYPE_V
 
 logger = logging.getLogger(__name__)
 

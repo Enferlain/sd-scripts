@@ -9,7 +9,7 @@ import torch
 
 from library.losses.loss_modifiers import NoOpLossModifier
 from library.config.dataclasses.timestep import TimestepConfig
-from library.objectives.rectified_flow import RectifiedFlowObjectiveRuntime
+from library.objectives._deprecated.rectified_flow import RectifiedFlowObjectiveRuntime
 from library.strategies.base.context import StrategyContext, StrategyPhase, current_strategy_context
 from library.strategies.sd3.checkpointing import Sd3CheckpointingStrategy
 from library.strategies.sd3.denoiser import Sd3DenoiserCallingStrategy

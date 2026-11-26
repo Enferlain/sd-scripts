@@ -1,5 +1,5 @@
 from dataclasses import replace
-from library.objectives.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
+from library.objectives._deprecated.ddpm import DDPM_PREDICTION_TYPE_V, resolve_ddpm_prediction_type
 from library.strategies.base.contracts import CheckpointingStrategy
 
 from library.metadata.dataclasses.model import (

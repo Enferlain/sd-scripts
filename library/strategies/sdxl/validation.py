@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 
 from library.losses.loss import conditional_loss
-from library.objectives.base import ObjectiveRuntime
+from library.objectives._deprecated.base import ObjectiveRuntime
 from library.strategies.base.contracts import ValidationStrategy
 from library.training.diffusion import prepare_latents
 from library.training.trainer_utils import restore_rng_state, switch_rng_state

@@ -17,7 +17,7 @@ from library.training.sample_generation import (
     get_sampling_prompt_dicts,
     sample_image_inference,
 )
-from library.objectives.ddpm import DDPM_PREDICTION_TYPE_EPSILON, DDPM_PREDICTION_TYPE_V
+from library.objectives._deprecated.ddpm import DDPM_PREDICTION_TYPE_EPSILON, DDPM_PREDICTION_TYPE_V
 from PIL import Image
 
 

@@ -5,7 +5,7 @@ import torch
 
 from library.config.dataclasses.timestep import TimestepConfig
 from library.losses.loss_modifiers import NoOpLossModifier
-from library.objectives.rectified_flow import (
+from library.objectives._deprecated.rectified_flow import (
     RectifiedFlowObjectiveRuntime,
     build_flow_matching_model_input_and_timesteps,
     compute_flow_matching_loss_weighting,

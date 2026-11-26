@@ -85,8 +85,9 @@ uv run ty check library/iro/text.py
 The rework ([design](openspec/changes/rework-model-strategy-trainer/design.md), D21) builds the new system new, in place. Today's code is read, and may be run for comparison, only to check D21's coverage rows; it never decides how new code is shaped.
 
 - D21's module map is the boundary. Code it does not list is not part of the new system, and nothing in the new system depends on it.
-- New code never imports the code it replaces, research code under `docs_design/`, or a `_deprecated/` folder. Once an area's coverage rows are checked, its replaced code moves to its package's `_deprecated/` folder.
-- Today's code is never edited to follow the new rules. When new work breaks one of today's tests, that test moves to `tests/_deprecated/` instead of being fixed.
+- New code goes where it belongs, next to today's code in the same package; no new folder exists just to avoid old code. Today's code moves to its package's `_deprecated/` folder, kept there for reference during the rework, when it gets in the way (the package's `__init__` loads it, or a name clashes) or once its area's coverage rows are checked. A move repoints today's importers to the new path and changes nothing else in them, and it is committed at once, on its own, with a message saying what moved and why, so the changes to today's files never mix with new work.
+- New code never imports the code it replaces, research code under `docs_design/`, or a `_deprecated/` folder.
+- Today's code is otherwise not edited to follow the new rules. When new work breaks one of today's tests, that test moves to `tests/_deprecated/` instead of being fixed.
 - Dependencies point down:
   - Launch may import everything below it. `library/config` belongs to launch, and nothing below launch imports it.
   - Strategies may import training's words, the run state, the IR system, the libraries and base.

@@ -61,7 +61,7 @@ from accelerate import init_empty_weights  # noqa: E402
 from library.losses.huber import get_huber_threshold_if_needed  # noqa: E402
 from library.losses.loss import conditional_loss  # noqa: E402
 from library.models.sdxl.conversion import _load_state_dict_on_device  # noqa: E402
-from library.objectives.ddpm import build_ddpm_noise_scheduler, build_ddpm_training_target, post_process_ddpm_loss  # noqa: E402
+from library.objectives._deprecated.ddpm import build_ddpm_noise_scheduler, build_ddpm_training_target, post_process_ddpm_loss  # noqa: E402
 from library.strategies.base.context import StrategyPhase  # noqa: E402
 from library.strategies.sdxl.conditioning import SdxlConditioning, SdxlConditioningStrategy  # noqa: E402
 from library.strategies.sdxl.denoiser import SdxlDenoiserCallingStrategy  # noqa: E402

@@ -44,8 +44,8 @@ from library.metadata.builders.model import (
     build_model_realization_state,
     ModelRealizationState,
 )
-from library.objectives import ObjectiveDefinition, build_objective
-from library.objectives.base import ObjectiveRuntime
+from library.objectives._deprecated import ObjectiveDefinition, build_objective
+from library.objectives._deprecated.base import ObjectiveRuntime
 from library.optimization.optimizer_utils import apply_optimizer_runtime_mode
 from library.optimization.types import OptimizationPlan
 from library.performance import deepspeed_utils

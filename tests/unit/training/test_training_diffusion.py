@@ -6,7 +6,7 @@ import torch
 from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
-from library.objectives.ddpm import prepare_ddpm_training_inputs
+from library.objectives._deprecated.ddpm import prepare_ddpm_training_inputs
 from library.training.diffusion import get_timesteps
 
 

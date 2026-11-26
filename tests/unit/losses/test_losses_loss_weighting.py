@@ -9,7 +9,7 @@ import torch
 from types import SimpleNamespace
 
 from library.losses.masking import apply_masked_loss
-from library.objectives.ddpm import (
+from library.objectives._deprecated.ddpm import (
     apply_snr_weight,
     scale_v_prediction_loss_like_noise_prediction,
     get_snr_scale,

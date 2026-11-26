@@ -6,8 +6,8 @@ from library.losses.huber import get_huber_threshold_if_needed
 from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.masking import apply_masked_loss
-from library.objectives.base import ObjectiveRuntime
-from library.objectives.ddpm import (
+from library.objectives._deprecated.base import ObjectiveRuntime
+from library.objectives._deprecated.ddpm import (
     DDPMObjectiveRuntime,
     build_ddpm_training_target,
     post_process_ddpm_loss,

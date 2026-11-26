@@ -14,7 +14,7 @@ from library.metadata.values import stringify_metadata_mapping
 
 if TYPE_CHECKING:
     from library.data import DatasetManifest
-    from library.objectives import ObjectiveDefinition
+    from library.objectives._deprecated import ObjectiveDefinition
 
 
 # Reference only for a future alias/compatibility option. This mapping is not
@@ -183,7 +183,7 @@ def build_objective_run_metadata(cfg: Any, objective_name: str) -> dict[str, Met
 
 def build_training_metadata_bundle(context: TrainingMetadataBuildContext) -> TrainingMetadataBundle:
     """Build typed training-run facts for checkpoint metadata export."""
-    from library.objectives import build_objective
+    from library.objectives._deprecated import build_objective
 
     metadata = _build_training_run_metadata(context)
     objective = context.objective if context.objective is not None else build_objective(context.cfg)

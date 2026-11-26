@@ -7,8 +7,8 @@ from library.losses.loss import conditional_loss
 from library.losses.loss_modifiers import BatchLossOutput
 from library.losses.masking import apply_masked_loss
 from library.models.sd3.vae import SDVAE
-from library.objectives.base import ObjectiveRuntime
-from library.objectives.rectified_flow import (
+from library.objectives._deprecated.base import ObjectiveRuntime
+from library.objectives._deprecated.rectified_flow import (
     RectifiedFlowObjectiveRuntime,
     resolve_rectified_flow_prediction_type,
 )

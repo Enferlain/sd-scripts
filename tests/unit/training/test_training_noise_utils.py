@@ -3,7 +3,7 @@
 import pytest
 import torch
 
-from library.objectives.ddpm import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
+from library.objectives._deprecated.ddpm import fix_noise_scheduler_betas_for_zero_terminal_snr, prepare_scheduler_for_custom_training
 from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 
 

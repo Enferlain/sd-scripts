@@ -6,7 +6,7 @@ import torch
 from tqdm import tqdm
 
 from library.losses.loss import conditional_loss
-from library.objectives.base import ObjectiveRuntime
+from library.objectives._deprecated.base import ObjectiveRuntime
 from library.strategies.base.contracts import ValidationStrategy
 from library.strategies.sd3.diffusion import encode_sd3_images_to_latents, shift_scale_sd3_latents
 from library.training.diffusion import prepare_latents

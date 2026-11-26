@@ -12,7 +12,7 @@ from library.config.dataclasses.loss import RegularizationConfig
 from library.config.dataclasses.timestep import TimestepConfig
 from library.config.dataclasses.training import TrainingConfig
 from library.losses.loss_modifiers import build_loss_modifier
-from library.objectives.base import ObjectiveDefinition, ObjectiveRuntime
+from library.objectives._deprecated.base import ObjectiveDefinition, ObjectiveRuntime
 from library.timesteps.runtime import build_timestep_runtime
 from library.training.noise_utils import apply_noise_offset, pyramid_noise_like
 

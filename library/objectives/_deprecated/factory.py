@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from library.objectives.base import ObjectiveDefinition
-from library.objectives.ddpm import DDPMObjective
-from library.objectives.rectified_flow import RectifiedFlowObjective
+from library.objectives._deprecated.base import ObjectiveDefinition
+from library.objectives._deprecated.ddpm import DDPMObjective
+from library.objectives._deprecated.rectified_flow import RectifiedFlowObjective
 
 
 def build_objective(cfg: Any) -> ObjectiveDefinition:
