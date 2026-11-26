@@ -223,6 +223,7 @@ The rework ([design](openspec/changes/rework-model-strategy-trainer/design.md), 
   - The run state (`library/runstate`) may import only the IR system, observability fact types and base, never the libraries or Torch.
   - The IR system (`library/iro`) may import only xDSL, observability fact types and base. Torch loads only in its device adapters.
   - Observability imports only base, and base imports nothing in `library`.
+- Attribution covers model code and external libraries taken in and modified, where original implementations are most likely. Such a file starts with `SPDX-License-Identifier: Apache-2.0` and one `SPDX-FileCopyrightText` line per upstream copyright holder, then a prose line naming the source files and "Modified", pointing to `THIRD_PARTY_NOTICES.md`; the same change lists each source there with its license, its copyright line and the files derived from it, and MIT sources keep the MIT text there.
 - `tests/unit/test_dependency_rules.py` checks these rules over the new system's modules. A section that adds a package adds it to `NEW_SYSTEM` there.
 - Tests build accepted runs with the test-only builder in `tests/unit/iro/accepted_runs.py`. No production module imports it.
 
