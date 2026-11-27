@@ -62,3 +62,13 @@ def test_the_loss_reproduces_the_reference_step_bit_for_bit() -> None:
     assert torch.equal(weighted.cpu(), reference["per_sample_loss"])
     loss = sample_mean(weighted)
     assert torch.equal(loss.value.cpu(), reference["loss"]) and loss.mass == 2.0
+
+
+def test_weights_and_losses_pair_up_per_sample_rather_than_broadcast() -> None:
+    with pytest.raises(ValueError, match=r"losses of shape \(3,\) and weights of shape \(3, 1\)"):
+        weigh(torch.ones(3), torch.ones(3, 1))  # would broadcast to (3, 3)
+
+
+def test_a_single_value_has_no_samples_to_average_over() -> None:
+    with pytest.raises(ValueError, match="a single value has none"):
+        per_sample_mean(torch.tensor(1.0))

@@ -18,6 +18,7 @@ from types import MappingProxyType
 import pytest
 import torch
 
+from library.iro import gil
 from library.iro.frontend import implementation
 from library.iro.prepare import Target
 from library.iro.accepted import cold_load
@@ -92,6 +93,10 @@ def observing(module: torch.nn.Module, observed: list | None = None, measured: l
 
 _TAKEN = iter(BATCHES)
 
+KEEP_GIL_OFF = (
+    gil.enabled() is False
+)  # D15's rule applies where the session runs without the GIL; a session that loaded today's code has it on
+
 
 def implementations() -> dict:
     """The test's implementations. ``@batch`` leases nothing, so the batches it hands out come from module state, which a code record does not cover."""
@@ -154,7 +159,7 @@ def trainer(text: str = STEP, net: torch.nn.Module | None = None, enc: torch.nn.
         "net": observing(net if net is not None else default_net, seen["network"], seen.setdefault("measure", [])),
         "enc": observing(enc if enc is not None else default_enc, seen["encoder"]),
     }
-    return Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied=supplied)
+    return Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied=supplied, keep_gil_off=KEEP_GIL_OFF)
 
 
 def by_hand(net: torch.nn.Module, enc: torch.nn.Module) -> torch.nn.Module:
@@ -615,7 +620,7 @@ def realized(text: str, extra: dict) -> ExecutableRun:
     installed = {**extra, **on_host()}
     run = accepted_run(text, contract(), installed=installed)
     net, _ = networks()
-    return Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net}).realize()
+    return Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net}, keep_gil_off=KEEP_GIL_OFF).realize()
 
 
 def said(rejection: Rejection) -> str:
@@ -702,7 +707,7 @@ def test_a_trained_participant_that_reaches_its_loss_by_no_path_is_refused() -> 
     installed = without_weights()
     run = accepted_run(STEP, contract(), installed=installed)
     net, enc = networks()
-    made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc})
+    made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc}, keep_gil_off=KEEP_GIL_OFF)
     with pytest.raises(Rejection) as rejected:
         made.realize()
     assert rejected.value.codes == ("iro-train-002",) and "reaches @learner's loss by no path" in said(rejected.value)
@@ -729,7 +734,7 @@ def test_a_call_on_a_path_from_trained_state_that_holds_a_lease_must_declare_its
     installed = plain()
     run = accepted_run(text, contract(), installed=installed)
     net, enc = networks()
-    made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc})
+    made = Trainer(run, contract(), installed, Target(), {"host": Host()}, supplied={"net": net, "enc": enc}, keep_gil_off=KEEP_GIL_OFF)
     with pytest.raises(Rejection) as rejected:
         made.realize()
     assert rejected.value.codes == ("iro-train-003",) and "while holding a lease on @net" in said(rejected.value)
@@ -856,3 +861,14 @@ def test_a_measurement_while_the_forward_s_result_is_retained_is_refused_since_i
     with pytest.raises(Rejection) as rejected:
         trainer(text).realize()
     assert rejected.value.codes == ("iro-prep-016",) and "would wait on itself" in said(rejected.value)
+
+
+def test_a_run_whose_repeat_leaves_its_index_unused_loads_back_as_saved() -> None:
+    """An unused, named index prints without its header; read back unnamed, it must not shift how later values are numbered."""
+    text = STEP.replace(
+        "    iro.train.window %unit members 2 {",
+        "    iro.repeat @steps 2 times capture(%net, %enc, %unit) {\n    ^(%k: int):\n    iro.train.window %unit members 2 {",
+    ).replace("      iro.train.contribute %loss to %unit\n    }\n", "      iro.train.contribute %loss to %unit\n    }\n    }\n")
+    installed = implementations()
+    run = accepted_run(text, contract(), installed=installed)
+    cold_load(run, contract(), installed=installed)  # refused with iro-run-002 when the printed text does not load back as saved

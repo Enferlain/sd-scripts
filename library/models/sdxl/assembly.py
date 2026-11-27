@@ -9,7 +9,11 @@
 Plain code: a strategy, or whatever stands in for one, decides how these are
 used. The numbers follow today's loader and denoiser call
 (``library/models/sdxl/conversion.py``, ``library/strategies/sdxl/denoiser.py``)
-in the same order and dtypes, so the same inputs give the same bits.
+in the same order and dtypes, so the same inputs give the same bits, except
+the size embedding: today's denoiser call makes the sizes in the weights'
+dtype before embedding them, which in bfloat16 rounds an original size of
+1417 to 1416, where upstream kohya-ss and the reference embed the exact
+numbers, as this does.
 
 SDXL's released noise schedule is scaled-linear over ``TRAIN_STEPS`` steps
 from ``BETA_START`` to ``BETA_END``; a formulation builds it from these
@@ -91,12 +95,12 @@ def size_embedding(
 ) -> torch.Tensor:
     """SDXL's size conditioning, one row per sample: the original size, the crop's top left and the target size, each number embedded.
 
-    The sizes are made in ``dtype`` before they are embedded, as today's
-    denoiser call makes them, and the result is in ``dtype``.
+    The numbers are embedded exactly, in float32, as upstream kohya-ss and the
+    reference embed them; only the embedding is made in ``dtype``.
     """
     parts = []
     for sizes in (original_hw, crop_top_left, target_hw):
-        values = torch.tensor([list(s) for s in sizes], device=device, dtype=dtype)
+        values = torch.tensor([list(s) for s in sizes], device=device, dtype=torch.float32)  # exact for any image size
         rows, numbers = values.shape
         parts.append(_sinusoidal(values.flatten(), SIZE_EMBEDDING).reshape(rows, numbers * SIZE_EMBEDDING))
     return torch.cat(parts, dim=1).to(device).to(dtype)
@@ -114,8 +118,13 @@ def conditioning(
     hidden_states1 = hidden_states1.to(device, dtype=dtype)
     hidden_states2 = hidden_states2.to(device, dtype=dtype)
     pooled2 = pooled2.to(device, dtype=dtype)
-    if pooled2.shape[0] != sizes.shape[0]:
-        raise ValueError(f"{pooled2.shape[0]} pooled outputs for {sizes.shape[0]} size rows")
+    rows = {
+        "first encoder's states": hidden_states1.shape[0],
+        "second encoder's states": hidden_states2.shape[0],
+        "pooled outputs": pooled2.shape[0],
+    }
+    if any(count != sizes.shape[0] for count in rows.values()):
+        raise ValueError(f"{sizes.shape[0]} size rows, and " + ", ".join(f"{count} {name}" for name, count in rows.items()))
     vector = torch.cat([pooled2, sizes], dim=1).to(dtype)
     context = torch.cat([hidden_states1, hidden_states2], dim=2).to(dtype)
     return context, vector

@@ -121,6 +121,14 @@ class TrainerOptimization:
         for candidate in candidates:
             definition = candidate.definition
             policy = definition.optimizer
+            default_stream = steps_on_default_stream(policy.name)
+            devices = {str(p.device) for p in candidate.parameters if p.device.type == "cuda"}
+            if default_stream and len(devices) > 1:  # its step is ordered against one device's streams
+                reasons.append(
+                    f"@{definition.name}: its optimizer @{policy.name} steps on its device's default stream, "
+                    f"and its parameters are on {len(devices)} devices ({', '.join(sorted(devices))}); a unit with that optimizer trains on one"
+                )
+                continue
             try:
                 optimizer = build(policy.name, candidate.parameters, dict(policy.settings))
             except Exception as failed:
@@ -135,7 +143,7 @@ class TrainerOptimization:
                 optimizer,
                 candidate.dependencies,
                 attempt,
-                default_stream=steps_on_default_stream(policy.name),
+                default_stream=default_stream,
             )
         missing = [name for name in self.plan.units if name not in units and not any(r.startswith(f"@{name}:") for r in reasons)]
         reasons += [f"@{name}: the attempt resolved no candidate for it" for name in missing]

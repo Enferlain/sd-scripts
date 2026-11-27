@@ -44,7 +44,8 @@ class DeclaredParticipant:
 
     ``reads`` are the participants whose views its materializer reads, as
     ``(name, view)`` pairs; ``settings`` the values its materializer receives
-    after them, as Python values.
+    after them, as Python values. ``realizations`` are its routes'
+    realizations, each a name with its settings (D15).
     """
 
     name: str
@@ -53,6 +54,7 @@ class DeclaredParticipant:
     reads: tuple[tuple[str, str], ...] = ()
     origin: str = ""
     settings: tuple[str | int | float | bool, ...] = ()
+    realizations: tuple[tuple[str, tuple[str | int | float | bool, ...]], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -233,6 +235,10 @@ def seed(strategy: StrategyOp, strategy_revision: str, obligation_revision: str)
                     tuple((names.get(read) or "", view) for read, view in zip(op.reads, views, strict=True)),
                     origin(op) or "",
                     tuple(_setting(value) for value in op.settings.data) if op.settings is not None else (),
+                    tuple(
+                        (symbol(entry.data[0]), tuple(_setting(value) for value in entry.data[1:]))
+                        for entry in (op.realize.data if op.realize is not None else ())
+                    ),
                 )
             )
         elif isinstance(op, RelationshipOp):

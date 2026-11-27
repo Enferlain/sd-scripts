@@ -257,9 +257,11 @@ def _step(prepared: PreparedUnit) -> None:
         prepared.optimizer.step()
         return
     default.wait_stream(current)
-    with torch.cuda.stream(default):
-        prepared.optimizer.step()
-    current.wait_stream(default)
+    try:
+        with torch.cuda.stream(default):
+            prepared.optimizer.step()
+    finally:  # a step that raised may have queued work, which what follows on the current stream, freeing included, waits for
+        current.wait_stream(default)
 
 
 def _split(loss: object) -> tuple[torch.Tensor, float | torch.Tensor]:

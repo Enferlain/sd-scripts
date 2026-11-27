@@ -23,13 +23,17 @@ class Loss:
 
 def per_sample_mean(errors: torch.Tensor) -> torch.Tensor:
     """Each sample's mean error: the mean over every dimension but the first; errors with one value per sample are already that."""
+    if errors.dim() == 0:
+        raise ValueError("errors have one value per sample or more, along a first dimension of samples; a single value has none")
     if errors.dim() == 1:
         return errors
     return errors.mean(dim=tuple(range(1, errors.dim())))
 
 
 def weigh(losses: torch.Tensor, weights: torch.Tensor) -> torch.Tensor:
-    """Each sample's loss times its weight."""
+    """Each sample's loss times its weight; both have one value per sample."""
+    if losses.shape != weights.shape:  # a (B,) by (B, 1) product would broadcast to (B, B)
+        raise ValueError(f"losses of shape {tuple(losses.shape)} and weights of shape {tuple(weights.shape)}; each sample has one of each")
     return losses * weights.to(losses.device)
 
 

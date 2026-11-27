@@ -31,6 +31,7 @@ from dataclasses import dataclass
 from types import MappingProxyType
 from typing import Protocol, runtime_checkable
 
+from library.iro import gil
 from library.iro.prepare import Prepared
 from library.iro.runtime import Coordinator, Fact, Observer, Outcome
 from library.iro.seams import Device, Implementation, Owner
@@ -198,8 +199,13 @@ class ExecutableRun:
         *,
         attempts: tuple[AttemptRef, ...] = (),
         observe: Observer | None = None,
+        watch_gil: float | None = None,
     ):
-        """Checks every judge's core-execution checkpoint, then builds the run's runtime; raises :class:`Refused` with every reason."""
+        """Checks every judge's core-execution checkpoint, then builds the run's runtime; raises :class:`Refused` with every reason.
+
+        ``watch_gil`` has the runtime read the GIL state that often, in
+        seconds, while the run works (D15).
+        """
         declared = {op.sym_name.data for op in prepared.loaded.normalized.strategy.walk() if isinstance(op, ResourceOp)}
         reasons = [f"@{name} has no owner to serve it" for name in sorted(declared - set(owners))]
         generation = generations.current
@@ -216,7 +222,7 @@ class ExecutableRun:
         self._judges = dict(judges)
         self.facts: list[Fact] = []
         self._observe = observe or self.facts.append
-        self.coordinator = Coordinator(prepared, owners, installed, self.devices, observe=self._observe)
+        self.coordinator = Coordinator(prepared, owners, installed, self.devices, observe=self._observe, watch_gil=watch_gil)
         self._executed = False
         self._lock = threading.Lock()
 
@@ -242,6 +248,11 @@ class ExecutableRun:
         if current != self.generation:
             raise Stale(f"realized on generation {self.generation}, and generation {current} is current")
         outcome = asyncio.run(self.coordinator.run())
+        self._observe(Fact("run", (), "gil", (gil.state(),)))  # every run reports its actual GIL state (D15)
+        for name, device in sorted(self.devices.items()):  # and the device settings it ran with, which a resume applies again (D15)
+            settings = getattr(device, "settings", None)
+            if settings:
+                self._observe(Fact(name, (), "device_settings", tuple(sorted(settings.items()))))
         reasons: list[str] = []
         for name, judge in self._judges.items():
             if not isinstance(judge, Settles):

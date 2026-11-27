@@ -38,12 +38,14 @@ also runs in full, and the run fails if the full check finds what lowering
 excluded.
 """
 
+import asyncio
 import random
 from collections import defaultdict
 from collections.abc import Awaitable, Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
+from library.iro import gil
 from library.iro.operation_contracts import LifecycleProtocol
 from library.iro.prepare import HOST, Prepared
 from library.iro.prepare.lowered import (
@@ -77,6 +79,9 @@ from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
 from library.iro.seams import Device, Implementation, Owner
 
+TURNED_ON = f"the GIL turned on while the run worked, and nothing the run names turns it on (D15); {gil.GOING_AHEAD}"
+"""Why a run fails when the GIL turns on while it works."""
+
 
 class Coordinator:
     """Executes one prepared run against its owners, implementations and devices."""
@@ -91,6 +96,7 @@ class Coordinator:
         observe: Observer | None = None,
         explore: random.Random | None = None,
         checked: bool = False,
+        watch_gil: float | None = None,
     ):
         """``explore`` perturbs the schedule for conformance testing: at every
         wait and submission the coordinator yields to other activities a
@@ -99,10 +105,16 @@ class Coordinator:
         ``checked`` runs every check lowering narrows in full beside the
         lowered one, and fails the run if the full check finds anything the
         lowered one excluded.
+
+        ``watch_gil`` reads the GIL state every that many seconds while the
+        run works, off the per-call path, and once more as it settles; a GIL
+        that turned on fails the run (D15). The host checks before the run.
         """
         self.prepared = prepared
         self.explore = explore
         self.checked = checked
+        self.watch_gil = watch_gil
+        self._gil: str | None = None  # why the run fails for the GIL, once the watch finds it on
         self.lowered = lower(prepared, installed)
         self.owners, self.installed, self.devices = dict(owners), dict(installed), dict(devices)
         if HOST.name not in self.devices:
@@ -189,6 +201,7 @@ class Coordinator:
             outcome = self.outcomes[root]
             for state in (State.PENDING, State.ADMITTED, State.RUNNING):
                 self._state(root, state)
+            watcher = asyncio.create_task(self._watch_gil(self.watch_gil)) if self.watch_gil is not None else None
             try:
                 try:
                     await self._body(self.lowered.root, (), root)
@@ -202,24 +215,49 @@ class Coordinator:
                 outcome.status = "cancelled" if kernel.cancelled or isinstance(failed, Cancelled) else "failed"
                 outcome.error = str(failed)
             finally:
-                self._state(root, State.CLOSING)
-                self._state(root, State.SETTLING)
-                await kernel.until(lambda: kernel.closing or not self.requests.pending_under(root), ("requests",))
-                self.requests.settle(root)
-                await self.storage.drain()
-                unsettled = await self.calls.settle_holds()  # held setups' changes undone however the run ended (D16)
-                if unsettled:  # a cancelled run stays cancelled; either way the uncertain state is reported
-                    outcome.status = "cancelled" if outcome.status == "cancelled" else "failed"
-                    outcome.error = "; ".join(([outcome.error] if outcome.error else []) + unsettled)
-                if self.checked and kernel.failed and not kernel.cancelled and outcome.status != "failed":
-                    # A miss closes admission without raising where it was found, so the root saw only that.
-                    outcome.status, outcome.error = "failed", "; ".join(kernel.errors)
+                try:
+                    self._state(root, State.CLOSING)
+                    self._state(root, State.SETTLING)
+                    await kernel.until(lambda: kernel.closing or not self.requests.pending_under(root), ("requests",))
+                    self.requests.settle(root)
+                    await self.storage.drain()
+                    unsettled = await self.calls.settle_holds()  # held setups' changes undone however the run ended (D16)
+                    if unsettled:  # a cancelled run stays cancelled; either way the uncertain state is reported
+                        outcome.status = "cancelled" if outcome.status == "cancelled" else "failed"
+                        outcome.error = "; ".join(([outcome.error] if outcome.error else []) + unsettled)
+                    if self.checked and kernel.failed and not kernel.cancelled and outcome.status != "failed":
+                        # A miss closes admission without raising where it was found, so the root saw only that.
+                        outcome.status, outcome.error = "failed", "; ".join(kernel.errors)
+                except BaseException as settling:  # settling failed; the GIL verdict still goes with what it raises
+                    if watcher is not None and (verdict := self._gil_verdict(watcher)) is not None:
+                        settling.add_note(verdict)
+                    raise
+                if watcher is not None and (verdict := self._gil_verdict(watcher)) is not None:
+                    outcome.status = "failed"
+                    if verdict not in (outcome.error or ""):  # the watch's failure may already be in the kernel's errors
+                        outcome.error = "; ".join([verdict, *([outcome.error] if outcome.error else [])])
                 self._state(root, State.TERMINAL)
         return outcome
 
     def cancel(self) -> None:
         """Run cancellation: admission closes while entered work settles."""
         self.kernel.cancel()
+
+    async def _watch_gil(self, every: float) -> None:
+        """Reads the GIL state every ``every`` seconds; once it is on, the run fails and admission closes."""
+        while True:
+            await asyncio.sleep(every)
+            if gil.enabled():
+                self._gil = TURNED_ON
+                self.kernel.note_failure(RunFailure(self._gil))
+                return
+
+    def _gil_verdict(self, watcher: asyncio.Task) -> str | None:
+        """Stops the watch and reads the GIL once more as the run settles; why the run fails for the GIL, if it does."""
+        watcher.cancel()
+        if self._gil is None and gil.enabled():
+            self._gil = TURNED_ON
+        return self._gil
 
     # Invocations' lifecycle.
 

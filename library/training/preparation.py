@@ -12,7 +12,13 @@ together or nothing. Inside it, off to the side:
   route's preparation where one is given, such as model code turning on
   gradient checkpointing, and otherwise as the bound object itself; and
   each carries a held setup that sets its participant's module mode for
-  every call through it, from the units that train it (D16, D20);
+  every call through it, from the units that train it (D16, D20), and a
+  call setup for each realization its participant declares, such as mixed
+  precision, built by the realization installed under that name with the
+  declared settings for the device the calls run on (D15). The setups are
+  built once per participant, its routes sharing them, for every
+  participant that declares one, before anything changes in place, so a
+  realization that cannot be built refuses an attempt that prepared nothing;
 - Trainer optimization builds each unit's optimizer on its final
   parameters.
 
@@ -27,6 +33,7 @@ from collections.abc import Callable, Mapping, Sequence
 import torch
 
 from library.iro.evidence import CodeEvidence
+from library.iro.seams import CallSetup
 from library.runstate.authority import NORMAL, ParticipantRef, Published, Rejected, RunAuthority
 from library.runstate.owners import Mutation
 from library.runstate.preparation import PreparationAttempt, PreparationRequest, PreparationResult, PreparedRoute
@@ -35,6 +42,10 @@ from library.training.units import TRAINER, ModuleModes, TrainerOptimization, re
 RoutePreparation = Callable[[object], object]
 """How one route is prepared from its participant's bound object: it may change the object in place and returns the route's callable."""
 
+Realization = Callable[..., CallSetup]
+"""Builds a realization's call setup for the device the participant's calls run on, from the settings the participant
+declares it with: ``realize(@mixed_precision, "bfloat16")`` builds ``mixed_precision(device, "bfloat16")``."""
+
 
 def prepare_training(
     authority: RunAuthority,
@@ -42,14 +53,20 @@ def prepare_training(
     routes: Sequence[tuple[str, str]],
     preparations: Mapping[tuple[str, str], RoutePreparation] | None = None,
     recorded: tuple[CodeEvidence, ...] = (),
+    realizations: Mapping[str, Realization] | None = None,
+    device: object = None,
 ) -> Published | Rejected:
     """Prepares the routes, given as ``(participant, route)``, and every unit of the plan, in one in-place attempt.
 
     ``recorded`` are setups the run already records, such as the prepared
     form's; a route setup claiming one of their names with other code is
-    refused (D16).
+    refused (D16). ``device`` is the device adapter the participants'
+    calls run on, which each realization is built for.
     """
     preparations = preparations or {}
+    setups = _realized(authority, realizations or {}, device)  # before anything changes in place, for every participant that declares one
+    if isinstance(setups, Rejected):
+        return setups
     unprepared = [f"@{address}'s {route} route" for address, route in routes if route != NORMAL and (address, route) not in preparations]
     if unprepared:
         return Rejected(tuple(f"{name} has no preparation; only a normal route is prepared as its bound object" for name in unprepared))
@@ -66,10 +83,32 @@ def prepare_training(
     if isinstance(attempt, Rejected):
         return attempt
     try:
-        return _prepare(attempt, optimization, requested, preparations)
+        return _prepare(attempt, optimization, requested, preparations, setups)
     except BaseException:
         authority.end_in_place(attempt.attempt.reference)  # the attempt will never publish
         raise
+
+
+def _realized(
+    authority: RunAuthority, realizations: Mapping[str, Realization], device: object
+) -> dict[str, tuple[CallSetup, ...]] | Rejected:
+    """Each participant's call setups, built once from the realizations it declares and shared by its routes, or why one cannot be."""
+    setups: dict[str, tuple[CallSetup, ...]] = {}
+    failures = []
+    for participant in sorted(authority.section.participants.values(), key=lambda p: p.address):
+        built = []
+        for name, settings in participant.declaration.realizations:
+            realization = realizations.get(name)
+            if realization is None:
+                failures.append(f"@{participant.address} is realized by @{name}, and no realization is installed under that name")
+                continue
+            try:
+                built.append(realization(device, *settings))
+            except Exception as failed:
+                failures.append(f"@{participant.address}'s realization @{name} could not be built from {settings}: {failed}")
+        if built:
+            setups[participant.address] = tuple(built)
+    return Rejected(tuple(failures)) if failures else setups
 
 
 def _prepare(
@@ -77,6 +116,7 @@ def _prepare(
     optimization: TrainerOptimization,
     requested: tuple[tuple[ParticipantRef, str], ...],
     preparations: Mapping[tuple[str, str], RoutePreparation],
+    setups: Mapping[str, tuple[CallSetup, ...]],
 ) -> Published | Rejected:
     request = attempt.request
     reference = attempt.attempt.reference
@@ -108,7 +148,7 @@ def _prepare(
         )
         try:
             callable_ = preparation(record.binding.value) if preparation else record.binding.value
-            prepared.append(PreparedRoute(participant, route, callable_, modes))
+            prepared.append(PreparedRoute(participant, route, callable_, modes, setups.get(record.address, ())))
         except Exception as failed:
             failures.append(f"@{record.address}'s {route} route could not be prepared: {failed}")
     if failures:
@@ -119,4 +159,4 @@ def _prepare(
     return attempt.publish(PreparationResult(reference, tuple(prepared), (section,)))
 
 
-__all__ = ["RoutePreparation", "prepare_training"]
+__all__ = ["Realization", "RoutePreparation", "prepare_training"]

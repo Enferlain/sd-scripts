@@ -88,6 +88,7 @@ NEW_SYSTEM = (
     "library/losses/weightings.py",
     "library/models/sdxl/assembly.py",
     "library/models/denoisers",
+    "library/performance/precision.py",
 )
 NEW_TESTS = (
     "tests/unit/iro",

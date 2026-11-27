@@ -9,12 +9,15 @@ and every parameter after the AdamW8bit step.
 The library code is plain (``library/models/sdxl/assembly.py``,
 ``library/objectives``, ``library/losses``). What the IR needs to know about
 each function is stated here, standing in for the strategy: the declarations
-wrap the plain functions on the system side. The UNet's calls run under bf16
-autocast in their declared wrapper until route precision setups exist, and
-the UNet route's preparation turns on its gradient checkpointing.
+wrap the plain functions on the system side. The UNet declares its mixed
+precision, ``realize(@mixed_precision, "bfloat16")``, which preparation installs
+as its route's call setup, and the UNet route's preparation turns on its
+gradient checkpointing.
 
-The step runs in its own process: deterministic cuBLAS needs its setting
-before CUDA starts, as the reference did.
+The step runs in its own process, started the way a launcher starts a run's:
+the GIL rule applies before any import, and the CUDA adapter's deterministic
+setting, which needs cuBLAS's workspace before CUDA starts, applies as the
+adapter is created.
 """
 
 import hashlib
@@ -22,6 +25,7 @@ import json
 import os
 import subprocess
 import sys
+from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -38,6 +42,7 @@ from library.models.denoisers.sd_unet import SDUNet
 from library.models.sdxl import assembly
 from library.objectives.formulations.ddpm import ddpm_noise, ddpm_snr, ddpm_v_target
 from library.objectives.schedules import scaled_linear, zero_terminal_snr
+from library.performance.precision import mixed_precision
 from library.training.units import DERIVATIVE
 from library.training.units.standard import installed as standard
 
@@ -50,7 +55,7 @@ DTYPE = torch.bfloat16
 GAMMA = 5.0
 
 STRATEGY = """iro.strategy @sdxl_step uses(@load_unet, @schedule, @batch, @timesteps, @noisy, @context, @vector, @v_target, @snr, @loss_weights, @min_snr, @denoise, @l2_f64, @per_sample_mean, @weigh, @sample_mean, @standard.contribute, @standard.advance) {
-  %unet = iro.resource @unet : participant materialize(@load_unet, "CHECKPOINT")
+  %unet = iro.resource @unet : participant materialize(@load_unet, "CHECKPOINT") realize(@mixed_precision, "bfloat16")
   %unit = iro.train.unit @denoiser of %unet optimizer @adamw8bit(lr 1e-05, weight_decay 0.01) max_grad_norm 1.0
   iro.sequence @once capture(%unet, %unit) {
     iro.train.window %unit members 1 {
@@ -156,8 +161,14 @@ def noisy(s, b):
     return seen("noisy_latents", ddpm_noise(s, b.latents, b.noise, b.timesteps).to(DTYPE))  # the UNet's input dtype
 
 
+def as_today(sizes: Sequence[Sequence[int]]) -> list[list[int]]:
+    """The sizes as today's denoiser call embeds them: made in the weights' dtype first, which in bfloat16 rounds 1417 to 1416."""
+    return [[int(torch.tensor(float(n), dtype=DTYPE).item()) for n in row] for row in sizes]  # bfloat16 keeps every rounded size whole
+
+
 def sizes(b):
-    return assembly.size_embedding(b.original_hw, b.crop_top_left, b.target_hw, b.latents.device, DTYPE)
+    # The library embeds the exact sizes; the reference was made by today's code, so the step rounds them as it did.
+    return assembly.size_embedding(as_today(b.original_hw), as_today(b.crop_top_left), as_today(b.target_hw), b.latents.device, DTYPE)
 
 
 def context(b):
@@ -181,8 +192,7 @@ def min_snr(values):
 
 
 def denoise(unet, latents, t, ctx, vec):
-    with torch.autocast(device_type="cuda", dtype=DTYPE):  # the route's precision, until route precision setups exist
-        return seen("output", assembly.denoise(unet, latents, t, ctx, vec))
+    return seen("output", assembly.denoise(unet, latents, t, ctx, vec))  # under the route's mixed precision, which the participant declares
 
 
 def l2(prediction, target):
@@ -255,11 +265,9 @@ def run_step() -> dict:
     from library.training.words import contract
     from tests.unit.iro.accepted_runs import accepted_run
 
-    torch.use_deterministic_algorithms(True)
-    torch.backends.cudnn.benchmark = False
     index = 1 if torch.cuda.device_count() > 1 else 0
+    device = Cuda(index, deterministic=True)  # a device setting the run applies and records, as the reference ran (D15)
     torch.cuda.set_device(index)
-    device = Cuda(index)
     BATCH[:] = [recorded_batch(device.device)]
     implementations = installed()
     run = accepted_run(STRATEGY.replace("CHECKPOINT", str(CHECKPOINT)), contract(), installed=implementations)
@@ -270,8 +278,10 @@ def run_step() -> dict:
         Target((HOST, DeviceFacts.of(device)), device=device.name),
         {"host": Host(), device.name: device},
         preparations={("unet", NORMAL): prepare_unet},
+        realizations={"mixed_precision": mixed_precision},
     )
-    outcome = trainer.train()
+    executable = trainer.realize()
+    outcome = executable.execute()
     if outcome.status != "succeeded":
         return {"status": outcome.status, "error": str(outcome.error)}
     authority, optimization = trainer.authority, trainer.optimization
@@ -286,6 +296,10 @@ def run_step() -> dict:
         "tensors": {name: value.cpu() for name, value in SEEN.items()} | {"grad_norm": last.norm.detach().cpu()},
         "param_sha256": {f"denoiser.{name}": sha256(p) for name, p in unet.named_parameters()},
         "peak_gib": torch.cuda.max_memory_allocated() / 2**30,
+        "gil": [fact.values[0] for fact in executable.facts if fact.kind == "gil"],
+        "device_settings": [
+            [[*pair] for pair in fact.values if isinstance(pair, tuple)] for fact in executable.facts if fact.kind == "device_settings"
+        ],
     }
 
 
@@ -299,21 +313,36 @@ def main() -> None:
     out.write_text(json.dumps(result))
 
 
+COMPARED = {"context", "vector", "noisy_latents", "output", "target", "snr", "squared_error", "per_sample_loss", "loss", "grad_norm"}
+"""The tensors the step compares with the reference's; the parameters are compared by their hashes."""
+
+
+LAUNCH = """
+from library.iro import gil
+gil.keep_off()  # as a launcher does, before anything else loads (D15)
+import runpy, sys
+sys.argv = ["test_sdxl_step", *sys.argv[1:]]
+runpy.run_module("tests.unit.training_core.test_sdxl_step", run_name="__main__")
+"""
+"""Starts the step's process the way a launcher starts a run's: the GIL rule applies before any import."""
+
+
 @pytest.mark.requires_gpu
 @pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA device")
 @pytest.mark.skipif(not CHECKPOINT.exists(), reason="needs the baseline's base model")
 @pytest.mark.skipif(not REFERENCE.with_suffix(".json").exists(), reason="needs the reference step")
 def test_one_sdxl_step_through_the_trainer_equals_the_reference_bit_for_bit(tmp_path: Path) -> None:
     out = tmp_path / "step.json"
-    env = os.environ | {"CUBLAS_WORKSPACE_CONFIG": ":4096:8"}
-    done = subprocess.run(
-        [sys.executable, "-m", "tests.unit.training_core.test_sdxl_step", str(out)], cwd=ROOT, env=env, capture_output=True, text=True
-    )
+    env = {name: value for name, value in os.environ.items() if name != "CUBLAS_WORKSPACE_CONFIG"}  # the device setting provides it
+    done = subprocess.run([sys.executable, "-c", LAUNCH, str(out)], cwd=ROOT, env=env, capture_output=True, text=True)
     assert done.returncode == 0 and out.exists(), done.stderr[-4000:]
     result = json.loads(out.read_text())
     assert result["status"] == "succeeded", result.get("error")
+    assert result["gil"] == ["off"], "the step keeps the GIL off, with Triton unavailable (D15)"
+    assert result["device_settings"] == [[["deterministic", True]]], "the run records the device setting it ran with"
     ours = torch.load(out.with_suffix(".pt"))
     reference = load_file(str(REFERENCE.with_suffix(".safetensors")))
+    assert ours.keys() == COMPARED, "the UNet's inputs and output, the target, the losses and the gradient norm"
     differing = [name for name, value in ours.items() if not torch.equal(value, reference[name])]
     assert not differing, f"differ from the reference: {differing}"
     record = json.loads(REFERENCE.with_suffix(".json").read_text())

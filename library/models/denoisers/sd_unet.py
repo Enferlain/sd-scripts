@@ -72,6 +72,9 @@ class SDUNetConfig:
             raise ValueError(f"{len(self.channel_mult)} levels and {len(self.transformer_depth)} attention depths")
         if (self.num_heads is None) == (self.head_dim is None):
             raise ValueError("attention is split by a head count or by a head width: give exactly one of num_heads and head_dim")
+        # The releases built here all attend in the middle; without it, the middle block's layout differs.
+        if self.middle_transformer_depth < 1:
+            raise ValueError(f"the middle block attends at depth 1 or more, not {self.middle_transformer_depth}")
 
     def heads(self, channels: int) -> tuple[int, int]:
         """The attention's head count and head width at a level of ``channels`` channels."""
@@ -101,7 +104,15 @@ def timestep_embedding(timesteps: torch.Tensor, width: int) -> torch.Tensor:
 
 
 class GroupNorm32(nn.GroupNorm):
-    """Group normalization that computes in float32 when its weights are float32."""
+    """Group normalization that computes in float32 when its weights are float32.
+
+    The reference always computes ``super().forward(x.float())``, which
+    assumes float32 norm weights and fails with low-precision ones; kohya's
+    condition keeps low-precision weights working. Under autocast the two are
+    the same, since autocast computes ``group_norm`` in float32 whatever the
+    weights are. They differ only without autocast and with low-precision norm
+    weights, where float32 norms are a choice of weight storage.
+    """
 
     def forward(self, input: torch.Tensor) -> torch.Tensor:  # GroupNorm's own parameter name
         x = input
@@ -329,6 +340,8 @@ class SDUNet(nn.Module):
             if y is None or y.shape[0] != x.shape[0] or y.dtype != x.dtype:
                 raise ValueError("the vector conditioning must have the latents' batch size and dtype")
             emb = emb + self.label_emb(y)
+        elif y is not None:
+            raise ValueError("this UNet takes no vector conditioning, and one was given")
 
         def call(block: nn.Sequential | nn.ModuleList, h: torch.Tensor) -> torch.Tensor:
             for layer in block:

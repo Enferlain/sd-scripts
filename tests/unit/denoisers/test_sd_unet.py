@@ -6,7 +6,16 @@ from pathlib import Path
 import pytest
 import torch
 
-from library.models.denoisers.sd_unet import CrossAttention, ResnetBlock2D, SDUNet, SDUNetConfig, Transformer2DModel
+from library.models.denoisers.sd_unet import (
+    BasicTransformerBlock,
+    CrossAttention,
+    Downsample2D,
+    ResnetBlock2D,
+    SDUNet,
+    SDUNetConfig,
+    Transformer2DModel,
+    Upsample2D,
+)
 from library.models.sdxl.assembly import UNET, UNET_PREFIX
 
 CHECKPOINT = Path("/mnt/d/stable-diffusion-webui-reForge/models/Stable-diffusion/21862-seele_pop3_v-pred.safetensors")
@@ -84,8 +93,11 @@ def test_checkpointing_follows_grad_mode_not_module_mode() -> None:
 
 def test_every_residual_attention_and_resampling_block_is_a_checkpoint_point() -> None:
     unet, _ = small()
-    kinds = {type(m).__name__ for m in unet.checkpoint_points()}
-    assert kinds == {"ResnetBlock2D", "BasicTransformerBlock", "Downsample2D", "Upsample2D"}
+    points = list(unet.checkpoint_points())
+    for kind in (ResnetBlock2D, BasicTransformerBlock, Downsample2D, Upsample2D):
+        every = [m for m in unet.modules() if isinstance(m, kind)]
+        assert every and [m for m in points if isinstance(m, kind)] == every, f"each {kind.__name__}, once"
+    assert len(points) == len(set(map(id, points)))
 
 
 def test_a_release_without_vector_conditioning_has_no_label_embedding_and_needs_no_vector() -> None:
@@ -100,6 +112,21 @@ def test_a_vector_of_another_dtype_or_batch_is_refused() -> None:
     unet, (x, t, context, y) = small()
     with pytest.raises(ValueError, match="batch size and dtype"):
         unet(x, t, context, y.double())
+    with pytest.raises(ValueError, match="batch size and dtype"):
+        unet(x, t, context, y[:1])
+
+
+def test_a_vector_given_to_a_release_without_vector_conditioning_is_refused() -> None:
+    torch.manual_seed(0)
+    unet = SDUNet(replace(SMALL, adm_in_channels=None))
+    x, t, context, y = small()[1]
+    with pytest.raises(ValueError, match="takes no vector conditioning"):
+        unet(x, t, context, y)
+
+
+def test_the_middle_block_attends() -> None:
+    with pytest.raises(ValueError, match="the middle block attends at depth 1 or more, not 0"):
+        replace(SMALL, middle_transformer_depth=0)
 
 
 def test_levels_and_attention_depths_must_pair_up() -> None:

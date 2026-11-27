@@ -18,6 +18,7 @@ its device type and adds what only its vendor offers. Only a run whose
 target selects such a device imports this module.
 """
 
+import os
 from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from typing import ClassVar
@@ -55,7 +56,13 @@ class PyTorchDevice:
 
     kind: ClassVar[str]
 
-    def __init__(self, index: int = 0, *, seed: int = 0):
+    def __init__(self, index: int = 0, *, seed: int = 0, deterministic: bool = False):
+        """``deterministic`` is a device setting, a run-wide choice the adapter applies (D15): PyTorch's
+        deterministic algorithms, without cuDNN's benchmarking, and for CUDA the cuBLAS workspace that
+        deterministic cuBLAS needs, which must be set before cuBLAS first runs in the process.
+        """
+        if deterministic:
+            _deterministic(self.kind)
         self.device = torch.device(self.kind, index)
         self.name = f"{self.kind}:{index}"
         self.stream = torch.Stream(device=self.device)
@@ -200,11 +207,38 @@ class PyTorchDevice:
     def completion(self) -> Recorded:
         return Recorded(self.stream.record_event(), self.stream)
 
+    @property
+    def settings(self) -> Mapping[str, object]:
+        """The device settings the process runs with. PyTorch's switch is process-wide, so this is what any
+        adapter applied, read when asked: an adapter made without the setting reports it on once another applied it."""
+        return {"deterministic": torch.are_deterministic_algorithms_enabled()}
+
     def capacity(self) -> Mapping[str, int]:
         if self._memory is None:
             return {}
         free, total = self._memory(self.device)
         return {"free_bytes": free, "total_bytes": total}
+
+
+CUBLAS_WORKSPACE = ":4096:8"
+"""The cuBLAS workspace that deterministic cuBLAS needs (CUBLAS_WORKSPACE_CONFIG)."""
+
+
+def _deterministic(kind: str) -> None:
+    """Applies deterministic algorithms for the process; refuses if cuBLAS may already run without its deterministic workspace."""
+    if kind == "cuda":
+        found = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
+        if found is None:
+            if torch.cuda.is_initialized():
+                raise RuntimeError(
+                    "deterministic cuBLAS needs CUBLAS_WORKSPACE_CONFIG before CUDA starts, and CUDA has started; "
+                    f"set it to {CUBLAS_WORKSPACE} for the process, or create the adapter first"
+                )
+            os.environ["CUBLAS_WORKSPACE_CONFIG"] = CUBLAS_WORKSPACE
+        elif found not in (":4096:8", ":16:8"):
+            raise RuntimeError(f"CUBLAS_WORKSPACE_CONFIG is {found!r}, and deterministic cuBLAS needs :4096:8 or :16:8")
+    torch.use_deterministic_algorithms(True)
+    torch.backends.cudnn.benchmark = False
 
 
 class _HostCopy:

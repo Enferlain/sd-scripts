@@ -493,6 +493,19 @@ def _read_resource(r: Reader, scope: Scope, block: Block, s: Statement) -> Opera
         properties["settings"] = ArrayAttr(settings)
     if r.accept("may_leave_device"):
         properties["may_leave_device"] = UnitAttr()
+    realizations: list[Attribute] = []
+    while r.accept("realize"):
+        r.expect("(")
+        entry: list[Attribute] = [SymbolRefAttr(r.symbol())]
+        while r.accept(","):
+            if r.at("("):
+                raise r.error("a setting's type is its literal's; write the literal without a type", r.peek())
+            setting, _ = r.literal()
+            entry.append(setting)
+        r.expect(")")
+        realizations.append(ArrayAttr(entry))
+    if realizations:
+        properties["realize"] = ArrayAttr(realizations)
     return ResourceOp.create(operands=reads, result_types=[t.resource(kind)], properties=properties)
 
 
@@ -1265,9 +1278,7 @@ class Writer:
                 name = names.bind(argument)
                 written.append(f"{name}: {_type_text(argument.type)}" if typed else name)
             lines.append(f"{indent}^({', '.join(written)}):")
-        else:
-            for argument in supplied:
-                names.bind(argument)
+        # Otherwise not printed, and not bound: nothing refers to them, and an unnamed one takes no number, so numbering stays the same whether or not a reader named it.
         spaced = isinstance(op, StrategyOp | ParallelOp)
         lines.extend(self.block(block, names, indent + INDENT, local=local, spaced=spaced))
         return lines
@@ -1315,6 +1326,10 @@ def _w_resource(w: Writer, op: Operation, names: Names, indent: str) -> Rendered
         head += f" materialize(@{op.materialize.root_reference.data}{extra})"
     if op.may_leave_device is not None:
         head += " may_leave_device"
+    for entry in op.realize.data if op.realize is not None else ():
+        name, *settings = entry.data
+        assert isinstance(name, SymbolRefAttr)
+        head += f" realize(@{name.root_reference.data}{''.join(f', {_attribute_text(s)}' for s in settings)})"
     return _write_leaf(head + w.tail(op) + w.location(op))
 
 
