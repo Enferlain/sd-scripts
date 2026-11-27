@@ -136,7 +136,8 @@ def test_a_failure_fails_the_run_and_closes_admission_for_its_siblings() -> None
     assert not coordinator.outcomes and not coordinator.protections.leases
 
 
-def test_cancellation_closes_admission_and_the_run_settles() -> None:
+@pytest.mark.parametrize("fuse", [False, True])
+def test_cancellation_closes_admission_and_the_run_settles(fuse: bool) -> None:
     holder: list[Coordinator] = []
     PROBE.holder = holder
 
@@ -149,9 +150,121 @@ def test_cancellation_closes_admission_and_the_run_settles() -> None:
         "b": implementation(inputs=("int",), outputs=("int",), name="b")(lambda x: x),
         "c": implementation(inputs=("int",), outputs=("int",), name="c")(lambda x: x),
     }
-    outcome, facts, coordinator = execute(CHAIN, installed, target=Target(fuse=False), before=holder.append)
+    outcome, facts, coordinator = execute(CHAIN, installed, target=Target(fuse=fuse), before=holder.append)
     assert outcome.status == "cancelled"
     assert [f.owner.rsplit("/", 1)[-1] for f in facts if f.kind == "call_completed"] == ["0"], "only the first call ran"
+    assert [f.owner.rsplit("/", 1)[-1] for f in facts if f.kind == "call_entered"] == ["0"], "fused or not, the others never entered"
+    assert not coordinator.outcomes
+
+
+BESIDE_A_FAILURE = """iro.strategy @s uses(@a, @b, @c, @d, @boom) {
+  iro.parallel @both {
+    iro.sequence @chain {
+      %w = iro.call @a() -> int
+      %x = iro.call @b(%w) -> int
+      %y = iro.call @c(%x) -> int
+      %z = iro.call @d(%y) -> int
+    }
+    iro.sequence @failing {
+      %f = iro.call @boom() -> int
+    }
+  }
+}
+"""
+
+
+def counted(value: int) -> int:
+    PROBE.ran.append(threading.get_ident())
+    return value + 1
+
+
+def first() -> int:
+    return counted(0)
+
+
+def then(value: int) -> int:
+    return counted(value)
+
+
+def entered_then_waits(value: int) -> int:
+    """Enters, lets the sibling fail, and returns only once that failure has closed admission."""
+    PROBE.entered.set()
+    assert PROBE.coordinator.kernel.closed.wait(10), "the sibling's failure closes admission"
+    return counted(value)
+
+
+def fails_once_entered() -> int:
+    assert PROBE.entered.wait(10), "the chain's third call entered"
+    raise ValueError("the sibling failed")
+
+
+@pytest.mark.parametrize("fuse", [True, False])
+def test_a_call_whose_admission_closed_before_it_entered_does_not_run_and_those_before_it_keep_their_outcomes(fuse: bool) -> None:
+    """Fused or not, the same: the sibling fails while the third call runs, which completes; the fourth never enters.
+
+    Fusing a chain into one submission keeps each call's admission (design:
+    a lowering must not erase a required opportunity for admission), as the
+    reference admits each call at its entry.
+    """
+    PROBE.ran, PROBE.entered = [], threading.Event()
+    installed = {
+        "a": implementation(outputs=("int",), name="a")(first),
+        "b": implementation(inputs=("int",), outputs=("int",), name="b")(then),
+        "c": implementation(inputs=("int",), outputs=("int",), name="c")(entered_then_waits),
+        "d": implementation(inputs=("int",), outputs=("int",), name="d")(then),
+        "boom": implementation(outputs=("int",), name="boom")(fails_once_entered),
+    }
+    keep = lambda coordinator: setattr(PROBE, "coordinator", coordinator)  # noqa: E731
+    outcome, facts, coordinator = execute(BESIDE_A_FAILURE, installed, target=Target(workers=4, fuse=fuse), before=keep)
+    assert outcome.status == "failed" and "the sibling failed" in (outcome.error or "")
+    chain = [
+        (f.owner.rsplit("/", 1)[-1], f.kind, f.values[1] if f.kind == "call_completed" else None)
+        for f in facts
+        if f.kind.startswith("call_") and "/@chain/" in f.owner
+    ]
+    expected = [("0", "call_entered", None), ("0", "call_completed", (1,)), ("1", "call_entered", None), ("1", "call_completed", (2,))]
+    expected += [("2", "call_entered", None), ("2", "call_completed", (3,))]
+    assert chain == expected, "the three calls that ran keep their outcomes, and the fourth is neither entered nor failed"
+    assert len(PROBE.ran) == 3, "the fourth call never ran"
+    if fuse:  # unfused, each call is its own submission, which any idle worker may take, the same one included
+        assert len(set(PROBE.ran)) == 1, "fused, the chain is one submission on one worker"
+    statuses = {f.owner.rsplit("/", 1)[-1]: f.values[0] for f in facts if f.kind == "outcome"}
+    assert statuses["@chain"] == "cancelled" and statuses["@failing"] == "failed"
+    assert not coordinator.outcomes and not coordinator.protections.leases
+
+
+class SlowToEstablish(Host):
+    """A host whose context for a group is in place only once the run's admission has closed: cancelled meanwhile."""
+
+    @contextmanager
+    def context(self, call, after):
+        PROBE.loop.call_soon_threadsafe(PROBE.coordinator.cancel)
+        assert PROBE.coordinator.kernel.closed.wait(10), "the cancellation closes admission"
+        with super().context(call, after):
+            yield
+
+
+def test_a_group_whose_admission_closes_while_its_context_is_established_enters_none_of_its_calls() -> None:
+    """The group was admitted, then admission closed before its first call entered: the first call is guarded too."""
+    PROBE.ran = []
+    installed = {
+        "a": implementation(outputs=("int",), name="a")(first),
+        "b": implementation(inputs=("int",), outputs=("int",), name="b")(then),
+        "c": implementation(inputs=("int",), outputs=("int",), name="c")(then),
+    }
+    run = accepted_run(CHAIN, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    facts: list[Fact] = []
+    coordinator = PROBE.coordinator = Coordinator(prepared, {}, installed, {"host": SlowToEstablish()}, observe=facts.append, checked=True)
+
+    async def running():
+        PROBE.loop = asyncio.get_running_loop()
+        return await coordinator.run()
+
+    outcome = asyncio.run(running())
+    assert outcome.status == "cancelled"
+    assert PROBE.ran == [], "no call ran"
+    assert not [f for f in facts if f.kind.startswith("call_")], "and none is reported entered or failed"
     assert not coordinator.outcomes
 
 
@@ -1780,3 +1893,66 @@ def test_preparation_refuses_an_access_a_binding_storage_change_excludes() -> No
     with pytest.raises(Rejection) as rejected:
         prepare(cold_load(run, installed=installed), installed, Target(), [deriver])
     assert rejected.value.codes == ("iro-prep-016",) and "through another route or for an update" in " ".join(str(rejected.value).split())
+
+
+class FailsLeaving(SlowToEstablish):
+    """As above, and leaving the group's context fails, after no call entered."""
+
+    @contextmanager
+    def context(self, call, after):
+        with super().context(call, after):
+            yield
+        raise RuntimeError("leaving the context failed")
+
+
+def test_leaving_a_group_s_context_that_fails_after_no_call_entered_is_not_put_on_a_call() -> None:
+    PROBE.ran = []
+    installed = {
+        "a": implementation(outputs=("int",), name="a")(first),
+        "b": implementation(inputs=("int",), outputs=("int",), name="b")(then),
+        "c": implementation(inputs=("int",), outputs=("int",), name="c")(then),
+    }
+    run = accepted_run(CHAIN, installed=installed)
+    prepared = prepare(cold_load(run, installed=installed), installed, Target())
+    facts: list[Fact] = []
+    coordinator = PROBE.coordinator = Coordinator(prepared, {}, installed, {"host": FailsLeaving()}, observe=facts.append, checked=True)
+
+    async def running():
+        PROBE.loop = asyncio.get_running_loop()
+        return await coordinator.run()
+
+    outcome = asyncio.run(running())
+    assert "leaving the group's context failed: leaving the context failed" in (outcome.error or ""), outcome.error
+    assert PROBE.ran == [] and not [f for f in facts if f.kind.startswith("call_")], "no call ran, entered or failed"
+
+
+class LostWork:
+    """The completion of device work that fails to complete: the device was lost."""
+
+    def done(self) -> bool:
+        return False
+
+    def wait(self) -> None:
+        raise RuntimeError("the device was lost")
+
+
+@dataclass
+class LosingDevice(FakeDevice):
+    def completion(self):
+        return LostWork()
+
+
+ONE_DEVICE_CALL = """iro.strategy @s uses(@work) {
+  iro.sequence @once {
+    %x = iro.call @work() -> int
+  }
+}
+"""
+
+
+def test_device_work_that_fails_to_complete_fails_the_run_as_it_settles() -> None:
+    installed = {"work": implementation(outputs=("int",), effects=["device"], name="work")(lambda: 0)}
+    outcome, _, coordinator = execute(ONE_DEVICE_CALL, installed, target=CUDA, devices={"cuda:0": LosingDevice()})
+    assert outcome.status == "failed"
+    assert "the device work the run queued failed to complete: the device was lost" in (outcome.error or "")
+    assert not coordinator.kernel.outstanding

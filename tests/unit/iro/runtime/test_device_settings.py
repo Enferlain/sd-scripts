@@ -33,7 +33,7 @@ def test_the_deterministic_setting_applies_for_the_process_and_provides_cublas_s
         print(device.settings)
         """
     )
-    assert out.splitlines() == [":4096:8 True False", "{'deterministic': True}"]
+    assert out.splitlines() == [":4096:8 True False", "{'deterministic': True, 'cudnn_benchmark': False, 'cublas_workspace': ':4096:8'}"]
 
 
 def test_the_deterministic_setting_is_refused_once_cuda_has_started_without_the_workspace() -> None:
@@ -62,7 +62,7 @@ def test_an_adapter_without_the_setting_leaves_the_process_as_it_is() -> None:
         print("CUBLAS_WORKSPACE_CONFIG" in os.environ, torch.are_deterministic_algorithms_enabled(), device.settings)
         """
     )
-    assert out.strip() == "False False {'deterministic': False}"
+    assert out.strip() == "False False {'deterministic': False, 'cudnn_benchmark': False, 'cublas_workspace': None}"
 
 
 def test_the_setting_is_the_process_s_so_every_adapter_reports_what_the_process_runs_with() -> None:
@@ -77,7 +77,8 @@ def test_the_setting_is_the_process_s_so_every_adapter_reports_what_the_process_
         print(second.settings, first.settings)
         """
     )
-    assert out.strip() == "{'deterministic': True} {'deterministic': True}"
+    on = "{'deterministic': True, 'cudnn_benchmark': False, 'cublas_workspace': ':4096:8'}"
+    assert out.strip() == f"{on} {on}"
 
 
 def test_a_workspace_setting_deterministic_cublas_cannot_use_is_refused() -> None:

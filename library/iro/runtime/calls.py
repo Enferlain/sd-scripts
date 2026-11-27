@@ -19,19 +19,27 @@ waits only while it binds. A hold that no longer binds leaves its change in
 place; one whose setup undoes its change has it undone first in the next
 group that needs another state, or on its own once its last lease is
 released, and at the run's end however the run ended.
+
+Fusing calls keeps each call's admission (design: a lowering must not erase
+a required opportunity for admission): before each call, the first one
+included, the group's worker checks whether admission has closed, because a
+sibling failed or the run was cancelled. A call that has not entered by then
+does not run and gets no facts, the calls before it keep their outcomes, and
+the group is cancelled, as the reference cancels a call at its entry.
 """
 
 import asyncio
 from collections import Counter, defaultdict
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from contextlib import ExitStack
+from dataclasses import dataclass
 from typing import Any
 
 from library.iro.evidence import setup_digest
 from library.iro.prepare.lowered import Call, Calls
 from library.iro.runtime.kernel import Kernel
 from library.iro.runtime.protection import Applied, Hold, Protections
-from library.iro.runtime.state import Held, Identity, Product, Request, RunFailure
+from library.iro.runtime.state import Cancelled, Held, Identity, Product, Request, RunFailure
 from library.iro.runtime.storage import DeviceStorage
 from library.iro.runtime.turns import Turns
 from library.iro.seams import Annotations, CallContext, CallSetup, Completion, Device, HeldSetup, Implementation
@@ -39,6 +47,13 @@ from library.iro.seams import Annotations, CallContext, CallSetup, Completion, D
 
 class SetupFailed(RuntimeError):
     """A held setup failed to set its state before the group's calls ran (D16)."""
+
+
+@dataclass
+class NotEntered:
+    """A call's report when admission closed before it entered: it did not run, and it is neither entered nor failed."""
+
+    failure: BaseException | None = None  # leaving the group's context failed afterwards, with no call left to fail
 
 
 class CallRunner:
@@ -172,7 +187,17 @@ class CallRunner:
                 after += [p.completion for p in borrowed if p.completion is not None]
                 held = [(a.setup, a.handle) for a in apply]
                 reports, completions = await kernel.submit(
-                    run_group, device, step.group.context, after, step.group.setups, annotations, handles, held, program, step.wait
+                    run_group,
+                    device,
+                    step.group.context,
+                    after,
+                    step.group.setups,
+                    annotations,
+                    handles,
+                    held,
+                    program,
+                    step.wait,
+                    kernel.closed.is_set,
                 )
                 if apply and reports and isinstance(reports[0], SetupFailed):  # what failed to be set is not taken as in place
                     for _, hold in joined:
@@ -189,6 +214,7 @@ class CallRunner:
                         del self.running_on[resource]
                 storage.calls_ended(touching)
             if not step.wait:
+                kernel.queued(*completions)  # the run's settlement waits for it (D15)
                 # Later work on these participants follows each call's completion (D15).
                 queued = [c for c in completions if c is not None]
                 for lease in leased:
@@ -277,6 +303,7 @@ class CallRunner:
                 raise RunFailure(f"@{resource}: undoing a held setup failed, so its state is uncertain: {failed}") from failed
             if completion is not None:
                 protection[resource].pending.append(completion)
+                self.kernel.queued(completion)
 
     def undo_at_end(self, resource: str, hold: Hold) -> None:
         """Starts a hold's undo once its last lease is released, or a lease it excludes is wanted, off the coordinator (D16)."""
@@ -324,6 +351,11 @@ class CallRunner:
             if index >= len(reports):
                 break
             report = reports[index]
+            if isinstance(report, NotEntered):  # admission closed before it entered: no facts, and the calls before it keep theirs
+                if report.failure is not None:
+                    raise RunFailure(f"{step.path}: leaving the group's context failed: {report.failure}") from report.failure
+                kernel.admission_point()
+                raise Cancelled("admission closed before the call entered")  # unreached: the guard saw admission closed
             ordinal = self.call_counts[call.path]
             self.call_counts[call.path] = ordinal + 1
             kernel.fact(call.path, identity, "call_entered", ordinal)
@@ -370,6 +402,7 @@ def run_group(
     held: list[tuple[HeldSetup, object]],
     program: list[tuple[Implementation, list[object], tuple[tuple[int, int, int], ...], int, list[tuple[CallSetup, object]]]],
     wait: bool,
+    closed: Callable[[], bool],
 ) -> tuple[list[Any], list[Completion | None]]:
     """Runs a group's calls in order inside the device's context for them, on a worker thread.
 
@@ -384,7 +417,10 @@ def run_group(
     Each call's report is its results or what it raised, beside its
     completion; the group stops at the first call that fails or gives the
     wrong number of results, so no later call reads a result that is not
-    there. Entering the context, which follows earlier work, or leaving it
+    there. Before each call, the first one included, once the group's context
+    and setups are in place, ``closed`` says whether the run's admission has
+    closed; if it has, the call does not enter, its report is
+    :class:`NotEntered`, and the group stops there. Entering the context, which follows earlier work, or leaving it
     failing fails the call it was entered for. With ``wait`` the worker waits
     for the work's completion, as for host work or results that leave device
     work; otherwise later device work follows each completion in the device's
@@ -402,6 +438,10 @@ def run_group(
                 except Exception as failed:
                     raise SetupFailed(f"@{held_setup.name} failed to set its state, so that state is uncertain: {failed}") from failed
             for implementation, given, passed, count, covering in program:
+                if closed():  # this call's own admission: a sibling failed or the run was cancelled since the group was admitted
+                    reports.append(NotEntered())
+                    completions.append(None)
+                    break
                 if passed:
                     given = list(given)
                     for position, earlier, result in passed:
@@ -424,6 +464,8 @@ def run_group(
         if not reports:
             reports.append(failed)
             completions.append(None)
+        elif isinstance(reports[-1], NotEntered):
+            reports[-1].failure = failed
         elif not isinstance(reports[-1], BaseException):
             reports[-1] = failed
     if wait:

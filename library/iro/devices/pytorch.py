@@ -60,6 +60,8 @@ class PyTorchDevice:
         """``deterministic`` is a device setting, a run-wide choice the adapter applies (D15): PyTorch's
         deterministic algorithms, without cuDNN's benchmarking, and for CUDA the cuBLAS workspace that
         deterministic cuBLAS needs, which must be set before cuBLAS first runs in the process.
+        ``deterministic=False`` applies nothing: it leaves the process as it is, and does not turn
+        determinism off where the process or another adapter turned it on.
         """
         if deterministic:
             _deterministic(self.kind)
@@ -209,9 +211,14 @@ class PyTorchDevice:
 
     @property
     def settings(self) -> Mapping[str, object]:
-        """The device settings the process runs with. PyTorch's switch is process-wide, so this is what any
-        adapter applied, read when asked: an adapter made without the setting reports it on once another applied it."""
-        return {"deterministic": torch.are_deterministic_algorithms_enabled()}
+        """The settings the process runs with that change the numbers, read when asked: PyTorch's switches are
+        process-wide, so this is what any adapter or the process applied. For CUDA, the cuBLAS workspace too,
+        since deterministic cuBLAS accepts two, and cuDNN's benchmarking, which picks algorithms by timing."""
+        found: dict[str, object] = {"deterministic": torch.are_deterministic_algorithms_enabled()}
+        if self.kind == "cuda":
+            found["cudnn_benchmark"] = torch.backends.cudnn.benchmark
+            found["cublas_workspace"] = os.environ.get("CUBLAS_WORKSPACE_CONFIG")
+        return found
 
     def capacity(self) -> Mapping[str, int]:
         if self._memory is None:

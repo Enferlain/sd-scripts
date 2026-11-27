@@ -135,6 +135,7 @@ class DeviceStorage:
         pending = self.protection[name].pending
         pending[:] = [c for c in pending if not c.done()]
         pending.append(completion)
+        self.kernel.queued(completion)  # the run's settlement waits for it (D15)
 
     # Snapshot copies.
 

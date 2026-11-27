@@ -404,6 +404,31 @@ def test_the_record_on_a_device_waits_for_nothing_and_is_read_once_its_work_has_
     )
 
 
+@pytest.mark.requires_gpu
+@pytest.mark.skipif(not torch.cuda.is_available(), reason="needs a CUDA device")
+def test_the_record_written_on_the_adapter_s_stream_is_read_once_that_stream_has_written_it() -> None:
+    """As in a run: the windows fold on the adapter's stream, and the host reads at the run's end on its own, which does not follow it."""
+    made = trainer()
+    made.realize()
+    assert made.optimization is not None
+    live = made.optimization.live("learner")
+    device = torch.device("cuda", 1 if torch.cuda.device_count() > 1 else 0)
+    adapter = torch.cuda.Stream(device)  # created non-blocking, as the adapter's is: the default stream does not wait for it
+    with torch.cuda.device(device):
+        nan, two = torch.tensor(float("nan"), device=device), torch.tensor(2.0, device=device)
+        live._fold(0, two * 1)  # load these kernels now: CUDA loads a kernel lazily, waiting for the device
+        torch.cuda.synchronize(device)
+        live._bad = None
+        with torch.cuda.stream(adapter):
+            torch.cuda._sleep(500_000_000)  # one kernel that keeps the adapter's stream busy for a noticeable time
+            live._fold(1, nan * 1)
+            live._fold(2, two * 1)
+        assert not adapter.query(), "the folds are still queued behind the busy kernel"
+    assert made.optimization.settle() == (
+        "@learner: the gradient norm of window 1 was not finite; its step was taken, so the unit's parameters may no longer be finite",
+    )
+
+
 class Massive:
     """A loss with its mass, as a loss whose reduction divides by its sample count reports it (D20)."""
 
@@ -872,3 +897,22 @@ def test_a_run_whose_repeat_leaves_its_index_unused_loads_back_as_saved() -> Non
     installed = implementations()
     run = accepted_run(text, contract(), installed=installed)
     cold_load(run, contract(), installed=installed)  # refused with iro-run-002 when the printed text does not load back as saved
+
+
+def test_a_record_carried_to_a_newly_prepared_unit_keeps_what_its_own_unit_measured() -> None:
+    """A unit prepared again may clip where the one it replaces did not: the record it carries says loss, as that unit measured."""
+    from types import SimpleNamespace
+
+    from library.training.units.prepared import LiveUnit
+
+    def prepared(max_grad_norm):
+        return SimpleNamespace(parameters=(), definition=SimpleNamespace(name="learner", max_grad_norm=max_grad_norm))
+
+    before = LiveUnit(prepared(None))
+    before._fold(3, torch.tensor(float("nan")))
+    after = LiveUnit(prepared(1.0))
+    after.adopt(before)
+    after._fold(4, torch.tensor(float("nan")))
+    assert after.check() == (
+        "@learner: the loss of window 3 was not finite; its step was taken, so the unit's parameters may no longer be finite",
+    )

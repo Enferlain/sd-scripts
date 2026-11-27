@@ -222,6 +222,7 @@ class Coordinator:
                     self.requests.settle(root)
                     await self.storage.drain()
                     unsettled = await self.calls.settle_holds()  # held setups' changes undone however the run ended (D16)
+                    unsettled += await kernel.settle_work()  # and the physical work it queued, undos included, completed (D15)
                     if unsettled:  # a cancelled run stays cancelled; either way the uncertain state is reported
                         outcome.status = "cancelled" if outcome.status == "cancelled" else "failed"
                         outcome.error = "; ".join(([outcome.error] if outcome.error else []) + unsettled)

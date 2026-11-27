@@ -13,6 +13,7 @@ choice with its own owner, the unit's unscaling mechanic (D20), as PyTorch
 keeps autocast and gradient scaling separate.
 """
 
+import contextlib
 import warnings
 from collections.abc import Sequence
 
@@ -48,12 +49,15 @@ def mixed_precision(device: object, dtype: str) -> MixedPrecision:
     kind = torch_device.type if isinstance(torch_device, torch.device) else "cpu"
     if not torch.amp.is_autocast_available(kind):
         raise ValueError(f"PyTorch has no mixed precision on {kind}")
-    if kind == "cuda" and found == torch.bfloat16 and not torch.cuda.is_bf16_supported():
-        raise ValueError(f"{torch_device} does not compute in bfloat16")
-    with warnings.catch_warnings(record=True) as caught:  # autocast warns and turns itself off for a dtype the device does not support
-        warnings.simplefilter("always")
-        with torch.autocast(device_type=kind, dtype=found):
-            enabled = torch.is_autocast_enabled(kind)
+    # PyTorch's checks read the current device, so they run with the adapter's device current.
+    current = torch.cuda.device(torch_device) if kind == "cuda" else contextlib.nullcontext()
+    with current:
+        if kind == "cuda" and found == torch.bfloat16 and not torch.cuda.is_bf16_supported():
+            raise ValueError(f"{torch_device} does not compute in bfloat16")
+        with warnings.catch_warnings(record=True) as caught:  # autocast warns and turns itself off for a dtype the device does not support
+            warnings.simplefilter("always")
+            with torch.autocast(device_type=kind, dtype=found):
+                enabled = torch.is_autocast_enabled(kind)
     if not enabled:
         reasons = "; ".join(str(w.message) for w in caught)
         raise ValueError(f"PyTorch's mixed precision on {kind} does not compute in {dtype}: {reasons}")

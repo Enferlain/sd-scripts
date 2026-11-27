@@ -479,3 +479,60 @@ def test_a_capture_keeps_strides_copies_empty_tensors_and_refuses_storage_it_doe
         device.capture((torch.zeros(3),), ())
     with pytest.raises(TypeError, match="named by tensors"):
         device.capture(([1.0, 2.0],), ())
+
+
+LAST_WORK = """iro.strategy @s uses(@queue_busy_work, @end) {
+  iro.parallel @both {
+    iro.sequence @work {
+      %x = iro.call @queue_busy_work() -> int
+    }
+    iro.sequence @ending {
+      %y = iro.call @end() -> int
+    }
+  }
+}
+"""
+
+
+def queue_busy_work():
+    """Queues device work that keeps the adapter's stream busy, and returns at once."""
+    torch.cuda._sleep(1_000_000_000)
+    PROBE.queued.set()
+    return 0
+
+
+def end():
+    """Once the busy work is queued: succeeds, fails, or cancels the run, as the case says."""
+    assert PROBE.queued.wait(10)
+    if PROBE.ending == "failed":
+        raise RuntimeError("a sibling failed")
+    if PROBE.ending == "cancelled":
+        PROBE.loop.call_soon_threadsafe(PROBE.coordinator.cancel)
+    return 0
+
+
+@pytest.mark.parametrize("ending", ["succeeded", "failed", "cancelled"])
+def test_a_run_settles_the_device_work_it_queued_however_it_ends(ending: str) -> None:
+    """The run returns only once its device work has completed: its settlement waits on the completions the work recorded."""
+    import threading
+
+    from library.iro.devices.cuda import Cuda
+
+    device = Cuda(gpu_index())
+    PROBE.queued, PROBE.ending = threading.Event(), ending
+    installed = {
+        "queue_busy_work": implementation(outputs=("int",), effects=["device"], name="queue_busy_work")(queue_busy_work),
+        "end": implementation(outputs=("int",), name="end")(end),
+    }
+    run = accepted_run(LAST_WORK, installed=installed)
+    target = Target((HOST, DeviceFacts(device.name, "cuda")), device=device.name, workers=4)
+    prepared = prepare(cold_load(run, installed=installed), installed, target)
+    coordinator = PROBE.coordinator = Coordinator(prepared, {}, installed, {"host": Host(), device.name: device}, checked=True)
+
+    async def running():
+        PROBE.loop = asyncio.get_running_loop()
+        return await coordinator.run()
+
+    outcome = asyncio.run(running())
+    assert outcome.status == ending, outcome.error
+    assert device.stream.query(), "the adapter's stream had finished the run's work when the run returned"

@@ -129,7 +129,20 @@ class LiveUnit:
     It never leaves the access that holds the lease (D16).
     """
 
-    __slots__ = ("_bad", "_basis", "_expected", "_mass", "_parameters", "_window_loss", "last", "position", "prepared", "progress")
+    __slots__ = (
+        "_bad",
+        "_basis",
+        "_earlier",
+        "_expected",
+        "_mass",
+        "_parameters",
+        "_window_loss",
+        "_written",
+        "last",
+        "position",
+        "prepared",
+        "progress",
+    )
 
     def __init__(self, prepared: PreparedUnit, progress: Progress | None = None):
         self.prepared = prepared
@@ -142,6 +155,9 @@ class LiveUnit:
         self._mass: float | torch.Tensor = 0.0  # the open window's total mass
         self._window_loss: torch.Tensor | None = None  # the open window's losses, read for the check without clipping
         self._bad: torch.Tensor | None = None  # the first window whose value was not finite, or -1, on the device
+        self._written: torch.Event | None = None  # after the record's last write on its device's stream; None on the CPU
+        # The records of the live states this one replaced, each with what it measured, as their own units defined it.
+        self._earlier: tuple[tuple[torch.Tensor, torch.Event | None, str], ...] = ()
 
     def contribute(self, loss: object) -> None:
         """Backpropagates the loss, by its share of the window's mass, into the unit's own parameters only."""
@@ -216,16 +232,17 @@ class LiveUnit:
 
         Called only where the host reads the device already.
         """
-        if self._bad is None:
-            return ()
-        window = int(self._bad)
-        if window < 0:
-            return ()
-        what = "gradient norm" if self.prepared.definition.max_grad_norm is not None else "loss"
-        return (
-            f"@{self.prepared.definition.name}: the {what} of window {window} was not finite; "
-            "its step was taken, so the unit's parameters may no longer be finite",
-        )
+        records = (*self._earlier, *(((self._bad, self._written, self._measured()),) if self._bad is not None else ()))
+        for record, written, what in records:
+            if written is not None:
+                written.synchronize()  # written on its device's stream, which this read, on the host's own stream, does not follow
+            window = int(record)
+            if window >= 0:
+                return (
+                    f"@{self.prepared.definition.name}: the {what} of window {window} was not finite; "
+                    "its step was taken, so the unit's parameters may no longer be finite",
+                )
+        return ()
 
     def settle(self) -> tuple[str, ...]:
         """Once the run's work has ended: the windows whose value was not finite."""
@@ -233,16 +250,29 @@ class LiveUnit:
 
     def adopt(self, previous: LiveUnit) -> None:
         """Takes over the record of the live state this one replaces, and what its next window expects."""
-        if previous._bad is not None:
-            self._bad = previous._bad if self._bad is None else torch.where(previous._bad >= 0, previous._bad, self._bad)
-        previous._bad = None
+        # Kept as they are and read in order: combining them on the device here could run on another stream than wrote them.
+        own = ((previous._bad, previous._written, previous._measured()),) if previous._bad is not None else ()
+        self._earlier = (*previous._earlier, *own, *self._earlier)  # in the order the windows ran
+        previous._bad, previous._written, previous._earlier = None, None, ()
         self._expected = previous._expected
+
+    def _measured(self) -> str:
+        """What this unit's record folds: the gradient norm where clipping measures it, otherwise the window's loss."""
+        return "gradient norm" if self.prepared.definition.max_grad_norm is not None else "loss"
 
     def _fold(self, window: int, value: torch.Tensor) -> None:
         """Folds a window's value into the record on the device: a few small operations, no copy and no wait."""
         if self._bad is None:
             self._bad = torch.full((), -1, dtype=torch.int64, device=value.device)
         self._bad = torch.where(torch.isfinite(value) | (self._bad >= 0), self._bad, window)
+        self._written = _written_on(self._bad)
+
+
+def _written_on(record: torch.Tensor) -> torch.Event | None:
+    """An event after the work queued so far on the current stream of the record's device; the CPU needs none."""
+    if record.device.type == "cpu":
+        return None
+    return torch.accelerator.current_stream(record.device).record_event()
 
 
 def _step(prepared: PreparedUnit) -> None:

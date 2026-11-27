@@ -43,8 +43,9 @@ RoutePreparation = Callable[[object], object]
 """How one route is prepared from its participant's bound object: it may change the object in place and returns the route's callable."""
 
 Realization = Callable[..., CallSetup]
-"""Builds a realization's call setup for the device the participant's calls run on, from the settings the participant
-declares it with: ``realize(@mixed_precision, "bfloat16")`` builds ``mixed_precision(device, "bfloat16")``."""
+"""Builds a realization's call setup for the run's device-work adapter, where the participants are materialized, from the
+settings the participant declares it with: ``realize(@mixed_precision, "bfloat16")`` builds ``mixed_precision(device, "bfloat16")``.
+An activity the target places on another device is not built for yet (bead sd-scripts-syv.83)."""
 
 
 def prepare_training(

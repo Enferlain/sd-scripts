@@ -339,7 +339,9 @@ def test_one_sdxl_step_through_the_trainer_equals_the_reference_bit_for_bit(tmp_
     result = json.loads(out.read_text())
     assert result["status"] == "succeeded", result.get("error")
     assert result["gil"] == ["off"], "the step keeps the GIL off, with Triton unavailable (D15)"
-    assert result["device_settings"] == [[["deterministic", True]]], "the run records the device setting it ran with"
+    assert result["device_settings"] == [[["cublas_workspace", ":4096:8"], ["cudnn_benchmark", False], ["deterministic", True]]], (
+        "the run records the device settings it ran with"
+    )
     ours = torch.load(out.with_suffix(".pt"))
     reference = load_file(str(REFERENCE.with_suffix(".safetensors")))
     assert ours.keys() == COMPARED, "the UNet's inputs and output, the target, the losses and the gradient norm"

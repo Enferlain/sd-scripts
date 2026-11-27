@@ -200,3 +200,20 @@ def test_float16_runs_as_declared_and_scaling_its_loss_is_not_the_realization_s_
     outcome = trainer('realize(@mixed_precision, "float16")', {"mixed_precision": mixed_precision}).train()
     assert outcome.status == "succeeded", outcome.error
     assert SEEN["predict"] == (True, torch.float16)
+
+
+class _OnCard:
+    def __init__(self, index: int):
+        self.device = torch.device("cuda", index)
+
+
+@pytest.mark.requires_gpu
+@pytest.mark.skipif(not torch.cuda.is_available() or torch.cuda.device_count() < 2, reason="needs two CUDA devices")
+def test_bfloat16_support_is_judged_on_the_adapter_s_card_not_the_current_one(monkeypatch: pytest.MonkeyPatch) -> None:
+    """PyTorch's check reads the current card; here only card 1 'computes in bfloat16', and card 0 stays current."""
+    monkeypatch.setattr(torch.cuda, "is_bf16_supported", lambda including_emulation=True: torch.cuda.current_device() == 1)
+    with torch.cuda.device(0):
+        assert mixed_precision(_OnCard(1), "bfloat16").device_type == "cuda"
+        with pytest.raises(ValueError, match="cuda:0 does not compute in bfloat16"):
+            mixed_precision(_OnCard(0), "bfloat16")
+        assert torch.cuda.current_device() == 0, "and the current card is left as it was"

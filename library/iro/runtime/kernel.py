@@ -10,12 +10,14 @@ runtime can replace it (sd-scripts-syv.40).
 
 import asyncio
 import random
+import threading
 from collections import defaultdict
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
 from library.iro.runtime.state import Cancelled, Fact, Identity, RunFailure
+from library.iro.seams import Completion
 
 Observer = Callable[[Fact], None]
 
@@ -38,6 +40,8 @@ class Kernel:
         self.checked = checked
         self.cancelled = False
         self.failed = False
+        self.closed = threading.Event()  # set as admission closes, for work on worker threads: a call group's guard before each call
+        self.outstanding: list[Completion] = []  # the run's physical work not yet seen complete: its settlement waits for it (D15)
         self.errors: list[str] = []
         self._failures: list[BaseException] = []
         self._stall: RunFailure | None = None
@@ -65,6 +69,7 @@ class Kernel:
             self._failures.append(failed)
             self.errors.append(str(failed))
             self.failed = True
+            self.closed.set()
             self.wake_all()
 
     def missed(self, what: str) -> None:
@@ -77,7 +82,20 @@ class Kernel:
 
     def cancel(self) -> None:
         self.cancelled = True
+        self.closed.set()
         self.wake_all()
+
+    # The run's physical work.
+
+    def queued(self, *completions: Completion | None) -> None:
+        """Keeps the completions of physical work the run queued until they are done; those done already are dropped."""
+        self.outstanding = [c for c in self.outstanding if not c.done()]
+        self.outstanding.extend(c for c in completions if c is not None)
+
+    async def settle_work(self) -> list[str]:
+        """At the run's end however it ended: waits, off the coordinator, for the physical work the run queued; why any failed."""
+        pending, self.outstanding = self.outstanding, []
+        return await self.submit(_wait_all, pending) if pending else []
 
     # Waiting and waking.
 
@@ -201,6 +219,17 @@ class Kernel:
             return await asyncio.get_running_loop().run_in_executor(self.executor, work, *args)
         finally:
             self.working -= 1
+
+
+def _wait_all(completions: list[Completion]) -> list[str]:
+    """Waits for each completion on a worker thread; what each that failed raised."""
+    failures = []
+    for completion in completions:
+        try:
+            completion.wait()
+        except Exception as failed:
+            failures.append(f"the device work the run queued failed to complete: {failed}")
+    return failures
 
 
 __all__ = ["EVERYONE", "Kernel", "Observer"]
